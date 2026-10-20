@@ -64,7 +64,7 @@ pub fn install_gameplay_device_runtime(
     crate::menu_background_host::install(app, hosts.clone());
     crate::world_postprocess::install_session_previews(app, hosts.clone());
     crate::screenshot::shared_texture_capture::install(app);
-    #[cfg(target_os = "windows")]
+    #[cfg(any(windows, feature = "native-audio"))]
     crate::audio_host::install(app, &installed)?;
     crate::world_terrain::install_terrain_startup(app, hosts.shaders.clone(), installed);
     crate::world_terrain::install_grass_startup(app, hosts.shaders.clone());
@@ -364,7 +364,7 @@ pub fn install_gameplay_gpu_startup(
     let input_root = installed.clone();
     let input_hosts = hosts.clone();
     app.add_systems(PreStartup, (move |world: &mut World| {
-        crate::loading_graph::initialize_common_assets(world, &input_hosts, &input_root, demo)
+        crate::loading_graph::initialize_common_assets(world, &input_hosts, &input_root, demo, false)
             .expect("original gameplay palette/textures/fonts startup");
         crate::loading_graph::initialize_grading_assets(world, &input_hosts, &input_root)
             .expect("original gameplay grading LUT startup");

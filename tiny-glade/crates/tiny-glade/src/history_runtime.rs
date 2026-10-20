@@ -85,7 +85,6 @@ pub(super) fn install(app: &mut App) {
         (
             sys::history::replay_decorator::replay_decorator,
             sys::history::replay_stairs::replay_stairs,
-            system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>,
             system_tree::replay_tree::replay_tree::<res::history::MaybePendingSnapshotId>,
         )
             .chain()
@@ -95,22 +94,6 @@ pub(super) fn install(app: &mut App) {
         route_wall_replay_colors.after(sys::history::replay_wall::replay_wall),
         sys::history::replay_wall::apply_wall_replay_audio
             .after(sys::history::replay_wall::replay_wall),
-        system_color::set_wall_color_id::set_wall_color_id
-            .after(route_wall_replay_colors)
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
-        system_color::set_gate_color_id::set_gate_color_id
-            .after(route_wall_replay_colors)
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
-        system_color::set_halftimber_color_id::set_halftimber_color_id
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
-        system_color::set_roof_customization::set_roof_customization::<res::history::MaybePendingSnapshotId>
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
-        system_color::set_decorator_color_id::set_decorator_color_id
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
-        system_color::set_window_light::set_window_light
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
-        system_color::set_flag_connection_n_chimney_smoke::set_flag_connection_and_chimney_smoke
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
         system_roof::edit_roof::set_flat_roof_style
             .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
     ).in_set(GameSystemSet(40)));
@@ -201,7 +184,6 @@ fn install_domain_lifecycles(app: &mut App) {
     app.add_systems(
         Update,
         (
-            system_color::write_roof_color_id_to_gpu::write_roof_color_id_to_gpu,
             system_color::write_roof_color_id_to_gpu::write_wall_color_ids_to_gpu,
         )
             .after(GameSystemSet(40))

@@ -40,11 +40,28 @@ pub const SHAPE_STREAM_BYTES: usize = 0x400000;
 /// Text preparation precedes Taffy measurement; drawing follows layout; the
 /// stream is consumed once, after both component and MEI node producers. Graph
 /// compilation and its retries only read the uploaded output of this update.
+/// Original MeiPlugin load system (see `install_mei_frame_systems`). Failure to
+/// read the shipped table is fatal, as in the original `load_font_table` unwrap path.
+pub fn load_mei_assets(mut mei: ResMut<toolbar::MeiContext>) -> bevy_ecs::error::Result {
+    mei.load_configs(Path::new("assets/ui"));
+    mei.load_font_table(Path::new("assets/fonts/table.ron"))?;
+    Ok(())
+}
+
 pub fn install_mei_frame_systems(app: &mut bevy_app::App) {
     use bevy_ecs::schedule::IntoScheduleConfigs;
     use crate::run_game::GameSystemSet;
 
     app.init_resource::<toolbar::MeiContext>();
+    // MeiPlugin::build @1406868d0 registers one load system right after
+    // insert_resource(MeiContext) (system body @140fb5b90 = InfallibleSystemWrapper
+    // run_unsafe): `load_configs()` then `load_font_table()`. Both paths are
+    // compile-time constants inside the originals (@140682e70 "assets/ui", len 9;
+    // @140683a20 "assets/fonts/table.ron", len 0x16), relative to the install root.
+    // OPEN: the schedule label of that registration (Schedules::add_systems mono
+    // @140fd50c0) is baked into the monomorph and not yet identified; PreStartup and
+    // Startup are equivalent here because both finish before the first Update.
+    app.add_systems(bevy_app::Startup, load_mei_assets);
     app.init_resource::<toolbar::resouces_and_components::taffy_layout::TaffyLayout>();
     app.init_resource::<toolbar::toolbar_update::ToolbarSizeMult>();
     app.init_resource::<country_core::systems::ui::resources::widget_params::UiNavState>();

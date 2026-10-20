@@ -104,16 +104,58 @@ pub fn add_water_cpu_systems<C: Send + Sync + 'static, S: Send + Sync + 'static>
     schedule.add_systems(record_water_history::<S>.in_set(WaterCpuStage::Record));
 }
 
-/// `system_water::impl$0::build`（0x1406501d0，O 面，glue-legitimate）。
-///
-/// 原实现经 Bevy App 机制注册（`add_systems`×2 = record_water_history /
-/// update_water_audio_grid、`insert_resource<WaterRaster>`、`register_event`×3）；
-/// 本 crate 按 core garden 域既有约定以 `(world, schedule)` 落地，App 接线由宿主
-/// （tiny-glade crate）负责。
+/// 仅供本 crate 独立运行/测试的 `(world, schedule)` 落地（旧约定，集合名为本地发明的
+/// [`WaterCpuStage`]）。真实游戏经 [`WaterPlugin`] 注册，二者不要同时使用。
 pub fn build<C: Send + Sync + 'static, S: Send + Sync + 'static>(
     world: &mut World,
     schedule: &mut Schedule,
 ) {
     register_water_events(world);
     add_water_cpu_systems::<C, S>(schedule);
+}
+
+/// `<system_water::WaterPlugin as Plugin>::build`（0x1406501d0）。
+///
+/// 机器码（PyGhidra 逐指令 + `Box<dyn System>` vtable/类型名串核对）：
+/// 1. `add_systems(Update, (draw_water.in_set(0x10), record_water_history.in_set(0x22)))`
+///    ——同一次 tuple 注册，各系统只属于一个 set（in_set 单体 0x140e92740 / 0x140e930c0，
+///    类型名串 0x142b8b67d / 0x142b8bb05）；
+/// 2. `add_systems(Update, update_water_audio_grid.run_if(Option<Res<WaterAudioGrid>>.is_some())
+///    .in_set(0x24))`——独立注册，只在 0x24（`in_set_inner`，名串 0x142b8c1c0）；
+/// 3. `insert_resource<WaterRaster>`（无条件，`DirtyTilePublisher::unique()` + `new`）；
+/// 4. 三次 `register_event`（各带 TypeId 存在性检查）：`RecordWaterEditToHistoryCmd`、
+///    `WaterDrawEvent`、`WaterEraseEvent`。
+///
+/// 旧文档“`draw_water` 不由本插件注册”来自早期反编译，被机器码纠正：它在第 1 条 tuple 里。
+/// `draw_water<C>` 的 `C` 取原版 native-physics 构建的碰撞载荷，`record_water_history<S>` 的 `S`
+/// 为 `MaybePendingSnapshotId`。
+pub struct WaterPlugin;
+
+impl bevy_app::Plugin for WaterPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        use bevy_app::Update;
+        use country_core::resources::history::MaybePendingSnapshotId;
+        use country_core::resources::walls::decorator_archivist::LiveColliderPayload;
+        use country_core::resources::water::{WaterDrawEvent, WaterEraseEvent};
+        use country_core::systems::GameSystemSet;
+        use country_core::systems::audio::water_ambience_audio::WaterAudioGrid;
+
+        app.add_systems(
+            Update,
+            (
+                draw_water::<LiveColliderPayload>.in_set(GameSystemSet(0x10)),
+                record_water_history::<MaybePendingSnapshotId>.in_set(GameSystemSet(0x22)),
+            ),
+        );
+        app.add_systems(
+            Update,
+            update_water_audio_grid
+                .run_if(|grid: Option<Res<WaterAudioGrid>>| grid.is_some())
+                .in_set(GameSystemSet(0x24)),
+        );
+        app.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
+        app.add_event::<RecordWaterEditToHistoryCmd>();
+        app.add_event::<WaterDrawEvent>();
+        app.add_event::<WaterEraseEvent>();
+    }
 }

@@ -85,6 +85,11 @@ crc32fast = "=1.3.2"
 backtrace = { version = "=0.3.71", features = ["serialize-serde"] }
 sentry-types = "=0.31.7"
 
+[features]
+# FMOD-backed audio. Always on for Windows (original target); other hosts opt in
+# when libfmod/libfmodstudio are available to link.
+native-audio = ["country-core/native-audio"]
+
 [dev-dependencies]
 rspirv.workspace = true
 country-core = { workspace = true, features = ["test-support"] }

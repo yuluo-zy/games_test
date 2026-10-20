@@ -40,8 +40,30 @@ pub fn add_glade_border_cpu_systems(schedule: &mut Schedule) {
     );
 }
 
-/// `impl$0::build`（0x140650ab0，O 面）。
+/// 仅供本 crate 独立运行/测试的 `(world, schedule)` 落地。真实游戏经 [`GladeBorderPlugin`] 注册。
 pub fn build(world: &mut World, schedule: &mut Schedule) {
     register_glade_border_events(world);
     add_glade_border_cpu_systems(schedule);
+}
+
+/// `<system_glade_border::GladeBorderPlugin as Plugin>::build`（0x140650ab0）。
+///
+/// 机器码：`chain_ignore_deferred((display_glade_border, feedback_input_out_of_border))` →
+/// `in_set(GameSystemSet(0x24))` → `add_systems(Update)`；随后两个事件按 TypeId 存在性检查注册
+/// （`DisplayOutOfBorder`、`FeedbackInputOutOfBorder`）。`ShowDemoBorderOverlay`/`PlayUiSound`
+/// 由其它插件注册，这里不重复。
+pub struct GladeBorderPlugin;
+
+impl bevy_app::Plugin for GladeBorderPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        use country_core::systems::GameSystemSet;
+        app.add_systems(
+            bevy_app::Update,
+            (display_glade_border, feedback_input_out_of_border)
+                .chain_ignore_deferred()
+                .in_set(GameSystemSet(0x24)),
+        );
+        app.add_event::<DisplayOutOfBorder>();
+        app.add_event::<FeedbackInputOutOfBorder>();
+    }
 }

@@ -224,8 +224,84 @@ pub fn add_color_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Schedule) 
     ));
 }
 
-/// `system_color::impl$0::add_color`（0x140651870，O 面）。
+/// 仅供本 crate 独立运行/测试的 `(world, schedule)` 落地（旧约定）。真实游戏经 [`ColorSystems::add_color`]。
 pub fn build<S: Send + Sync + 'static>(world: &mut World, schedule: &mut Schedule) {
     register_color_events(world);
     add_color_cpu_systems::<S>(schedule);
+}
+
+/// `<bevy_app::App as system_color::ColorSystems>::add_color`（0x140651870）。
+///
+/// 机器码（PyGhidra 逐指令 + 各系统 `Box<dyn System>` 类型名串核对）：
+/// 1. 15 次 `register_event`：ShowColorMenuCmd、HideColorMenuCmd、SetWallColorIdCmd、
+///    SetRoofColorIdCmd、SetDecoratorColorIdCmd、SetDecoratorBrightnessCmd、SetGateColorIdCmd、
+///    SetHalftimberColorIdCmd、SetFlagConnectionCmd、SetWindowLightCmd、SetChimneySmokeCmd、
+///    SetFlatRoofStyleCmd、SetLadderColorIdCmd、SetStairRailingCmd、SetMagicColorIdCmd；
+/// 2. `Schedules::add_systems(<启动类调度>, init_color_ids_buffer)`（0x140ece460，创建四个颜色
+///    SSBO 与 CPU 表）。**调度标签烤进单体实例，未识别**；按 Startup 注册，PreStartup/Startup 对
+///    首帧 Update 等价；
+/// 3. `SubApp::add_systems(Update, (replay_color.in_set(0x28), (18 个系统).chain_ignore_deferred()
+///    .in_set(0x1f)))`；链内顺序取自 `chain_ignore_deferred` 单体（0x140ed1780）里
+///    `into_configs` 的调用顺序。
+///
+/// 与重建 crate 旧 `add_color_cpu_systems` 的差异：原版有 `set_wall_style`、没有 `color_cursor_icon`。
+/// 未闭合：原版 `set_*_color_id` 内含 SSBO 上传段，重建版未恢复，宿主用独立的
+/// `write_wall_color_ids_to_gpu` 补这一段。
+pub trait ColorSystems {
+    fn add_color(&mut self) -> &mut Self;
+}
+
+impl ColorSystems for bevy_app::App {
+    fn add_color(&mut self) -> &mut Self {
+        use bevy_app::{Startup, Update};
+        use country_core::resources::history::MaybePendingSnapshotId as S;
+        use country_core::systems::GameSystemSet;
+
+        self.add_event::<ShowColorMenuCmd>();
+        self.add_event::<HideColorMenuCmd>();
+        self.add_event::<country_core::resources::color_id::SetWallColorIdCmd>();
+        self.add_event::<SetRoofColorIdCmd>();
+        self.add_event::<SetDecoratorColorIdCmd>();
+        self.add_event::<SetDecoratorBrightnessCmd>();
+        self.add_event::<country_core::resources::color_id::SetGateColorIdCmd>();
+        self.add_event::<country_core::resources::color_id::SetHalftimberColorIdCmd>();
+        self.add_event::<SetFlagConnectionCmd>();
+        self.add_event::<SetWindowLightCmd>();
+        self.add_event::<SetChimneySmokeCmd>();
+        self.add_event::<SetFlatRoofStyleCmd>();
+        self.add_event::<SetLadderColorIdCmd>();
+        self.add_event::<SetStairRailingCmd>();
+        self.add_event::<SetMagicColorIdCmd>();
+
+        self.add_systems(Startup, set_wall_color_id::init_color_ids_buffer);
+        self.add_systems(
+            Update,
+            (
+                replay_color::replay_color::<S>.in_set(GameSystemSet(0x28)),
+                (
+                    ui_color_wall_and_roof::ui_color_wall_and_roof,
+                    ui_color_decorator::ui_color_windows_and_flags,
+                    ui_color_gates::ui_color_gates,
+                    autoclose_color_menu::autoclose_color_menu,
+                    show_color_menu::hide_color_menu,
+                    color_menu::delete_color_icon_entities,
+                    show_color_menu::show_color_options::<S>,
+                    color_menu::color_menu::<S>,
+                    color_menu::color_button_animations,
+                    set_wall_color_id::set_wall_color_id,
+                    set_roof_customization::set_roof_customization::<S>,
+                    set_decorator_color_id::set_decorator_color_id,
+                    set_gate_color_id::set_gate_color_id,
+                    set_halftimber_color_id::set_halftimber_color_id,
+                    country_core::systems::wall::set_wall_style::set_wall_style,
+                    set_flag_connection_n_chimney_smoke::set_flag_connection_and_chimney_smoke,
+                    set_window_light::set_window_light,
+                    write_roof_color_id_to_gpu::write_roof_color_id_to_gpu,
+                )
+                    .chain_ignore_deferred()
+                    .in_set(GameSystemSet(0x1f)),
+            ),
+        );
+        self
+    }
 }

@@ -28,33 +28,55 @@ use utils::swizzlers::SwizzlerXVY;
 /// 的机器码判别）。
 pub const CUSTOM_COLOR_SET: [u32; 8] = [4, 5, 6, 7, 8, 9, 10, 12];
 
-/// `init_color_ids_buffer` @0x142290750（198B，重建）。
+/// `init_color_ids_buffer` @0x142290750（198B）。
 ///
-/// fresh 反编译顺序：`add_new::<WallColorIdSsbo>`→`add_new::<RoofColorIdSsbo>`→
-/// `insert_resource(WallColorIds::new())`→`add_new::<GateColorIdSsbo>`→
-/// `insert_resource(GateColorIds::new())`→`add_new::<HalftimberColorIdSsbo>`→
-/// `insert_resource(HalftimberColorIds::new())`。候选签名（O，PDB）
+/// 原版顺序（fresh 反编译 + 注册面 `add_color` @0x140651870 的 `Schedules::add_systems`）：
+/// `add_new::<WallColorIdSsbo>` → `add_new::<RoofColorIdSsbo>` →
+/// `insert_resource(WallColorIds::new())` → `add_new::<GateColorIdSsbo>` →
+/// `insert_resource(GateColorIds::new())` → `add_new::<HalftimberColorIdSsbo>` →
+/// `insert_resource(HalftimberColorIds::new())`。签名（PDB）
 /// `void(Res<GraphicsDeviceResource>, Res<AssetSsboLibrary>, Commands)`。
-/// **分歧点**：`AssetSsboLibrary::add_new::<T>` 需 `T: SsboType`，而 core 的
-/// `WallColorIdSsbo/RoofColorIdSsbo/GateColorIdSsbo/HalftimberColorIdSsbo` 为
-/// typed-gap（无 `StorageElement`/`SsboType` 实现）——SSBO 注册无法编译，登记。
+///
+/// 四个 SSBO 的 `SsboType` 实现已在 core 落地（旧版“typed-gap”注释失效），所以这里真实创建
+/// GPU 缓冲；缺这一步时 `write_*_color_ids_to_gpu` 会在 `library.get::<WallColorIdSsbo>()` 失败。
+/// CPU 表保持“已存在则不覆盖”：重复运行时不得抹掉已载入/已编辑的颜色。
 pub fn init_color_ids_buffer(
     mut commands: Commands,
-    _library: Res<AssetSsboLibrary>,
+    device: Res<country_core::render::device::GraphicsDeviceResource>,
+    library: Res<AssetSsboLibrary>,
     wall_colors: Option<Res<WallColorIds>>,
     gate_colors: Option<Res<country_core::resources::color_id::GateColorIds>>,
     half_colors: Option<Res<country_core::resources::color_id::HalftimberColorIds>>,
 ) {
+    use country_core::resources::color_id::{
+        GateColorIdSsbo, HalftimberColorIdSsbo, WallColorIdSsbo,
+    };
+    use country_core::resources::color_id_roof::RoofColorIdSsbo;
+    // 原版 SSBO 创建与 CPU 表插入交错执行；插入是 Commands 延迟写，二者互不可见，故先集中创建
+    // 四个 SSBO（顺序保持 Wall→Roof→Gate→Halftimber）再统一补表。
+    library.add_new::<WallColorIdSsbo>(device.device());
+    library.add_new::<RoofColorIdSsbo>(device.device());
+    library.add_new::<GateColorIdSsbo>(device.device());
+    library.add_new::<HalftimberColorIdSsbo>(device.device());
+    insert_missing_color_tables(
+        &mut commands,
+        wall_colors.is_none(),
+        gate_colors.is_none(),
+        half_colors.is_none(),
+    );
+}
+
+/// `init_color_ids_buffer` 的 CPU 表段：O `WallColorIds::new()`（0x140b19890）及 Gate/Halftimber
+/// 同类构造的 `insert_resource`。已存在则不覆盖——重复运行不得抹掉已载入/已编辑的颜色。
+fn insert_missing_color_tables(commands: &mut Commands, wall: bool, gate: bool, half: bool) {
     use country_core::resources::color_id::{GateColorIds, HalftimberColorIds};
-    // O：`WallColorIds::new()`（0x140b19890）insert_resource。
-    // Preserve actual loaded and previously edited resources on repeated runs.
-    if wall_colors.is_none() {
+    if wall {
         commands.insert_resource(WallColorIds::new());
     }
-    if gate_colors.is_none() {
+    if gate {
         commands.insert_resource(GateColorIds::new());
     }
-    if half_colors.is_none() {
+    if half {
         commands.insert_resource(HalftimberColorIds::new());
     }
 }
@@ -139,6 +161,15 @@ mod full_wall_id_tests {
             publication_source::TerrainHeightGrid512,
         },
     };
+    /// Same CPU-table segment as `init_color_ids_buffer` without the GPU device parameter.
+    fn test_init_tables(
+        mut commands: Commands,
+        wall: Option<Res<WallColorIds>>,
+        gate: Option<Res<GateColorIds>>,
+        half: Option<Res<HalftimberColorIds>>,
+    ) {
+        insert_missing_color_tables(&mut commands, wall.is_none(), gate.is_none(), half.is_none());
+    }
     fn world(public_id: Option<WallId>) -> World {
         let mut world = World::new();
         world.insert_resource(AssetSsboLibrary::new());
@@ -251,7 +282,7 @@ mod full_wall_id_tests {
         world.remove_resource::<HalftimberColorIds>();
         world.send_event(SetWallColorIdCmd::new(WallId(7), 12, 0));
         let mut schedule = Schedule::default();
-        schedule.add_systems((init_color_ids_buffer, set_wall_color_id).chain());
+        schedule.add_systems((test_init_tables, set_wall_color_id).chain());
         schedule.run(&mut world);
         assert_eq!(world.resource::<WallColorIds>().0[7], 12);
         schedule.run(&mut world);
@@ -264,7 +295,7 @@ mod full_wall_id_tests {
         world.resource_mut::<GateColorIds>().0[7] = 87;
         world.resource_mut::<HalftimberColorIds>().0[7] = 67;
         let mut schedule = Schedule::default();
-        schedule.add_systems(init_color_ids_buffer);
+        schedule.add_systems(test_init_tables);
         schedule.run(&mut world);
         assert_eq!(world.resource::<WallColorIds>().0[7], 91);
         assert_eq!(world.resource::<GateColorIds>().0[7], 87);
@@ -277,7 +308,7 @@ mod full_wall_id_tests {
         world.resource_mut::<HalftimberColorIds>().0[7] = 67;
         world.remove_resource::<GateColorIds>();
         let mut schedule = Schedule::default();
-        schedule.add_systems(init_color_ids_buffer);
+        schedule.add_systems(test_init_tables);
         schedule.run(&mut world);
         assert_eq!(world.resource::<WallColorIds>().0[7], 91);
         assert_eq!(world.resource::<HalftimberColorIds>().0[7], 67);

@@ -400,7 +400,7 @@ impl GameLoop {
             // graphics device; no MainCamera is removed to fake a loading mode.
             let mut loading = crate::run_game::make_loading_app(&app)?;
             loading.insert_resource(EguiContextResource(shared_gui));
-            #[cfg(windows)]
+            #[cfg(any(windows, feature = "native-audio"))]
             loading.insert_resource(crate::audio_host::share_core(app.world().resource::<
                 country_core::resources::audio_resources::AudioCore<
                     country_core::resources::native_audio::NativeStudio,
@@ -463,7 +463,7 @@ impl GameLoop {
             });
             // Both Apps share the actual initialized Studio. Only a real FMOD
             // initialization failure enters AudioCore::None inside the producer.
-            #[cfg(windows)]
+            #[cfg(any(windows, feature = "native-audio"))]
             app.add_systems(
                 bevy_app::Update,
                 (
@@ -480,7 +480,7 @@ impl GameLoop {
                 bevy_app::Update,
                 country_core::resources::logo_animation::animate_logo_with_disabled_audio,
             );
-            #[cfg(not(any(windows, target_os = "macos")))]
+            #[cfg(not(any(windows, feature = "native-audio", target_os = "macos")))]
             anyhow::bail!(
                 "AnimatedLogo requires a real FMOD AudioCore startup backend on this target"
             );

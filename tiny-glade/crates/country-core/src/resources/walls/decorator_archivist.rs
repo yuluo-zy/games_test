@@ -38,16 +38,20 @@ use crate::resources::walls::publication_fields::WallId as RecoveredWallId;
 /// Original archive collision payload. These are owned collision objects, not
 /// addresses copied from a native allocation.
 #[cfg(feature = "native-physics")]
-pub type LiveDecoratorArchivist = DecoratorArchivist<(
+pub type LiveColliderPayload = (
     crate::systems::collision::world::OffsetColliderTransform,
     crate::systems::collision::world::RaycastMesh,
-)>;
+);
+#[cfg(feature = "native-physics")]
+pub type LiveDecoratorArchivist = DecoratorArchivist<LiveColliderPayload>;
 
 /// The CPU-only build shares the same archive and culling owner. Its collision
 /// payload is unavailable until native-physics is enabled; UI culling changes
 /// still use this owner rather than a second flag in the UI resource.
 #[cfg(not(feature = "native-physics"))]
-pub type LiveDecoratorArchivist = DecoratorArchivist<()>;
+pub type LiveColliderPayload = ();
+#[cfg(not(feature = "native-physics"))]
+pub type LiveDecoratorArchivist = DecoratorArchivist<LiveColliderPayload>;
 
 impl<C: Send + Sync + 'static> Default for DecoratorArchivist<C> {
     /// B default @140341370, installed by DecoratorPlugin @140343132/13d:

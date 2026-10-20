@@ -35,6 +35,13 @@ pub mod startup;
 pub mod utils;
 
 pub mod systems {
+    /// B `country_core::systems::GameSystemSet`: the 45 Update stages the original
+    /// `add_stages` chains over `0..44`. Their source names are unavailable, so only the
+    /// numeric identity is kept. System crates register against this type directly
+    /// (e.g. `WaterPlugin::build` uses `in_set(GameSystemSet(0x10))`).
+    #[derive(bevy_ecs::schedule::SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct GameSystemSet(pub u8);
+
     pub mod audio;
     pub mod arrow_gizmo_animation;
     pub mod backend;

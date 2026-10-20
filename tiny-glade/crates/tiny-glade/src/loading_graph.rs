@@ -60,7 +60,7 @@ pub fn install_loading_startup(
         "loading Startup belongs to another BufferHost device");
     let asset_hosts = hosts.clone();
     app.add_systems(bevy_app::Startup, move |world: &mut World| {
-        initialize_common_assets(world, &asset_hosts, &installed, demo)
+        initialize_common_assets(world, &asset_hosts, &installed, demo, true)
             .expect("original loading asset Startup");
     });
     app.add_systems(bevy_app::Startup, (
@@ -80,14 +80,23 @@ pub fn initialize_loading_resources(
     world: &mut World, device: Arc<rhapsody::device::Device>, hosts: &HostTables,
     installed: &Path, demo: bool,
 ) -> Result<()> {
-    initialize_common_assets(world, hosts, installed, demo)?;
+    initialize_common_assets(world, hosts, installed, demo, true)?;
     attach_loading_mei(world, device, hosts)
 }
 
 /// The unchanged asset/font producer body. These independent Startup values do
 /// not depend on canonical text SSBO creation or on the MEI host attachment.
+///
+/// `bootup_only` selects the texture filter. The original has a
+/// `TextureLoadingFilter` trait whose only symbolised impl is
+/// `LoadOnlyBootupTextures::should_load` (@1409e6950); the loading App uses it.
+/// The gameplay App must make every compiled texture resolvable (UI icons such as
+/// `menu/settings_icon` are looked up by name every frame), so it loads all of them.
+/// OPEN: the gameplay-side filter type has no symbol of its own (constant-true
+/// `should_load` inlines away), so "load everything" is inferred from the trait
+/// name and from the UI's by-name lookups, not read from a call site.
 pub(crate) fn initialize_common_assets(
-    world: &mut World, hosts: &HostTables, installed: &Path, demo: bool,
+    world: &mut World, hosts: &HostTables, installed: &Path, demo: bool, bootup_only: bool,
 ) -> Result<()> {
     anyhow::ensure!(!world.contains_resource::<country_core::asset_libraries::color_library::ColorLibrarySsbo>(),
         "loading ColorLibrary startup producer already ran");
@@ -108,7 +117,7 @@ pub(crate) fn initialize_common_assets(
         let entry = entry?;
         if !entry.file_type().is_file() || entry.path().extension().and_then(|x| x.to_str()) != Some("texture") { continue; }
         let name = entry.path().strip_prefix(&root)?.with_extension("");
-        if !country_core::startup::load_textures::should_load(&name, demo) { continue; }
+        if bootup_only && !country_core::startup::load_textures::should_load(&name, demo) { continue; }
         // The packaged NameHash keys use '/' on every host. A Windows Path's
         // native '\\' must not change the identity of nested logo/menu assets.
         let name = name.to_str().context("compiled texture asset name is not UTF-8")?
@@ -139,15 +148,10 @@ pub(crate) fn initialize_grading_assets(
     for (meta, record) in luts.metas.iter().zip(&luts.textures) {
         textures.add(Some(lut_name_to_asset_name(&meta.name)), record.texture.clone());
     }
-    // final_post's fixed file key is xxh3("tony_mc_mapface"), not a named
-    // grading_lut alias. Decode the packaged descriptor and texels unchanged.
-    for name in ["tony_mc_mapface", "menu/active_lut"] {
-        let path = installed.join("compiled-assets/textures").join(name).with_extension("texture");
-        let file = AlignedFile::read(&path)?;
-        let image = parse_compiled_image(file.bytes(), &path);
-        let texture = hosts.textures.create_texture(name, &image.desc, image.data)?;
-        textures.add(Some(name.to_owned()), texture);
-    }
+    // final_post's fixed file key (xxh3("tony_mc_mapface")) and menu/active_lut are
+    // ordinary compiled textures; the gameplay App's full texture load
+    // (`initialize_common_assets(.., bootup_only = false)`) already registered them.
+    // Loading them again here would hit the library's duplicate-name check.
     world.insert_resource(luts);
     Ok(())
 }

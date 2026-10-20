@@ -3,17 +3,89 @@
 //! Broader normal wall-system/event registration remains a separate unmounted
 //! entry until every original consumer in that tuple is integrated.
 
-/// `tiny_glade::app_systems::impl$0::add_wall_systems` `0x140493120` —— 未实现。
-pub fn add_wall_systems() {
-    todo!(
-        "未实现: add_wall_systems 0x140493120 —— 注册顺序已解（见模块注释），\
-         系统函数名/ResMut 面未逐个锚定"
-    );
+/// `<bevy_app::App as tiny_glade::app_systems::WallSystems>`: `add_wall_systems` (0x140493120) and
+/// `add_wall_events` (0x1404936b0, 39KB 事件/资源注册表)。
+pub trait WallSystems {
+    fn add_wall_systems(&mut self) -> &mut Self;
+    fn add_wall_events(&mut self) -> &mut Self;
 }
 
-/// `tiny_glade::app_systems::impl$0::add_wall_events` `0x1404936b0` —— 未实现。
-pub fn add_wall_events() {
-    todo!("未实现: add_wall_events 0x1404936b0 —— 39KB 事件注册表未逐项解出")
+impl WallSystems for bevy_app::App {
+    /// 未实现：注册顺序已解（见 `run_game.rs` 内 add_wall_systems 片段注释），系统函数名/ResMut 面
+    /// 未逐个锚定。
+    fn add_wall_systems(&mut self) -> &mut Self {
+        todo!("未实现: add_wall_systems 0x140493120")
+    }
+
+    /// 已落地的部分（逐项有原版证据）：
+    /// * `insert_resource(EraserSizeMultiplier(1.0))`：调用点 0x1404940c5，值取 0x142925904（= 1.0，
+    ///   与 `draw_water` 里 `t*4 + (1-t)` 用的是同一常量）；core 的 `Default` 给 0.0，不能用 init；
+    /// * 墙域 `register_event` / 资源初始化中类型已在本仓库定位的那些（见下）。
+    ///
+    /// **未闭合**：原函数共约 60 个事件与 20 余个资源，其中 `InitAdjWallHeightMode`、
+    /// `FinishAdjWallHeightMode`、`AdjustWallHeightUi`、`MergeWallsCmd`、`PlayLineAcrossWall`、
+    /// `RecalculateHalfTimberMeshCmd`、`RecalculateWoodenTurretCmd`、`OnRectangleEdited`、
+    /// `RecalculateRectangleSupports/CircleSupports`、`OnShapeMoved`、`ReanchorDecorators`、
+    /// `OnFreehandWallEdited`、`OnCircleRotated`、`RecalculateHalftimberBuildings`、
+    /// `DisplayBetaWIPWarning`、`InProgressWallResource` 在本仓库的定义位置尚未对上，故未注册；
+    /// 注册顺序（各 `register_event`/`insert_resource` 的先后）也未按调用顺序还原。
+    fn add_wall_events(&mut self) -> &mut Self {
+        use country_core::{
+            resources::{
+                roofs::commands::{RecalculateWallHoles, RoofIsInvalid},
+                walls::{
+                    EraserSizeMultiplier, WallHighlight,
+                    plaster::{AnimatedPlasterPeel, RecalculatePlasterCmd},
+                    public_walls::{OnWallChanged, OnWallDeleted},
+                    wall_stone_columns::{StoneColumnCollisionStorage, StoneColumnsChanged},
+                },
+            },
+            systems::{
+                terrain::deferred_terrain_history::PendingTerrainHistory,
+                wall::{
+                    adjust_wall_height::AdjustWallHeightCmd,
+                    calc_wall_bend::WallBendChangedEvent,
+                    deferred_wall_history::PendingWallHistory,
+                    draw_wall::{CurveNursery, RecordMouseInputIntoWall},
+                    finish_wall::{ContinueWallOriginalState, FinishWall},
+                    snapping::SnappingMode,
+                    structure_outline::{OutlineStairsCmd, OutlineWallCmd},
+                    ui_continue_wall::{SuppressContinueWall, WallContinueState},
+                    ui_draw_wall::WallDrawState,
+                    wall_highlight::HighlightWallCmd,
+                    wall_state::wall_spatial_hash::WallSpatialHash,
+                },
+            },
+        };
+        self.init_resource::<ContinueWallOriginalState>();
+        self.init_resource::<WallSpatialHash>();
+        self.init_resource::<WallDrawState>();
+        self.init_resource::<WallContinueState>();
+        self.init_resource::<SuppressContinueWall>();
+        self.init_resource::<AnimatedPlasterPeel>();
+        self.init_resource::<WallHighlight>();
+        self.init_resource::<SnappingMode>();
+        self.init_resource::<CurveNursery>();
+        self.init_resource::<PendingWallHistory>();
+        self.init_resource::<PendingTerrainHistory>();
+        self.init_resource::<StoneColumnCollisionStorage>();
+        self.insert_resource(EraserSizeMultiplier(1.0));
+
+        self.add_event::<FinishWall>();
+        self.add_event::<RecordMouseInputIntoWall>();
+        self.add_event::<RoofIsInvalid>();
+        self.add_event::<RecalculateWallHoles>();
+        self.add_event::<WallBendChangedEvent>();
+        self.add_event::<OnWallDeleted>();
+        self.add_event::<OnWallChanged>();
+        self.add_event::<AdjustWallHeightCmd>();
+        self.add_event::<StoneColumnsChanged>();
+        self.add_event::<RecalculatePlasterCmd>();
+        self.add_event::<HighlightWallCmd>();
+        self.add_event::<OutlineWallCmd>();
+        self.add_event::<OutlineStairsCmd>();
+        self
+    }
 }
 
 /// Original B @1402b1cb0,5354B; registered OnExit(Game) by

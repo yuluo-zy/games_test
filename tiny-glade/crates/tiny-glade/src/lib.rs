@@ -24,7 +24,7 @@ pub mod scene_raster;
 // `main` 在 B 中是模块（`tiny_glade::main::*`），Cargo.toml 已设 `autobins = false`。
 pub mod app_config;
 pub mod app_systems;
-#[cfg(target_os = "windows")]
+#[cfg(any(windows, feature = "native-audio"))]
 pub mod audio_host;
 pub mod decorator_plugin;
 pub mod event_loop;
@@ -55,8 +55,6 @@ pub mod screenshot;
 pub mod theme_fetcher_plugin;
 pub mod toolbar_plugin;
 pub mod wall_constructor_plugin;
-pub mod water_plugin;
-pub mod glade_border_plugin;
 pub mod vram;
 pub mod vulkan_config_main;
 pub mod winit_bevy_glue;

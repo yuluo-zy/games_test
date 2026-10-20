@@ -55,11 +55,9 @@ mod startup_construction_runtime;
 #[path = "history_runtime.rs"]
 mod history_runtime;
 
-/// Rust marker for the original 45 GameSystemSet discriminants. Their source
-/// names are unavailable; original add_stages iterates 0..44 and chains them.
-/// Retaining numeric identity avoids inventing stage names or engine internals.
-#[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct GameSystemSet(pub u8);
+/// The original type is `country_core::systems::GameSystemSet`; the host re-exports it so
+/// every plugin (including those in the `system_*` crates) shares one set identity.
+pub use country_core::systems::GameSystemSet;
 
 /// Actual current-host World role, set by the gameplay App constructor and
 /// retained when its SubApp moves. The independent loading App never copies
@@ -236,7 +234,7 @@ pub fn run_game_thread(
         country_core::systems::arrow_gizmo_animation::arrow_gizmo_animation,
     ).in_set(GameSystemSet(7)));
     
-    #[cfg(target_os = "windows")]
+    #[cfg(any(windows, feature = "native-audio"))]
     app.insert_resource(crate::audio_host::AudioStartupOptions {
         asynchronous: cli.fmod_asynchronous,
     });
@@ -366,8 +364,13 @@ pub fn run_game_thread(
     crate::decorator_plugin::build_startup_resources(&mut app);
     crate::wall_constructor_plugin::build(&mut app);
     // Original plugin tuple members WaterPlugin 0x1406501d0 / GladeBorderPlugin 0x140650ab0.
-    crate::water_plugin::build(&mut app);
-    crate::glade_border_plugin::build(&mut app);
+    crate::app_systems::WallSystems::add_wall_events(&mut app);
+    app.add_plugins(system_water::WaterPlugin);
+    app.add_plugins(system_glade_border::GladeBorderPlugin);
+    // Original anonymous creator @0x140af2200; its registration schedule is OPEN (Startup here:
+    // its Commands are applied before the first Update that reads GladeBorder).
+    app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
+    system_color::ColorSystems::add_color(&mut app);
     app.add_event::<toolbar::ui_interaction::UiDragEvent>();
     app.add_event::<toolbar::ui_interaction::UiJustBecameInFocusEvent>();
     app.add_event::<toolbar::toolbar_button::UiToolbarButtonResetAllCooldowns>();
@@ -379,6 +382,8 @@ pub fn run_game_thread(
     // Original insert_resources @140940e35/e4a: both native tag 0.
     app.init_resource::<country_core::systems::mode_manager::AppMode>();
     app.init_resource::<country_core::systems::mode_manager::PreviousAppMode>();
+    // 0x140940f7e: GladeColorCustomization (original default @1408c5600).
+    app.init_resource::<country_core::resources::glade_color_customization::GladeColorCustomization>();
     app.insert_resource(DebugGui::default());
     app.insert_resource(ActiveInputModeTracker::new_default_mouse_keyboard(
         std::time::Duration::ZERO,
@@ -401,6 +406,14 @@ pub fn run_game_thread(
     // original constructors create empty owning libraries; their later loads
     // allocate through the renderer's real device, never a synthetic handle.
     app.insert_resource(country_core::render::frame_constants::FrameConstants::default());
+    // 0x1409403c3: TerrainEditingData. Its constructor stores an empty map with fresh
+    // RandomState keys, `rasterized = false` at +0x40, and a qword 1 at +0x38 that the
+    // recovered struct does not name (OPEN); `Default` reproduces everything else.
+    app.insert_resource(country_core::resources::terrain_editing::TerrainEditingData(
+        Default::default(),
+    ));
+    // 0x140940882: ActiveRasterStrokesStorage (six empty stroke slots).
+    app.init_resource::<country_core::resources::active_raster_stroke::ActiveRasterStrokesStorage>();
     app.insert_resource(country_core::asset_libraries::mesh_library::AssetMeshLibrary::new());
     app.insert_resource(country_core::asset_libraries::vao_library::AssetVAOLibrary::new());
     app.insert_resource(
@@ -655,7 +668,7 @@ pub fn run_game_thread(
     );
     let time_of_day_without_core = country_core::systems::time_of_day::time_of_day_audio_disabled
         .in_set(GameSystemSet(36)).run_if(is_gameplay_active);
-    #[cfg(target_os = "windows")]
+    #[cfg(any(windows, feature = "native-audio"))]
     let time_of_day_without_core = time_of_day_without_core.run_if(
         bevy_ecs::schedule::common_conditions::not(bevy_ecs::schedule::common_conditions::resource_exists::<
             country_core::resources::audio_resources::AudioCore<country_core::resources::native_audio::NativeStudio>>));
@@ -787,6 +800,14 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         shared,
     )));
     app.insert_resource(PathRaster::new(primary));
+    // PathPlugin::build @140b68e40 inserts BrushSizes right after PathRaster (0x140b691c0).
+    // Value bytes: qword @142ac56d0 = {0.8f, 2.0f} then dword 0x40400000 (3.0f) — exactly
+    // the core PATH/WATER/GARDEN defaults.
+    app.insert_resource(country_core::resources::brush_sizes::BrushSizes {
+        path: country_core::resources::brush_sizes::PATH_DEFAULT,
+        water: country_core::resources::brush_sizes::WATER_DEFAULT,
+        garden: country_core::resources::brush_sizes::GARDEN_DEFAULT,
+    });
     // Recovered body of PreStartup chain @140941125/1130. The full10-item
     // original chain is not yet assembled here; this follows the already
     // registered real profile producer and flushes Commands before Update19.
