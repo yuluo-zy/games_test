@@ -947,10 +947,35 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     // add_wall_systems 0x140493120：set 19/28/34/44、OnExit(Game) 等墙系统注册统一由
     // `WallSystems::add_wall_systems`（app_systems.rs）承担。
     crate::app_systems::WallSystems::add_wall_systems(app);
-    // add_history_systems @1409438dc/e1 and @140943981 prove sets35/40.
+    // add_history_systems 0x1409438a0（Update；0x140b669c0 同一 SubApp::add_systems 实例，
+    // 与 SaveLoadSystems 共用，PDB 名证明 Update）。四项一起提交：
+    //   A 0x1409438d0  history_start_recording.in_set(14)（0x141738630）
+    //   B 0x1409438dc  (history_finish_recording, history_process, history_clear_previous_state,
+    //                  replay_mode, finish_replay, signifier_replay_active)
+    //                  .chain_ignore_deferred().in_set(35)（tuple 0x141737fb0，in_set 0x1409438e1..390f）
+    //   C 0x140943981  十元组 replay_path<Dirt/Cobble1/2/3>、replay_water、replay_garden、
+    //                  replay_terrain、replay_wall、replay_auto_clutter、replay_stairs .in_set(40)
+    //   D 0x140943a04  (finish_timelapse.run_if(resource_exists<ActiveSession>)@0x14094398f,
+    //                  replay_pop_bucket, finish_replay).chain_ignore_deferred().in_set(41)
+    // 记录系统在此（set14 / set35 头）；其余成员见下方各自注册（C 里 replay_path/replay_water/
+    // replay_garden 在本仓库尚无对应系统，见 PLUGIN-WIRING 未闭合清单）。
+    // add_history_systems 尾部 0x140943c83：register_event<FinishInputRecordingCmd>
+    // （InstaCreateDeco/StairPoint 由 ClutterPlugin 0x140652884/0x1406528e0 注册，
+    // InputReplayCommand 由 0x1409437d8 的 backend input 注册，此处不重复）。
+    app.add_event::<history::recording::FinishInputRecordingCmd>();
+    app.add_systems(
+        bevy_app::Update,
+        history::recording::history_start_recording::<
+            country_core::resources::history::MaybePendingSnapshotId,
+        >
+            .in_set(GameSystemSet(14)),
+    );
     app.add_systems(
         bevy_app::Update,
         (
+            history::recording::history_finish_recording_system::<
+                country_core::resources::history::MaybePendingSnapshotId,
+            >,
             history::history_process_system::<country_core::resources::history::MaybePendingSnapshotId>,
             history::history_clear_previous_state,
             history::replay_mode::replay_mode,
@@ -962,7 +987,11 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     );
     app.add_systems(
         bevy_app::Update,
-        history::replay_wall::replay_wall.in_set(GameSystemSet(40)),
+        (
+            history::replay_wall::replay_wall,
+            history::replay_auto_clutter::replay_auto_clutter,
+        )
+            .in_set(GameSystemSet(40)),
     );
     history_runtime::install(app);
     app.add_systems(
