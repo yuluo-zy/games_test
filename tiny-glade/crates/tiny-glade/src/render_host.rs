@@ -2302,8 +2302,12 @@ pub(crate) fn compute_view_range(
 
 /// 整帧实测需要的 bindless 描述符数(存储缓冲 600 不够 4096 够；采样图像 256 不够)。
 /// 宿主预算，非原版常量；实际取值按设备上限收敛，见 [`adaptive_bindless_config`]。
-const BINDLESS_STORAGE_BUFFER_DEMAND: u32 = 4096;
-const BINDLESS_SAMPLED_IMAGE_DEMAND: u32 = 2048;
+/// 一帧的参数块约占 2700 个存储描述符，且描述符租约要保留到该帧 GPU 完成：多帧稳态下
+/// 在途帧(`frames_in_flight` 最多 3) + 正在录制的一帧同时持有租约，4096 只够单帧，第 3~7 帧
+/// 起即 `bindless descriptor table is full`。取 16384 覆盖 3 个在途帧 + 录制帧并留余量。
+const BINDLESS_STORAGE_BUFFER_DEMAND: u32 = 16384;
+/// 采样图像同理：按多帧稳态实测(第 22 帧起 `SampledImage descriptor table is full`)放大到 8192。
+const BINDLESS_SAMPLED_IMAGE_DEMAND: u32 = 8192;
 
 /// 各类描述符数取需求与设备 update-after-bind 上限(单 set、单 stage)的较小者，
 /// 再把总数收进 stage 资源总数与全池总数：超出时先削存储缓冲，再削采样图像。
