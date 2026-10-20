@@ -127,11 +127,55 @@ pub struct PrevSteamInputState {
     pub active_controller: u64,
 }
 
-/// Steam 截图请求资源（`ScreenshotRequested` 回调接收）。
-#[derive(Resource, Default)]
+/// 截图完成槽的内容（原 `Mutex<Option<Result<(PathBuf,[u32;2]),Box<dyn Error+Send+Sync>>>>`；
+/// 0x14031af10 分配时初始为 None（niche 0x8000000000000001），完成回调 0x1402ce120 填入）。
+pub type SteamScreenshotResult =
+    Result<(std::path::PathBuf, [u32; 2]), Box<dyn std::error::Error + Send + Sync>>;
+pub type SteamScreenshotSlot = parking_lot::Mutex<Option<SteamScreenshotResult>>;
+
+/// 原 `enum SteamScreenshotRequest`（`Vec<_>` 元素 8 B，空指针 niche）：
+/// `Requested` = Steam `ScreenshotRequested` 回调放入的空占位（0x14091ad50 `push(None)`）；
+/// `Captured(slot)` = gather 取走占位拍照后推入的槽，截图写盘完成后由完成回调填充，
+/// 再由 `add_captured_screenshots_to_steam_library`（0x1402c13d0）消费。
+#[derive(Clone)]
+pub enum SteamScreenshotRequest {
+    Requested,
+    Captured(Arc<SteamScreenshotSlot>),
+}
+
+/// Steam 截图请求资源（原 `Arc<RwLock<Vec<SteamScreenshotRequest>>>`，Vec 在 +0x20/+0x28；
+/// `add_steam_integration` 0x140945320 新建，`ScreenshotRequested` 回调与 gather 共享）。
+#[derive(Resource, Clone, Default)]
 pub struct SteamScreenshotRequests {
-    /// 有未处理截图请求。
-    pub pending: bool,
+    pub requests: Arc<parking_lot::RwLock<Vec<SteamScreenshotRequest>>>,
+}
+
+impl SteamScreenshotRequests {
+    /// `ScreenshotRequested` 回调体 0x14091ad50（0x14091ae36..ae77）：写锁内 `Vec.push(None)`。
+    pub fn on_screenshot_requested(&self) {
+        self.requests.write().push(SteamScreenshotRequest::Requested);
+    }
+
+    /// gather 0x14031af10 开头循环（0x14031b05x..b1b3）：写锁内找第一个空占位，
+    /// `swap_remove` 取走并返回 true；无占位返回 false。
+    pub fn take_requested(&self) -> bool {
+        let mut requests = self.requests.write();
+        match requests
+            .iter()
+            .position(|request| matches!(request, SteamScreenshotRequest::Requested))
+        {
+            Some(index) => {
+                requests.swap_remove(index);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// gather 拍照时（Steam 存在）：新槽的一份推入该 Vec（写锁，0x14031b3f7..b4c1）。
+    pub fn push_captured(&self, slot: Arc<SteamScreenshotSlot>) {
+        self.requests.write().push(SteamScreenshotRequest::Captured(slot));
+    }
 }
 
 pub use crate::resources::window::OsWindowCmd;
@@ -446,5 +490,22 @@ mod tests {
         // impl$30/31/37::from 的机器码：x<<8 / (x<<8)+1 / a+(b<<8)+1。
         use crate::resources::steam::packed_set;
         assert_eq!(packed_set(0x12), 0x1200);
+    }
+
+    #[test]
+    fn screenshot_callback_pushes_empty_placeholder_and_gather_takes_one() {
+        let requests = SteamScreenshotRequests::default();
+        assert!(!requests.take_requested());
+        requests.on_screenshot_requested();
+        let slot = Arc::new(SteamScreenshotSlot::new(None));
+        requests.push_captured(slot.clone());
+        requests.on_screenshot_requested();
+        // 取走占位用 swap_remove：不会碰 Captured 槽，数量递减。
+        assert!(requests.take_requested());
+        assert!(requests.take_requested());
+        assert!(!requests.take_requested());
+        let remaining = requests.requests.read();
+        assert_eq!(remaining.len(), 1);
+        assert!(matches!(&remaining[0], SteamScreenshotRequest::Captured(s) if Arc::ptr_eq(s, &slot)));
     }
 }

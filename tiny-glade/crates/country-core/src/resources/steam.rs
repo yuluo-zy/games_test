@@ -60,6 +60,21 @@ pub trait SteamSdk: Send + Sync {
     fn activate_game_overlay_to_web_page(&self, url: &str);
     /// `screenshots().hook_screenshots(hook)`。
     fn hook_screenshots(&self, hook: bool);
+    /// `register_callback::<ScreenshotRequested>`（add_steam_integration 0x140945320，回调体
+    /// 0x14091ad50）。库外 SDK 绑定在收到 Steam 截图键事件时调用 `callback`。默认实现不注册
+    /// （宿主无该绑定时 Steam 截图键不会产生请求，不伪造回调）。
+    fn register_screenshot_requested(&self, _callback: Arc<dyn Fn() + Send + Sync>) {}
+    /// `screenshots().add_screenshot_to_library(path, None, width, height)`
+    /// （`AddScreenshotToLibrary`，0x1402c13d0 内调用；`path_to_absolute_cstring` 0x140b84ff0）。
+    /// 默认实现返回 Err：宿主无 Steam 截图绑定时不得伪造成功。
+    fn add_screenshot_to_library(
+        &self,
+        _path: &std::path::Path,
+        _width: u32,
+        _height: u32,
+    ) -> Result<(), String> {
+        Err("host steam SDK has no AddScreenshotToLibrary binding".to_string())
+    }
     /// `utils().show_floating_gamepad_text_input(mode, x, y, width, height)`。
     fn show_floating_gamepad_text_input(&self, mode: u32, x: i32, y: i32, width: i32, height: i32);
     /// `input.get_analog_action_origins(set, handle)`。
