@@ -933,7 +933,7 @@ impl ShaderBindings {
         }
     }
 
-    fn image_for_pass(
+    pub(crate) fn image_for_pass(
         &self,
         ctx: &rhapsody::rg::PassContext<'_>,
         resource: u32,
@@ -962,7 +962,9 @@ fn validate_image_binding_layout(
     let valid = match kind {
         BindingKind::SampledImage => matches!(
             layout,
-            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL | vk::ImageLayout::GENERAL
+            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+                | vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                | vk::ImageLayout::GENERAL
         ),
         BindingKind::StorageImage => layout == vk::ImageLayout::GENERAL,
         _ => false,
@@ -2694,8 +2696,13 @@ impl GraphPasses<'_> {
         if entry
             .bindings
             .abi
-            .slot(BindingLocation { set: 1, binding: 1 })
+            .slot(BindingLocation { set: 1, binding: 0 })
             .is_some()
+            || entry
+                .bindings
+                .abi
+                .slot(BindingLocation { set: 1, binding: 1 })
+                .is_some()
         {
             let (buffer, offset, size) = entry.bindings.frame_storage_view()?;
             let mut session = self

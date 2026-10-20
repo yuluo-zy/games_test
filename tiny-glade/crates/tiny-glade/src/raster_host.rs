@@ -1579,7 +1579,7 @@ impl PassHost for RasterPassHost {
                         pipeline.raw_handle(),
                     )
                 };
-                let parameters = match bindless_parameters(&shared, draw, &bindings, managed)
+                let parameters = match bindless_parameters(&shared, &ctx, draw, &bindings, managed)
                     .and_then(|parameters| parameters.finish(&mut shared.dynamic.lock()))
                 {
                     Ok(parameters) => parameters,
@@ -1833,12 +1833,9 @@ fn import_frame_constants(
     declarer: &dyn GraphDeclarer,
     graph: &mut RhGraph,
 ) -> rhapsody::Result<()> {
-    if draw
-        .entry
-        .bindings
-        .abi
-        .slot(BindingLocation { set: 1, binding: 1 })
-        .is_none()
+    let abi = &draw.entry.bindings.abi;
+    if abi.slot(BindingLocation { set: 1, binding: 0 }).is_none()
+        && abi.slot(BindingLocation { set: 1, binding: 1 }).is_none()
     {
         return Ok(());
     }
@@ -1972,6 +1969,7 @@ fn import_draw_bindings(
 
 fn bindless_parameters(
     shared: &RasterShared,
+    ctx: &rhapsody::rg::PassContext<'_>,
     draw: &PreparedDraw,
     pass_bindings: &[RenderPassBinding],
     managed: &ManagedPassResources,
@@ -2046,9 +2044,14 @@ fn bindless_parameters(
                 |view| rh_view_desc(&texture, view),
             )?;
             let view = texture.image_view(&desc)?;
-            draw.entry
-                .bindings
-                .image(access.binding_index, view.view.clone())?
+            // The descriptor layout is the layout this pass's declared access planned for the
+            // view (a depth image read as attachment and sampled is DEPTH_STENCIL_READ_ONLY).
+            draw.entry.bindings.image_for_pass(
+                ctx,
+                binding.resource_index,
+                access.binding_index,
+                view.view.clone(),
+            )?
         } else {
             let buffer = managed
                 .buffer_for(binding.resource_index)

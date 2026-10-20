@@ -35,6 +35,8 @@ pub struct FrameGlobals {
     /// 全局纹理表的描述符租约：每帧只建一次，所有 draw/dispatch 的参数块共享
     /// （原版是一张全局表；逐 draw 重建会耗尽 bindless 采样图像表）。
     sampled_leases: std::sync::OnceLock<Vec<(u32, Arc<rhapsody::bindless::BindlessLease>)>>,
+    /// FrameConstants 的存储视图租约（set 1/b1 存在时 b0/b1 共用，见 `write_to`）。
+    storage_lease: std::sync::OnceLock<Arc<rhapsody::bindless::BindlessLease>>,
 }
 impl FrameGlobals {
     /// Physical owner and range of the FrameConstants block bound through the
@@ -50,6 +52,21 @@ impl FrameGlobals {
     /// 每帧快照的全局纹理表（set 2/b0）视图；着色器按下标动态采样，宿主需把它们逐个声明为 pass 读访问。
     pub fn sampled_table(&self) -> &[(u32, Arc<TextureView>)] {
         &self.sampled
+    }
+
+    fn frame_storage_lease(
+        &self,
+        heap: &Arc<rhapsody::bindless::BindlessHeap>,
+    ) -> rhapsody::Result<Arc<rhapsody::bindless::BindlessLease>> {
+        if let Some(lease) = self.storage_lease.get() {
+            return Ok(lease.clone());
+        }
+        let lease = heap.storage_buffer(
+            self.constants.buffer.clone(),
+            self.constants.offset,
+            self.constants.size,
+        )?;
+        Ok(self.storage_lease.get_or_init(|| lease).clone())
     }
 
     pub fn write_to(
@@ -70,15 +87,10 @@ impl FrameGlobals {
                     "original frame constants binding has the wrong kind",
                 ));
             }
-            parameters.write(
-                frame,
-                0,
-                BindlessResource::Buffer {
-                    buffer: self.constants.buffer.clone(),
-                    offset: self.constants.offset,
-                    size: self.constants.size,
-                },
-            )?;
+            // 该存储租约对应的字节范围已被宿主声明为所有绑定 set 1 的 pass 的读访问；
+            // 同一命令缓冲里再混入对同一范围的私有上传读会与声明重叠(rhapsody 拒绝)，
+            // 所以 b0/b1 一律共用这一个已声明的存储租约。
+            parameters.write_lease(frame, 0, self.frame_storage_lease(heap)?)?;
         }
         // Original global set 1/b1: the wall/roof chain reads the very same FrameConstants
         // bytes through a storage view (`frame_constants_storage_buffer`,
@@ -91,15 +103,7 @@ impl FrameGlobals {
                     "original frame constants storage binding has the wrong kind",
                 ));
             }
-            parameters.write(
-                frame_storage,
-                0,
-                BindlessResource::Buffer {
-                    buffer: self.constants.buffer.clone(),
-                    offset: self.constants.offset,
-                    size: self.constants.size,
-                },
-            )?;
+            parameters.write_lease(frame_storage, 0, self.frame_storage_lease(heap)?)?;
         }
         let images = BindingLocation { set: 2, binding: 0 };
         if let Some(slot) = abi.slot(images) {
@@ -339,7 +343,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
     }
     frame
         .shader_backend()
-        .set_frame_globals(Arc::new(FrameGlobals { constants, sampled, sampled_leases: std::sync::OnceLock::new() }));
+        .set_frame_globals(Arc::new(FrameGlobals { constants, sampled, sampled_leases: std::sync::OnceLock::new(), storage_lease: std::sync::OnceLock::new() }));
     Ok(())
 }
 

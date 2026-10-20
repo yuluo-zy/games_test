@@ -552,7 +552,15 @@ impl BindlessHeap {
         if !Arc::ptr_eq(&view.texture.device, &self.device)
             || !view.desc.usage.contains(usage)
             || (layout != vk::ImageLayout::GENERAL
-                && layout != vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                && layout != vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+                // 深度/模板图同时作只读附件与采样时，访问计划的布局就是
+                // DEPTH_STENCIL_READ_ONLY_OPTIMAL（access 0x1e/0x14），描述符必须同布局。
+                && !(kind == DescriptorKind::SampledImage
+                    && layout == vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                    && view
+                        .desc
+                        .aspect
+                        .intersects(vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL)))
         {
             return Err(Error::invalid_usage(
                 "invalid bindless image device/usage/layout",
