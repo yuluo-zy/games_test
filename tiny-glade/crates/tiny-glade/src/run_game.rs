@@ -307,7 +307,6 @@ pub fn run_game_thread(
         });
     // Other domains retain their own OnExit consumers. This is the complete
     // original host wall/unload consumer, not a blanket despawn replacement.
-    app.add_systems(bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),crate::app_systems::walls_on_glade_unload);
     // Native140b3f550 outer chain: begin precedes the inner unordered pair.
     // Keep the independently registered full host wall-unload system above.
     app.add_systems(
@@ -410,6 +409,8 @@ pub fn run_game_thread(
     // Original insert_resources @140940e35/e4a: both native tag 0.
     app.init_resource::<country_core::systems::mode_manager::AppMode>();
     app.init_resource::<country_core::systems::mode_manager::PreviousAppMode>();
+    // insert_resources 0x140940e90: AdjWallHeightModeCache (all-None idle state).
+    app.init_resource::<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>();
     // 0x140940f7e: GladeColorCustomization (original default @1408c5600).
     app.init_resource::<country_core::resources::glade_color_customization::GladeColorCustomization>();
     app.insert_resource(DebugGui::default());
@@ -857,6 +858,8 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.init_resource::<WallPublicationDirty>();
     app.init_resource::<country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>();
     // DecoratorPlugin @140343120/313d/3377/3a3c; world plugin @140b685e0.
+    // DecoratorPlugin::build 0x140342c10, insert_resource at 0x140344044.
+    app.init_resource::<country_core::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests>();
     app.init_resource::<DecoratorStorage>();
     app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
         system_decorator::decorator_visual::deco_differential_state::ChimneyAssemblyParams>>();
@@ -919,45 +922,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
             .chain_ignore_deferred()
             .in_set(GameSystemSet(10)),
     );
-    // add_wall_systems @140493197/3246: adjust precedes publication inside
-    // the set19 chain. Replay set40 therefore becomes visible next frame.
-    app.add_systems(
-        bevy_app::Update,
-        (
-            synchronize_wall_publication_terrain,
-            adjust_wall_height,
-            collect_wall_publication_dirty,
-            publish_public_wall_state,
-            country_core::systems::wall::delete_wall::delete_wall,
-            // Current owner mapping of the original publisher allocations,
-            // before actual25 consumers; the full member14 group is mounted separately.
-            country_core::geometry::runtime::prepare_wall_brick_assembly_owners,
-            system_wall_constructor::gpu_output::delete_constructor_output,
-            spatial_hash_update,
-            country_core::systems::wall::calc_wall_bend::calc_wall_bend,
-            system_wall_constructor::gpu_output::clear_constructor_planks,
-            system_wall_constructor::segmentation::calculate_wall_path_segmentation::calculate_wall_path_segmentation,
-            system_wall_constructor::init_wall_height_and_arch_segment_height::init_wall_height_and_arch_segment_height,
-        )
-            .chain_ignore_deferred()
-            .in_set(GameSystemSet(19)),
-    );
-    // Original add_wall_systems49338e..3414 assigns its nine-member chain to
-    // set28; slot5 is construct_walls (33e263 -> 2c90, original name bytes).
-    // Mount only its recovered base-brick/trigger/RT section. The original
-    // 757d34..7e6b hole-table pass also catches holes-only changes, so keep the
-    // actual finalizer before the producer. Its event writes are immediate;
-    // the producer's Commands retain normal schedule-completion visibility.
-    // This is not the complete native nine-member group or the set25 assembly.
-    app.add_systems(
-        bevy_app::Update,
-        (
-            country_core::systems::wall::construct_wall_bricks::finalize_wall_holes,
-            country_core::systems::wall::construct_wall_bricks::construct_wall_bricks,
-        )
-            .chain_ignore_deferred()
-            .in_set(GameSystemSet(28)),
-    );
+    // add_wall_systems 0x140493120：set 19/28/34/44、OnExit(Game) 等墙系统注册统一由
+    // `WallSystems::add_wall_systems`（app_systems.rs）承担。
+    crate::app_systems::WallSystems::add_wall_systems(app);
     // add_history_systems @1409438dc/e1 and @140943981 prove sets35/40.
     app.add_systems(
         bevy_app::Update,

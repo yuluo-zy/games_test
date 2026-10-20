@@ -53,15 +53,6 @@ pub(super) fn install(app: &mut App) {
         system_wall_constructor::construct_arches::construct_arches,
         system_wall_constructor::construct_lintels::construct_lintels,
     ).chain_ignore_deferred().in_set(GameSystemSet(22)));
-    app.add_systems(Update, (
-        system_wall_constructor::construct_gates::systems::update_gates_hashmap,
-        system_wall_constructor::construct_gates::systems::construct_gates,
-        system_wall_constructor::construct_fences::construct_fences,
-        // Current core owner finalizes actual holes before its full producer.
-        // This explicit adapter edge is not a recovered separate native item.
-        sys::wall::construct_wall_bricks::finalize_wall_holes,
-        sys::wall::construct_wall_bricks::construct_wall_bricks,
-    ).chain_ignore_deferred().in_set(GameSystemSet(28)));
     app.add_systems(Update,
         system_wall_constructor::gpu_output::flush_constructor_output.in_set(GameSystemSet(44)));
 }
