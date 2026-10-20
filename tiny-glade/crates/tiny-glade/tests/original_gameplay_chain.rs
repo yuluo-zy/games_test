@@ -408,8 +408,6 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
             completion: None,
         }],
     )?;
-    let pre = std::sync::Arc::new(parking_lot::Mutex::new(None::<(u32, u32, Vec<u8>)>)); // TMPDIAG
-    { let sink = pre.clone(); tiny_glade::screenshot::gather_screenshot_requests(world, [tiny_glade::screenshot::ScreenshotRequest { purpose: tiny_glade::screenshot::ScreenshotPurpose::LutPreview, dimensions: None, sink: tiny_glade::screenshot::ScreenshotSink::Rgba(std::sync::Arc::new(move |w, h, rgba| *sink.lock() = Some((w, h, rgba)))), completion: None }])?; } // TMPDIAG
     tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
         .context("actual production world graph compile, execute and exported owner")?;
     // The capture retires after its original frame budget (3); drive the owner past it.
@@ -417,7 +415,6 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
         tiny_glade::screenshot::shared_texture_capture::finish(world)?;
     }
     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
-    if let (Some(path), Some((w, h, rgba))) = (std::env::var_os("TG_PIXEL_OUT2"), pre.lock().take()) { let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes(); for px in rgba.chunks_exact(4) { ppm.extend_from_slice(&px[..3]); } std::fs::write(path, ppm)?; } // TMPDIAG
     let (w, h, rgba) = captured
         .lock()
         .take()
