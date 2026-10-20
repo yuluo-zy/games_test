@@ -113,7 +113,8 @@ fn assemble_single_span_writes_exact_96b_records() {
     let rng = fastrand::Rng::with_seed(seed);
     let span = 1.2f32;
     let spacing = 1.0f32 / 2.0f32; // count - 1 = 2
-    let jitter = (spacing * 0.495f32).min(f32::from_bits(0x3e8f5c29)); // 0.28
+    // Original 0x14120d670 passes `0.28 / span` as the jitter bound (decompiled).
+    let jitter = (spacing * 0.495f32).min(f32::from_bits(0x3e8f5c29) / span);
     let split = ((rng.f32() + (-0.5f32)) * jitter) + 0.5f32;
     let first_high = split * span + 0.0f32;
     let a0 = rng.f32();
@@ -134,13 +135,18 @@ fn assemble_single_span_writes_exact_96b_records() {
     );
     assert_eq!(out[0], expected0);
     // First brick bottom edge sits at param y - 0.2.
-    assert_eq!(
-        f32_at(&out[0], 40) - f32_at(&out[0], 16) * 0.5,
-        2.0f32 + f32::from_bits(0xbe4ccccd)
+    // The record bytes were already compared exactly above; this derived edge only
+    // checks the geometry, so allow the one-ulp rounding of centre minus half height.
+    assert!(
+        (f32_at(&out[0], 40) - f32_at(&out[0], 16) * 0.5
+            - (2.0f32 + f32::from_bits(0xbe4ccccd)))
+        .abs()
+            < 1e-6
     );
     // 0.42 base with +/-0.05 jitter.
     assert!((0.37..=0.47).contains(&f32_at(&out[0], 0)));
-    assert!((0.65..=0.75).contains(&f32_at(&out[0], 8)));
+    // width_z is column 2 (bytes 24..36), i.e. offset 32.
+    assert!((0.65..=0.75).contains(&f32_at(&out[0], 32)));
     // 48..76 sentinels and word fields.
     assert_eq!(&out[0][48..64], &[0u8; 16]);
     assert_eq!(f32_at(&out[0], 64), -100.0);
@@ -198,7 +204,7 @@ fn assemble_two_span_sets_flag_tail_widths_and_top_cap() {
 
     // The last pair of the flagged span uses the fixed 0.7 / 0.84 section.
     assert_eq!(u32_at(&out[2], 0), 0x3f333333); // 0.7
-    assert_eq!(u32_at(&out[2], 8), 0x3f570a3e); // 0.84
+    assert_eq!(u32_at(&out[2], 32), 0x3f570a3e); // 0.84 (width_z at offset 32)
     let y_origin = 2.0f32 + f32::from_bits(0xbe4ccccd);
     // The flagged span still ends at its own top (bottom+0.2), not at the gap.
     assert_eq!(
@@ -209,7 +215,7 @@ fn assemble_two_span_sets_flag_tail_widths_and_top_cap() {
     // Unflagged span uses the 0.42+/-0.05 / 0.70+/-0.05 jitter family.
     for brick in &out[3..5] {
         assert!((0.37..=0.47).contains(&f32_at(brick, 0)));
-        assert!((0.65..=0.75).contains(&f32_at(brick, 8)));
+        assert!((0.65..=0.75).contains(&f32_at(brick, 32)));
     }
 
     // Top cap: exact deterministic 96B record, center y = (y-0.2) - 0.25.

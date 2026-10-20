@@ -29,12 +29,14 @@ struct GateCmd120 {
 }
 
 /// Mirror of the native 136B spawn payload using the real component types.
-/// `_gap56` covers the 8B hole before the mesh handle; `_tail` pads 133..136.
-#[repr(C)]
+/// The 48B padded `Transform` ends at 64, where the mesh handle starts; `_tail` pads 133..136.
+// The production payload is a raw `[u8; 136]` image (8-aligned). `Transform` carries a 16-aligned
+// `Quat`, which would round a plain `repr(C)` mirror up to 144; `packed(8)` keeps every offset
+// below while letting the mirror have the native 136B size. Fields are only read via offset_of!.
+#[repr(C, packed(8))]
 struct DoorSpawn136 {
     transient: TransientMesh,
     transform: Transform,
-    _gap56: [u8; 8],
     mesh: Handle<Mesh>,
     shader: u64,
     top_positions: Vec<[f32; 3]>,
@@ -83,7 +85,9 @@ fn gate_command_120b_is_104b_segment_plus_wall_and_ordinal() {
 fn door_spawn_136b_field_offsets_match_native_contract() {
     // Constituent type sizes are the native layout's assumptions.
     assert_eq!(size_of::<TransientMesh>(), 16);
-    assert_eq!(size_of::<Transform>(), 40);
+    // Quat is 16-aligned (SSE), so rotation 16 + translation 12 + scale 12 pads to 48; the
+    // payload therefore places `mesh` at 16 + 48 = 64 (the 40 live bytes are 16..56).
+    assert_eq!(size_of::<Transform>(), 48);
     assert_eq!(size_of::<Handle<Mesh>>(), 8);
     assert_eq!(size_of::<Vec<[f32; 3]>>(), 24);
     assert_eq!(size_of::<WallId>(), 8);

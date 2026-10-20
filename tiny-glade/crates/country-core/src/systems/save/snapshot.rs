@@ -3440,7 +3440,12 @@ mod tests {
     #[test]
     fn shipped_snapshot_corpus_parses_expected_domain_counts() {
         let root = std::env::var("TINY_GLADE_ASSETS_DIR").unwrap_or_else(|_| {
-            "D:/game/ljxsj_92385/Tiny Glade/assets/starting-builds".to_string()
+            let windows = "D:/game/ljxsj_92385/Tiny Glade/assets/starting-builds";
+            if std::path::Path::new(windows).exists() {
+                windows.to_string()
+            } else {
+                concat!(env!("CARGO_MANIFEST_DIR"), "/../../../ljxsj_92385/Tiny Glade/assets/starting-builds").to_string()
+            }
         });
         let root = std::path::Path::new(&root);
         if !root.exists() {

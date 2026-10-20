@@ -142,14 +142,17 @@ fn run_arches() -> WallArchesOutput {
     output
 }
 
-/// Exact first 96B arch record. The walker emits one brick per 0.56 m step
-/// (14 steps over 8 m) and appends a tail brick because the residual 0.5714 m
-/// exceeds `step * 0.1`.
+/// Exact first 96B arch record. The step count is round(8 / 0.56) = 14, so
+/// step = 8/14. Original `walk` (0x141232bb0) loops only while `step < remaining`
+/// (strict), so the 14th step that would land exactly on the end is not emitted
+/// by the loop: 13 interior bricks, then the tail brick because the residual
+/// 0.5714 m exceeds `step * 0.1` (0x1412331ae). The tail midpoint 7.714285 =
+/// (13 * step + 8) / 2 confirms this.
 #[test]
 fn arch_walker_writes_exact_first_96b_brick() {
     let output = run_arches();
     assert_eq!(output.segment_count, 1);
-    assert_eq!(output.instances.len(), 15, "14 steps + 0.1-ratio tail");
+    assert_eq!(output.instances.len(), 14, "13 strict-inequality steps + 0.1-ratio tail");
     let bytes: Vec<[u8; 96]> = output
         .instances
         .iter()
@@ -186,7 +189,7 @@ fn arch_walker_writes_exact_first_96b_brick() {
         assert_eq!(&record[48..64], &[0u8; 16]);
     }
     // Tail brick spans the residual from the last step to the final point.
-    let tail = &bytes[14];
+    let tail = &bytes[13];
     assert!((f32_at(tail, 36) - 7.714285f32).abs() < 1e-4);
     assert_eq!(f32_at(tail, 40), 0.0);
 }
