@@ -1,0 +1,455 @@
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/tests/original_preplaced_startup.rs
+@@ -0,0 +1,452 @@
++//! Acceptance candidate: actual prefab runtime -> delayed legacy conversion.
++//! Runs CPU/device boundaries only; it does not claim physical GPU readback.
++use bevy_ecs::prelude::*;
++use country_core::resources::render::mesh_atlas_library::PrefabName;
++use country_core::{
++    asset_libraries::audio_trigger_library::AudioTriggerLibrary,
++    render::{
++        mesh::Mesh,
++        nani::gpu_world::{GpuWorld, GpuWorldSubset, GpuWorldSubsetKind, OwnedGpuWorldSubset},
++        ssbo::rhapsody_boundary::{self, Buffer, BufferDesc, GraphicsDevice},
++    },
++    resources::{
++        placement_data::PlacementDataSsbo,
++        prefab::{Prefab, PrefabLibrary, PrefabPart},
++        render::mesh_atlas_library::MeshAtlasLibrary,
++        rt::RtWorld,
++        session::{ActiveSession, SessionId, SessionMeta},
++        tree_storage::{TreeStorageEntry, TreeStorageIndex},
++        world_raster::{DirtyTilePublisher, WorldRaster},
++        world_raster_defs::*,
++    },
++    systems::prefab::{
++        DespawnPrefabCmd, SpawnPrefabCmd,
++        runtime::{PrefabsToDelete, spawn_prefab_commands},
++    },
++};
++use country_core::{
++    asset_libraries::ssbo_library::AssetSsboLibrary,
++    components::ConvertedPreplacedTree,
++    resources::{
++        history::{
++            EditType, History,
++            tree_edit::{DeleteTreeCmd, SpawnPreplacedTrees, TreeEdit},
++        },
++        terrain_rock_mask::TerrainRockMaskSsbo,
++        tree_storage::TreeStorage,
++    },
++    systems::{prefab::PrefabInstanceData, wall::wall_state::wall_spatial_hash::WallSpatialHash},
++};
++use std::{
++    ops::Range,
++    sync::atomic::{AtomicU64, Ordering},
++};
++use system_tree::convert_preplaced_trees::convert_preplaced_trees;
++
++// Test-only device boundary; full mapped storage is retained and written below.
++#[derive(Default)]
++struct Device(AtomicU64);
++impl GraphicsDevice for Device {
++    fn create_buffer(
++        &self,
++        desc: &BufferDesc,
++        _: &str,
++        _: Option<&[u8]>,
++    ) -> Result<Buffer, rhapsody_boundary::BackendError> {
++        Ok(Buffer {
++            id: self.0.fetch_add(1, Ordering::Relaxed) + 1,
++            byte_size: desc.size as u64,
++            ..Default::default()
++        })
++    }
++    fn update_buffer_bytes(
++        &self,
++        _: &Buffer,
++        _: &[u8],
++        _: &[Range<usize>],
++        _: usize,
++    ) -> Result<(), rhapsody_boundary::BackendError> {
++        Ok(())
++    }
++    fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
++        let data =
++            Box::leak(vec![0u128; (buffer.byte_size as usize).div_ceil(16)].into_boxed_slice());
++        // Test allocation is aligned for every buffer used here and outlives World.
++        Some(unsafe {
++            std::slice::from_raw_parts_mut(data.as_mut_ptr().cast(), buffer.byte_size as usize)
++        })
++    }
++}
++fn mark_raster(raster: &mut WorldRaster<512>, x: f32) {
++    let center = ((x / 130.0 + 0.5) * 512.0) as usize;
++    for z in 252..=260 {
++        for c in center - 4..=center + 4 {
++            raster.composite_mut()[z * 512 + c] = 255;
++        }
++    }
++}
++fn world() -> World {
++    let device = Device::default();
++    let mut world = World::new();
++    let mut gpu = GpuWorld::new(&device);
++    let kind = GpuWorldSubsetKind::Canopy;
++    gpu.assign_subset(
++        kind,
++        GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind)),
++    );
++    world.insert_resource(gpu);
++    let name = PrefabName::new("tree/legacy-acceptance");
++    let mut library = PrefabLibrary::default();
++    library.add(
++        name.clone(),
++        Prefab {
++            parts: vec![PrefabPart {
++                rt_kind: 2,
++                ..Default::default()
++            }],
++        },
++    );
++    world.insert_resource(library);
++    let mut mesh = Mesh::new("legacy-acceptance");
++    mesh.set_indices(vec![0, 1, 2]);
++    let mut atlas = MeshAtlasLibrary::default();
++    atlas.add(kind, name.clone(), &mesh);
++    world.insert_resource(atlas);
++    world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
++    world.init_resource::<AudioTriggerLibrary>();
++    world.init_resource::<RtWorld>();
++    world.init_resource::<PrefabsToDelete>();
++    world.init_resource::<Events<SpawnPrefabCmd>>();
++    world.init_resource::<Events<DespawnPrefabCmd>>();
++    world.init_resource::<Events<SpawnPreplacedTrees>>();
++    world.init_resource::<Events<DeleteTreeCmd>>();
++    world.init_resource::<TreeStorage>();
++    world.insert_resource(History::<()>::empty_glade());
++    world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
++    world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
++    world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
++    world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
++    let mut water = WaterRaster::new(DirtyTilePublisher::unique());
++    mark_raster(&mut water, -15.0);
++    world.insert_resource(water);
++    let mut garden = GardenRaster::new(DirtyTilePublisher::unique());
++    mark_raster(&mut garden, 5.0);
++    world.insert_resource(garden);
++    mark_raster(&mut world.resource_mut::<PathRaster>(), 25.0);
++    let mut walls = WallSpatialHash::default();
++    walls.add_segment(
++        country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialSegment {
++            endpoints: [[44.5, -0.5], [45.5, 0.5]],
++            source_u: [0.0, 1.0],
++            relative_heights: [1.0; 2],
++            terrain_heights: [0.0; 2],
++            wall: country_core::resources::walls::WallId(90),
++        },
++    );
++    world.insert_resource(walls);
++    let mut ssbos = AssetSsboLibrary::new();
++    ssbos.add_new::<TerrainRockMaskSsbo>(&device);
++    let rock = ssbos.get_mut::<TerrainRockMaskSsbo>().unwrap();
++    assert_eq!(rock.mapped.len(), 0x2000);
++    let xi = ((-35.0f32 / 130.0 + 0.5) * 512.0) as usize;
++    let index = 256 * 512 + xi;
++    rock.mapped[index >> 5].0 |= 1 << (index & 31);
++    assert_eq!(
++        TerrainRockMaskSsbo::sample_mapped_at_world_xz(&rock.mapped[..], -35.0, 0.0),
++        1
++    );
++    world.insert_resource(ssbos);
++    // These are actual reserved entities/commands, not pre-inserted query components.
++    for (i, x) in [-55.0, -35.0, -15.0, 5.0, 25.0, 45.0]
++        .into_iter()
++        .enumerate()
++    {
++        let entity = world
++            .spawn(ConvertedPreplacedTree("tree/legacy-acceptance".into()))
++            .id();
++        let id = TreeStorageIndex(100001 + i as u64);
++        world.resource_mut::<TreeStorage>().insert(
++            id,
++            TreeStorageEntry {
++                entity,
++                position: glam::Vec3::splat(999.0),
++            },
++        );
++        world.send_event(SpawnPrefabCmd {
++            prefab_name: Some(name.clone()),
++            entity: Some(entity),
++            position: glam::Vec3::new(x, 2.0, 0.0),
++            scale: 0.75,
++            rotation: 110.3,
++            variant: 52,
++            one: 2.2,
++            flags: [0; 16],
++            mode: 0,
++        });
++    }
++    // Native missing/dead query entries are skipped, never synthesized from storage.
++    let dead = world.spawn_empty().id();
++    world.despawn(dead);
++    world.resource_mut::<TreeStorage>().insert(
++        TreeStorageIndex(100010),
++        TreeStorageEntry {
++            entity: dead,
++            position: glam::Vec3::ZERO,
++        },
++    );
++    let missing = world.spawn_empty().id();
++    world.resource_mut::<TreeStorage>().insert(
++        TreeStorageIndex(100011),
++        TreeStorageEntry {
++            entity: missing,
++            position: glam::Vec3::ZERO,
++        },
++    );
++    world
++}
++#[test]
++fn nonempty_prefab_runtime_is_materialized_before_third_update_conversion() {
++    let mut world = world();
++    world.send_event(SpawnPreplacedTrees);
++    // Reader batch coalescing must not reset the delay once per request.
++    world.send_event(SpawnPreplacedTrees);
++    let mut schedule = Schedule::default();
++    schedule.add_systems((spawn_prefab_commands, convert_preplaced_trees::<()>).chain());
++    schedule.run(&mut world);
++    assert_eq!(world.query::<&PrefabInstanceData>().iter(&world).count(), 6);
++    assert_eq!(world.resource::<GpuWorld>().total_instance_count, 6);
++    assert_eq!(
++        world
++            .resource::<GpuWorld>()
++            .owned_subset_mut(GpuWorldSubsetKind::Canopy)
++            .instance_count(),
++        6
++    );
++    assert!(world.resource::<History<()>>().ledger().entries.is_empty());
++    schedule.run(&mut world);
++    assert!(world.resource::<History<()>>().ledger().entries.is_empty());
++    schedule.run(&mut world);
++    let ledger = world.resource::<History<()>>().ledger();
++    assert_eq!((ledger.cursor, ledger.entries.len()), (0, 1));
++    assert_eq!(ledger.entries[0].edits.len(), 1);
++    let EditType::Tree(edit) = &ledger.entries[0].edits[0] else {
++        panic!("expected real tree edit")
++    };
++    let TreeEdit::Place(data) = &**edit else {
++        panic!("expected original Place")
++    };
++    assert_eq!(data.storage_index, Some(TreeStorageIndex(100001)));
++    assert_eq!(data.position, glam::Vec3::new(-55.0, 2.0, 0.0));
++    assert_eq!(
++        (data.scale, data.rotation_degrees, data.id),
++        (0.75, 110.3, 52)
++    );
++    assert!(data.is_preplaced);
++    let mut deleted = world
++        .resource::<Events<DeleteTreeCmd>>()
++        .iter_current_update_events()
++        .map(|e| e.id)
++        .collect::<Vec<_>>();
++    deleted.sort_unstable();
++    assert_eq!(deleted, vec![100002, 100003, 100004, 100005, 100006]);
++    schedule.run(&mut world);
++    assert_eq!(world.resource::<History<()>>().ledger().entries.len(), 1);
++}
++#[test]
++fn absence_of_a_legacy_request_never_creates_a_starting_edit_or_blocks_current_sessions() {
++    let mut world = world();
++    let mut schedule = Schedule::default();
++    schedule.add_systems((spawn_prefab_commands, convert_preplaced_trees::<()>).chain());
++    for _ in 0..6 {
++        schedule.run(&mut world);
++    }
++    assert_eq!(world.resource::<GpuWorld>().total_instance_count, 6);
++    assert_eq!(
++        world
++            .resource::<GpuWorld>()
++            .owned_subset_mut(GpuWorldSubsetKind::Canopy)
++            .instance_count(),
++        6
++    );
++    assert!(world.resource::<History<()>>().ledger().entries.is_empty());
++    assert!(world.resource::<Events<DeleteTreeCmd>>().is_empty());
++}
++
++/// Explicit asset-dependent acceptance. Run this one test with the process cwd
++/// set to the original distribution directory. It never changes global cwd or
++/// writes the original assets. The per-name one-part prefab is a test fixture;
++/// the real prefab build/Nani algorithm and the real asset producer execute.
++#[test]
++#[ignore = "requires the original distribution as process working directory"]
++fn shipped_themes_execute_actual_asset_producer_and_nonempty_delayed_converter() {
++    use country_core::{
++        resources::session::GladeType,
++        startup::spawn_preplaced_trees::{
++            TREES_FILE_NAME, load_tree_groups, load_tree_placements, spawn_preplaced_trees,
++        },
++    };
++    for (theme, count) in [
++        (GladeType::Summer, 270usize),
++        (GladeType::Olden, 198),
++        (GladeType::Flowery, 159),
++        (GladeType::Autumn, 281),
++        (GladeType::Winter, 160),
++    ] {
++        let device = Device::default();
++        let mut world = World::new();
++        let session = ActiveSession::new(
++            SessionId::new(),
++            SessionMeta {
++                glade: theme,
++                ..Default::default()
++            },
++        );
++        let dir = session.assets_root();
++        assert!(
++            dir.join(TREES_FILE_NAME).is_file(),
++            "run only from the original distribution directory"
++        );
++        let groups = load_tree_groups(dir.join(TREES_FILE_NAME)).unwrap();
++        let mut expected = Vec::new();
++        let mut library = PrefabLibrary::default();
++        let mut atlas = MeshAtlasLibrary::default();
++        let kind = GpuWorldSubsetKind::Canopy;
++        for group in groups {
++            if group.prefab == "clearing/tree/bush" {
++                continue;
++            }
++            let name = PrefabName::new(&group.prefab);
++            if !library.has(name.as_name_ref()) {
++                library.add(
++                    name.clone(),
++                    Prefab {
++                        parts: vec![PrefabPart {
++                            rt_kind: 2,
++                            ..Default::default()
++                        }],
++                    },
++                );
++                let mut mesh = Mesh::new("asset-receipt-test-part");
++                mesh.set_indices(vec![0, 1, 2]);
++                atlas.add(kind, name, &mesh);
++            }
++            for mut placement in load_tree_placements(&dir, &group).unwrap() {
++                if placement.position.x.abs() < 65.0 && placement.position.z.abs() < 65.0 {
++                    placement.custom0 = group.billboard_expansion_scale.to_bits();
++                    expected.push((placement, group.prefab.clone()));
++                }
++            }
++        }
++        assert_eq!(expected.len(), count);
++        let mut gpu = GpuWorld::new(&device);
++        gpu.assign_subset(
++            kind,
++            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind)),
++        );
++        world.insert_resource(gpu);
++        world.insert_resource(library);
++        world.insert_resource(atlas);
++        world.insert_resource(session);
++        world.init_resource::<AudioTriggerLibrary>();
++        world.init_resource::<RtWorld>();
++        world.init_resource::<PrefabsToDelete>();
++        world.init_resource::<TreeStorage>();
++        world.init_resource::<Events<SpawnPrefabCmd>>();
++        world.init_resource::<Events<DespawnPrefabCmd>>();
++        world.init_resource::<Events<SpawnPreplacedTrees>>();
++        world.init_resource::<Events<DeleteTreeCmd>>();
++        world.insert_resource(History::<()>::empty_glade());
++        world.insert_resource(WallSpatialHash::default());
++        world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
++        world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
++        let ssbos = AssetSsboLibrary::new();
++        ssbos.add_new::<TerrainRockMaskSsbo>(&device);
++        assert_eq!(
++            ssbos.get::<TerrainRockMaskSsbo>().unwrap().mapped.len(),
++            0x2000
++        );
++        world.insert_resource(ssbos);
++        let mut schedule = Schedule::default();
++        schedule.add_systems(
++            (
++                spawn_preplaced_trees,
++                spawn_prefab_commands,
++                convert_preplaced_trees::<()>,
++            )
++                .chain(),
++        );
++        world.send_event(SpawnPreplacedTrees);
++        schedule.run(&mut world);
++        assert_eq!(world.resource::<TreeStorage>().iter().count(), count);
++        assert_eq!(
++            world.query::<&PrefabInstanceData>().iter(&world).count(),
++            count
++        );
++        assert_eq!(
++            world.resource::<GpuWorld>().total_instance_count,
++            count as u64
++        );
++        assert_eq!(
++            world
++                .resource::<GpuWorld>()
++                .owned_subset_mut(kind)
++                .instance_count(),
++            count
++        );
++        assert!(world.resource::<History<()>>().ledger().entries.is_empty());
++        for (i, (placement, name)) in expected.iter().enumerate() {
++            let id = TreeStorageIndex(100001 + i as u64);
++            let entry = world.resource::<TreeStorage>().get(id).unwrap();
++            assert_eq!(
++                world.get::<PrefabInstanceData>(entry.entity).unwrap().0,
++                *placement
++            );
++            assert_eq!(
++                world
++                    .get::<ConvertedPreplacedTree>(entry.entity)
++                    .unwrap()
++                    .0
++                    .as_str(),
++                name
++            );
++            let tree = world
++                .get::<country_core::components::TreeComponent>(entry.entity)
++                .unwrap();
++            assert_eq!(tree.id, id.0);
++            assert!(tree.is_preplaced);
++            let audio = world
++                .get::<country_core::systems::audio::tree_audio::TreeAmbience>(entry.entity)
++                .unwrap();
++            assert_eq!(
++                audio.position,
++                placement.position + glam::Vec3::new(0.0, 10.0, 0.0)
++            );
++        }
++        schedule.run(&mut world);
++        assert!(world.resource::<History<()>>().ledger().entries.is_empty());
++        schedule.run(&mut world);
++        let ledger = world.resource::<History<()>>().ledger();
++        assert_eq!((ledger.cursor, ledger.entries.len()), (0, 1));
++        assert_eq!(ledger.entries[0].edits.len(), count);
++        let mut indices = ledger.entries[0]
++            .edits
++            .iter()
++            .map(|edit| {
++                let EditType::Tree(edit) = edit else {
++                    panic!("tree")
++                };
++                let TreeEdit::Place(data) = &**edit else {
++                    panic!("place")
++                };
++                data.storage_index.unwrap().0
++            })
++            .collect::<Vec<_>>();
++        indices.sort_unstable();
++        assert_eq!(indices, (100001..100001 + count as u64).collect::<Vec<_>>());
++        assert!(world.resource::<Events<DeleteTreeCmd>>().is_empty());
++    }
++}

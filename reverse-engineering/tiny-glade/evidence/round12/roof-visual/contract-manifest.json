@@ -1,0 +1,51 @@
+{
+  "status": "reviewable candidate only; no production edits, no Cargo, no GPU acceptance",
+  "source_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "record64": {
+    "0": "Vec3<f32>",
+    "12": "f32",
+    "16": "[u32;2]",
+    "24": "[u32;2]",
+    "32": "[u32;2]",
+    "40": "roof_id:u32",
+    "44": "packed_velocity_rotation:u32",
+    "48": "animation:f32",
+    "52": "seed:i32",
+    "56": "circle:i32",
+    "60": "main_roof:i32"
+  },
+  "copy_authority": "141a3c070 copies8qwords; current RoofTileSsbo repr(C)64B and original RoofShingle shader",
+  "decode": "explicit little-endian u32/f32 bit patterns, no unaligned cast",
+  "warning": {
+    "rectangular_closure": "1421b2ca0",
+    "circular_closure": "1421b4510",
+    "separate_static_tables": true,
+    "message": "Out of roof tile instances",
+    "native_message_addresses": [
+      "142ff834a",
+      "142ff8662"
+    ],
+    "exhaustion": "keep written prefix and continue generation"
+  },
+  "stone_floor": {
+    "native": "1421a6d40..1421a7087",
+    "rect_part": 0,
+    "circle": "log2(radius*3); MAXSS(1,value); MINSS(5,result); u32 saturated truncation",
+    "nan": "second operand survives both MAXSS/MINSS, then u32 zero"
+  },
+  "registration": {
+    "cpu": 20,
+    "visual": 29,
+    "gpu_flush": 44,
+    "delete": 21,
+    "replay": 40,
+    "history": 34
+  },
+  "unclosed": [
+    "trigger volume12048B arithmetic",
+    "RoofSupportBeamSsbo producer",
+    "malformed geometry partial-panic side effects",
+    "snapshot bundle sites",
+    "production integration and physical upload/render/readback"
+  ]
+}

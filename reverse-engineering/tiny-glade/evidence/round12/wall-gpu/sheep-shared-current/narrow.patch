@@ -1,0 +1,74 @@
+--- a/tiny-glade/crates/country-core/src/startup/run_game.rs
++++ b/tiny-glade/crates/country-core/src/startup/run_game.rs
+@@ -11,7 +11,7 @@
+             add_audio_events, add_audio_systems, music::music_system::music_audio_init_system,
+         },
+         backend::input::{add_input_cpu_consumers, register_input_events},
+-        debug::sheep_controls::{SheepControl, sheep_controls},
++        debug::sheep_controls::sheep_controls,
+         garden::{add_garden_cpu_systems, register_garden_events},
+         history::{add_history_cpu_systems, register_history_events},
+         ivy::registration::{add_ivy_systems, register_ivy_storage},
+@@ -131,7 +131,6 @@
+             History::<crate::resources::history::MaybePendingSnapshotId>::empty_glade(),
+         );
+     }
+-    world.init_resource::<SheepControl>();
+     world.init_resource::<SheepSaveSectionValue>();
+     world.init_resource::<Events<crate::systems::save::save_game::DeleteSessionCmd>>();
+     world.init_resource::<Events<crate::resources::session::NewSessionStartedCmd>>();
+--- a/tiny-glade/crates/systems/critters/src/components.rs
++++ b/tiny-glade/crates/systems/critters/src/components.rs
+@@ -153,17 +153,7 @@
+ pub use country_core::resources::critters::Wren;
+ 
+ /// 鹪鹩停靠点记录（stride 0x18；move_critters 更新位置，wren 系统读写）。
+-#[derive(Component, Clone, Debug, Default, PartialEq)]
+-pub struct BirdSpots {
+-    pub spots: Vec<BirdSpot>,
+-}
+-
+-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+-pub struct BirdSpot {
+-    pub pos: Vec3,
+-    /// 占用标志（u32@+0xc 段，语义 I）。
+-    pub occupied: bool,
+-}
++pub use crate::bird_spots::{BirdSpot, BirdSpots};
+ 
+ /// `DecoratorBirdSpots`（wren.rs PDB 命名实体；装饰物上的鸟点，语义同 BirdSpots）。
+ #[derive(Component, Clone, Debug, Default, PartialEq)]
+@@ -309,22 +299,7 @@
+ }
+ 
+ /// `PrevTransform`（鸭 shader 消费的上一帧变换；布局 = Transform{旋转@0,平移@0x10,缩放@0x1c}）。
+-#[derive(Component, Clone, Copy, Debug, PartialEq)]
+-pub struct PrevTransform {
+-    pub rotation: Quat,
+-    pub translation: Vec3,
+-    pub scale: Vec3,
+-}
+-
+-impl Default for PrevTransform {
+-    fn default() -> Self {
+-        Self {
+-            rotation: Quat::IDENTITY,
+-            translation: Vec3::ZERO,
+-            scale: Vec3::ONE,
+-        }
+-    }
+-}
++pub use country_core::components::drawable::PrevTransform;
+ 
+ impl Default for Duck {
+     fn default() -> Self {
+--- a/tiny-glade/crates/systems/critters/src/lib.rs
++++ b/tiny-glade/crates/systems/critters/src/lib.rs
+@@ -42,6 +42,7 @@
+ pub mod sample;
+ pub mod shared;
+ pub mod sheep;
++pub mod startup_sheep;
+ pub mod spawn_ducks;
+ pub mod startup_critters;
+ pub mod ui_pet_ducks;

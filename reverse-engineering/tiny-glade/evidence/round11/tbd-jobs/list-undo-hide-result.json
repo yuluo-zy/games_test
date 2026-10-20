@@ -1,0 +1,60 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "tbd",
+  "pid": 38944,
+  "project": "D:\\game\\tools\\reverse-runtime\\tbd\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "timeoutSeconds": 120,
+        "code": "from ghidra.program.model.address import AddressSet\nfm=currentProgram.getFunctionManager()\naf=currentProgram.getAddressFactory()\nf=fm.getFunctionAt(af.getAddress('1423449f0'))\nprint('BODY', f.getBody().getMinAddress(), f.getBody().getMaxAddress(), f.getBody().getNumAddresses())\nfor ins in currentProgram.getListing().getInstructions(f.getBody(), True):\n    print(ins.getAddress(), ins.toString())\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round11\\tbd-jobs\\list-undo-hide-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round11\\\\\\\\tbd-jobs\\\\\\\\list-undo-hide-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 3299, \\\"sha256\\\": \\\"683d8658ecf018f6f7808999fcbd90fcfe28e003c21dad3eccd853c03501c0d7\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":50}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.062,
+      "stdout": "BODY 1423449f0 142344dd2 476\n1423449f0 PUSH R15\n1423449f2 PUSH R14\n1423449f4 PUSH R13\n1423449f6 PUSH R12\n1423449f8 PUSH RSI\n1423449f9 PUSH RDI\n1423449fa PUSH RBX\n1423449fb SUB RSP,0xa0\n142344a02 MOVAPS xmmword ptr [RSP + 0x90],XMM11\n142344a0b MOVAPS xmmword ptr [RSP + 0x80],XMM10\n142344a14 MOVAPS xmmword ptr [RSP + 0x70],XMM9\n142344a1a MOVAPS xmmword ptr [RSP + 0x60],XMM8\n142344a20 MOVAPS xmmword ptr [RSP + 0x50],XMM7\n142344a25 MOVAPS xmmword ptr [RSP + 0x40],XMM6\n142344a2a MOV R15,qword ptr [RSP + 0x118]\n142344a32 MOV R13,qword ptr [RSP + 0x110]\n142344a3a MOV R14,qword ptr [R8]\n142344a3d MOVSS XMM9,dword ptr [R14 + 0xe8]\n142344a46 CMP byte ptr [R14 + 0xf1],0x0\n142344a4e JZ 0x142344abf\n142344a50 MOV RSI,R9\n142344a53 MOV RBX,RDX\n142344a56 MOV RDI,RCX\n142344a59 MOV RAX,qword ptr [RSP + 0x100]\n142344a61 MOV RCX,qword ptr [RAX]\n142344a64 CALL 0x140949c10\n142344a69 MOVAPS XMM7,XMM0\n142344a6c MOVAPS XMM6,XMM1\n142344a6f MOVSS XMM11,dword ptr [0x14304e2fc]\n142344a78 MULSS XMM11,XMM9\n142344a7d MOVSS XMM1,dword ptr [0x142934694]\n142344a85 MULSS XMM1,XMM11\n142344a8a MOVSS XMM0,dword ptr [0x1429cd034]\n142344a92 MULSS XMM0,XMM9\n142344a97 ADDSS XMM0,XMM1\n142344a9b MOVZX EAX,byte ptr [R14 + 0xf0]\n142344aa3 LEA ECX,[RAX + -0x1]\n142344aa6 CMP CL,0x2\n142344aa9 JC 0x142344adb\n142344aab MOVAPS XMM8,XMM0\n142344aaf LEA RCX,[0x14304e708]\n142344ab6 MOVSXD RAX,dword ptr [RCX + RAX*0x4]\n142344aba ADD RAX,RCX\n142344abd JMP RAX\n142344abf MOV EAX,dword ptr [R13 + 0x1c]\n142344ac3 MOV RCX,qword ptr [R13 + 0x10]\n142344ac7 MOV dword ptr [RCX],EAX\n142344ac9 MOV R12,qword ptr [R13]\n142344acd MOV dword ptr [R12 + 0x10],0x0\n142344ad6 JMP 0x142344cd5\n142344adb MOVAPS XMM8,XMM11\n142344adf MOVAPS XMM11,XMM0\n142344ae3 LEA RCX,[0x14304e708]\n142344aea MOVSXD RAX,dword ptr [RCX + RAX*0x4]\n142344aee ADD RAX,RCX\n142344af1 JMP RAX\n142344cd5 MULSS XMM9,dword ptr [0x14292c76c]\n142344cde MOVSS XMM1,dword ptr [R12 + 0x10]\n142344ce5 LEA RCX,[0x14304e668]\n142344cec CALL 0x140c95ef0\n142344cf1 MULSS XMM0,XMM9\n142344cf6 MOV EAX,dword ptr [R15 + 0x1c]\n142344cfa MOV RCX,qword ptr [R15 + 0x10]\n142344cfe MOV dword ptr [RCX],EAX\n142344d00 MOV RCX,qword ptr [R15]\n142344d03 MOVQ XMM1,qword ptr [R12]\n142344d09 MOV RAX,qword ptr [RCX + 0xa0]\n142344d10 MOV RCX,qword ptr [RCX + 0xa8]\n142344d17 SHL RCX,0x3\n142344d1b LEA RDX,[RCX + RCX*0x4]\n142344d1f XOR ECX,ECX\n142344d21 MOV R8,RAX\n142344d24 NOP word ptr CS:[RAX + RAX*0x1]\n142344d30 CMP RDX,RCX\n142344d33 JZ 0x142344d98\n142344d35 MOVQ XMM2,qword ptr [R8 + 0x10]\n142344d3b ADD R8,0x28\n142344d3f PCMPEQD XMM2,XMM1\n142344d43 PSHUFD XMM2,XMM2,0x50\n142344d48 MOVMSKPD R9D,XMM2\n142344d4d ADD RCX,0x28\n142344d51 CMP R9D,0x3\n142344d55 JNZ 0x142344d30\n142344d57 MOVZX EDX,byte ptr [R14 + 0xf0]\n142344d5f PXOR XMM1,XMM1\n142344d63 LEA R8,[0x14304e718]\n142344d6a MOVSXD RDX,dword ptr [R8 + RDX*0x4]\n142344d6e ADD RDX,R8\n142344d71 JMP RDX\n142344d98 MOVAPS XMM6,xmmword ptr [RSP + 0x40]\n142344d9d MOVAPS XMM7,xmmword ptr [RSP + 0x50]\n142344da2 MOVAPS XMM8,xmmword ptr [RSP + 0x60]\n142344da8 MOVAPS XMM9,xmmword ptr [RSP + 0x70]\n142344dae MOVAPS XMM10,xmmword ptr [RSP + 0x80]\n142344db7 MOVAPS XMM11,xmmword ptr [RSP + 0x90]\n142344dc0 ADD RSP,0xa0\n142344dc7 POP RBX\n142344dc8 POP RDI\n142344dc9 POP RSI\n142344dca POP R12\n142344dcc POP R13\n142344dce POP R14\n142344dd0 POP R15\n142344dd2 RET\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 1.781,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":8}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "error": "unhandled errors in a TaskGroup (1 sub-exception)",
+  "exception_trace": "  + Exception Group Traceback (most recent call last):\n  |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 116, in run\n  |     limits=httpx.Limits(max_keepalive_connections=0)) as http_client, streamable_http_client(\n  |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"C:\\Users\\liyu\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\contextlib.py\", line 231, in __aexit__\n  |     await self.gen.athrow(value)\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 672, in streamable_http_client\n  |     async with anyio.create_task_group() as tg:\n  |                ^^^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n  |     raise BaseExceptionGroup(\n  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | Exception Group Traceback (most recent call last):\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 695, in streamable_http_client\n    |     yield (\n    |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 118, in run\n    |     async with ClientSession(read, write) as session:\n    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\shared\\session.py\", line 238, in __aexit__\n    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n    |     raise BaseExceptionGroup(\n    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n    +-+---------------- 1 ----------------\n      | Traceback (most recent call last):\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 217, in run\n      |     report['save_result'] = await checkpoint(state,args.worker)\n      |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 91, in checkpoint\n      |     payload = json.loads(response.read_text(encoding='utf-8'))\n      |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      |   File \"C:\\Users\\liyu\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\pathlib.py\", line 1027, in read_text\n      |     with self.open(mode='r', encoding=encoding, errors=errors) as f:\n      |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      |   File \"C:\\Users\\liyu\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\pathlib.py\", line 1013, in open\n      |     return io.open(self, mode, buffering, encoding, errors, newline)\n      |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      | PermissionError: [Errno 13] Permission denied: 'D:\\\\game\\\\tools\\\\reverse-runtime\\\\tbd\\\\checkpoint-result.json'\n      +------------------------------------\n"
+}

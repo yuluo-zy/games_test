@@ -1,0 +1,143 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "round13-screenshot",
+  "pid": 49828,
+  "project": "D:\\game\\tools\\reverse-runtime\\round13-screenshot\\project\\TinyGlade.gpr",
+  "backend_reused": false,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round13-frame-graph-gpu\\screenshot\\locate.result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round13-frame-graph-gpu\\\\\\\\screenshot\\\\\\\\locate.result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 274, \\\"sha256\\\": \\\"e1ab8352899238e72c78224897f74f16f15ade786ac6c094b3acfacee0640f52\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":18}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.031,
+      "stdout": "{\"name\": \"tiny-glade.exe\", \"sha256\": \"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\", \"path\": \"/tiny-glade.exe\", \"functions\": 116270, \"language\": \"x86:LE:64:default\", \"adapter\": \"Windows ReVa transport / Ghidra engine\", \"preexisting_Mac_overlays\": false}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "read_back_screenshot",
+        "limit": 10
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round13-frame-graph-gpu\\screenshot\\locate.result.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round13-frame-graph-gpu\\\\\\\\screenshot\\\\\\\\locate.result.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 38, \\\"sha256\\\": \\\"e6f173380fd5f0f72c554695d7f5487475521103e04240d5b1c9523881d2234c\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":3848}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 3.859,
+      "stdout": "{\"total_matches\": 0, \"functions\": []}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "finish_screenshot_capture::",
+        "limit": 10
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round13-frame-graph-gpu\\screenshot\\locate.result.artifacts\\002.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round13-frame-graph-gpu\\\\\\\\screenshot\\\\\\\\locate.result.artifacts\\\\\\\\002.stdout.txt\\\", \\\"bytes\\\": 197, \\\"sha256\\\": \\\"04e0cf4c065f41689a7b7b85da469795f1a028cbfec281693c0c3b0aed60b52f\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":11868}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 11.891,
+      "stdout": "{\"total_matches\": 1, \"functions\": [{\"address\": \"0x14031ea20\", \"name\": \"tiny_glade::screenshot::finish_screenshot_capture::h749ff0edb208df54\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "gather_screenshot_requests::",
+        "limit": 10
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round13-frame-graph-gpu\\screenshot\\locate.result.artifacts\\003.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round13-frame-graph-gpu\\\\\\\\screenshot\\\\\\\\locate.result.artifacts\\\\\\\\003.stdout.txt\\\", \\\"bytes\\\": 198, \\\"sha256\\\": \\\"26f707d4a8515822d10059d70b1c8523ecc563398324e6989fd0502262157cac\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":3454}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 3.469,
+      "stdout": "{\"total_matches\": 1, \"functions\": [{\"address\": \"0x14031af10\", \"name\": \"tiny_glade::screenshot::gather_screenshot_requests::h1b07abad5f9ce17f\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 26.922,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":273}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "8d69c4755bba74287b4ccda486f65808",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

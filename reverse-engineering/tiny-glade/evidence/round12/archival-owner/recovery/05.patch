@@ -1,0 +1,26 @@
+*** Begin Patch
+*** Update File: D:/game/reverse-engineering/tiny-glade/evidence/round12/archival-owner/candidate/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@
+-            items:[(1,info_to_observed(first)),(2,info_to_observed(second))].into(),..Default::default() });
+-        archive.special1=Some(TrackedDecorators {items:[(3,info_to_observed(third))].into(),..Default::default()});
++            items:[(1,info_to_observed(&first)),(2,info_to_observed(&second))].into(),..Default::default() });
++        archive.special1=Some(TrackedDecorators {items:[(3,info_to_observed(&third))].into(),..Default::default()});
+@@
+-        let mut signed=zero.to_bytes();signed[..4].copy_from_slice(&(-0.0f32).to_bits().to_le_bytes());
+-        assert!(archived_history_equal(&zero,&DecoratorHistoryState::from_bytes(&signed)));
+-        let mut nan=zero.to_bytes();nan[..4].copy_from_slice(&f32::NAN.to_bits().to_le_bytes());
+-        let n=DecoratorHistoryState::from_bytes(&nan);assert!(!archived_history_equal(&n,&n));
++        let mut signed=zero;signed.dst_wall=u64::from((-0.0f32).to_bits());
++        assert!(archived_history_equal(&zero,&signed));
++        let mut n=zero;n.dst_wall=u64::from(f32::NAN.to_bits());
++        assert!(!archived_history_equal(&n,&n));
+         for tag in [2,3,4] {
+-            let mut bytes=zero.to_bytes();bytes[0x22]=tag;
+-            let b=DecoratorHistoryState::from_bytes(&bytes);
+-            bytes[0x1f]=99;let inactive=DecoratorHistoryState::from_bytes(&bytes);
++            let mut b=zero;b.u20=tag<<16;
++            let mut inactive=b;inactive.u18=99<<56;
+             assert!(archived_history_equal(&b,&inactive));
+-            bytes[0x4c]=1;assert!(!archived_history_equal(&b,&DecoratorHistoryState::from_bytes(&bytes)));
++            inactive.u4c=1;assert!(!archived_history_equal(&b,&inactive));
+*** End Patch

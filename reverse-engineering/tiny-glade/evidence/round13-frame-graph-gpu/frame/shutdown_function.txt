@@ -1,0 +1,71 @@
+    pub(crate) fn shut_down(&mut self) -> anyhow::Result<()> {
+        use crate::shutdown_runtime::{disconnect_save_worker, hurry_world_screenshots, record_failure};
+        if self.shutdown_done {
+            return if self.shutdown_progress.device_lost {
+                Err(rhapsody::Error::DeviceLost.into())
+            } else { Ok(()) };
+        }
+        self.shutdown_progress.started = true;
+        let mut first_error = None;
+        if !self.shutdown_progress.loader_stopped {
+            let result = if let Some(preparation) = &mut self.preparation {
+                let result = preparation.stop_worker();
+                self.shutdown_progress.loader_stopped = preparation.worker_stopped();
+                result
+            } else {
+                self.shutdown_progress.loader_stopped = true;
+                Ok(())
+            };
+            record_failure(&mut first_error, &mut self.shutdown_progress.device_lost,
+                "stopping async gameplay loader", result);
+        }
+        // Never race an active warmup producer with GPU teardown. Pending
+        // Worlds remain owned by self.preparation throughout retryable waits.
+        if self.shutdown_progress.loader_stopped {
+            if !self.shutdown_progress.save_stopped {
+                let pending = if let Some(preparation) = &mut self.preparation {
+                    preparation.disconnect_save_workers()
+                } else { Ok(()) };
+                let active = disconnect_save_worker(self.driver.app.world_mut());
+                // Both calls consume and join actual handles even when the
+                // stopped worker reports a panic. Do not retry a consumed join.
+                self.shutdown_progress.save_stopped = true;
+                record_failure(&mut first_error, &mut self.shutdown_progress.device_lost,
+                    "joining pending async save", pending);
+                record_failure(&mut first_error, &mut self.shutdown_progress.device_lost,
+                    "joining active async save", active);
+            }
+            if !self.shutdown_progress.captures_done {
+                let active = hurry_world_screenshots(self.driver.app.world_mut());
+                let pending = if let Some(preparation) = &mut self.preparation {
+                    preparation.hurry_screenshots()
+                } else { Ok(()) };
+                let active_done = record_failure(&mut first_error,
+                    &mut self.shutdown_progress.device_lost, "active screenshot hurry", active);
+                let pending_done = record_failure(&mut first_error,
+                    &mut self.shutdown_progress.device_lost, "pending screenshot hurry", pending);
+                self.shutdown_progress.captures_done = active_done && pending_done;
+            }
+            // Evaluate GPU cleanup even when screenshot hurry failed. A
+            // Timeout still retains the entire World/Window/renderer so any
+            // incomplete readback or wait can retry against its real owners.
+            if !self.shutdown_progress.gpu_done {
+                let result = self.renderer.shutdown();
+                self.shutdown_progress.gpu_attempted = true;
+                self.shutdown_progress.gpu_done = record_failure(&mut first_error,
+                    &mut self.shutdown_progress.device_lost, "graphics shutdown", result);
+            }
+        }
+        self.custom_cursor_buffer = None;
+        self.window.set_cursor_grab(winit::window::CursorGrabMode::None).ok();
+        self.window.set_cursor_visible(true);
+        if self.shutdown_progress.complete() {
+            // Completion requires all producers/workers/writers to end and
+            // GPU proof. DeviceLost is an explicitly reported terminal end.
+            self.preparation = None;
+            self.shutdown_done = true;
+        }
+        if let Some(error) = first_error { Err(error) }
+        else if self.shutdown_progress.device_lost { Err(rhapsody::Error::DeviceLost.into()) }
+        else { Ok(()) }
+    }

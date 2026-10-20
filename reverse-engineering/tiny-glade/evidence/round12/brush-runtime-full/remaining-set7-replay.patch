@@ -1,0 +1,40 @@
+--- a/tiny-glade/crates/country-core/src/components/rendering.rs
++++ b/tiny-glade/crates/country-core/src/components/rendering.rs
+@@ -50,5 +50,5 @@
+ pub struct NormalMap(pub u64);
+ 
+ /// Original zero-sized query filter marker; no independent runtime owner.
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
++#[derive(bevy_ecs::component::Component, Debug, Default)]
+ pub struct MeshFollowTerrain;
+--- a/tiny-glade/crates/country-core/src/components/ui.rs
++++ b/tiny-glade/crates/country-core/src/components/ui.rs
+@@ -79,5 +79,5 @@
+ const _: () = assert!(std::mem::size_of::<UiInteractionState>() == 3);
+ 
+ /// Original zero-sized query filter marker; no independent runtime owner.
+-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
++#[derive(bevy_ecs::component::Component, Debug, Default)]
+ pub struct Ui2DFollowMouse;
+--- a/tiny-glade/crates/country-core/src/systems/debug/human_scale_ref.rs
++++ b/tiny-glade/crates/country-core/src/systems/debug/human_scale_ref.rs
+@@ -7,7 +7,7 @@
+ use bevy_ecs::prelude::*;
+ use glam::Vec3;
+ /// Original stride12; Y size is read at+4 when centering the mesh over terrain.
+-#[derive(Component, Clone, Copy, Debug, Default)]
++#[derive(Component, Debug, Default)]
+ pub struct HumanScaleRef(pub Vec3);
+ pub fn human_scale_ref(
+     query: Query<(Entity, Option<&Transform>, &HumanScaleRef)>,
+--- a/tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs
++++ b/tiny-glade/crates/country-core/src/systems/history/signifier_replay_active.rs
+@@ -9,7 +9,7 @@
+ };
+ use bevy_ecs::prelude::*;
+ use glam::Vec3;
+-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
++#[derive(Component, Debug, PartialEq, Eq)]
+ pub struct SignifierReplayIndex(pub usize);
+ fn maxss(a: f32, b: f32) -> f32 {
+     if a > b { a } else { b }

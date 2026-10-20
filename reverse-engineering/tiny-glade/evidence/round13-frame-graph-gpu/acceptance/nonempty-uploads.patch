@@ -1,0 +1,61 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
+@@ -295,7 +295,7 @@
+     }
+     let world = driver.app_mut().world_mut();
+     assert_eq!(world.resource::<InnerWalls>().wall_ids().count(), 3);
+-    assert_nonempty_original_walls(world, shaders.as_ref());
++    assert_nonempty_original_walls(world, shaders.as_ref(), &bridge);
+     // Preserve downstream failures in the acceptance log. A successful graph
+     // export alone cannot establish visible wall construction or full play.
+     eprintln!(
+@@ -329,6 +329,7 @@
+ fn assert_nonempty_original_walls(
+     world: &mut bevy_ecs::world::World,
+     shaders: &country_core::asset_libraries::shader_library::AssetShaderLibrary,
++    bridge: &CoreRenderBridge,
+ ) {
+     use country_core::{
+         geometry::instanced_wall::{InstancedWall, WallBrickInstancedDrawProxy},
+@@ -358,9 +359,41 @@
+         }
+     }
+     assert!(nonempty_allocations > 0, "no loaded wall produced real allocated brick chunks");
++
++    // An allocation/pending=false records the CPU write; a later device flush
++    // may still have failed. Require the production publisher's outcome and
++    // the exact physical namespace used by this App's bridge.
++    let status = world.resource::<country_core::geometry::runtime::WallBrickUploadStatus>();
++    assert!(status.gpu_ready, "brick publisher failed: {:?}", status.last_error);
++    assert_eq!(status.capacity_failures, 0, "brick allocation capacity failure");
++    assert!(status.last_error.is_none(), "brick upload error was retained");
++    let storage = world.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>()
++        .get::<WallBrickInstance>().expect("no canonical brick sparse SSBO");
++    let ranges = storage.to_draw_multi_instanced();
++    let count: u64 = ranges.iter().map(|(_, count)| u64::from(*count)).sum();
++    assert!(count > 0, "allocated brick chunks contain no drawable instances");
++    assert!(storage.dirty_bitset.iter().all(|word| word.load(std::sync::atomic::Ordering::Relaxed) == 0),
++        "brick upload left dirty chunks");
++    assert!(bridge.hosts().buffers.managed_buffer(&storage.buffer.buffer).is_some(),
++        "brick SSBO does not resolve on the production App device");
++    eprintln!("actual uploaded wall brick instances: {count}, draw ranges: {}", ranges.len());
++
+     let ids: std::collections::HashSet<_> = world.query::<(bevy_ecs::entity::Entity, &WallBrickInstancedDrawProxy)>()
+         .iter(world).map(|(entity, _)| entity).collect();
+     assert_eq!(ids.len(), 7, "original seven global wall drawables were not produced exactly once");
++
++    // A draw-list item only proves ECS admission. Its indexed mesh must also
++    // resolve to a nonempty VAO and retained physical index-buffer owner.
++    for entity in &ids {
++        let handle = world.get::<country_core::asset_libraries::Handle<country_core::render::vao::Vao>>(*entity)
++            .expect("wall drawable has no published VAO");
++        let vao = world.resource::<country_core::asset_libraries::vao_library::AssetVAOLibrary>()
++            .get_by_handle(*handle).expect("wall VAO handle is stale");
++        assert!(vao.index_count > 0, "wall drawable has no mesh indices");
++        assert!(bridge.hosts().buffers.managed_buffer(&vao.vao.index_buffer).is_some(),
++            "wall VAO index buffer does not resolve on the production App device");
++    }
++
+     let mut lists = DrawLists::new();
+     draw_lists::build_draw_lists(world, shaders, &mut lists);
+     for (list, expected) in [(draw_lists::list::SHADOW, 7),

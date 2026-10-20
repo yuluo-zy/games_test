@@ -1,0 +1,2 @@
+import json,pathlib
+s=json.loads(pathlib.Path('reverse-engineering/tiny-glade/evidence/render-architecture/public-symbols.json').read_text());q=[q for q in s if ('send_to_puffin' in q.get('demangled','') or 'TimedFrame' in q.get('demangled','') or 'GlobalProfiler::new_frame' in q.get('demangled',''))];print('\n'.join(str(x['va'])+' '+x['demangled'] for x in q));pathlib.Path('reverse-engineering/tiny-glade/evidence/round13-frame-graph-gpu/profiling/profiler-symbols.json').write_text(json.dumps(q,indent=2))

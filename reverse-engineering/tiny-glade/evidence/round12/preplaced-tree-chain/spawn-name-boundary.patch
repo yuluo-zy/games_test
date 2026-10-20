@@ -1,0 +1,13 @@
+--- a/tiny-glade/crates/country-core/src/startup/spawn_preplaced_trees.rs
++++ b/tiny-glade/crates/country-core/src/startup/spawn_preplaced_trees.rs
+@@ -104,7 +104,9 @@
+             flags[8..12].copy_from_slice(&placement.bend_vector.x.to_le_bytes());
+             flags[12..16].copy_from_slice(&placement.bend_vector.y.to_le_bytes());
+             prefabs.write(SpawnPrefabCmd {
+-                prefab_name: Some(name.clone()),
++                prefab_name: Some(crate::resources::render::mesh_atlas_library::PrefabName::new(
++                    &group.prefab,
++                )),
+                 entity: Some(entity),
+                 position: placement.position,
+                 scale: placement.scale,

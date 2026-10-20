@@ -1,0 +1,128 @@
+{
+  "server": "re_mcp_ghidra",
+  "actual_mcp_connection": true,
+  "results": [
+    {
+      "tool": "open_database",
+      "args": {
+        "file_path": "D:/game/reverse-engineering/tiny-glade/workspace/input/tiny-glade.exe",
+        "run_auto_analysis": false,
+        "database_id": "g1_r9g"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"opening\",\"database\":\"g1_r9g\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"opening\":true}"
+          }
+        ],
+        "structuredContent": {
+          "status": "opening",
+          "database": "g1_r9g",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "opening": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "wait_for_analysis",
+      "args": {
+        "database": "g1_r9g"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"ready\",\"database\":\"g1_r9g\",\"file_path\":\"D:\\\\game\\\\reverse-engineering\\\\tiny-glade\\\\workspace\\\\input\\\\tiny-glade.exe\",\"processor\":\"x86:LE:64:default\",\"bitness\":64,\"file_type\":\"Portable Executable (PE)\",\"function_count\":116272,\"segment_count\":8,\"capabilities\":{\"decompiler\":true},\"session_count\":1}"
+          }
+        ],
+        "structuredContent": {
+          "status": "ready",
+          "database": "g1_r9g",
+          "file_path": "D:\\game\\reverse-engineering\\tiny-glade\\workspace\\input\\tiny-glade.exe",
+          "processor": "x86:LE:64:default",
+          "bitness": 64,
+          "file_type": "Portable Executable (PE)",
+          "function_count": 116272,
+          "segment_count": 8,
+          "capabilities": {
+            "decompiler": true
+          },
+          "session_count": 1
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "g1_r9g",
+        "address": "0x142ce11c0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":100,\"has_more\":false,\"database\":\"g1_r9g\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 100,
+          "has_more": false,
+          "database": "g1_r9g"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "get_xrefs_to",
+      "args": {
+        "database": "g1_r9g",
+        "address": "0x142ce11b0"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"items\":[],\"total\":0,\"offset\":0,\"limit\":100,\"has_more\":false,\"database\":\"g1_r9g\"}"
+          }
+        ],
+        "structuredContent": {
+          "items": [],
+          "total": 0,
+          "offset": 0,
+          "limit": 100,
+          "has_more": false,
+          "database": "g1_r9g"
+        },
+        "isError": false
+      }
+    },
+    {
+      "tool": "close_database",
+      "args": {
+        "database": "g1_r9g",
+        "save": false
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"status\":\"closed\",\"database\":\"g1_r9g\"}"
+          }
+        ],
+        "structuredContent": {
+          "status": "closed",
+          "database": "g1_r9g"
+        },
+        "isError": false
+      }
+    }
+  ],
+  "target_execution": false,
+  "ok": true
+}

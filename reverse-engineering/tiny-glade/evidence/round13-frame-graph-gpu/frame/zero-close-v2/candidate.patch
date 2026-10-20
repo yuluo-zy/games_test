@@ -1,0 +1,564 @@
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -68,6 +68,13 @@
+ pub fn frame_egui_input_enabled(world: &World) -> bool {
+     world.get_resource::<country_core::resources::gui::DebugGui>()
+         .is_some_and(|debug| debug.enabled || debug.experimental_window)
++}
++
++/// Native 1404dc8d2..dc971: real resize-published display extent gates the
++/// whole simulation/render frame. A zero component takes the 1ms wait branch.
++pub fn frame_waits_for_window_extent(world: &World) -> bool {
++    world.resource::<country_core::render::render_config::FrameRenderConfig>()
++        .extent_0.contains(&0)
+ }
+ 
+ fn apply_menu_fps_limit(fps: f32, menu_limits: bool, profiling: bool) -> f32 {
+@@ -212,6 +219,7 @@
+     pub(crate) frame_count: u64,
+     pub(crate) suspended: bool,
+     pub(crate) shutdown_done: bool,
++    pub(crate) shutdown_progress: crate::shutdown_runtime::ShutdownProgress,
+     preparation: Option<crate::run_game::GameplayPreparation>,
+     custom_cursor_events: bevy_ecs::event::EventCursor<
+         country_core::resources::mouse_capture::CustomCursorSsboCreatedCmd,
+@@ -430,6 +438,7 @@
+             frame_count: 0,
+             suspended: false,
+             shutdown_done: false,
++            shutdown_progress: Default::default(),
+             preparation,
+             custom_cursor_events: Default::default(),
+             capture_events: Default::default(),
+@@ -702,6 +711,18 @@
+         {
+             return Ok(false);
+         }
++        if frame_waits_for_window_extent(self.driver.app.world()) {
++            // B's wait skips App::update/MEI/egui/render/frame counters/FPS.
++            // The host-only close route shares the real persistent save and
++            // shutdown consumers, so zero-size close can finish safely.
++            let closed = crate::shutdown_runtime::finish_pending_shutdown_without_frame(
++                self.driver.app.world_mut());
++            if !closed {
++                std::thread::sleep(std::time::Duration::from_millis(1));
++            }
++            self.apply_pending_video_settings()?;
++            return Ok(!closed);
++        }
+         // B 1404ddf28..3c: real OS egui input is consumed only while the
+         // debug or experimental window is active. Other frames still begin
+         // and end egui with RawInput::default (1404ddf49 -> 140c2c770).
+@@ -790,16 +811,75 @@
+     /// Fullscreen restoration and native input serialization remain separately
+     /// documented original branches; no synthetic file format is emitted here.
+     pub(crate) fn shut_down(&mut self) -> anyhow::Result<()> {
++        use crate::shutdown_runtime::{disconnect_save_worker, hurry_world_screenshots, record_failure};
+         if self.shutdown_done {
+-            return Ok(());
+-        }
+-        self.shutdown_done = true;
++            return if self.shutdown_progress.device_lost {
++                Err(rhapsody::Error::DeviceLost.into())
++            } else { Ok(()) };
++        }
++        self.shutdown_progress.started = true;
++        let mut first_error = None;
++        if !self.shutdown_progress.loader_stopped {
++            let result = if let Some(preparation) = &mut self.preparation {
++                let result = preparation.stop_worker();
++                self.shutdown_progress.loader_stopped = preparation.worker_stopped();
++                result
++            } else {
++                self.shutdown_progress.loader_stopped = true;
++                Ok(())
++            };
++            record_failure(&mut first_error, &mut self.shutdown_progress.device_lost,
++                "stopping async gameplay loader", result);
++        }
++        // Never race an active warmup producer with GPU teardown. Pending
++        // Worlds remain owned by self.preparation throughout retryable waits.
++        if self.shutdown_progress.loader_stopped {
++            if !self.shutdown_progress.save_stopped {
++                let pending = if let Some(preparation) = &mut self.preparation {
++                    preparation.disconnect_save_workers()
++                } else { Ok(()) };
++                let active = disconnect_save_worker(self.driver.app.world_mut());
++                // Both calls consume and join actual handles even when the
++                // stopped worker reports a panic. Do not retry a consumed join.
++                self.shutdown_progress.save_stopped = true;
++                record_failure(&mut first_error, &mut self.shutdown_progress.device_lost,
++                    "joining pending async save", pending);
++                record_failure(&mut first_error, &mut self.shutdown_progress.device_lost,
++                    "joining active async save", active);
++            }
++            if !self.shutdown_progress.captures_done {
++                let active = hurry_world_screenshots(self.driver.app.world_mut());
++                let pending = if let Some(preparation) = &mut self.preparation {
++                    preparation.hurry_screenshots()
++                } else { Ok(()) };
++                let active_done = record_failure(&mut first_error,
++                    &mut self.shutdown_progress.device_lost, "active screenshot hurry", active);
++                let pending_done = record_failure(&mut first_error,
++                    &mut self.shutdown_progress.device_lost, "pending screenshot hurry", pending);
++                self.shutdown_progress.captures_done = active_done && pending_done;
++            }
++            // Evaluate GPU cleanup even when screenshot hurry failed. A
++            // Timeout still retains the entire World/Window/renderer so any
++            // incomplete readback or wait can retry against its real owners.
++            if !self.shutdown_progress.gpu_done {
++                let result = self.renderer.shutdown();
++                self.shutdown_progress.gpu_attempted = true;
++                self.shutdown_progress.gpu_done = record_failure(&mut first_error,
++                    &mut self.shutdown_progress.device_lost, "graphics shutdown", result);
++            }
++        }
+         self.custom_cursor_buffer = None;
+-        self.window
+-            .set_cursor_grab(winit::window::CursorGrabMode::None)
+-            .ok();
++        self.window.set_cursor_grab(winit::window::CursorGrabMode::None).ok();
+         self.window.set_cursor_visible(true);
+-        self.renderer.shutdown()
++        if self.shutdown_progress.complete() {
++            // Completion requires all producers/workers/writers to end and
++            // GPU proof. DeviceLost is an explicitly reported terminal end.
++            self.preparation = None;
++            self.shutdown_done = true;
++        }
++        if let Some(error) = first_error { Err(error) }
++        else if self.shutdown_progress.device_lost { Err(rhapsody::Error::DeviceLost.into()) }
++        else { Ok(()) }
+     }
+ 
+     /// B 0x1404e2470: enumerate current monitors and sorted public video modes.
+@@ -935,6 +1015,23 @@
+     }
+ 
+     #[test]
++    fn zero_extent_gate_reads_the_actual_frame_config_owner() {
++        use country_core::render::render_config::{FrameRenderConfig, VideoSettings};
++        use country_core::resources::window::WindowSize;
++        let mut world = World::new();
++        world.insert_resource(WindowSize::new(0, 0));
++        world.insert_resource(FrameRenderConfig::at_startup(
++            WindowSize::new(1280, 720), &VideoSettings::default()));
++        assert!(!frame_waits_for_window_extent(&world));
++        for extent in [[0, 720], [1280, 0], [0, 0]] {
++            world.resource_mut::<FrameRenderConfig>().extent_0 = extent;
++            assert!(frame_waits_for_window_extent(&world));
++        }
++        world.resource_mut::<FrameRenderConfig>().extent_0 = [1280, 720];
++        assert!(!frame_waits_for_window_extent(&world));
++    }
++
++    #[test]
+     fn debug_window_flags_choose_actual_os_egui_input() {
+         use country_core::resources::gui::DebugGui;
+         let mut world = World::new();
+--- a/tiny-glade/crates/tiny-glade/src/event_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/event_loop.rs
+@@ -92,11 +92,25 @@
+         self.refresh_monitors(&event_loop);
+         event_loop.run(move |event, target| {
+             if let Err(error) = self.main_loop(event, target) {
+-                *event_failure.borrow_mut() = Some(error);
+-                if let Err(shutdown) = self.shut_down() {
+-                    log::error!("GPU shutdown after loop failure: {shutdown:#}");
+-                }
+-                target.exit();
++                // Preserve the first failure across cleanup retries, retaining
++                // World/Window/renderer while a real wait remains incomplete.
++                if event_failure.borrow().is_none() {
++                    *event_failure.borrow_mut() = Some(error);
++                } else {
++                    log::error!("shutdown retry: {error:#}");
++                }
++                if !self.shutdown_progress.started {
++                    if let Err(shutdown) = self.shut_down() {
++                        log::error!("shutdown after loop failure: {shutdown:#}");
++                    }
++                }
++                if self.shutdown_done {
++                    target.exit();
++                } else {
++                    target.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
++                        std::time::Instant::now() + std::time::Duration::from_millis(1)));
++                    self.window.request_redraw();
++                }
+             }
+         })?;
+         let error = failure.borrow_mut().take();
+@@ -114,6 +128,17 @@
+         target: &winit::event_loop::EventLoopWindowTarget<()>,
+     ) -> anyhow::Result<()> {
+         use winit::event::{Event, WindowEvent};
++        if self.shutdown_progress.started {
++            let result = self.shut_down();
++            if self.shutdown_done {
++                target.exit();
++            } else {
++                target.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
++                    std::time::Instant::now() + std::time::Duration::from_millis(1)));
++                self.window.request_redraw();
++            }
++            return result;
++        }
+         match event {
+             Event::WindowEvent { window_id, event } if window_id == self.window.id() => {
+                 if matches!(event, WindowEvent::RedrawRequested) {
+@@ -278,6 +303,10 @@
+                     .world_mut()
+                     .resource_mut::<WindowSize>()
+                     .set(width, height);
++                // Native 1404dad4f/51: the gate reads this actual owner.
++                self.app_mut().world_mut()
++                    .resource_mut::<country_core::render::render_config::FrameRenderConfig>()
++                    .extent_0 = [width, height];
+                 self.app_mut()
+                     .world_mut()
+                     .resource_mut::<GameConfig>()
+@@ -323,9 +352,20 @@
+                 self.app_mut()
+                     .world_mut()
+                     .send_event(country_core::resources::events::ShutdownGameCmd);
+-                // A close command reaches the app before the loop quit marker is
+-                // checked. Even a minimized window must run this last update.
+-                self.window.request_redraw();
++                // B emits the real command; the main-thread host also services
++                // it without a simulated frame when WSI is suspended or zero.
++                if self.suspended
++                    || crate::game_loop::frame_waits_for_window_extent(self.app().world())
++                {
++                    if crate::shutdown_runtime::finish_pending_shutdown_without_frame(
++                        self.app_mut().world_mut())
++                    {
++                        self.shut_down()?;
++                        target.exit();
++                    }
++                } else {
++                    self.window.request_redraw();
++                }
+             }
+             OsWindowEvent::ToggleFullscreen => {
+                 let mut config = self.app_mut().world_mut().resource_mut::<GameConfig>();
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -257,10 +257,7 @@
+     country_core::systems::save::add_save_load_events_and_resources(app.world_mut());
+     // B add_save_load_systems1409443b0: set43, exact ActiveSession presence
+     // condition only. Runs each frame to publish real history/section changes.
+-    app.add_systems(bevy_app::Update,
+-        country_core::systems::save::save_game::save_game_system
+-            .in_set(GameSystemSet(43))
+-            .run_if(|active: Option<bevy_ecs::prelude::Res<country_core::resources::session::ActiveSession>>|active.is_some()));
++    crate::shutdown_runtime::install_save_maintenance(&mut app);
+     // Original host PostUpdate closure1403bf630: Reload2 -> Game1.
+     // Existing OnEnter(Game) consumes the canonical NextSession and real loader.
+     app.add_systems(bevy_app::PostUpdate,
+@@ -496,10 +493,7 @@
+     app.add_event::<country_core::resources::mouse_capture::CursorCaptureCmd>();
+     app.add_event::<country_core::resources::mouse_capture::OsCursorCaptureCmd>();
+     app.add_event::<country_core::resources::mouse_capture::OsCursorVisibilityCmd>();
+-    app.add_systems(
+-        bevy_app::PostUpdate,
+-        country_core::resources::shutdown::initiate_game_shutdown,
+-    );
++    crate::shutdown_runtime::install_shutdown_maintenance(&mut app);
+     app.add_event::<country_core::game_profile::SaveGameProfileCmd>();
+     app.add_systems(
+         bevy_app::Update,
+@@ -1033,6 +1027,7 @@
+         country_core::resources::session::refresh_session_list_system,
+     );
+     app.add_event::<country_core::resources::events::ShutdownGameCmd>();
++    crate::shutdown_runtime::install_shutdown_maintenance(&mut app);
+     Ok(app)
+ }
+ 
+@@ -1043,6 +1038,7 @@
+     receiver: std::sync::mpsc::Receiver<anyhow::Result<bevy_app::SubApp>>,
+     pending: Option<bevy_app::SubApp>,
+     cancel: Arc<std::sync::atomic::AtomicBool>,
++    worker: Option<std::thread::JoinHandle<()>>,
+ }
+ 
+ impl GameplayPreparation {
+@@ -1054,7 +1050,7 @@
+         let (sender, receiver) = std::sync::mpsc::channel();
+         let cancel = Arc::new(AtomicBool::new(false));
+         let cancelled = cancel.clone();
+-        std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
++        let worker = std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
+             // Host diagnostic boundary only: preserve the original load/ready
+             // gates, but carry a worker panic back to the owning OS thread.
+             let mut phase = "validate gameplay resources";
+@@ -1082,7 +1078,7 @@
+                 }
+                 phase = "original gameplay graph warm-up";
+                 warm_up(gameplay.world_mut())?;
+-                Ok(gameplay)
++                Ok(())
+             }))
+             .unwrap_or_else(|payload| {
+                 let message = if let Some(message) = payload.downcast_ref::<String>() {
+@@ -1096,13 +1092,61 @@
+                     "async gameplay loader panicked during {phase} (completed updates: {update_index}): {message}"
+                 ))
+             });
++            let result = match result {
++                Ok(()) => Ok(gameplay),
++                Err(error) => {
++                    if let Err(cleanup) = crate::shutdown_runtime::disconnect_save_worker(gameplay.world_mut()) {
++                        log::error!("async loader save cleanup: {cleanup:#}");
++                    }
++                    Err(error)
++                }
++            };
+             let _ = sender.send(result);
+         })?;
+         Ok(Self {
+             receiver,
+             pending: None,
+             cancel,
++            worker: Some(worker),
+         })
++    }
++
++    /// Stop producers, retaining pending Worlds through GPU/readback retries.
++    pub(crate) fn stop_worker(&mut self) -> anyhow::Result<()> {
++        self.cancel.store(true, std::sync::atomic::Ordering::Release);
++        let mut first_error = None;
++        if let Some(worker) = self.worker.take() {
++            if worker.join().is_err() {
++                first_error = Some(anyhow::anyhow!("async gameplay worker panicked during shutdown"));
++            }
++        }
++        while let Ok(result) = self.receiver.try_recv() {
++            if let Ok(gameplay) = result {
++                assert!(self.pending.is_none(), "async loader sent its World twice");
++                self.pending = Some(gameplay);
++            }
++        }
++        match first_error { Some(error) => Err(error), None => Ok(()) }
++    }
++
++    pub(crate) fn worker_stopped(&self) -> bool {
++        self.worker.is_none()
++    }
++
++    pub(crate) fn disconnect_save_workers(&mut self) -> anyhow::Result<()> {
++        assert!(self.worker_stopped(), "save cleanup raced the async gameplay worker");
++        if let Some(gameplay) = &mut self.pending {
++            crate::shutdown_runtime::disconnect_save_worker(gameplay.world_mut())?;
++        }
++        Ok(())
++    }
++
++    pub(crate) fn hurry_screenshots(&mut self) -> anyhow::Result<()> {
++        assert!(self.worker_stopped(), "screenshot cleanup raced the async gameplay worker");
++        if let Some(gameplay) = &mut self.pending {
++            crate::shutdown_runtime::hurry_world_screenshots(gameplay.world_mut())?;
++        }
++        Ok(())
+     }
+ 
+     /// Original main_loop polls only at the logo's waiting stage and switches
+@@ -1141,8 +1185,12 @@
+ 
+ impl Drop for GameplayPreparation {
+     fn drop(&mut self) {
+-        self.cancel
+-            .store(true, std::sync::atomic::Ordering::Release);
++        if let Err(error) = self.stop_worker() {
++            log::error!("gameplay preparation shutdown: {error:#}");
++        }
++        if let Err(error) = self.disconnect_save_workers() {
++            log::error!("pending gameplay save shutdown: {error:#}");
++        }
+     }
+ }
+ 
+@@ -1374,7 +1422,7 @@
+         let (sender, receiver) = std::sync::mpsc::channel();
+         sender.send(Ok(std::mem::take(gameplay.main_mut()))).unwrap();
+         let mut preparation = GameplayPreparation { receiver, pending: None,
+-            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)) };
++            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)), worker: None };
+         assert!(!preparation.poll(&mut loading).unwrap());
+         assert_eq!(loading.world().resource::<LogoAnimation>().progress[3],1.0);
+         assert_eq!(loading.world().resource::<GameConfig>().video.fps_limit,117.5);
+--- a/tiny-glade/crates/tiny-glade/src/lib.rs
++++ b/tiny-glade/crates/tiny-glade/src/lib.rs
+@@ -38,6 +38,7 @@
+ pub mod main;
+ pub mod render_loop;
+ pub mod run_game;
++pub(crate) mod shutdown_runtime;
+ pub mod setup;
+ 
+ // B `crates/tiny-glade/src` 窗口/渲染 glue、崩溃上报、GUI 面板、截图与杂项
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/src/shutdown_runtime.rs
+@@ -0,0 +1,161 @@
++//! Main-thread host shutdown maintenance while no drawable frame can run.
++//!
++//! B's zero-extent branch skips App::update. Its real close producer emits
++//! ShutdownGameCmd, consumed by save_game@140a3f470 and
++//! initiate_game_shutdown@140b2ba40. This host-only maintenance route reuses
++//! those same persistent systems; it is not an additional native B branch.
++use bevy_app::{App, PostUpdate, Update};
++use bevy_ecs::{prelude::*, schedule::ScheduleLabel};
++use country_core::{
++    resources::{events::ShutdownGameCmd, session::ActiveSession, shutdown::ShutdownGame},
++    systems::save::{save_game::{AutoSaveState, save_game_system}, save_thread::SaveThreadHandle},
++};
++
++#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
++struct SaveMaintenance;
++#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
++struct ShutdownMaintenance;
++
++/// Actual cleanup progress, independent of whether a prior attempt reported
++/// an error. A completed CPU join is never repeated just because GPU wait timed
++/// out; a failed readback/wait does not become a completed stage.
++#[derive(Default)]
++pub(crate) struct ShutdownProgress {
++    pub(crate) started: bool,
++    pub(crate) loader_stopped: bool,
++    pub(crate) save_stopped: bool,
++    pub(crate) captures_done: bool,
++    pub(crate) gpu_attempted: bool,
++    pub(crate) gpu_done: bool,
++    pub(crate) device_lost: bool,
++}
++
++impl ShutdownProgress {
++    pub(crate) fn complete(&self) -> bool {
++        self.loader_stopped && self.save_stopped
++            && (self.captures_done || self.device_lost)
++            && (self.gpu_done || (self.device_lost && self.gpu_attempted))
++    }
++}
++
++/// Preserve the first error of the attempt while still classifying later GPU
++/// errors. The OS loop separately retains the first error across all attempts.
++pub(crate) fn record_failure(
++    first: &mut Option<anyhow::Error>, lost: &mut bool,
++    stage: &'static str, result: anyhow::Result<()>,
++) -> bool {
++    match result {
++        Ok(()) => true,
++        Err(error) => {
++            *lost |= error.chain().any(|cause| cause.downcast_ref::<rhapsody::Error>()
++                .is_some_and(rhapsody::Error::is_device_lost));
++            if first.is_none() {
++                *first = Some(error.context(stage));
++            } else {
++                log::error!("additional shutdown failure ({stage}): {error:#}");
++            }
++            false
++        }
++    }
++}
++
++pub(crate) fn hurry_world_screenshots(world: &mut World) -> anyhow::Result<()> {
++    if crate::screenshot::shared_texture_capture::installed(world) {
++        crate::screenshot::hurry_active_screenshots_on_shutdown(world)?;
++    }
++    Ok(())
++}
++
++/// Install exactly one save system, including its EventReaders and replay
++/// tracker Local. Normal set43 and a zero-extent close run this same instance.
++pub(crate) fn install_save_maintenance(app: &mut App) {
++    app.init_schedule(SaveMaintenance);
++    app.add_systems(SaveMaintenance,
++        save_game_system.run_if(bevy_ecs::schedule::common_conditions::resource_exists::<ActiveSession>));
++    app.add_systems(Update, run_save_maintenance.in_set(crate::run_game::GameSystemSet(43)));
++}
++
++/// Loading has no ActiveSession or complete save SystemParams. It installs
++/// only this actual command-to-marker consumer, on its own owning World.
++pub(crate) fn install_shutdown_maintenance(app: &mut App) {
++    app.init_schedule(ShutdownMaintenance);
++    app.add_systems(ShutdownMaintenance,
++        country_core::resources::shutdown::initiate_game_shutdown);
++    app.add_systems(PostUpdate, run_shutdown_maintenance);
++}
++
++fn run_save_maintenance(world: &mut World) {
++    world.run_schedule(SaveMaintenance);
++}
++fn run_shutdown_maintenance(world: &mut World) {
++    // A schedule run applies this exact system's Commands before returning,
++    // just as the native PostUpdate flush does before main_loop sees marker.
++    world.run_schedule(ShutdownMaintenance);
++}
++
++/// Preserve real save publication, metadata, async FIFO Flush/reply and its
++/// error handling before the real deferred quit marker. No simulation, time,
++/// MEI, rendering or invented loading resources run on this host-only path.
++pub(crate) fn finish_pending_shutdown_without_frame(world: &mut World) -> bool {
++    if world.contains_resource::<ShutdownGame>() {
++        return true;
++    }
++    let pending = world.get_resource::<Events<ShutdownGameCmd>>()
++        .is_some_and(|requests| !requests.is_empty());
++    if !pending {
++        return false;
++    }
++    if world.contains_resource::<ActiveSession>() {
++        run_save_maintenance(world);
++    }
++    run_shutdown_maintenance(world);
++    world.contains_resource::<ShutdownGame>()
++}
++
++/// End the real sender owners, then wait for the original save worker's
++/// Disconnected terminal branch (141720f8c...), which drains queued commands
++/// before flushing deferred sections. No fabricated shutdown/ack command.
++pub(crate) fn disconnect_save_worker(world: &mut World) -> anyhow::Result<()> {
++    let handle = world.remove_resource::<SaveThreadHandle>();
++    drop(world.remove_resource::<AutoSaveState>());
++    if let Some(SaveThreadHandle { join, command_sender, error_state }) = handle {
++        drop(command_sender);
++        let result = join.join();
++        drop(error_state);
++        result.map_err(|_| anyhow::anyhow!("async save worker panicked during shutdown"))?;
++    }
++    Ok(())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[derive(Resource, Default)]
++    struct Updates(u32);
++
++    #[test]
++    fn loading_close_consumes_real_request_without_save_params_or_app_update() {
++        let mut app = App::new();
++        app.add_event::<ShutdownGameCmd>();
++        install_shutdown_maintenance(&mut app);
++        app.init_resource::<Updates>();
++        app.add_systems(Update, |mut count: ResMut<Updates>| count.0 += 1);
++        assert!(!finish_pending_shutdown_without_frame(app.world_mut()));
++        app.world_mut().send_event(ShutdownGameCmd);
++        assert!(finish_pending_shutdown_without_frame(app.world_mut()));
++        assert_eq!(app.world().resource::<Updates>().0, 0);
++        assert!(!app.world().contains_resource::<ActiveSession>());
++        assert!(!app.world().contains_resource::<AutoSaveState>());
++        assert!(!app.world().contains_resource::<SaveThreadHandle>());
++        // Retained EventReader is shared with PostUpdate, not re-created for
++        // each zero frame. An already-read buffer cannot emit marker twice.
++        app.world_mut().remove_resource::<ShutdownGame>();
++        assert!(!finish_pending_shutdown_without_frame(app.world_mut()));
++        app.update();
++        assert!(!app.world().contains_resource::<ShutdownGame>());
++        app.world_mut().send_event(ShutdownGameCmd);
++        app.update();
++        assert!(app.world().contains_resource::<ShutdownGame>());
++    }
++}

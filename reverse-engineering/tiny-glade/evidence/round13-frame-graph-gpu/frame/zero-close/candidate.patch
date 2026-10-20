@@ -1,0 +1,358 @@
+--- a/tiny-glade/crates/tiny-glade/src/game_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/game_loop.rs
+@@ -68,6 +68,13 @@
+ pub fn frame_egui_input_enabled(world: &World) -> bool {
+     world.get_resource::<country_core::resources::gui::DebugGui>()
+         .is_some_and(|debug| debug.enabled || debug.experimental_window)
++}
++
++/// Native 1404dc8d2..dc971: real resize-published display extent gates the
++/// whole simulation/render frame. A zero component takes the 1ms wait branch.
++pub fn frame_waits_for_window_extent(world: &World) -> bool {
++    world.resource::<country_core::render::render_config::FrameRenderConfig>()
++        .extent_0.contains(&0)
+ }
+ 
+ fn apply_menu_fps_limit(fps: f32, menu_limits: bool, profiling: bool) -> f32 {
+@@ -702,6 +709,18 @@
+         {
+             return Ok(false);
+         }
++        if frame_waits_for_window_extent(self.driver.app.world()) {
++            // B's wait skips App::update/MEI/egui/render/frame counters/FPS.
++            // The host-only close route shares the real persistent save and
++            // shutdown consumers, so zero-size close can finish safely.
++            let closed = crate::shutdown_runtime::finish_pending_shutdown_without_frame(
++                self.driver.app.world_mut());
++            if !closed {
++                std::thread::sleep(std::time::Duration::from_millis(1));
++            }
++            self.apply_pending_video_settings()?;
++            return Ok(!closed);
++        }
+         // B 1404ddf28..3c: real OS egui input is consumed only while the
+         // debug or experimental window is active. Other frames still begin
+         // and end egui with RawInput::default (1404ddf49 -> 140c2c770).
+@@ -793,6 +812,12 @@
+         if self.shutdown_done {
+             return Ok(());
+         }
++        // The loader may still own a gameplay World and a GPU warmup bridge.
++        // Cancel and join it before releasing the shared graphics device.
++        if let Some(mut preparation) = self.preparation.take() {
++            preparation.cancel_and_join()?;
++        }
++        crate::shutdown_runtime::disconnect_save_worker(self.driver.app.world_mut())?;
+         self.shutdown_done = true;
+         self.custom_cursor_buffer = None;
+         self.window
+@@ -935,6 +960,23 @@
+     }
+ 
+     #[test]
++    fn zero_extent_gate_reads_the_actual_frame_config_owner() {
++        use country_core::render::render_config::{FrameRenderConfig, VideoSettings};
++        use country_core::resources::window::WindowSize;
++        let mut world = World::new();
++        world.insert_resource(WindowSize::new(0, 0));
++        world.insert_resource(FrameRenderConfig::at_startup(
++            WindowSize::new(1280, 720), &VideoSettings::default()));
++        assert!(!frame_waits_for_window_extent(&world));
++        for extent in [[0, 720], [1280, 0], [0, 0]] {
++            world.resource_mut::<FrameRenderConfig>().extent_0 = extent;
++            assert!(frame_waits_for_window_extent(&world));
++        }
++        world.resource_mut::<FrameRenderConfig>().extent_0 = [1280, 720];
++        assert!(!frame_waits_for_window_extent(&world));
++    }
++
++    #[test]
+     fn debug_window_flags_choose_actual_os_egui_input() {
+         use country_core::resources::gui::DebugGui;
+         let mut world = World::new();
+--- a/tiny-glade/crates/tiny-glade/src/event_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/event_loop.rs
+@@ -278,6 +278,10 @@
+                     .world_mut()
+                     .resource_mut::<WindowSize>()
+                     .set(width, height);
++                // Native 1404dad4f/51: the gate reads this actual owner.
++                self.app_mut().world_mut()
++                    .resource_mut::<country_core::render::render_config::FrameRenderConfig>()
++                    .extent_0 = [width, height];
+                 self.app_mut()
+                     .world_mut()
+                     .resource_mut::<GameConfig>()
+@@ -323,9 +327,20 @@
+                 self.app_mut()
+                     .world_mut()
+                     .send_event(country_core::resources::events::ShutdownGameCmd);
+-                // A close command reaches the app before the loop quit marker is
+-                // checked. Even a minimized window must run this last update.
+-                self.window.request_redraw();
++                // B emits the real command; the main-thread host also services
++                // it without a simulated frame when WSI is suspended or zero.
++                if self.suspended
++                    || crate::game_loop::frame_waits_for_window_extent(self.app().world())
++                {
++                    if crate::shutdown_runtime::finish_pending_shutdown_without_frame(
++                        self.app_mut().world_mut())
++                    {
++                        self.shut_down()?;
++                        target.exit();
++                    }
++                } else {
++                    self.window.request_redraw();
++                }
+             }
+             OsWindowEvent::ToggleFullscreen => {
+                 let mut config = self.app_mut().world_mut().resource_mut::<GameConfig>();
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -257,10 +257,7 @@
+     country_core::systems::save::add_save_load_events_and_resources(app.world_mut());
+     // B add_save_load_systems1409443b0: set43, exact ActiveSession presence
+     // condition only. Runs each frame to publish real history/section changes.
+-    app.add_systems(bevy_app::Update,
+-        country_core::systems::save::save_game::save_game_system
+-            .in_set(GameSystemSet(43))
+-            .run_if(|active: Option<bevy_ecs::prelude::Res<country_core::resources::session::ActiveSession>>|active.is_some()));
++    crate::shutdown_runtime::install_save_maintenance(&mut app);
+     // Original host PostUpdate closure1403bf630: Reload2 -> Game1.
+     // Existing OnEnter(Game) consumes the canonical NextSession and real loader.
+     app.add_systems(bevy_app::PostUpdate,
+@@ -496,10 +493,7 @@
+     app.add_event::<country_core::resources::mouse_capture::CursorCaptureCmd>();
+     app.add_event::<country_core::resources::mouse_capture::OsCursorCaptureCmd>();
+     app.add_event::<country_core::resources::mouse_capture::OsCursorVisibilityCmd>();
+-    app.add_systems(
+-        bevy_app::PostUpdate,
+-        country_core::resources::shutdown::initiate_game_shutdown,
+-    );
++    crate::shutdown_runtime::install_shutdown_maintenance(&mut app);
+     app.add_event::<country_core::game_profile::SaveGameProfileCmd>();
+     app.add_systems(
+         bevy_app::Update,
+@@ -1033,6 +1027,7 @@
+         country_core::resources::session::refresh_session_list_system,
+     );
+     app.add_event::<country_core::resources::events::ShutdownGameCmd>();
++    crate::shutdown_runtime::install_shutdown_maintenance(&mut app);
+     Ok(app)
+ }
+ 
+@@ -1043,6 +1038,7 @@
+     receiver: std::sync::mpsc::Receiver<anyhow::Result<bevy_app::SubApp>>,
+     pending: Option<bevy_app::SubApp>,
+     cancel: Arc<std::sync::atomic::AtomicBool>,
++    worker: Option<std::thread::JoinHandle<()>>,
+ }
+ 
+ impl GameplayPreparation {
+@@ -1054,7 +1050,7 @@
+         let (sender, receiver) = std::sync::mpsc::channel();
+         let cancel = Arc::new(AtomicBool::new(false));
+         let cancelled = cancel.clone();
+-        std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
++        let worker = std::thread::Builder::new().name("async load".to_owned()).spawn(move || {
+             // Host diagnostic boundary only: preserve the original load/ready
+             // gates, but carry a worker panic back to the owning OS thread.
+             let mut phase = "validate gameplay resources";
+@@ -1082,7 +1078,7 @@
+                 }
+                 phase = "original gameplay graph warm-up";
+                 warm_up(gameplay.world_mut())?;
+-                Ok(gameplay)
++                Ok(())
+             }))
+             .unwrap_or_else(|payload| {
+                 let message = if let Some(message) = payload.downcast_ref::<String>() {
+@@ -1096,13 +1092,43 @@
+                     "async gameplay loader panicked during {phase} (completed updates: {update_index}): {message}"
+                 ))
+             });
++            let result = match result {
++                Ok(()) => Ok(gameplay),
++                Err(error) => {
++                    if let Err(cleanup) = crate::shutdown_runtime::disconnect_save_worker(gameplay.world_mut()) {
++                        log::error!("async loader save cleanup: {cleanup:#}");
++                    }
++                    Err(error)
++                }
++            };
+             let _ = sender.send(result);
+         })?;
+         Ok(Self {
+             receiver,
+             pending: None,
+             cancel,
++            worker: Some(worker),
+         })
++    }
++
++    /// Host ownership barrier: no detached loader may keep updating a World or
++    /// warming a graph while the OS owner shuts the graphics device down.
++    pub(crate) fn cancel_and_join(&mut self) -> anyhow::Result<()> {
++        self.cancel.store(true, std::sync::atomic::Ordering::Release);
++        if let Some(worker) = self.worker.take() {
++            worker.join().map_err(|_| anyhow::anyhow!("async gameplay worker panicked during shutdown"))?;
++        }
++        if let Some(mut gameplay) = self.pending.take() {
++            crate::shutdown_runtime::disconnect_save_worker(gameplay.world_mut())?;
++        }
++        // A finished worker can have sent its World before the logo allowed
++        // handoff. That real pending owner also needs deterministic save exit.
++        while let Ok(result) = self.receiver.try_recv() {
++            if let Ok(mut gameplay) = result {
++                crate::shutdown_runtime::disconnect_save_worker(gameplay.world_mut())?;
++            }
++        }
++        Ok(())
+     }
+ 
+     /// Original main_loop polls only at the logo's waiting stage and switches
+@@ -1141,8 +1167,9 @@
+ 
+ impl Drop for GameplayPreparation {
+     fn drop(&mut self) {
+-        self.cancel
+-            .store(true, std::sync::atomic::Ordering::Release);
++        if let Err(error) = self.cancel_and_join() {
++            log::error!("gameplay preparation shutdown: {error:#}");
++        }
+     }
+ }
+ 
+@@ -1374,7 +1401,7 @@
+         let (sender, receiver) = std::sync::mpsc::channel();
+         sender.send(Ok(std::mem::take(gameplay.main_mut()))).unwrap();
+         let mut preparation = GameplayPreparation { receiver, pending: None,
+-            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)) };
++            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)), worker: None };
+         assert!(!preparation.poll(&mut loading).unwrap());
+         assert_eq!(loading.world().resource::<LogoAnimation>().progress[3],1.0);
+         assert_eq!(loading.world().resource::<GameConfig>().video.fps_limit,117.5);
+--- a/tiny-glade/crates/tiny-glade/src/lib.rs
++++ b/tiny-glade/crates/tiny-glade/src/lib.rs
+@@ -38,6 +38,7 @@
+ pub mod main;
+ pub mod render_loop;
+ pub mod run_game;
++pub(crate) mod shutdown_runtime;
+ pub mod setup;
+ 
+ // B `crates/tiny-glade/src` 窗口/渲染 glue、崩溃上报、GUI 面板、截图与杂项
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/src/shutdown_runtime.rs
+@@ -0,0 +1,111 @@
++//! Main-thread host shutdown maintenance while no drawable frame can run.
++//!
++//! B's zero-extent branch skips App::update. Its real close producer emits
++//! ShutdownGameCmd, consumed by save_game@140a3f470 and
++//! initiate_game_shutdown@140b2ba40. This host-only maintenance route reuses
++//! those same persistent systems; it is not an additional native B branch.
++use bevy_app::{App, PostUpdate, Update};
++use bevy_ecs::{prelude::*, schedule::ScheduleLabel};
++use country_core::{
++    resources::{events::ShutdownGameCmd, session::ActiveSession, shutdown::ShutdownGame},
++    systems::save::{save_game::{AutoSaveState, save_game_system}, save_thread::SaveThreadHandle},
++};
++
++#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
++struct SaveMaintenance;
++#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
++struct ShutdownMaintenance;
++
++/// Install exactly one save system, including its EventReaders and replay
++/// tracker Local. Normal set43 and a zero-extent close run this same instance.
++pub(crate) fn install_save_maintenance(app: &mut App) {
++    app.init_schedule(SaveMaintenance);
++    app.add_systems(SaveMaintenance,
++        save_game_system.run_if(bevy_ecs::schedule::common_conditions::resource_exists::<ActiveSession>));
++    app.add_systems(Update, run_save_maintenance.in_set(crate::run_game::GameSystemSet(43)));
++}
++
++/// Loading has no ActiveSession or complete save SystemParams. It installs
++/// only this actual command-to-marker consumer, on its own owning World.
++pub(crate) fn install_shutdown_maintenance(app: &mut App) {
++    app.init_schedule(ShutdownMaintenance);
++    app.add_systems(ShutdownMaintenance,
++        country_core::resources::shutdown::initiate_game_shutdown);
++    app.add_systems(PostUpdate, run_shutdown_maintenance);
++}
++
++fn run_save_maintenance(world: &mut World) {
++    world.run_schedule(SaveMaintenance);
++}
++fn run_shutdown_maintenance(world: &mut World) {
++    // A schedule run applies this exact system's Commands before returning,
++    // just as the native PostUpdate flush does before main_loop sees marker.
++    world.run_schedule(ShutdownMaintenance);
++}
++
++/// Preserve real save publication, metadata, async FIFO Flush/reply and its
++/// error handling before the real deferred quit marker. No simulation, time,
++/// MEI, rendering or invented loading resources run on this host-only path.
++pub(crate) fn finish_pending_shutdown_without_frame(world: &mut World) -> bool {
++    if world.contains_resource::<ShutdownGame>() {
++        return true;
++    }
++    let pending = world.get_resource::<Events<ShutdownGameCmd>>()
++        .is_some_and(|requests| !requests.is_empty());
++    if !pending {
++        return false;
++    }
++    if world.contains_resource::<ActiveSession>() {
++        run_save_maintenance(world);
++    }
++    run_shutdown_maintenance(world);
++    world.contains_resource::<ShutdownGame>()
++}
++
++/// End the real sender owners, then wait for the original save worker's
++/// Disconnected terminal branch (141720f8c...), which drains queued commands
++/// before flushing deferred sections. No fabricated shutdown/ack command.
++pub(crate) fn disconnect_save_worker(world: &mut World) -> anyhow::Result<()> {
++    let handle = world.remove_resource::<SaveThreadHandle>();
++    drop(world.remove_resource::<AutoSaveState>());
++    if let Some(SaveThreadHandle { join, command_sender, error_state }) = handle {
++        drop(command_sender);
++        let result = join.join();
++        drop(error_state);
++        result.map_err(|_| anyhow::anyhow!("async save worker panicked during shutdown"))?;
++    }
++    Ok(())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[derive(Resource, Default)]
++    struct Updates(u32);
++
++    #[test]
++    fn loading_close_consumes_real_request_without_save_params_or_app_update() {
++        let mut app = App::new();
++        app.add_event::<ShutdownGameCmd>();
++        install_shutdown_maintenance(&mut app);
++        app.init_resource::<Updates>();
++        app.add_systems(Update, |mut count: ResMut<Updates>| count.0 += 1);
++        assert!(!finish_pending_shutdown_without_frame(app.world_mut()));
++        app.world_mut().send_event(ShutdownGameCmd);
++        assert!(finish_pending_shutdown_without_frame(app.world_mut()));
++        assert_eq!(app.world().resource::<Updates>().0, 0);
++        assert!(!app.world().contains_resource::<ActiveSession>());
++        assert!(!app.world().contains_resource::<AutoSaveState>());
++        assert!(!app.world().contains_resource::<SaveThreadHandle>());
++        // Retained EventReader is shared with PostUpdate, not re-created for
++        // each zero frame. An already-read buffer cannot emit marker twice.
++        app.world_mut().remove_resource::<ShutdownGame>();
++        assert!(!finish_pending_shutdown_without_frame(app.world_mut()));
++        app.update();
++        assert!(!app.world().contains_resource::<ShutdownGame>());
++        app.world_mut().send_event(ShutdownGameCmd);
++        app.update();
++        assert!(app.world().contains_resource::<ShutdownGame>());
++    }
++}

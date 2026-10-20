@@ -1,0 +1,2 @@
+extern crate bevy_time;
+fn main(){ let mut t=bevy_time::Time::<()>::default(); t.advance_by(std::time::Duration::from_secs_f64(1.234));t.advance_by(std::time::Duration::from_secs_f64(0.125));let b=unsafe{std::slice::from_raw_parts((&t as *const _) as *const u8,std::mem::size_of_val(&t))};println!("size={} delta={} elapsed={} wrapped={}",b.len(),t.delta_secs(),t.elapsed_secs(),t.elapsed_secs_wrapped());for (i,c) in b.chunks_exact(4).enumerate(){if i>=20{println!("{:x} {}",i*4,f32::from_ne_bytes(c.try_into().unwrap()));}}}

@@ -1,0 +1,6 @@
+from pathlib import Path
+b=Path('D:/game/reverse-engineering/tiny-glade/evidence/round12/wall-gpu/candidates-sheep')
+p=b/'crates/systems/critters/src/components.rs';s=p.read_text(encoding='utf-8');a=s.index('/// `Wren`');z=s.index('pub use crate::bird_spots',a);s=s[:a]+'pub use country_core::resources::critters::Wren;\n\n'+s[z:];s=s.replace('pub use country_core::resources::critters::CritterGoal;','pub use country_core::resources::critters::{Critter, CritterGoal};');p.write_text(s,encoding='utf-8')
+p=b/'crates/systems/critters/src/bird_spots.rs';s=p.read_text(encoding='utf-8').replace('#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]','#[repr(transparent)]\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]',1).replace('#[derive(Clone, Copy, Debug, Default, PartialEq)]','#[repr(C)]\n#[derive(Clone, Copy, Debug, Default, PartialEq)]',1);p.write_text(s,encoding='utf-8')
+p=b/'crates/tiny-glade/tests/original_sheep_birth.rs';s=p.read_text(encoding='utf-8').replace('name:&str|meshes','name:&\'static str|meshes');p.write_text(s,encoding='utf-8')
+p=b/'crates/country-core/src/components/drawable.rs';s=p.read_text(encoding='utf-8').replace('//! 当前仍未在本文件恢复 cache_prev_object_transforms 系统和完整的材质组件族；','//! Previous-object transforms use the canonical component below; material families');p.write_text(s,encoding='utf-8')

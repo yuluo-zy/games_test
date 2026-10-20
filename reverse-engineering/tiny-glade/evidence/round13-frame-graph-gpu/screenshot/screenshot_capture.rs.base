@@ -1,0 +1,203 @@
+//! B gather@14031af10 shared-texture branches and opportunity@14031d140.
+//! Native purpose 1 is the LUT preview, purpose 2 the menu background.
+//! This owns actual GPU destinations; T13 feedback capture is excluded.
+use crate::render_bridge::CoreGraphFrame;
+use bevy_ecs::prelude::*;
+use country_core::{
+    render::{pass_builder::pass_resource_access::RgTexture, render_config::FrameRenderConfig},
+    resources::{
+        events::EscapeMenuJustOpened,
+        gui::{EscMenuState, NextEscMenuState},
+    },
+    rhapsody_types::TextureDesc,
+    systems::render_loop::{lut_gallery::LutGalleryState, menu_background::ManagedTexture},
+};
+use std::sync::Arc;
+
+type PreviewSlot = Arc<parking_lot::Mutex<Option<ManagedTexture>>>;
+enum Destination {
+    Menu,
+    Gallery(PreviewSlot),
+}
+struct Request {
+    purpose: u8,
+    dimensions: Option<[u32; 2]>,
+    destination: Destination,
+}
+#[derive(Resource, Default)]
+struct Requests(Vec<Request>);
+
+pub fn install(app: &mut bevy_app::App) {
+    app.init_resource::<Requests>();
+    app.add_event::<EscapeMenuJustOpened>();
+    // Host scheduling adaptation: gather after gameplay/menu updates and before
+    // graph declaration. The original exact numeric set remains under audit.
+    app.add_systems(bevy_app::PostUpdate, gather);
+}
+
+fn gather(
+    mut opened: EventReader<EscapeMenuJustOpened>,
+    menu: Res<EscMenuState>,
+    mut next: ResMut<NextEscMenuState>,
+    config: Res<FrameRenderConfig>,
+    mut gallery: ResMut<LutGalleryState>,
+    mut requests: ResMut<Requests>,
+) {
+    // RNE14031bd96..bf68: tag10/flag0 -> Next(tag10,flag1), square
+    // trunc(height*.4).max(1), fresh Arc slot and purpose1 texture request.
+    if matches!(*menu, EscMenuState::Photomode(false)) {
+        let side = ((config.extent_8[1] as f32 * 0.4) as u32).max(1);
+        let slot = Arc::new(parking_lot::Mutex::new(None));
+        gallery.preview = Some(slot.clone());
+        next.set(EscMenuState::Photomode(true));
+        requests.0.push(Request {
+            purpose: 1,
+            dimensions: Some([side, side]),
+            destination: Destination::Gallery(slot),
+        });
+    }
+    // Original event reader consumes the complete batch and queues one capture.
+    if opened.read().count() != 0 {
+        requests.0.push(Request {
+            purpose: 2,
+            dimensions: None,
+            destination: Destination::Menu,
+        });
+    }
+}
+
+/// Original tail T4, after final_post and before menu backgrounds. All queued
+/// matching requests are processed; they retain original slots across frames.
+pub fn opportunity(
+    frame: &mut CoreGraphFrame<'_>,
+    world: &mut World,
+    purpose: u8,
+    source: RgTexture,
+    sample_count: u8,
+) -> rhapsody::Result<usize> {
+    let Some(mut requests) = world.remove_resource::<Requests>() else {
+        return Err(rhapsody::Error::invalid_usage(
+            "missing original shared screenshot request owner",
+        ));
+    };
+    let result = (|| {
+        let mut captured = 0;
+        let mut index = 0;
+        while index < requests.0.len() {
+            if requests.0[index].purpose != purpose {
+                index += 1;
+                continue;
+            }
+            let request = &requests.0[index];
+            let size = request.dimensions.unwrap_or(source.desc.extent_2d());
+            let hosts = frame.hosts();
+            use country_core::render::load_texture::boundary::TextureDevice;
+            let desc = TextureDesc::new_2d(size, 0x25).storage().sampled();
+            let texture = hosts
+                .textures
+                .create_texture("screenshot target", &desc, &[])
+                .map_err(|error| rhapsody::Error::invalid_usage(error.to_string()))?;
+            let built = (|| {
+                let target_id = frame.import_texture(&texture, 0x11)?;
+                let target = RgTexture {
+                    resource: target_id.raw(),
+                    desc,
+                };
+                crate::scene_compute::with_env(frame, world, |env| {
+                    let count = downsample_count(source.desc.extent_2d()[1], size[1]);
+                    let mut input = source;
+                    let mut samples = sample_count;
+                    for _ in 0..count {
+                        let half =
+                            country_core::systems::render_loop::compute_passes::pass_kit::half_res(
+                                input.desc,
+                            );
+                        let out = env.create_texture(
+                            "blur downsample out",
+                            TextureDesc::new_2d(half.extent_2d(), 0x25),
+                        );
+                        let (shader, binding) = if samples == 1 {
+                            ("/blur_downsample.cs.hlsl", 0x11ba_5697_cc40_b3dd)
+                        } else {
+                            (
+                                "/blur_downsample.cs.hlsl:cs_main_multisampled",
+                                0xd03d_c8b4_a9aa_ab46,
+                            )
+                        };
+                        let pass = env
+                            .try_new_pass("Blur downsample", &shader)?
+                            .bind_texture(binding, &&input, 0x19)
+                            .bind_texture(0x8821_9a3a_e698_92b2, &&out, 0x32)
+                            .dispatch_2d(half.extent_2d()[0], half.extent_2d()[1]);
+                        env.record(pass);
+                        input = out;
+                        samples = 1;
+                    }
+                    let (shader, binding) = if samples == 1 {
+                        (
+                            "/screenshot/capture_screenshot_texture.cs.hlsl:sample1",
+                            0xd15b_e69a_f90f_5947,
+                        )
+                    } else {
+                        (
+                            "/screenshot/capture_screenshot_texture.cs.hlsl:sample4",
+                            0x681c_a9c9_3557_dc9c,
+                        )
+                    };
+                    let pass = env
+                        .try_new_pass("Capture screenshot texture", &shader)?
+                        .bind_texture(binding, &&input, 0x19)
+                        .bind_texture(0x94f8_b4d9_d73f_8eea, &&target, 0x32)
+                        .uniform(0xca50_2818_f423_c41d, size)
+                        .dispatch_2d(size[0], size[1]);
+                    env.record(pass);
+                    Ok(())
+                })?;
+                frame.with_graph(|graph| {
+                    graph.export(target_id, 0x22)?;
+                    Ok(())
+                })?;
+                match &request.destination {
+                    Destination::Menu => {
+                        crate::menu_background_host::publish(world, &hosts, texture.clone())
+                    }
+                    Destination::Gallery(slot) => {
+                        crate::world_postprocess::publish_lut_gallery_preview_to_slot(
+                            world,
+                            &hosts,
+                            slot,
+                            texture.clone(),
+                        )
+                    }
+                }
+            })();
+            if let Err(error) = built {
+                hosts.textures.release(&texture);
+                return Err(error);
+            }
+            requests.0.remove(index);
+            captured += 1;
+        }
+        Ok(captured)
+    })();
+    world.insert_resource(requests);
+    result
+}
+
+/// RNE14031d3fb..d4b6: source-height / output-height, log2f then roundf,
+/// saturating float-to-u64 conversion. Width does not select the mip count.
+fn downsample_count(source_height: u32, output_height: u32) -> u64 {
+    (source_height as f32 / output_height as f32).log2().round() as u64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn original_height_ratio_selects_all_downsample_stages() {
+        assert_eq!(downsample_count(1080, 432), 1);
+        assert_eq!(downsample_count(1080, 1080), 0);
+        assert_eq!(downsample_count(1080, 4096), 0);
+        assert_eq!(downsample_count(4096, 64), 6);
+    }
+}

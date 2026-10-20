@@ -1,0 +1,27 @@
+tiny-glade/crates/tiny-glade/src\run_game.rs:1135:        let parsed = country_core::systems::save::load_game::parse_saved_game_data(&path)
+tiny-glade/crates/country-core/src\meta_commander.rs:200:    pub fn begin_session_load(&mut self, mut original: MetaCommand) -> NextSession {
+tiny-glade/crates/country-core/src\resources\session.rs:364:pub struct NextSession {
+tiny-glade/crates/country-core/src\resources\session.rs:378:pub struct NextSessionTemplate {
+tiny-glade/crates/country-core/src\resources\session.rs:384:impl NextSessionTemplate {
+tiny-glade/crates/country-core/src\resources\session.rs:404:impl NextSession {
+tiny-glade/crates/country-core/src\resources\session.rs:410:            kind: NextSessionKind::LoadOnLoad,
+tiny-glade/crates/country-core/src\resources\session.rs:600:            &NextSessionTemplate::new(SessionId(Uuid::nil()), NextSessionKind::LoadSavedGame),
+tiny-glade/crates/country-core/src\systems\save\load_game.rs:352:pub fn parse_saved_game_data(path: &Path) -> anyhow::Result<ParsedGameData> {
+tiny-glade/crates/country-core/src\systems\save\load_game.rs:722:pub fn advance_load_game(
+tiny-glade/crates/country-core/src\systems\save\load_game.rs:750:                    let parsed = parse_saved_game_data(path)?;
+tiny-glade/crates/country-core/src\systems\save\load_game.rs:798:    let (parsed, commands) = advance_load_game(manager, next, save_path)?;
+tiny-glade/crates/country-core/src\systems\save\load_game.rs:1023:                        parse_saved_game_data(path)
+tiny-glade/crates/country-core/src\systems\save\tests.rs:65:    let parsed = parse_saved_game_data(&path).unwrap();
+tiny-glade/crates/country-core/src\systems\save\tests.rs:82:    assert!(parse_saved_game_data(&path).is_err());
+tiny-glade/crates/country-core/src\systems\save\tests.rs:86:    assert!(parse_saved_game_data(&path).is_err());
+tiny-glade/crates/country-core/src\systems\save\tests.rs:427:        &NextSessionTemplate::new(SessionId::new(), NextSessionKind::LoadOnLoad),
+tiny-glade/crates/country-core/src\systems\save\tests.rs:445:    let (parsed, commands) = advance_load_game(&mut manager, &session, None).unwrap();
+tiny-glade/crates/country-core/src\systems\save\tests.rs:470:        &NextSessionTemplate::new(SessionId::new(), NextSessionKind::LoadOnLoad),
+tiny-glade/crates/country-core/src\systems\save\tests.rs:480:    let (parsed, _commands) = advance_load_game(&mut manager, &session, None).unwrap();
+tiny-glade/crates/country-core/src\startup\run_game.rs:105:            &NextSessionTemplate::new(SessionId(uuid::Uuid::nil()), NextSessionKind::LoadSavedGame),
+tiny-glade/crates/country-core/src\startup\startup_session.rs:123:    if request.kind == NextSessionKind::None {
+tiny-glade/crates/country-core/src\startup\startup_session.rs:133:        NextSessionKind::LoadSavedGame => saved_sessions.sessions.first().map(|session| session.id),
+tiny-glade/crates/country-core/src\startup\startup_session.rs:134:        NextSessionKind::LoadOnLoad => Some(request.id),
+tiny-glade/crates/country-core/src\startup\startup_session.rs:135:        NextSessionKind::None => unreachable!(),
+tiny-glade/crates/country-core/src\startup\tests.rs:287:    request.kind = NextSessionKind::None;
+tiny-glade/crates/country-core/src\startup\tests.rs:405:        crate::systems::save::load_game::advance_load_game(&mut manager, &request, None).is_err()

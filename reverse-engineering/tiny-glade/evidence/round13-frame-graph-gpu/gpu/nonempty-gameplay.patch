@@ -1,0 +1,13 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
+@@ -313,6 +313,10 @@
+     eprintln!(
+         "actual draw-list entries before warmup: {}",
+         lists.total_len()
++    );
++    anyhow::ensure!(
++        lists.total_len() > 0,
++        "shipped gameplay acceptance requires actual nonempty DrawLists before production GPU warmup"
+     );
+     assert!(world.contains_resource::<tiny_glade::loading_graph::LoadingGpuResources>());
+     tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)

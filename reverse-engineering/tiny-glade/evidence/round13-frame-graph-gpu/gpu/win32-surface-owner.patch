@@ -1,0 +1,25 @@
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -1400,17 +1400,11 @@
+         &self,
+         instance: Arc<rhapsody::interop::VulkanInstance>,
+     ) -> Result<Arc<rhapsody::present::Surface>> {
+-        let loader = ash::khr::win32_surface::Instance::new(&instance.entry, &instance.instance);
+-        let info = vk::Win32SurfaceCreateInfoKHR::default()
+-            .hinstance(self.hinstance)
+-            .hwnd(self.hwnd);
+-        // ProductionRenderer retains the winit Window until after its swapchain
+-        // and Surface owners drop. Surface::from_raw owns the Vulkan destruction.
+-        let handle = unsafe { loader.create_win32_surface(&info, None) }
+-            .context("create Vulkan Win32 surface")?;
+-        Ok(Arc::new(unsafe {
+-            rhapsody::present::Surface::from_raw(instance, handle, true)
+-        }))
++        // Keep the existing Win32-specific Surface constructor: in addition
++        // to owning destruction it marks the surface as Win32 for fullscreen.
++        // ProductionRenderer retains the winit Window through all WSI owners.
++        unsafe { rhapsody::present::Surface::from_win32(instance, self.hinstance, self.hwnd) }
++            .context("create Vulkan Win32 surface")
+     }
+ }
+ 

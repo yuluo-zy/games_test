@@ -1,0 +1,55 @@
+--- a/tiny-glade/crates/country-core/src/resources/glade_color_customization.rs
++++ b/tiny-glade/crates/country-core/src/resources/glade_color_customization.rs
+@@ -34,8 +34,11 @@
+     pub window_light: ColorId,
+     /// index 9，+0x34
+     pub flag: bool,
+-    /// index 10，+0x00
+-    pub windows: ColorId,
++    /// index 10，native +0x00 tag / +0x04 payload.
++    /// None preserves the original automatic/inherited window color; Some(0)
++    /// is an explicit color and remains distinct in memory and in saved JSON.
++    /// B14085f085 calls the Option<ColorId> serialize_entry specialization.
++    pub windows: Option<ColorId>,
+     /// index 11，+0x38
+     pub gates: ColorId,
+     /// index 12，+0x41（字节枚举，变体名待取证）
+@@ -63,7 +66,7 @@
+             fence: ColorId(6),
+             window_light: ColorId(7),
+             flag: true,
+-            windows: ColorId(8),
++            windows: Some(ColorId(8)),
+             gates: ColorId(9),
+             flat_rim_style: 3,
+             lantern_brightness: 0.5,
+@@ -78,4 +81,29 @@
+             serde_json::json!(42)
+         );
+     }
++
++    #[test]
++    fn windows_wire_preserves_none_and_explicit_zero() {
++        // Original B14085ee90 was executed directly for each fixture; see
++        // round12/color-menu/gcc-windows-original-execution.json. The native
++        // serializer always emits the windows key, with null for None.
++        for (windows, wire) in [
++            (None, serde_json::Value::Null),
++            (Some(ColorId(0)), serde_json::json!(0)),
++            (Some(ColorId(8)), serde_json::json!(8)),
++            (Some(ColorId(u32::MAX)), serde_json::json!(u32::MAX)),
++        ] {
++            let colors = GladeColorCustomization {
++                windows,
++                ..Default::default()
++            };
++            let saved = serde_json::to_value(colors).unwrap();
++            assert_eq!(saved["windows"], wire);
++            assert_eq!(saved.as_object().unwrap().len(), 15);
++            let loaded: GladeColorCustomization = serde_json::from_value(saved).unwrap();
++            assert_eq!(loaded.windows, windows);
++        }
++        assert_ne!(None, Some(ColorId(0)));
++    }
++
+ }

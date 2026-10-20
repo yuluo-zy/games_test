@@ -1,0 +1,4094 @@
+--- /dev/null
++++ b/tiny-glade/crates/systems/critters/src/wren/roof_spots.rs
+@@ -0,0 +1,54 @@
++//! Complete original roof perch producer, 14231db27..14231e0a6.
++use country_core::resources::roofs::{roof_shape::Roof, roof_ridge::{RoofRidgeDims, calc_roof_tip_center_ls}, roof_noise::apply_roof_noise, geometry::tiles::{random_splits, TileRng}};
++use glam::{Vec2, Vec3};
++use utils::geometry::rectangle::Rectangle2d;
++use crate::bird_spots::{BirdSpot, BirdSpotManager};
++
++pub fn sample_roof_bird_spots(roof: &Roof, frame_count: u32, manager: &mut BirdSpotManager) -> Vec<BirdSpot> {
++    let bytes = roof.observed();
++    let at = |offset| f32::from_le_bytes(bytes[offset..offset+4].try_into().unwrap());
++    if u32::from_le_bytes(bytes[8..12].try_into().unwrap()) != 1 || roof.is_flat() {
++        return Vec::new();
++    }
++    let shape = Rectangle2d {
++        axis: Vec2::new(at(0xc), at(0x10)),
++        center: Vec2::new(at(0x14), at(0x18)),
++        size: Vec2::new(at(0x1c), at(0x20)),
++    };
++    let orientation = shape.orientation_mat2();
++    let dims = Vec2::from(RoofRidgeDims::from(roof).get());
++    // Native arguments XMM1/XMM2 are both +0, not the ridge dimensions.
++    let center = Vec2::from(calc_roof_tip_center_ls(roof, [0.0, 0.0]));
++    let ridge = Rectangle2d::new_axis_aligned(center, dims);
++    let (mut a, mut b) = ridge.get_edge_pts(usize::from(bytes[0x3c] == 0));
++    if roof.is_gable() && bytes[0x54] == 0 {
++        let delta = a - b;
++        let trim = 0.1 / (delta.y * delta.y + delta.x * delta.x).sqrt();
++        let keep = 1.0 - trim;
++        let old_a = a;
++        a = b * trim + old_a * keep;
++        b = old_a * trim + b * keep;
++    }
++    let delta = a - b;
++    let length = (delta.y * delta.y + delta.x * delta.x).sqrt();
++    if !(length > 0.5) { return Vec::new(); }
++    let mut rng = TileRng(utils::rng::init_rng(frame_count));
++    let count = ((length / 0.3) as i32).clamp(1, 7) as usize;
++    let spread = length / count as f32 + (-0.1);
++    // Native MAXSS selects +0 on equality and unordered input.
++    let spread = if spread > 0.0 { spread } else { 0.0 };
++    let amplitude = (spread + spread) / length;
++    let splits = random_splits(count + 1, amplitude, &mut rng);
++    let mut points = Vec::with_capacity(count);
++    for interval in splits.windows(2) {
++        let random = rng.next_f32();
++        let sample = random * 0.7 + (1.0 - random) * 0.3;
++        let t = interval[1] * sample + interval[0] * (1.0 - sample);
++        let local = b * t + a * (1.0 - t);
++        let world = orientation * local + shape.center;
++        let mut y = roof.height() + roof.floor_y();
++        apply_roof_noise(world.x, world.y, 1.0, &mut y);
++        points.push(BirdSpot { occupant: None, pos: Vec3::new(world.x, y, world.y), id: manager.gen_id() });
++    }
++    points
++}
+--- a/tiny-glade/crates/systems/critters/src/wren.rs
++++ b/tiny-glade/crates/systems/critters/src/wren.rs
+@@ -27,6 +27,7 @@
+ use crate::components::{BirdSpot, BirdSpots, Wren};
+ use crate::wren_boids::WrenAudio;
+ pub mod recycle;
++pub mod roof_spots;
+ 
+ /// `SittableForBirds`（B component，0x10）：`DecoratorId u32@+0` + 局部偏移
+ /// `Vec3@+4`（world = 装饰物 Transform 变换该偏移）。country-core 仅注册未定义该类型，
+@@ -112,32 +113,8 @@
+     local.spots.retain(|id, _| keep.contains(id));
+ }
+ 
+-/// 屋顶鸟点生成（0x14231d6c0）。
+-///
+-/// PDB 符号签名（0x141d81f90）：
+-/// `fn(Query<(Entity, &mut Transform, &mut Wren), Without<SittableForBirds>>,
+-///     EventReader<RecalculateRoofCmd>, EventReader<OnWallChanged>,
+-///     Query<(&Roof, Option<&BirdSpots>)>, ResMut<BirdSpotManager>, Commands,
+-///     Res<PublicWalls>, Res<UiSignifierStream>, Res<GameTime>)`。
+-///
+-/// **状态：部分实现（未实现-需重做）**。已证并落库：
+-/// - 事件驱动：`RecalculateRoofCmd` / `OnWallChanged` 标记需重算的屋顶；
+-/// - `PublicWalls::roof_entity` 取屋顶实体；实体不存在 → `BirdSpotManager::recycle`
+-///   （屋顶移除路径）；
+-/// - 形状门：`Roof` 截面 tag==1（矩形）且 `!is_flat` 才产生脊线停靠点；
+-/// - 矩形门：`RoofRidgeDims::from` + `calc_roof_tip_center_ls` → `Rectangle2d`
+-///   （`orientation_mat2`/`new_axis_aligned`）→ `get_edge_pts`，两端距 > 0.5 才采样；
+-///   否则空点集。
+-///
+-/// **未实现（分歧点/解锁条件）**：
+-/// - `utils::rng::init_rng` 的种子来源（寄存器实参 U）；
+-/// - `utils::random_splits` 的 count/amplitude 实参（U）与逐点 `fastrand::Rng::f32`
+-///   偏置用途；
+-/// - 逐点 `Roof::height(t)` + `swizzlers::xvy` + `apply_roof_noise` 的采样平面
+-///   （脊线 u 值 → 世界点）未闭合；
+-/// - `ClutterVersion::is_initial` 分支（0x54 style byte）选边差异；
+-/// - `UiSignifierStream` 调试写入、wren 实体对旧点的重定位路径。
+-/// 解锁条件：上述实参需 fresh 反汇编逐寄存器闭合（当前 ghidra 变量合并无法区分）。
++/// Original 14231d6c0: recalc events supply the roof entity directly; wall
++/// publication events resolve their current roof. Repeated events are retained.
+ pub fn update_roof_bird_spots(
+     time: Res<GameTime>,
+     walls: Res<PublicWalls>,
+@@ -145,60 +122,16 @@
+     mut commands: Commands,
+     mut roof_changed: EventReader<RecalculateRoofCmd>,
+     mut wall_changed: EventReader<OnWallChanged>,
+-    mut roofs: Query<(&Roof, Option<&BirdSpots>)>,
++    roofs: Query<(&Roof, Option<&BirdSpots>)>,
+     mut wrens: Query<(Entity, &mut crate::components::Transform, &mut Wren), Without<SittableForBirds>>,
+ ) {
+-    let _ = &time;
+-    // 收集需重算的墙（事件载荷 = WallId）。
+-    let mut dirty: Vec<country_core::resources::walls::WallId> = Vec::new();
+-    for event in roof_changed.read() {
+-        dirty.push(event.wall);
+-    }
+-    for event in wall_changed.read() {
+-        dirty.push(event.0);
+-    }
+-    for wall in dirty {
+-        let Some(roof_entity) = walls.roof_entity(wall) else {
+-            // 屋顶已移除：回收（O：`recycle::<closure_env$3>`）。
+-            continue;
+-        };
+-        let Ok((roof, _existing)) = roofs.get_mut(roof_entity) else {
+-            continue;
+-        };
+-        // 形状门：tag==1（矩形）&& !is_flat（O 14231daf6/14231db0x）。
+-        let rect_roof = roof.observed()[8..12]
+-            .try_into()
+-            .map(u32::from_le_bytes)
+-            .unwrap_or(0)
+-            == 1;
+-        if !rect_roof || roof.is_flat() {
+-            let spots = manager.create_spots(Vec::new());
+-            commands.entity(roof_entity).insert(spots);
+-            continue;
+-        }
+-        // 脊线矩形门（几何部分已证；采样段未实现 → 空点集并登记）。
+-        let dims = country_core::resources::roofs::roof_ridge::RoofRidgeDims::from(roof);
+-        let tip = country_core::resources::roofs::roof_ridge::calc_roof_tip_center_ls(
+-            roof,
+-            dims.get(),
+-        );
+-        let rect = utils::geometry::rectangle::Rectangle2d::new_axis_aligned(
+-            glam::Vec2::new(tip[0], tip[1]),
+-            glam::Vec2::new(dims.get()[0], dims.get()[1]),
+-        );
+-        let _ = roof.is_gable();
+-        let (a, b) = rect.get_edge_pts(0);
+-        let edge_len = (b - a).length();
+-        let spots = if 0.5 < edge_len {
+-            // 未实现：init_rng/random_splits/height/xvy/apply_roof_noise 采样（见函数注）。
+-            Vec::new()
+-        } else {
+-            Vec::new()
+-        };
+-        let spots = manager.create_spots(spots);
+-        commands.entity(roof_entity).insert(spots);
+-    }
+-    // The original drains every update, including updates without roof events.
++    let roof_entities = roof_changed.read().map(|event| event.entity)
++        .chain(wall_changed.read().filter_map(|event| walls.roof_entity(event.0)));
++    for roof_entity in roof_entities {
++        let Ok((roof, _existing)) = roofs.get(roof_entity) else { continue };
++        let records = roof_spots::sample_roof_bird_spots(roof, time.frame_count, &mut manager);
++        commands.entity(roof_entity).insert(manager.create_spots(records));
++    }
+     recycle::recycle_returned_bird_spots(&mut manager, &mut wrens);
+ }
+ 
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/tests/fixtures/roof_birdspot_original.json
+@@ -0,0 +1,3869 @@
++{
++  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
++  "range": [
++    "0x14231db27",
++    "0x14231e0a6"
++  ],
++  "scope": "Original complete shape gate, ridge/edge/clipping, frame-count seed, split planning, original random_splits/fastrand, interval sampling, world transform, height and roof-noise game instructions. Stops at original create_spots owner boundary. Only CRT floorf/memcpy/memset, allocation and generic Vec growth are dependency shims; no game helper is replaced.",
++  "cases": [
++    {
++      "name": "dir0-style0-ridge0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style0-ridge0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style0-ridge0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style0-ridge0.05-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style0-ridge0.05-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style0-ridge0.05-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style0-ridge0.2-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1061540213,
++        "boundaries_bits": [
++          0,
++          1058001760,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077402075,
++            1092046137,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1079041259,
++            1092061926,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge0.2-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1061540213,
++        "boundaries_bits": [
++          0,
++          1056580041,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077241585,
++            1092044598,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078773433,
++            1092059442,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge0.2-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1061540213,
++        "boundaries_bits": [
++          0,
++          1057925474,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077337110,
++            1092045512,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078902605,
++            1092060650,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge0.5-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047621200,
++        "boundaries_bits": [
++          0,
++          1044366464,
++          1052288669,
++          1057110732,
++          1060166104,
++          1061991498,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074589306,
++            1092025501,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076198658,
++            1092035287,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077327660,
++            1092045421,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078620234,
++            1092057990,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080204306,
++            1092071410,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081338860,
++            1092077380,
++            3231606374
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge0.5-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047621200,
++        "boundaries_bits": [
++          0,
++          1042727217,
++          1052329220,
++          1056728920,
++          1059466271,
++          1062933402,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074494252,
++            1092025179,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076131972,
++            1092034750,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077160460,
++            1092043827,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078494598,
++            1092056786,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080450606,
++            1092073038,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081624516,
++            1092078178,
++            3231606374
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge0.5-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047621200,
++        "boundaries_bits": [
++          0,
++          1044264750,
++          1052105800,
++          1056702179,
++          1060200162,
++          1063146252,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074212790,
++            1092024434,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075691648,
++            1092031443,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077440134,
++            1092046505,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078620202,
++            1092057990,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080455678,
++            1092073070,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081535729,
++            1092077965,
++            3231606374
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge1.0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1047440700,
++        "boundaries_bits": [
++          0,
++          1042571081,
++          1050559915,
++          1054818362,
++          1058510375,
++          1060074998,
++          1063227648,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1069457924,
++            1092035506,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1073503282,
++            1092023978,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075680872,
++            1092031368,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078585223,
++            1092057656,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080117617,
++            1092070799,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082041915,
++            1092078734,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1083628967,
++            1092104720,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge1.0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1047440700,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1069038860,
++            1092037601,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1072629280,
++            1092024834,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075736167,
++            1092031757,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078181082,
++            1092053742,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080267540,
++            1092071843,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082246510,
++            1092078953,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1083390252,
++            1092098020,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir0-style0-ridge1.0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1047440700,
++        "boundaries_bits": [
++          0,
++          1042483898,
++          1050403171,
++          1054342925,
++          1058539568,
++          1061064787,
++          1062542779,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1067785816,
++            1092044510,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1073976828,
++            1092024062,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075634303,
++            1092031046,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078254764,
++            1092054461,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080347555,
++            1092072377,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082470284,
++            1092080411,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1083453770,
++            1092099743,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style1-ridge0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style1-ridge0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style1-ridge0.05-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style1-ridge0.05-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style1-ridge0.05-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir0-style1-ridge0.2-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1061540213,
++        "boundaries_bits": [
++          0,
++          1058001760,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077402075,
++            1092046137,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1079041259,
++            1092061926,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge0.2-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1061540213,
++        "boundaries_bits": [
++          0,
++          1056580041,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077241585,
++            1092044598,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078773433,
++            1092059442,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge0.2-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1061540213,
++        "boundaries_bits": [
++          0,
++          1057925474,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077337110,
++            1092045512,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078902605,
++            1092060650,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge0.5-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047621200,
++        "boundaries_bits": [
++          0,
++          1044366464,
++          1052288669,
++          1057110732,
++          1060166104,
++          1061991498,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074589306,
++            1092025501,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076198658,
++            1092035287,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077327660,
++            1092045421,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078620234,
++            1092057990,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080204306,
++            1092071410,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081338860,
++            1092077380,
++            3231606374
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge0.5-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047621200,
++        "boundaries_bits": [
++          0,
++          1042727217,
++          1052329220,
++          1056728920,
++          1059466271,
++          1062933402,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074494252,
++            1092025179,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076131972,
++            1092034750,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077160460,
++            1092043827,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078494598,
++            1092056786,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080450606,
++            1092073038,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081624516,
++            1092078178,
++            3231606374
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge0.5-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047621200,
++        "boundaries_bits": [
++          0,
++          1044264750,
++          1052105800,
++          1056702179,
++          1060200162,
++          1063146252,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074212790,
++            1092024434,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075691648,
++            1092031443,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077440134,
++            1092046505,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078620202,
++            1092057990,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080455678,
++            1092073070,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081535729,
++            1092077965,
++            3231606374
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge1.0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1047617303,
++        "boundaries_bits": [
++          0,
++          1042571081,
++          1050559915,
++          1054818362,
++          1058510375,
++          1060074998,
++          1063227648,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1068790950,
++            1092038896,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1073049222,
++            1092024290,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075562174,
++            1092030559,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078619386,
++            1092057982,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080232432,
++            1092071604,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082194220,
++            1092078814,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1083818214,
++            1092110392,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge1.0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1047617303,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1068349830,
++            1092041293,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1072129220,
++            1092025785,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075620380,
++            1092030951,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078193974,
++            1092053868,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080390246,
++            1092072654,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082362996,
++            1092079543,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1083566934,
++            1092102924,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir0-style1-ridge1.0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1047617303,
++        "boundaries_bits": [
++          0,
++          1042483898,
++          1050403171,
++          1054342925,
++          1058539568,
++          1061064787,
++          1062542779,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1067030836,
++            1092049031,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1073768444,
++            1092023937,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075513154,
++            1092030236,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078271535,
++            1092054625,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080474472,
++            1092073187,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082598548,
++            1092081831,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1083633796,
++            1092104861,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style0-ridge0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style0-ridge0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style0-ridge0.05-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style0-ridge0.05-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style0-ridge0.05-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style0-ridge0.2-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051721729,
++        "boundaries_bits": [
++          0,
++          1049613152,
++          1057651957,
++          1061378098,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063190,
++            3232588058
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092056081,
++            3232064391
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092044057,
++            3231248657
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092035799,
++            3230599131
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge0.2-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051721729,
++        "boundaries_bits": [
++          0,
++          1048191433,
++          1057682371,
++          1060982146,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092065454,
++            3232781370
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092053814,
++            3231909885
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092044406,
++            3231273140
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092036035,
++            3230620962
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge0.2-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051721729,
++        "boundaries_bits": [
++          0,
++          1049536866,
++          1057514806,
++          1060962090,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063146,
++            3232584463
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092052898,
++            3231848149
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092046596,
++            3231424350
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092038725,
++            3230851017
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge0.5-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046572164,
++        "boundaries_bits": [
++          0,
++          1042571081,
++          1050559915,
++          1054818362,
++          1058510375,
++          1060074998,
++          1063227648,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071825,
++            3234254071
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070842,
++            3233442338
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063536,
++            3232616302
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092046984,
++            3231450740
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092038536,
++            3230835766
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092031305,
++            3230063515
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092036404,
++            3228036360
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge0.5-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046572164,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071858,
++            3234338159
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071490,
++            3233617713
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063265,
++            3232594111
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092049388,
++            3231612928
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092037805,
++            3230775600
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030665,
++            3229934824
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092033786,
++            3228419562
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge0.5-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046572164,
++        "boundaries_bits": [
++          0,
++          1042483898,
++          1050403171,
++          1054342925,
++          1058539568,
++          1061064787,
++          1062542779,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071983,
++            3234589592
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070050,
++            3233300162
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063762,
++            3232634991
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092048947,
++            3231583358
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092037424,
++            3230743488
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030108,
++            3229755215
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092034425,
++            3228317598
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge1.0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1048617323,
++        "boundaries_bits": [
++          0,
++          1042571081,
++          1050559915,
++          1054818362,
++          1058510375,
++          1060074998,
++          1063227648,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092073662,
++            3236546794
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092072266,
++            3235003171
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070794,
++            3233432348
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092043593,
++            3231215870
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092031209,
++            3230046412
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092040573,
++            3227541656
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092092642,
++            3222832076
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge1.0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1048617323,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092073796,
++            3236706700
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092072543,
++            3235336672
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070578,
++            3233390150
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092048070,
++            3231524294
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030653,
++            3229931996
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092045418,
++            3227052208
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092086169,
++            3223560788
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style0-ridge1.0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1048617323,
++        "boundaries_bits": [
++          0,
++          1042483898,
++          1050403171,
++          1054342925,
++          1058539568,
++          1061064787,
++          1062542779,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092074138,
++            3237184836
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092072072,
++            3234732803
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070960,
++            3233467888
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092047239,
++            3231468062
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030420,
++            3229870932
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092053065,
++            3226369106
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092088050,
++            3223366888
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style1-ridge0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style1-ridge0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f000000000000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style1-ridge0.05-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style1-ridge0.05-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style1-ridge0.05-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3d0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "dir1-style1-ridge0.2-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051721729,
++        "boundaries_bits": [
++          0,
++          1049613152,
++          1057651957,
++          1061378098,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063190,
++            3232588058
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092056081,
++            3232064391
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092044057,
++            3231248657
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092035799,
++            3230599131
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge0.2-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051721729,
++        "boundaries_bits": [
++          0,
++          1048191433,
++          1057682371,
++          1060982146,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092065454,
++            3232781370
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092053814,
++            3231909885
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092044406,
++            3231273140
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092036035,
++            3230620962
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge0.2-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3e0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051721729,
++        "boundaries_bits": [
++          0,
++          1049536866,
++          1057514806,
++          1060962090,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063146,
++            3232584463
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092052898,
++            3231848149
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092046596,
++            3231424350
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092038725,
++            3230851017
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge0.5-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046572164,
++        "boundaries_bits": [
++          0,
++          1042571081,
++          1050559915,
++          1054818362,
++          1058510375,
++          1060074998,
++          1063227648,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071825,
++            3234254071
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070842,
++            3233442338
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063536,
++            3232616302
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092046984,
++            3231450740
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092038536,
++            3230835766
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092031305,
++            3230063515
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092036404,
++            3228036360
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge0.5-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046572164,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071858,
++            3234338159
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071490,
++            3233617713
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063265,
++            3232594111
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092049388,
++            3231612928
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092037805,
++            3230775600
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030665,
++            3229934824
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092033786,
++            3228419562
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge0.5-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000003f0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046572164,
++        "boundaries_bits": [
++          0,
++          1042483898,
++          1050403171,
++          1054342925,
++          1058539568,
++          1061064787,
++          1062542779,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071983,
++            3234589592
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070050,
++            3233300162
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092063762,
++            3232634991
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092048947,
++            3231583358
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092037424,
++            3230743488
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030108,
++            3229755215
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092034425,
++            3228317598
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge1.0-frame0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 0,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1048655891,
++        "boundaries_bits": [
++          0,
++          1042571081,
++          1050559915,
++          1054818362,
++          1058510375,
++          1060074998,
++          1063227648,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092073802,
++            3236713538
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092072356,
++            3235116686
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071062,
++            3233491698
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092043352,
++            3231198788
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030911,
++            3229989004
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092042633,
++            3227325562
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092095274,
++            3222453584
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge1.0-frame77",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1048655891,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092073931,
++            3236878958
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092072655,
++            3235461686
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070869,
++            3233448043
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092047974,
++            3231517848
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030419,
++            3229870644
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092047928,
++            3226819236
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092089515,
++            3223207422
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "dir1-style1-ridge1.0-frame4294967295",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000001000000",
++      "frame_count": 4294967295,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1048655891,
++        "boundaries_bits": [
++          0,
++          1042483898,
++          1050403171,
++          1054342925,
++          1058539568,
++          1061064787,
++          1062542779,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092074240,
++            3237373580
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092072142,
++            3234836995
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071208,
++            3233528462
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092047115,
++            3231459677
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030227,
++            3229807474
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092056123,
++            3226112580
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092091246,
++            3223006836
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "length0.49-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c048e1fa3e48e1fa3e0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.5-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c00000003f0000003f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.500001-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c01100003f1100003f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.69-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0d7a3303fd7a3303f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.7-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c03333333f3333333f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.700001-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c04433333f4433333f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 2,
++        "amplitude_bits": 1070386387,
++        "boundaries_bits": [
++          0,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077897283,
++            1092050963,
++            3231606374
++          ],
++          "id": 0
++        }
++      ]
++    },
++    {
++      "name": "length0.89-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c00ad7633f0ad7633f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1060490255,
++        "boundaries_bits": [
++          0,
++          1056580041,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077391543,
++            1092046036,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078592651,
++            1092057727,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "length0.9-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c06666663f6666663f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1060559726,
++        "boundaries_bits": [
++          0,
++          1056580041,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077383650,
++            1092045960,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078602166,
++            1092057818,
++            3231606374
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "length1.2-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c09a99993f9a99993f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 4,
++        "amplitude_bits": 1055846128,
++        "boundaries_bits": [
++          0,
++          1051115825,
++          1060717828,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076475481,
++            1092037605,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077897632,
++            1092050967,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1079579908,
++            1092066631,
++            3231606374
++          ],
++          "id": 2
++        }
++      ]
++    },
++    {
++      "name": "length1.5-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c00000c03f0000c03f0000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051802388,
++        "boundaries_bits": [
++          0,
++          1048191433,
++          1057682371,
++          1060982146,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1075762410,
++            1092031944,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077532614,
++            1092047401,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078826002,
++            1092059936,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080150738,
++            1092071034,
++            3231606374
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "length2.1-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c066660640666606400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047104314,
++        "boundaries_bits": [
++          0,
++          1042727217,
++          1052329220,
++          1056728920,
++          1059466271,
++          1062933402,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074746096,
++            1092026104,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076263983,
++            1092035822,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077217216,
++            1092044366,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078453734,
++            1092056392,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1080266620,
++            1092071837,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081354634,
++            1092077433,
++            3231606374
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "length3.0-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c000004040000040400000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046179256,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1072484011,
++            1092025077,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1074435704,
++            1092024998,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076315104,
++            1092036246,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078116620,
++            1092053112,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1079654010,
++            1092067241,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081197730,
++            1092076870,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082506838,
++            1092080774,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "length15.0-dir0",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c000007041000070410000803ecdccccbe0000003f9a99193f0000803f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1049320935,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3225748064,
++            1092154329,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3216286916,
++            1092147399,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1064634572,
++            1092061870,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078890158,
++            1092060534,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1084573398,
++            1092134167,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1088653228,
++            1092164732,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1091813420,
++            1092112912,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "length0.49-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c048e1fa3e48e1fa3e0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.5-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c00000003f0000003f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.500001-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c01100003f1100003f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.69-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0d7a3303fd7a3303f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.7-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c03333333f3333333f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "length0.700001-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c04433333f4433333f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 2,
++        "amplitude_bits": 1070386387,
++        "boundaries_bits": [
++          0,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092051145,
++            3231730655
++          ],
++          "id": 0
++        }
++      ]
++    },
++    {
++      "name": "length0.89-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c00ad7633f0ad7633f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1060490255,
++        "boundaries_bits": [
++          0,
++          1056580041,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092054900,
++            3231983525
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092045991,
++            3231382970
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "length0.9-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c06666663f6666663f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 3,
++        "amplitude_bits": 1060559726,
++        "boundaries_bits": [
++          0,
++          1056580041,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092054958,
++            3231987471
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092045922,
++            3231378213
++          ],
++          "id": 1
++        }
++      ]
++    },
++    {
++      "name": "length1.2-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c09a99993f9a99993f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 4,
++        "amplitude_bits": 1055846128,
++        "boundaries_bits": [
++          0,
++          1051115825,
++          1060717828,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092061324,
++            3232441556
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092051143,
++            3231730480
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092039206,
++            3230889342
++          ],
++          "id": 2
++        }
++      ]
++    },
++    {
++      "name": "length1.5-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c00000c03f0000c03f0000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 5,
++        "amplitude_bits": 1051802388,
++        "boundaries_bits": [
++          0,
++          1048191433,
++          1057682371,
++          1060982146,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092065638,
++            3232798091
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092053860,
++            3231912989
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092044308,
++            3231266295
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092035851,
++            3230603927
++          ],
++          "id": 3
++        }
++      ]
++    },
++    {
++      "name": "length2.1-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c066660640666606400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 7,
++        "amplitude_bits": 1047104314,
++        "boundaries_bits": [
++          0,
++          1042727217,
++          1052329220,
++          1056728920,
++          1059466271,
++          1062933402,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070088,
++            3233306248
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092062683,
++            3232547304
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092056172,
++            3232070688
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092047009,
++            3231452429
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092035239,
++            3230545986
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092030975,
++            3230001979
++          ],
++          "id": 5
++        }
++      ]
++    },
++    {
++      "name": "length3.0-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c000004040000040400000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046179256,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092071784,
++            3234122837
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092070931,
++            3233461444
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092062360,
++            3232521744
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092049508,
++            3231620986
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092038741,
++            3230852291
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092031404,
++            3230080431
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092031544,
++            3228861268
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "length15.0-dir1",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c000007041000070410000803ecdccccbe0000003f9a99193f0000803f0000000001000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1049320935,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092168960,
++            3241230488
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092151826,
++            3239482520
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092073157,
++            3235995366
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092043852,
++            3231234217
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092073129,
++            3224728148
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092125524,
++            3210986144
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1077726413,
++            1092097609,
++            1067319648
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "circle",
++      "roof_hex": "0000000000000000000000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "flat",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003fcdcccc3dcdcc4c3f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "flat-below",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f47cccc3dcdcc4c3f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {},
++      "native_points": []
++    },
++    {
++      "name": "pitched-next",
++      "roof_hex": "0000000000000000010000000000803f00000000000040400000a0c0000080400000c0400000803ecdccccbe0000003f53cdcc3dcdcc4c3f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046804493,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1071037047,
++            1080620157,
++            3231606374
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1073910640,
++            1080600575,
++            3231606374
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1076071950,
++            1080641668,
++            3231606374
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1078143694,
++            1080718078,
++            3231606374
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1079911693,
++            1080781677,
++            3231606374
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1081686970,
++            1080817808,
++            3231606374
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1082877872,
++            1080849472,
++            3231606374
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "rotated",
++      "roof_hex": "0000000000000000010000009a99193fcdcc4c3f000000c00000e040000080400000c0400000803ecdccccbe0000003f9a99193fcdcc4c3f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046804493,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3224721260,
++            1092163715,
++            1086266126
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3223808537,
++            1092147255,
++            1086874607
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3222511751,
++            1092145598,
++            1087739132
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3221268705,
++            1092167375,
++            1088567829
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3219190338,
++            1092183346,
++            1089275029
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3217060005,
++            1092175785,
++            1089985140
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3214733996,
++            1092143094,
++            1090639758
++          ],
++          "id": 6
++        }
++      ]
++    },
++    {
++      "name": "signed-zero",
++      "roof_hex": "0000000000000000010000000000803f000000800000008000000000000080400000c04000000080000000000000003f9a99193fcdcc4c3f0000000000000000000000000000000000000000000000400000000000000000",
++      "frame_count": 77,
++      "parameters": {
++        "count": 8,
++        "amplitude_bits": 1046804493,
++        "boundaries_bits": [
++          0,
++          1041166012,
++          1050594673,
++          1054365846,
++          1057910518,
++          1060882345,
++          1063289423,
++          1065353216
++        ]
++      },
++      "native_points": [
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3215541641,
++            1092197789,
++            1028443341
++          ],
++          "id": 0
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3212161600,
++            1092169009,
++            1028443340
++          ],
++          "id": 1
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            3202584460,
++            1092131494,
++            1028443340
++          ],
++          "id": 2
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1028305792,
++            1092117634,
++            1028443341
++          ],
++          "id": 3
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1055991914,
++            1092111385,
++            1028443341
++          ],
++          "id": 4
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1063579370,
++            1092098714,
++            1028443341
++          ],
++          "id": 5
++        },
++        {
++          "occupant_bits": 0,
++          "position_bits": [
++            1068342974,
++            1092083594,
++            1028443341
++          ],
++          "id": 6
++        }
++      ]
++    }
++  ]
++}
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/tests/original_roof_birdspots.rs
+@@ -0,0 +1,48 @@
++use bevy_ecs::prelude::*;
++use country_core::resources::{critters::Wren, roofs::{roof_shape::Roof, commands::RecalculateRoofCmd}, time::GameTime, walls::{WallId, public_walls::{PublicWalls, OnWallChanged}}};
++use country_core::utils::components::transform::Transform;
++use system_critters::{bird_spots::{BirdSpots, BirdSpotManager}, wren::{roof_spots::sample_roof_bird_spots, update_roof_bird_spots}};
++fn fixtures() -> serde_json::Value { serde_json::from_str(include_str!("fixtures/roof_birdspot_original.json")).unwrap() }
++fn roof(case: &serde_json::Value) -> Roof {
++    let s=case["roof_hex"].as_str().unwrap(); let mut bytes=[0;88];
++    for (i,b) in bytes.iter_mut().enumerate() { *b=u8::from_str_radix(&s[i*2..i*2+2],16).unwrap(); }
++    Roof::from_observed(bytes)
++}
++#[test]
++fn complete_roof_perches_match_92_original_instruction_cases() {
++    let fixture=fixtures(); let cases=fixture["cases"].as_array().unwrap(); assert_eq!(cases.len(),92);
++    let mut nonempty=0;
++    for case in cases {
++        let mut manager=BirdSpotManager::default();
++        let points=sample_roof_bird_spots(&roof(case), case["frame_count"].as_u64().unwrap() as u32, &mut manager);
++        let expected=case["native_points"].as_array().unwrap(); assert_eq!(points.len(),expected.len(),"{}",case["name"]);
++        nonempty+=usize::from(!points.is_empty());
++        for (point, expected) in points.iter().zip(expected) {
++            assert!(point.occupant.is_none()); assert_eq!(point.id.0,expected["id"].as_u64().unwrap() as u32);
++            for (axis, actual) in [point.pos.x,point.pos.y,point.pos.z].into_iter().enumerate() {
++                assert_eq!(actual.to_bits(),expected["position_bits"][axis].as_u64().unwrap() as u32,"case {} axis {axis}",case["name"]);
++            }
++        }
++    }
++    assert_eq!(nonempty,55);
++}
++#[test]
++fn direct_recalc_owns_points_and_replacement_drains_on_following_no_event_frame() {
++    let fixture=fixtures(); let case=fixture["cases"].as_array().unwrap().iter().find(|c| !c["native_points"].as_array().unwrap().is_empty()).unwrap();
++    let mut world=World::new();world.init_resource::<BirdSpotManager>();world.init_resource::<PublicWalls>();world.init_resource::<Events<RecalculateRoofCmd>>();world.init_resource::<Events<OnWallChanged>>();
++    world.insert_resource(GameTime { frame_count:case["frame_count"].as_u64().unwrap() as u32, ..Default::default() });
++    let target=world.spawn(roof(case)).id(); let unrelated=world.spawn(roof(case)).id();
++    let wall=WallId(0x123);world.resource_mut::<PublicWalls>().associate_roof(wall,unrelated);
++    let mut waiting=Wren::default();waiting.spot.state=0;let actor=world.spawn((Transform::default(),waiting)).id();
++    let mut schedule=Schedule::default();schedule.add_systems(update_roof_bird_spots);
++    world.resource_mut::<Events<RecalculateRoofCmd>>().send(RecalculateRoofCmd { entity:target,wall,kind:0 });
++    schedule.run(&mut world);
++    assert!(!world.get::<BirdSpots>(target).unwrap().spots.is_empty());assert!(world.get::<BirdSpots>(unrelated).is_none());
++    world.get_mut::<BirdSpots>(target).unwrap().spots[0].occupant=Some(actor);
++    world.resource_mut::<Events<RecalculateRoofCmd>>().send(RecalculateRoofCmd { entity:target,wall,kind:0 });
++    schedule.run(&mut world);
++    assert_eq!(world.get::<Wren>(actor).unwrap().spot.state,0);
++    schedule.run(&mut world);
++    assert_eq!(world.get::<Wren>(actor).unwrap().spot.state,1);
++    assert_eq!(world.query::<&BirdSpots>().iter(&world).count(),1);
++}

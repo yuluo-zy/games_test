@@ -1,0 +1,16 @@
+diff --git a/tiny-glade/crates/systems/roof/src/visual/mod.rs b/tiny-glade/crates/systems/roof/src/visual/mod.rs
+--- a/tiny-glade/crates/systems/roof/src/visual/mod.rs
++++ b/tiny-glade/crates/systems/roof/src/visual/mod.rs
+@@ -6,8 +6,12 @@
+ pub mod roof_animation;
+ pub mod switch_roof_type;
+ 
+-/// `visual/place_support_beams.rs`：源图 0 业务（内联/胶水），以
+-/// construct_lintels 的内联实例为准，无独立实现。
++/// B retains `visual/place_support_beams.rs` and its line95 closure declaration,
++/// but the complete compiled PROC/INLINESITE/C13 inventory has no producer body.
++/// The native roof registration also has no support-beam system. This module
++/// must not delegate to wall-constructor lintels: those write WoodenPlank64B,
++/// whereas the retained roof draw path reads dense RoofSupportBeam80B records.
++/// Evidence and remaining reachability limit: round12/roof-support/REPORT.md.
+ pub mod place_support_beams {}

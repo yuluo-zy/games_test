@@ -1,0 +1,177 @@
+//! Staged for toolbar/tests/original_menu_widget.rs. Requires the original
+//! installed font assets, never skips on missing assets. Not run by this agent.
+use bevy_app::{App, Update};
+use bevy_ecs::event::Events;
+use bevy_input::mouse::MouseWheel;
+use bevy_time::Time;
+use country_core::{
+    input::action_set::{DigitalActionPhase, DigitalActionState, MainActionSet},
+    resources::{mouse_terrain_raycast::CursorPositionSS, window::WindowSize},
+    systems::{
+        audio::PlayMenuUiSound,
+        ui::resources::{
+            ui_state::{UiInteraction, UiState, WidgetId},
+            widget_params::{UiFocus, UiNavState},
+        },
+    },
+};
+use glam::Vec2;
+use std::{path::PathBuf, sync::Arc};
+use toolbar::mei::{
+    core::{MeiContext, NodeContent, NodeDrawContext},
+    systems::mei_pre_update,
+    widgets::MenuButtonContent,
+};
+
+fn fonts() -> (Arc<tg_text::FontTable>, tg_text::TextRenderer) {
+    let root = PathBuf::from(std::env::var_os("TG_INSTALL_ROOT").expect("set TG_INSTALL_ROOT"));
+    let table = tg_text::FontTable::from_ron(
+        &std::fs::read_to_string(root.join("assets/fonts/table.ron")).unwrap(),
+    )
+    .unwrap();
+    let mut renderer = tg_text::TextRenderer::new();
+    fn load_dir(path: &std::path::Path, renderer: &mut tg_text::TextRenderer) {
+        for entry in std::fs::read_dir(path).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                load_dir(&path, renderer);
+            } else if matches!(
+                path.extension().and_then(|x| x.to_str()),
+                Some("ttf" | "otf")
+            ) {
+                renderer.load_font_from_file(path).unwrap();
+            }
+        }
+    }
+    load_dir(&root.join("assets/fonts"), &mut renderer);
+    (Arc::new(table), renderer)
+}
+
+/// Bounded actual MEI pre-update input/registration/sound/owner lifecycle,
+/// followed by actual owning TextFragment glyph/primitive generation. This
+/// doesn't claim the entire Load/Escape caller or GPU pipeline is validated.
+#[test]
+#[ignore = "requires TG_INSTALL_ROOT pointing at the original installed font assets"]
+fn original_menu_button_keyboard_mouse_and_real_text_output() {
+    let (fonts, mut renderer) = fonts();
+    for case in ["idle", "hover", "cancel", "mouse", "confirm"] {
+        let mut mei = MeiContext::default();
+        mei.font_table = fonts.clone();
+        let root = mei.safe_frame("menu-test", false);
+        let button = root.menu_button("Cancel");
+        button.content_mut::<MenuButtonContent>().action = 18;
+        button.node_mut().pos = Vec2::new(10., 10.);
+        button.node_mut().size = Vec2::new(200., 60.);
+        let id = button.id;
+        let pointer = button.content_mut::<MenuButtonContent>() as *mut MenuButtonContent;
+        let mut actions = MainActionSet::default();
+        let pressed = DigitalActionState {
+            phase: DigitalActionPhase::JustPressed,
+            timer_seconds: 0.,
+        };
+        if case == "cancel" {
+            actions.digital[18] = pressed;
+        }
+        if case == "confirm" {
+            actions.digital[19] = pressed;
+        }
+        let mut nav = UiNavState::default();
+        if case == "confirm" {
+            nav.focus = UiFocus {
+                tag: 2,
+                _pad: 0,
+                payload: id.0,
+            };
+            nav.hold = true;
+        }
+        let cursor = if matches!(case, "hover" | "mouse") {
+            Vec2::new(20., 20.)
+        } else {
+            Vec2::splat(500.)
+        };
+        let ui = if case == "mouse" {
+            UiState::new(UiInteraction {
+                native_tag: 2,
+                native_phase: 1,
+                widget: WidgetId::from_name(&id.0.to_string()),
+            })
+        } else {
+            UiState::at_startup()
+        };
+        let mut app = App::new();
+        app.add_event::<MouseWheel>()
+            .add_event::<PlayMenuUiSound>()
+            .insert_resource(mei)
+            .insert_resource(actions)
+            .insert_resource(nav)
+            .insert_resource(ui)
+            .insert_resource(WindowSize::new(1600, 1000))
+            .insert_resource(CursorPositionSS(cursor))
+            .insert_resource(Time::<()>::default())
+            .add_systems(Update, mei_pre_update);
+        app.update();
+        let states = app.world().resource::<MeiContext>().previous_nodes[&id].state_bits;
+        assert_eq!(states & 0x20 != 0, case == "cancel", "{case}");
+        assert_eq!(
+            states & 0x10 != 0,
+            matches!(case, "mouse" | "confirm"),
+            "{case}"
+        );
+        assert_eq!(
+            states & 1 != 0,
+            matches!(case, "hover" | "mouse" | "confirm"),
+            "{case}"
+        );
+        let sounds: Vec<_> = app
+            .world_mut()
+            .resource_mut::<Events<PlayMenuUiSound>>()
+            .drain()
+            .map(|e| e.kind)
+            .collect();
+        assert_eq!(
+            sounds.contains(&0),
+            matches!(case, "hover" | "mouse" | "confirm"),
+            "{case}"
+        );
+        assert_eq!(
+            sounds.contains(&2),
+            matches!(case, "cancel" | "mouse" | "confirm"),
+            "{case}"
+        );
+        let mei = app.world_mut().resource_mut::<MeiContext>();
+        let root = mei.into_inner().safe_frame("menu-test", false);
+        let same = root.menu_button("Cancel");
+        assert_eq!(same.id, id);
+        assert_eq!(
+            same.content_mut::<MenuButtonContent>() as *mut MenuButtonContent,
+            pointer
+        );
+        let content = same.content_mut::<MenuButtonContent>();
+        let text = content.pending_text.take().unwrap();
+        content.text.set_text(&mut renderer, text).unwrap();
+        content.text.prepare(&mut renderer).unwrap();
+        assert!(content.text.bounds()[0] > 0.);
+        assert!(!content.text.primitives().is_empty());
+        content.draw(&mut NodeDrawContext {
+            text: &mut renderer,
+            center: Vec2::new(110., 40.),
+            extent: Vec2::new(200., 60.),
+            opacity: 0.5,
+            pixels_per_point: 1.,
+            cursor,
+            elapsed: 1. / 60.,
+            state: states,
+        });
+        let batch = renderer.consume().unwrap();
+        assert!(!batch.primitives.is_empty());
+        let expected = tg_text::scale_u32_packed_srgba_color(
+            if states & 1 != 0 {
+                u32::MAX
+            } else {
+                0xffffffa0
+            },
+            0.5,
+        );
+        assert!(batch.primitives.iter().all(|p| p.color == expected));
+    }
+}

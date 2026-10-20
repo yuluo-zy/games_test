@@ -1,0 +1,597 @@
+--- a/tiny-glade/crates/country-core/src/resources/audio_resources.rs
++++ b/tiny-glade/crates/country-core/src/resources/audio_resources.rs
+@@ -250,37 +250,18 @@
+     }
+ }
+ 
+-/// `AudioCore::instantiate_loop` descriptor (O: `{name, count=3, max=50}`,
+-/// 0x140a59220; the ring flags/threshold are 待取证 — library callers supply
+-/// their own threshold/flag policy via [`AudioLoop`]'s constructor).
++/// Original borrowed descriptor is {name, extra_instance_count, stop_delay_ms}.
++/// Native140a59243 increments count before collecting owned instances.
+ #[derive(Clone, Debug)]
+ pub struct AudioLoopDesc {
+-    /// FMOD event path (e.g. `event:/SFX/Wall Draw`).
+     pub name: String,
+-    /// Number of event instances in the loop (`count`, O: 3).
++    /// Additional ring instances; native total is count.wrapping_add(1).
+     pub count: usize,
+-    /// Soft cap for recycling (`max`, O: 50).
+-    pub max: usize,
+-    /// Ring stop threshold in ms (native default 待取证; 0 = toggle immediately).
+     pub threshold_ms: u32,
+-    /// Whether the loop sets the `loop` parameter on start/stop (O: used by
+-    /// AudioLoop; native init default 待取证).
+-    pub uses_loop_parameter: bool,
+-    /// Whether the loop explicitly `stop`s the FMOD instance (O; default 待取证).
+-    pub stops_explicitly: bool,
+-}
+-
++}
+ impl AudioLoopDesc {
+-    /// Native init default shape (count=3, max=50).
+     pub fn new(name: impl Into<String>) -> Self {
+-        AudioLoopDesc {
+-            name: name.into(),
+-            count: 3,
+-            max: 50,
+-            threshold_ms: 0,
+-            uses_loop_parameter: false,
+-            stops_explicitly: false,
+-        }
++        Self { name: name.into(), count: 3, threshold_ms: 50 }
+     }
+ }
+ 
+@@ -554,25 +535,37 @@
+         }
+     }
+ 
+-    /// `AudioCore::instantiate_loop` (0x140a59220): build `desc.count` instances
+-    /// for the ring loop player (tree/water/roof/... frame-end start_if_not_playing/stop).
++    /// Original140a59220 collects fallible creation, then probes the first real
++    /// instance's "loop" parameter. Prefix instances release on failure.
++    pub fn try_instantiate_loop(&self, desc: &AudioLoopDesc) -> anyhow::Result<AudioLoop<AudioInstance<S::Event>>> {
++        let entries: Vec<_> = (0..desc.count.wrapping_add(1))
++            .map(|_| {
++                let instance = self.instantiate_audio(&desc.name);
++                if let AudioInstance::Err(error) = &instance {
++                    return Err(anyhow::anyhow!("{error}"));
++                }
++                Ok(instance)
++            }).collect::<anyhow::Result<_>>()?;
++        let first = entries.first().expect("original AudioLoop first instance bounds check");
++        let uses_loop_parameter = match first.has_parameter("loop") {
++            Ok(found) => found,
++            Err(error) => {
++                log::error!("Couldn't query audio loop parameter for {}: {error:?}", desc.name);
++                false
++            }
++        };
++        Ok(AudioLoop::new(entries, desc.threshold_ms, uses_loop_parameter, false))
++    }
++
++    /// Startup callers unwrap the original Result. This adapter keeps their
++    /// existing return type while retaining creation and prefix-drop failures.
+     pub fn instantiate_loop(&self, desc: &AudioLoopDesc) -> AudioLoop<AudioInstance<S::Event>> {
+-        let entries = (0..desc.count)
+-            .map(|_| self.instantiate_audio(&desc.name))
+-            .collect();
+-        AudioLoop::new(entries, desc.threshold_ms, desc.uses_loop_parameter, desc.stops_explicitly)
+-    }
+-
+-    /// `AudioCore::instantiate_loop` (0x140a59220) as an [`AudioLoopPlayer`]
+-    /// (request_play + frame-end should-play model; wall/building/stairs init).
+-    pub fn instantiate_loop_player(
+-        &self,
+-        desc: &AudioLoopDesc,
+-    ) -> AudioLoopPlayer<AudioInstance<S::Event>> {
+-        let instances = (0..desc.count)
+-            .map(|_| self.instantiate_audio(&desc.name))
+-            .collect();
+-        AudioLoopPlayer::new(instances)
++        self.try_instantiate_loop(desc).expect("instantiate original audio loop")
++    }
++
++    /// A player owns the same fully initialized ring; no timing/flags are lost.
++    pub fn instantiate_loop_player(&self, desc: &AudioLoopDesc) -> AudioLoopPlayer<AudioInstance<S::Event>> {
++        AudioLoopPlayer::from_audio(self.instantiate_loop(desc))
+     }
+ 
+     /// `AudioCoreInner::set_parameter` (0x140a53db0): global FMOD parameter.
+@@ -987,9 +980,147 @@
+     }
+ 
+     #[test]
+-    fn audio_loop_desc_native_default_shape_is_count_3_max_50() {
++    fn native_disabled_loop_constructor_corpus_retains_all_instances_and_delay() {
++        let core = AudioCore::<FakeStudio> { studio: None, banks: HashMap::new() };
++        // Actual original constructor+iterator outputs, native-loop-init-fixtures.json.
++        for (descriptor_count, actual_count) in [(0,1),(1,2),(3,4),(7,8)] {
++            let mut desc = AudioLoopDesc::new("event:/SFX/Player/Walking");
++            desc.count = descriptor_count;
++            let ring = core.try_instantiate_loop(&desc).unwrap();
++            assert_eq!(ring.entries.len(), actual_count);
++            assert_eq!(ring.threshold_ms, 50);
++            assert!(!ring.uses_loop_parameter);
++            assert!(!ring.stops_explicitly);
++        }
++    }
++    #[test]
++    fn original_parameter_probe_survives_player_construction() {
++        let core = AudioCore { studio: Some(FakeStudio), banks: HashMap::new() };
++        let player = core.instantiate_loop_player(&AudioLoopDesc::new("event:/x"));
++        assert_eq!(player.audio.entries.len(), 4);
++        assert_eq!(player.audio.threshold_ms, 50);
++        assert!(player.audio.uses_loop_parameter);
++        assert!(!player.audio.stops_explicitly);
++        assert!(!player.should_play);
++    }
++
++    #[test]
++    fn audio_loop_desc_native_default_shape_is_extra_count_3_delay_50() {
+         let desc = AudioLoopDesc::new("event:/x");
+         assert_eq!(desc.count, 3);
+-        assert_eq!(desc.max, 50);
+-    }
+-}
++        assert_eq!(desc.threshold_ms, 50);
++    }
++}
++
++#[cfg(test)]
++mod original_loop_initialization {
++    use super::*;
++    use std::sync::{Arc, Mutex};
++
++    #[derive(Default)]
++    struct Trace {
++        creates: Vec<String>,
++        probes: Vec<(usize, String)>,
++        releases: Vec<usize>,
++        fail_at: Option<usize>,
++        probe: Option<Result<bool, &'static str>>,
++    }
++    struct RecordedEvent { index: usize, trace: Arc<Mutex<Trace>> }
++    impl EventInstance for RecordedEvent {
++        type Error = &'static str;
++        fn start(&mut self) -> Result<(), Self::Error> { Ok(()) }
++        fn stop(&mut self, _: i32) -> Result<(), Self::Error> { Ok(()) }
++        fn get_playback_state(&self) -> Result<PlaybackState, Self::Error> { Ok(PlaybackState::Stopped) }
++        fn set_volume(&mut self, _: f32) -> Result<(), Self::Error> { Ok(()) }
++        fn set_parameter_by_name(&mut self, _: &str, _: f32) -> Result<(), Self::Error> { Ok(()) }
++        fn has_parameter(&self, name: &str) -> Result<bool, Self::Error> {
++            let mut trace = self.trace.lock().unwrap();
++            trace.probes.push((self.index, name.to_owned()));
++            trace.probe.unwrap_or(Ok(true))
++        }
++        fn set_3d_attributes(&mut self, _: [f32;3], _: [f32;3], _: [f32;3], _: [f32;3]) -> Result<(), Self::Error> { Ok(()) }
++        fn get_timeline_position(&self) -> Result<i32, Self::Error> { Ok(0) }
++        fn pause(&mut self, _: bool) -> Result<(), Self::Error> { Ok(()) }
++        fn install_beat_callback(&mut self) -> Result<(), Self::Error> { Ok(()) }
++        fn release(&mut self) -> Result<(), Self::Error> {
++            self.trace.lock().unwrap().releases.push(self.index); Ok(())
++        }
++    }
++    struct RecordedStudio(Arc<Mutex<Trace>>);
++    struct RecordedVca;
++    impl VcaHandle for RecordedVca {
++        type Error = &'static str;
++        fn set_volume(&self, _: f32) -> Result<(), Self::Error> { Ok(()) }
++    }
++    impl Studio for RecordedStudio {
++        type Error = &'static str;
++        type Event = RecordedEvent;
++        type Vca = RecordedVca;
++        fn load_bank_file(&mut self, _: &str) -> Result<(), Self::Error> { Ok(()) }
++        fn load_sample_data(&mut self) -> Result<(), Self::Error> { Ok(()) }
++        fn get_vca(&self, _: &str) -> Result<Self::Vca, Self::Error> { Ok(RecordedVca) }
++        fn set_listener_attributes(&mut self, _: ListenerAttributes) -> Result<(), Self::Error> { Ok(()) }
++        fn update(&mut self) -> Result<(), Self::Error> { Ok(()) }
++        fn set_parameter_by_name(&self, _: &str, _: f32) -> Result<(), Self::Error> { Ok(()) }
++        fn create_event_instance(&self, name: &str) -> Result<Option<Self::Event>, Self::Error> {
++            let mut trace = self.0.lock().unwrap();
++            let index = trace.creates.len();
++            trace.creates.push(name.to_owned());
++            if trace.fail_at == Some(index) { return Err("creation failure"); }
++            Ok(Some(RecordedEvent { index, trace: self.0.clone() }))
++        }
++    }
++    fn setup(trace: Trace) -> (AudioCore<RecordedStudio>, Arc<Mutex<Trace>>) {
++        let trace = Arc::new(Mutex::new(trace));
++        (AudioCore { studio: Some(RecordedStudio(trace.clone())), banks: HashMap::new() }, trace)
++    }
++
++    #[test]
++    fn constructor_owns_four_events_probes_only_the_first_and_releases_every_event() {
++        for probe in [Ok(true), Ok(false), Err("parameter lookup failure")] {
++            let (core, trace) = setup(Trace { probe: Some(probe), ..Default::default() });
++            let player = core.instantiate_loop_player(&AudioLoopDesc::new("event:/test"));
++            assert_eq!(player.audio.entries.len(), 4);
++            assert_eq!(player.audio.threshold_ms, 50);
++            assert_eq!(player.audio.uses_loop_parameter, probe == Ok(true));
++            assert!(!player.audio.stops_explicitly);
++            assert_eq!(trace.lock().unwrap().probes, [(0, "loop".to_owned())]);
++            drop(player);
++            assert_eq!(trace.lock().unwrap().releases, [0,1,2,3]);
++        }
++    }
++    #[test]
++    fn every_creation_failure_releases_the_successful_prefix_without_probing() {
++        for fail_at in 0..4 {
++            let (core, trace) = setup(Trace { fail_at: Some(fail_at), ..Default::default() });
++            assert!(core.try_instantiate_loop(&AudioLoopDesc::new("event:/test")).is_err());
++            let trace = trace.lock().unwrap();
++            assert_eq!(trace.creates.len(), fail_at + 1);
++            assert_eq!(trace.releases, (0..fail_at).collect::<Vec<_>>());
++            assert!(trace.probes.is_empty());
++        }
++    }
++    #[test]
++    fn real_startup_owners_preserve_original_event_names_ring_size_and_noloop() {
++        use crate::systems::audio::{path_audio, sheep_audio, terrain_stairs_audio, decorator_audio};
++        let (core, trace) = setup(Trace::default());
++        let paths = path_audio::PathAudioState::new(&core);
++        for ring in &paths.loops {
++            assert_eq!(ring.entries.len(), 4);
++            assert_eq!(ring.threshold_ms, 50);
++            assert!(ring.uses_loop_parameter && ring.stops_explicitly);
++        }
++        let sheep = sheep_audio::SheepAudioState::new(&core);
++        let stairs = terrain_stairs_audio::TerrainStairsAudioState::new(&core);
++        let decorators = decorator_audio::DecoratorAudioState::new(&core);
++        let trace = trace.lock().unwrap();
++        assert_eq!(trace.creates.len(), (5+1+1+16)*4);
++        assert_eq!(&trace.creates[20..24], ["event:/SFX/Sheep/Pet";4]);
++        assert_eq!(&trace.creates[24..28], ["event:/SFX/StairDraw_LoopTrem";4]);
++        assert_eq!(&trace.creates[88..92], ["event:/SFX/Cosmetics/MoveBuilding";4]);
++        drop(trace);
++        assert!(!sheep.loop4.stops_explicitly);
++        assert!(!stairs.ring.stops_explicitly);
++        assert!(!decorators.loops[15].stops_explicitly);
++    }
++}
+--- a/tiny-glade/crates/country-core/src/utils/audio_utils.rs
++++ b/tiny-glade/crates/country-core/src/utils/audio_utils.rs
+@@ -58,6 +58,13 @@
+         }
+     }
+ 
++    /// Original noloop adaptor sets AudioLoop+36. Keep native parameter
++    /// detection; this additionally requests explicit stop when a loop exists.
++    pub fn noloop(mut self) -> Self {
++        self.stops_explicitly = true;
++        self
++    }
++
+     /// 调用方必须维持非空实例队列及有效 cursor。
+     pub fn current(&self) -> &E {
+         &self.entries[self.cursor]
+--- a/tiny-glade/crates/country-core/src/resources/audio_instance.rs
++++ b/tiny-glade/crates/country-core/src/resources/audio_instance.rs
+@@ -51,57 +51,40 @@
+ /// 参数名（O：0x142aaf450，长 0xd）。
+ pub const EDITING_SPEED_PARAMETER: &str = "editing_speed";
+ 
+-/// 循环播放器：一组实例加当前下标与"应播放"标志（O：`current usize @+0x28`、`should_play u8 @+0x38`）。
+-#[derive(Clone, Debug, Default)]
++/// Original player owns one complete AudioLoop plus its should-play byte.
++/// Ring timing, parameter detection, current index and entries have one owner.
++#[derive(Clone, Debug)]
+ pub struct AudioLoopPlayer<I> {
+-    pub instances: Vec<I>,
+-    pub current: usize,
++    pub audio: crate::utils::audio_utils::AudioLoop<I>,
+     pub should_play: bool,
+ }
+-
+-impl<I: LoopInstance> AudioLoopPlayer<I> {
++impl<I> AudioLoopPlayer<I> {
++    pub fn from_audio(audio: crate::utils::audio_utils::AudioLoop<I>) -> Self {
++        Self { audio, should_play: false }
++    }
++}
++impl<I> AudioLoopPlayer<I>
++where I: LoopInstance + crate::utils::audio_utils::LoopEntry<Error=<I as LoopInstance>::Error> {
++    /// Explicit low-level host adapter. Game startup uses from_audio on the
++    /// fully initialized canonical producer, rather than discarding its state.
+     pub fn new(instances: Vec<I>) -> Self {
+-        Self {
+-            instances,
+-            current: 0,
+-            should_play: false,
+-        }
+-    }
+-
+-    /// 当前实例（`AudioLoopPlayer::resolve`，0x140a592xx 语义；越界 panic 同原版）。
+-    pub fn current(&self) -> &I {
+-        &self.instances[self.current]
+-    }
+-
+-    /// `request_play`（0x1409285a0）。`current` 越界与 `set_volume` 失败对应原版 panic：越界 panic，音量失败以 `Err` 返回。
+-    pub fn request_play(
+-        &mut self,
+-        position: [f32; 3],
+-        volume: f32,
+-        editing_speed: f32,
+-    ) -> Result<(), I::Error> {
++        Self::from_audio(crate::utils::audio_utils::AudioLoop::new(instances,0,false,false))
++    }
++    pub fn current(&self) -> &I { self.audio.current() }
++    pub fn request_play(&mut self, position:[f32;3], volume:f32, editing_speed:f32) -> Result<(), <I as LoopInstance>::Error> {
+         self.should_play = true;
+-        let instance = &mut self.instances[self.current];
+-        instance.set_position(position);
+-        instance.set_parameter(EDITING_SPEED_PARAMETER, editing_speed);
+-        if instance.is_active() {
+-            instance.set_volume(volume)?;
+-        }
++        let instance = self.audio.current_mut();
++        LoopInstance::set_position(instance,position);
++        LoopInstance::set_parameter(instance,EDITING_SPEED_PARAMETER,editing_speed);
++        if LoopInstance::is_active(instance) { LoopInstance::set_volume(instance,volume)?; }
+         Ok(())
+     }
+-
+-    /// 帧尾：按 `should_play` 标志对当前实例 `start`/`stop` 并清标志
+-    /// （wall_audio_fmod/building/stair 帧尾，0x140a596b0/0x140a59430 的驱动侧）。
+-    pub fn frame_end(&mut self) -> Result<(), I::Error> {
+-        let play = self.should_play;
+-        self.should_play = false;
+-        let instance = &mut self.instances[self.current];
+-        if play {
+-            instance.start()?;
+-        } else {
+-            instance.stop()?;
+-        }
+-        Ok(())
++    fn frame_end_with_stop(&mut self, stop: impl FnOnce(&mut crate::utils::audio_utils::AudioLoop<I>) -> Result<(),<I as LoopInstance>::Error>) -> Result<(),<I as LoopInstance>::Error> {
++        let play = std::mem::take(&mut self.should_play);
++        if play { self.audio.start_if_not_playing() } else { stop(&mut self.audio) }
++    }
++    pub fn frame_end(&mut self) -> Result<(),<I as LoopInstance>::Error> {
++        self.frame_end_with_stop(crate::utils::audio_utils::AudioLoop::stop_now)
+     }
+ }
+ 
+@@ -143,6 +126,14 @@
+             self.calls.push("stop".into());
+             Ok(())
+         }
++    }
++
++    impl crate::utils::audio_utils::LoopEntry for Fake {
++        type Error = &'static str;
++        fn is_active(&self) -> bool { LoopInstance::is_active(self) }
++        fn set_parameter(&mut self,name:&str,value:f32) { LoopInstance::set_parameter(self,name,value); }
++        fn start(&mut self) -> Result<(),Self::Error> { LoopInstance::start(self) }
++        fn stop(&mut self,_:crate::utils::audio_utils::StopMode) -> Result<(),Self::Error> { LoopInstance::stop(self) }
+     }
+ 
+     #[test]
+@@ -170,7 +161,7 @@
+         player.request_play([1.0, 2.0, 3.0], 0.5, 2.0).unwrap();
+         assert!(player.should_play);
+         assert_eq!(
+-            player.instances[0].calls,
++            player.audio.entries[0].calls,
+             ["position", "editing_speed=2", "volume=0.5"]
+         );
+     }
+@@ -179,7 +170,7 @@
+     fn inactive_instance_skips_the_volume_call() {
+         let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
+         player.request_play([1.0, 2.0, 3.0], 0.5, 1.0).unwrap();
+-        assert_eq!(player.instances[0].calls, ["position", "editing_speed=1"]);
++        assert_eq!(player.audio.entries[0].calls, ["position", "editing_speed=1"]);
+     }
+ 
+     #[test]
+@@ -197,16 +188,21 @@
+     }
+ 
+     #[test]
+-    fn frame_end_starts_when_should_play_and_stops_otherwise() {
+-        let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
+-        player.frame_end().unwrap();
+-        assert_eq!(player.instances[0].calls, ["stop"]);
+-        player.request_play([0.0, 0.0, 0.0], 1.0, 1.0).unwrap();
+-        player.frame_end().unwrap();
+-        assert_eq!(
+-            player.instances[0].calls,
+-            ["stop", "position", "editing_speed=1", "start"]
+-        );
++    fn player_retains_native_delayed_stop_and_rotation_from_its_ring() {
++        use core::time::Duration;
++        let audio = crate::utils::audio_utils::AudioLoop::new(vec![Fake {active:true,..Default::default()},Fake::default()],50,false,false);
++        let mut player = AudioLoopPlayer::from_audio(audio);
++        player.request_play([0.;3],1.,1.).unwrap();
++        player.frame_end_with_stop(|ring|ring.stop(Duration::ZERO)).unwrap();
++        assert!(player.audio.started);
++        assert_eq!(player.audio.entries[0].calls,["position","editing_speed=1","volume=1","start"]);
++        player.frame_end_with_stop(|ring|ring.stop(Duration::ZERO)).unwrap();
++        player.frame_end_with_stop(|ring|ring.stop(Duration::from_millis(50))).unwrap();
++        assert!(player.audio.started);
++        player.frame_end_with_stop(|ring|ring.stop(Duration::from_millis(51))).unwrap();
++        assert!(!player.audio.started);
++        assert_eq!(player.audio.cursor,1);
++        assert_eq!(player.audio.entries[0].calls.last().unwrap(),"stop");
+         assert!(!player.should_play);
+     }
+ 
+@@ -214,7 +210,7 @@
+     #[should_panic]
+     fn current_out_of_bounds_panics_like_the_original() {
+         let mut player = AudioLoopPlayer::new(vec![Fake::default()]);
+-        player.current = 1;
++        player.audio.cursor = 1;
+         let _ = player.request_play([0.0, 0.0, 0.0], 1.0, 1.0);
+     }
+ 
+--- a/tiny-glade/crates/country-core/src/systems/audio/wall_audio_utils.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/wall_audio_utils.rs
+@@ -27,7 +27,8 @@
+ ];
+ 
+ /// `AudioLoopPlayer::new` (native line 46, inlined): build from instances.
+-pub fn new_player<I: crate::resources::audio_instance::LoopInstance>(instances: Vec<I>) -> AudioLoopPlayer<I> {
++pub fn new_player<I>(instances: Vec<I>) -> AudioLoopPlayer<I>
++where I: crate::resources::audio_instance::LoopInstance + crate::utils::audio_utils::LoopEntry<Error=<I as crate::resources::audio_instance::LoopInstance>::Error> {
+     AudioLoopPlayer::new(instances)
+ }
+ 
+--- a/tiny-glade/crates/country-core/src/systems/audio/building_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/building_audio.rs
+@@ -96,8 +96,7 @@
+                 // O: per-loop BuildingSize / ifWindow / BuildingHeight /
+                 // isHalfTimbered / IsOnGround params are set from the building
+                 // table (0x2a8 stride, 待接线); BuildingSize stands in here.
+-                let current = loop_player.current;
+-                let _ = loop_player.instances[current]
++                let _ = loop_player.audio.current_mut()
+                     .set_parameter("BuildingSize", event.editing_speed);
+             }
+             None => {
+--- a/tiny-glade/crates/country-core/src/systems/audio/wall_audio_fmod.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/wall_audio_fmod.rs
+@@ -86,16 +86,14 @@
+                 let loop_index = *loop_index;
+                 let _ = state.loops[loop_index].request_play(position, event.volume, editing_speed);
+                 let value = inverse_lerp(inverse_lerp_bounds.0, inverse_lerp_bounds.1, event.value);
+-                let current = state.loops[loop_index].current;
+-                let _ = state.loops[loop_index].instances[current]
++                let _ = state.loops[loop_index].audio.current_mut()
+                     .set_parameter(param, value);
+             }
+             WallKind::LoopBoolParam { loop_index, param, flag_offset: _ } => {
+                 let loop_index = *loop_index;
+                 let _ = state.loops[loop_index].request_play(position, event.volume, editing_speed);
+                 let value = if event.flag != 0 { 1.0 } else { 0.0 };
+-                let current = state.loops[loop_index].current;
+-                let _ = state.loops[loop_index].instances[current]
++                let _ = state.loops[loop_index].audio.current_mut()
+                     .set_parameter(param, value);
+             }
+             WallKind::OneShot(name) => {
+--- a/tiny-glade/crates/country-core/src/systems/audio/playermade_stairs_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/playermade_stairs_audio.rs
+@@ -107,8 +107,7 @@
+         let position = [event.position.x, event.position.y, event.position.z];
+         let kind = event.kind as usize;
+         if let Some(loop_index) = kind_to_loop(event.kind) {
+-            let current = state.loops[loop_index].current;
+-            let _ = state.loops[loop_index].instances[current]
++            let _ = state.loops[loop_index].audio.current_mut()
+                 .set_parameter("stair_width", event.values[0]);
+             let _ = state.loops[loop_index].frame_end();
+             state.loops[loop_index].should_play = true;
+--- a/tiny-glade/crates/country-core/src/systems/audio/path_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/path_audio.rs
+@@ -66,8 +66,9 @@
+ impl<E: EventInstance> PathAudioState<E> {
+     pub fn new<S: Studio<Event = E>>(core: &AudioCore<S>) -> Self {
+         PathAudioState {
+-            loops: PATH_LOOP_EVENTS.map(|name| {
+-                core.instantiate_loop(&crate::resources::audio_resources::AudioLoopDesc::new(name))
++            loops: std::array::from_fn(|index| {
++                // Native1409d0987/a1f/ab7/b64/c05 set each returned ring+36.
++                core.instantiate_loop(&crate::resources::audio_resources::AudioLoopDesc::new(PATH_LOOP_EVENTS[index])).noloop()
+             }),
+             raster_gate: 0.0,
+         }
+--- a/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/terrain_audio.rs
+@@ -427,7 +427,7 @@
+                     .iter()
+                     .filter(|call| { matches!(call, Call::Create(created) if created == name) })
+                     .count(),
+-                crate::resources::audio_resources::AudioLoopDesc::new(name).count,
++                crate::resources::audio_resources::AudioLoopDesc::new(name).count.wrapping_add(1),
+                 "loop owner must survive subsequent frames: {name}"
+             );
+         }
+--- a/tiny-glade/crates/country-core/src/systems/audio/sheep_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/sheep_audio.rs
+@@ -34,13 +34,10 @@
+     "event:/SFX/Sheep/Confused",
+ ];
+ 
+-/// Kind 4 → the continuous frame-end loop (E3 CONFIRMED: event table 0x142ac23b0
+-/// kind 0–7 are the seven one-shots; kind 4 packages a loop handle driven at
+-/// frame end by start_if_not_playing / stop — 0x1409d61b0). The loop event is
+-/// `event:/SFX/Sheep/Baah` (rne-read; startup_sheep loads Baah + Pitch at
+-/// 0x142ac2460). The Baah loop carries a `Pitch` parameter.
+-pub const KIND4_LOOP_EVENT: &str = "event:/SFX/Sheep/Baah";
+-/// Baah loop parameter (O: rne-read `Pitch` adjacent to the Baah/UI Boop table).
++/// Original inlined SheepAudioState constructors140b6a92c/1414d9b82 use
++/// event name142ac2338 (20 bytes), separate from startup sheep's Baah event.
++pub const KIND4_LOOP_EVENT: &str = "event:/SFX/Sheep/Pet";
++/// Sheep reaction pitch parameter.
+ pub const SHEEP_PITCH_PARAM: &str = "Pitch";
+ 
+ /// SheepAudioState (O: the kind-4 frame-end loop player).
+--- a/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
+@@ -81,6 +81,8 @@
+ 
+ /// `event:/SFX/StairDraw_OneShot` (O: 0x142c62e70).
+ pub const STAIR_DRAW_ONE_SHOT: &str = "event:/SFX/StairDraw_OneShot";
++/// Native1417e3389 initializes the persistent ring with this distinct event.
++pub const STAIR_DRAW_LOOP_EVENT: &str = "event:/SFX/StairDraw_LoopTrem";
+ /// Instance parameter (O: 0x142c62943).
+ pub const STAIR_EDITING_SPEED_PARAM: &str = "editing_speed";
+ 
+@@ -115,7 +117,7 @@
+     pub fn new<S: Studio<Event = E>>(core: &AudioCore<S>) -> Self {
+         TerrainStairsAudioState {
+             ring: core.instantiate_loop(
+-                &crate::resources::audio_resources::AudioLoopDesc::new(STAIR_DRAW_ONE_SHOT),
++                &crate::resources::audio_resources::AudioLoopDesc::new(STAIR_DRAW_LOOP_EVENT),
+             ),
+             instances: Vec::new(),
+             counter: StairsCounter::default(),
+--- a/tiny-glade/crates/country-core/src/systems/audio/decorator_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/decorator_audio.rs
+@@ -41,7 +41,7 @@
+     "event:/SFX/Flags/DragGround",
+     "event:/SFX/Cosmetics/Clutter_Rotate",
+     "event:/SFX/Cosmetics/MoveGround",
+-    "event:/SFX/Lantern/Amb",
++    "event:/SFX/Cosmetics/MoveBuilding",
+ ];
+ 
+ /// DecoratorAudioState: the 16 loops + per-loop should-play flag.
+--- a/tiny-glade/crates/country-core/src/systems/audio/firstperson_steps.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/firstperson_steps.rs
+@@ -29,30 +29,8 @@
+ 
+ impl<E: EventInstance> FirstPersonViewAudioState<E> {
+     pub fn new<S: Studio<Event = E>>(core: &AudioCore<S>) -> Self {
+-        // Both native init callers pass {name, count3, delay50}. The original
+-        // instantiate_loop140a59243..6a iterates 0..count+1, then copies delay
+-        // into AudioLoop+30 and probes the first actual event's "loop" parameter.
+-        // Use the current shared AudioLoop owner; do not restore its internals.
+-        let entries: Vec<_> = (0..4)
+-            .map(|_| {
+-                let instance = core.instantiate_audio(WALK_LOOP_EVENT);
+-                if let AudioInstance::Err(error) = &instance {
+-                    // Native init unwraps instantiate_loop's collected Result.
+-                    // Previously created entries are released by their owner.
+-                    panic!("instantiate walking loop: {error}");
+-                }
+-                instance
+-            })
+-            .collect();
+-        let uses_loop_parameter = match entries[0].has_parameter("loop") {
+-            Ok(found) => found,
+-            Err(error) => {
+-                log::error!("Couldn't query walking loop parameter: {error:?}");
+-                false
+-            }
+-        };
+         Self {
+-            walking_loop: AudioLoop::new(entries, 50, uses_loop_parameter, false),
++            walking_loop: core.instantiate_loop(&crate::resources::audio_resources::AudioLoopDesc::new(WALK_LOOP_EVENT)),
+         }
+     }
+ }

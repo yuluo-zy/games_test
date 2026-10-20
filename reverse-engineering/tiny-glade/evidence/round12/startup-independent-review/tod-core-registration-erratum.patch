@@ -1,0 +1,33 @@
+--- a/tiny-glade/crates/country-core/src/startup/run_game.rs
++++ b/tiny-glade/crates/country-core/src/startup/run_game.rs
+@@ -108,6 +108,7 @@
+     }
+     world.init_resource::<MetaCommander>();
+     world.init_resource::<GameConfig>();
++    world.init_resource::<crate::resources::time_of_day::TodSequence>();
+     // Reuse the UI's real constructor and projection. Preserve a host's live
+     // UI; the local CPU entry needs the same mode consumer as the full host.
+     if !world.contains_resource::<crate::systems::ui::resources::ui_state::UiState>() {
+@@ -149,6 +150,7 @@
+     schedule.add_systems((
+         crate::resources::session::refresh_session_list_system.run_if(run_once),
+         music_audio_init_system::<B>.run_if(not(resource_exists::<MusicAudioState<B::Event>>)),
++        super::startup_time_of_day::startup_time_of_day.run_if(run_once),
+     ));
+ }
+ 
+@@ -156,13 +158,7 @@
+ /// 契约 §1.4：本表对应 OnEnter(AppLoadingState::Game)；batch2/batch3/batch4
+ /// 共用同一 label。启动世界资产产者按 batch2→batch4 顺序追加在会话载入之后。
+ pub fn register_session_systems(schedule: &mut Schedule) {
+-    use bevy_ecs::schedule::common_conditions::{resource_exists, run_once};
+-    // batch4 的默认 ToD 先于会话载入写入，避免覆盖会话自己的 ToD。
+-    schedule.add_systems(
+-        super::startup_time_of_day::startup_time_of_day
+-            .before(startup_session::load_game_session)
+-            .run_if(run_once),
+-    );
++    use bevy_ecs::schedule::common_conditions::resource_exists;
+     schedule.add_systems(
+         (
+             crate::meta_commander::commander_update_system,

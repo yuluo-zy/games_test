@@ -1,0 +1,1403 @@
+--- a/tiny-glade/crates/country-core/src/resources/prefab.rs
++++ b/tiny-glade/crates/country-core/src/resources/prefab.rs
+@@ -31,12 +31,30 @@
+ use crate::resources::render::mesh_atlas_library::{PrefabName, PrefabNameRef};
+ use crate::utils_contract::Aabb3;
+ 
+-/// Mutable placement component. B hide_trees indexes this component with a
+-/// 48-byte stride and copies its first 24 bytes into the history placement.
+-/// The owning prefab name is in systems::prefab::PrefabInstanceData.
+-#[repr(transparent)]
+-#[derive(Component, Clone, Copy, Debug, PartialEq)]
+-pub struct PrefabInstance(pub crate::resources::placement_data::PlacementDataSsbo);
++/// Canonical B resources::prefab::PrefabInstance, 88B owned contents.
++/// Original register_component141552040 writes size0x58 at1415522dc.
++#[derive(Component, Clone, Debug)]
++pub struct PrefabInstance {
++    /// `+0x08` GPU 实例（stride 0xc）。
++    pub gpu_instances: Vec<crate::systems::prefab::GpuInstanceRecord>,
++    /// `+0x20` RT 网格句柄（stride 0x10）。
++    pub rt_meshes: Vec<crate::resources::rt::RtMeshHandle>,
++    /// `+0x38` 音频触发（stride 0x28）。
++    pub audio_triggers: Vec<crate::systems::prefab::AudioTriggerRecord>,
++    /// `+0x48/+0x50` 预制体名（`PrefabName` = Arc ptr/len）。
++    pub prefab_name: PrefabName,
++}
++
++impl Default for PrefabInstance {
++    fn default() -> Self {
++        Self {
++            gpu_instances: Vec::new(),
++            rt_meshes: Vec::new(),
++            audio_triggers: Vec::new(),
++            prefab_name: PrefabName::new(""),
++        }
++    }
++}
+ 
+ /// 预制体库值（O：`HashMap<PrefabName, Prefab>` 的值；`add` 被替换旧值逐 `PrefabPart` drop）。
+ /// 字段布局 U（`parts` 为语义 I；`PrefabPart` 原生 0x98 B）。
+@@ -220,7 +238,9 @@
+         // O：panic 用 `{:?}` 于 `PrefabNameRef`（derive Debug，透明 str 包装 → `PrefabNameRef("…")`）
+         // 与 `Vec<&PrefabName>`（`PrefabName("…")`）。文案逐字 `No such prefab …; available: …`。
+         assert!(
+-            msg.contains("No such prefab PrefabNameRef(\"tree/zzz\"); available: [PrefabName(\"tree/a\")]"),
++            msg.contains(
++                "No such prefab PrefabNameRef(\"tree/zzz\"); available: [PrefabName(\"tree/a\")]"
++            ),
+             "panic message: {msg}"
+         );
+     }
+--- a/tiny-glade/crates/country-core/src/systems/prefab.rs
++++ b/tiny-glade/crates/country-core/src/systems/prefab.rs
+@@ -20,7 +20,7 @@
+ //! | inline | `create_prefab_gpu_instances::closure$0` / `hot_reload_prefabs::closure$0` | 胶水 |
+ //!
+ //! # 原生布局锚点（fresh）
+-//! * `PrefabInstanceData` = **0x58 B**：`+0x08` `Vec<GpuInstanceRecord>`（元素 0xc，ptr/len/cap）、
++//! * `PrefabInstance` = **0x58 B**：`+0x08` `Vec<GpuInstanceRecord>`（元素 0xc，ptr/len/cap）、
+ //!   `+0x20` `Vec<RtMeshHandle>`（元素 0x10）、`+0x38` `Vec<AudioTriggerRecord>`（元素 0x28）、
+ //!   `+0x48/+0x50` `PrefabName`（Arc ptr/len）。`despawn_prefab_contents` 0x140843390 逐 Vec
+ //!   `ptr@+8/len@+0x10`、`ptr@+0x20/len@+0x28`、`ptr@+0x38/len@+0x40` 读取；
+@@ -45,11 +45,11 @@
+ //!    经 `get_mut` 写矩阵/顶点/颜色；`update_prefabs` 比较 `matrix[4..16]` 后写回。
+ //!    0x48 B 延迟命令已定名为 insert<BirdHaven>：runtime 消费真实
+ //!    `(handle, radius)` 返回值，按 part local center/radius 插入同一实体。
+-//!    `{2, handle}` 为 PrefabInstanceData.rt_meshes 内容，不是待处理事件。
++//!    `{2, handle}` 为 PrefabInstance.rt_meshes 内容，不是待处理事件。
+ //! 3. `hot_reload_prefabs` 的 `PrefabWatcher`（hotwatch + 100 ms）与两个事件集合来源已在
+ //!    `startup::load_prefabs` 落地（见该模块）；本函数接收已收集的 `HashSet<PrefabName>` /
+ //!    `HashSet<GpuWorldSubsetKind>`。
+-//! 4. 组件注册：`components::trees::PrefabInstanceData` 已改为 re-export 本文件的 0x58 语义类型。
++//! 4. 组件注册：`components::trees::PrefabInstanceData` re-exports the canonical48B placement。
+ //! 5. `GpuWorld` 构造需 `GraphicsDevice`（`GpuWorld::new`），spawn/hot_reload 的 host 侧负责。
+ //! 6. Shared BirdHaven 的构造字段已接；critters 旧算法对该组件的完整消费仍另行审查。
+ 
+@@ -106,7 +106,7 @@
+     pub radius: f32,
+ }
+ 
+-/// GPU 实例记录（O：`PrefabInstanceData +0x08` Vec 的元素，stride 0xc）。
++/// GPU 实例记录（O：`PrefabInstance +0x08` Vec 的元素，stride 0xc）。
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+ #[repr(C)]
+ pub struct GpuInstanceRecord {
+@@ -132,7 +132,7 @@
+     }
+ }
+ 
+-/// 音频触发记录（O：`PrefabInstanceData +0x38` Vec 的元素，stride 0x28）。
++/// 音频触发记录（O：`PrefabInstance +0x38` Vec 的元素，stride 0x28）。
+ #[derive(Clone, Copy, Debug, PartialEq)]
+ #[repr(C)]
+ pub struct AudioTriggerRecord {
+@@ -154,29 +154,11 @@
+     }
+ }
+ 
+-/// 预制体实例数据组件（O：`systems::prefab::PrefabInstanceData`，**原生 0x58 B**，见模块文档）。
+-#[derive(Component, Clone, Debug)]
+-pub struct PrefabInstanceData {
+-    /// `+0x08` GPU 实例（stride 0xc）。
+-    pub gpu_instances: Vec<GpuInstanceRecord>,
+-    /// `+0x20` RT 网格句柄（stride 0x10）。
+-    pub rt_meshes: Vec<RtMeshHandle>,
+-    /// `+0x38` 音频触发（stride 0x28）。
+-    pub audio_triggers: Vec<AudioTriggerRecord>,
+-    /// `+0x48/+0x50` 预制体名（`PrefabName` = Arc ptr/len）。
+-    pub prefab_name: PrefabName,
+-}
+-
+-impl Default for PrefabInstanceData {
+-    fn default() -> Self {
+-        Self {
+-            gpu_instances: Vec::new(),
+-            rt_meshes: Vec::new(),
+-            audio_triggers: Vec::new(),
+-            prefab_name: PrefabName::new(""),
+-        }
+-    }
+-}
++/// Canonical B systems::prefab::PrefabInstanceData: mutable48B placement.
++/// Original register_component140b7e440 writes size0x30 at140b7e6ed.
++#[repr(transparent)]
++#[derive(Component, Clone, Copy, Debug, PartialEq)]
++pub struct PrefabInstanceData(pub PlacementDataSsbo);
+ 
+ /// 生成预制体命令（O：`systems::prefab::SpawnPrefabCmd`；`PrefabPlugin::build`
+ /// 0x140840430 注册）。
+@@ -290,7 +272,7 @@
+     /// 预制体名。
+     pub prefab: PrefabName,
+     /// 实例数据。
+-    pub data: PrefabInstanceData,
++    pub data: PrefabInstance,
+ }
+ 
+ /// `create_prefab_rt` resolved mesh output. The optional radius also requests
+@@ -387,7 +369,7 @@
+ /// The native 0x48B Commands record invokes insert<BirdHaven> (callback
+ /// 1412dbe50), with local center/radius, state0, cooldown10 and flagfalse.
+ /// Production runtime applies that component write. `{2, handle}` is the
+-/// tag2 RtMeshHandle appended to PrefabInstanceData.rt_meshes, not an event.
++/// tag2 RtMeshHandle appended to PrefabInstance.rt_meshes, not an event.
+ pub fn create_prefab_rt(
+     part: &crate::resources::prefab::PrefabPart,
+     transform: &PrefabTransform,
+@@ -459,7 +441,7 @@
+ /// is needed. The handle retains the part order/association for its center.
+ #[allow(clippy::too_many_arguments)]
+ fn build_prefab_contents(
+-    data: &mut PrefabInstanceData,
++    data: &mut PrefabInstance,
+     prefab: &Prefab,
+     transform: &PrefabTransform,
+     mesh_atlases: &MeshAtlasLibrary,
+@@ -555,9 +537,9 @@
+             continue;
+         }
+         let prefab = library.get(&request.prefab);
+-        let mut data = PrefabInstanceData {
++        let mut data = PrefabInstance {
+             prefab_name: request.prefab.clone(),
+-            ..PrefabInstanceData::default()
++            ..PrefabInstance::default()
+         };
+         let _rt_commands = build_prefab_contents(
+             &mut data,
+@@ -592,7 +574,7 @@
+ /// 3. 音频 Vec：`Aabb3::scaled(splat(scale))` + `translated(translation)` →
+ ///    `AudioTriggerLibrary::update_trigger_shape`；键失效 → `unwrap_failed` panic（O）。
+ pub fn update_prefabs_instance(
+-    data: &PrefabInstanceData,
++    data: &PrefabInstance,
+     transform: &PrefabTransform,
+     gpu_world: &mut GpuWorld,
+     rt_world: &mut RtWorld,
+@@ -646,7 +628,7 @@
+ /// - 音频 Vec：原生槽 Option 判别（`2`=None → `return`；`0`=Some → `remove`；其它 → panic）。
+ #[allow(clippy::too_many_arguments)]
+ pub fn despawn_prefab_contents(
+-    data: &mut PrefabInstanceData,
++    data: &mut PrefabInstance,
+     gpu_world: &GpuWorld,
+     rt_world: &mut RtWorld,
+     audio: &mut AudioTriggerLibrary,
+@@ -672,12 +654,12 @@
+ 
+ /// `despawn_prefabs`（O：0x140842d60）：消费 `DespawnPrefabCmd`，逐实体回收内容并 `despawn()`。
+ ///
+-/// 原生在命中 `PrefabInstanceData` 时先写外部计数/GPU 数据再调 contents（计数资源 seam）；
+-/// 实体查找用 archetype/table 位图（= `Query<&mut PrefabInstanceData>::get_mut`）。
++/// 原生在命中 `PrefabInstance` 时先写外部计数/GPU 数据再调 contents（计数资源 seam）；
++/// 实体查找用 archetype/table 位图（= `Query<&mut PrefabInstance>::get_mut`）。
+ pub fn despawn_prefabs(
+     mut commands: Commands,
+     mut events: EventReader<DespawnPrefabCmd>,
+-    mut query: Query<&mut PrefabInstanceData>,
++    mut query: Query<&mut PrefabInstance>,
+     gpu_world: &GpuWorld,
+     rt_world: &mut RtWorld,
+     audio: &mut AudioTriggerLibrary,
+@@ -702,7 +684,7 @@
+ /// 返回被重建的实体列表。
+ #[allow(clippy::too_many_arguments, clippy::type_complexity)]
+ pub fn hot_reload_prefabs(
+-    instances: &mut [(Entity, PlacementDataSsbo, PrefabInstanceData)],
++    instances: &mut [(Entity, PlacementDataSsbo, PrefabInstance)],
+     modified_prefabs: &HashSet<PrefabName>,
+     modified_subsets: &HashSet<GpuWorldSubsetKind>,
+     library: &PrefabLibrary,
+@@ -883,9 +865,20 @@
+ 
+     #[test]
+     fn audio_trigger_kind_gate_requires_exact_tree_string() {
+-        let bounds = Aabb3 { min: Vec3::ZERO, max: Vec3::ONE };
+-        for (kind, accepted) in [("Tree", true), ("TreeX", false), ("Tre", false), ("Bush", false)] {
+-            let trigger = PrefabAudioTrigger { kind_name: kind.into(), bounds };
++        let bounds = Aabb3 {
++            min: Vec3::ZERO,
++            max: Vec3::ONE,
++        };
++        for (kind, accepted) in [
++            ("Tree", true),
++            ("TreeX", false),
++            ("Tre", false),
++            ("Bush", false),
++        ] {
++            let trigger = PrefabAudioTrigger {
++                kind_name: kind.into(),
++                bounds,
++            };
+             assert_eq!(trigger.is_tree(), accepted);
+         }
+     }
+@@ -895,7 +888,7 @@
+         let gpu_world = test_world(GpuWorldSubsetKind::Canopy);
+         let mut rt_world = RtWorld::default();
+         let mut audio = AudioTriggerLibrary::default();
+-        let mut data = PrefabInstanceData {
++        let mut data = PrefabInstance {
+             gpu_instances: vec![
+                 GpuInstanceRecord {
+                     id: 0,
+@@ -913,7 +906,7 @@
+                     kind: GpuWorldSubsetKind::Plant as u8,
+                 },
+             ],
+-            ..PrefabInstanceData::default()
++            ..PrefabInstance::default()
+         };
+         despawn_prefab_contents(&mut data, &gpu_world, &mut rt_world, &mut audio);
+         // 哨兵之后（id=2）不被访问；Vec 整体 drain。
+@@ -1029,17 +1022,17 @@
+             (
+                 Entity::from_raw(1),
+                 test_placement(),
+-                PrefabInstanceData {
++                PrefabInstance {
+                     prefab_name: PrefabName::new("tree/a"),
+-                    ..PrefabInstanceData::default()
++                    ..PrefabInstance::default()
+                 },
+             ),
+             (
+                 Entity::from_raw(2),
+                 test_placement(),
+-                PrefabInstanceData {
++                PrefabInstance {
+                     prefab_name: PrefabName::new("tree/b"),
+-                    ..PrefabInstanceData::default()
++                    ..PrefabInstance::default()
+                 },
+             ),
+         ];
+@@ -1090,7 +1083,7 @@
+         let rt_handle = RtMeshHandle::from_handle(3);
+         let mut rt_world = RtWorld::default();
+         let _ = rt_world.get_mut(rt_handle); // 默认单位矩阵
+-        let data = PrefabInstanceData {
++        let data = PrefabInstance {
+             audio_triggers: vec![AudioTriggerRecord {
+                 shape: Aabb3 {
+                     min: Vec3::ZERO,
+@@ -1099,7 +1092,7 @@
+                 handle: Some(audio_handle),
+             }],
+             rt_meshes: vec![rt_handle],
+-            ..PrefabInstanceData::default()
++            ..PrefabInstance::default()
+         };
+         let t = PrefabTransform {
+             translation: Vec3::new(1.0, 1.0, 1.0),
+--- a/tiny-glade/crates/country-core/src/systems/prefab/runtime.rs
++++ b/tiny-glade/crates/country-core/src/systems/prefab/runtime.rs
+@@ -51,7 +51,7 @@
+             position: placement.position,
+             radius: placement.scale,
+         };
+-        let mut data = PrefabInstanceData {
++        let mut data = PrefabInstance {
+             prefab_name: name.clone(),
+             ..Default::default()
+         };
+@@ -94,13 +94,13 @@
+         }
+         commands
+             .entity(entity)
+-            .insert((PrefabInstance(placement), data));
++            .insert((PrefabInstanceData(placement), data));
+     }
+     Ok(())
+ }
+ 
+ pub fn update_prefab_commands(
+-    mut query: Query<(&PrefabInstance, &mut PrefabInstanceData), Changed<PrefabInstance>>,
++    mut query: Query<(&PrefabInstanceData, &mut PrefabInstance), Changed<PrefabInstanceData>>,
+     mut gpu: ResMut<GpuWorld>,
+     mut rt: ResMut<RtWorld>,
+     mut audio: ResMut<AudioTriggerLibrary>,
+@@ -119,7 +119,7 @@
+ pub fn despawn_prefab_commands(
+     mut commands: Commands,
+     mut events: EventReader<DespawnPrefabCmd>,
+-    mut query: Query<&mut PrefabInstanceData>,
++    mut query: Query<&mut PrefabInstance>,
+     gpu: Res<GpuWorld>,
+     mut rt: ResMut<RtWorld>,
+     mut audio: ResMut<AudioTriggerLibrary>,
+@@ -216,8 +216,8 @@
+                 .chain(),
+         );
+         schedule.run(&mut world);
+-        assert_eq!(world.get::<PrefabInstance>(entity).unwrap().0, expected);
+-        let data = world.get::<PrefabInstanceData>(entity).unwrap();
++        assert_eq!(world.get::<PrefabInstanceData>(entity).unwrap().0, expected);
++        let data = world.get::<PrefabInstance>(entity).unwrap();
+         assert_eq!(
+             (
+                 data.gpu_instances.len(),
+@@ -244,7 +244,11 @@
+         assert_eq!(haven.cooldown, 10.0);
+         assert_eq!(haven.observed_state, 0);
+         assert!(!haven.observed_flag);
+-        world.get_mut::<PrefabInstance>(entity).unwrap().0.position = Vec3::new(4.0, 6.0, 7.0);
++        world
++            .get_mut::<PrefabInstanceData>(entity)
++            .unwrap()
++            .0
++            .position = Vec3::new(4.0, 6.0, 7.0);
+         schedule.run(&mut world);
+         assert_eq!(
+             world
+--- a/tiny-glade/crates/country-core/src/resources/terrain_rock_mask.rs
++++ b/tiny-glade/crates/country-core/src/resources/terrain_rock_mask.rs
+@@ -8,7 +8,7 @@
+ //! SSBO 载体实现与 `TerrainHeightSsbo` 同族（StorageElement NAME=stringify、BUFFER_LEN、
+ //! MAPPED_MEMORY_READBACK + SsboType）。
+ use crate::asset_libraries::ssbo_library::SsboType;
+-use crate::render::ssbo::{MappedStorageBuffer, StorageElement, MAPPED_MEMORY_READBACK};
++use crate::render::ssbo::{MAPPED_MEMORY_READBACK, MappedStorageBuffer, StorageElement};
+ 
+ /// 岩石 mask 回读 SSBO（O：`TerrainRockMaskSsbo`，0x2000 线程回读）。
+ #[repr(transparent)]
+@@ -32,6 +32,14 @@
+         initial: Option<&[u8]>,
+     ) -> Self::Storage {
+         MappedStorageBuffer::new_storage_buffer(device, initial)
++    }
++}
++
++impl TerrainRockMaskSsbo {
++    /// Native typed mapped-readback view. Reuse the same bit-sampling policy
++    /// without a second CPU shadow or a caller-specific copied mask.
++    pub fn sample_mapped_at_world_xz(mask: &[Self], x: f32, z: f32) -> u32 {
++        sample_at_world_xz(bytemuck::cast_slice(mask), x, z)
+     }
+ }
+ 
+@@ -79,7 +87,6 @@
+     (mask[word as usize] >> (index & 0x1f)) & 1
+ }
+ 
+-
+ #[cfg(test)]
+ mod original_storage_contract_tests {
+     use super::*;
+@@ -98,14 +105,23 @@
+             assert_eq!(calls.len(), 1);
+             let (desc, name, initial) = &calls[0];
+             assert_eq!(name, "TerrainRockMask");
+-            assert_eq!((desc.size, desc.usage, desc.memory, desc.alignment), (0x8000, 0x22, 4, 4));
++            assert_eq!(
++                (desc.size, desc.usage, desc.memory, desc.alignment),
++                (0x8000, 0x22, 4, 4)
++            );
+             let initial = initial.as_ref().unwrap();
+             assert_eq!(initial.len(), 0x8000);
+             assert!(initial.iter().all(|byte| *byte == 0));
+         }
+         library.get_mut::<TerrainRockMaskSsbo>().unwrap().mapped[0x1fff].0 = 1 << 31;
+         let mask = library.get::<TerrainRockMaskSsbo>().unwrap();
+-        assert_eq!(sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), 65.0, 65.0), 1);
+-        assert_eq!(sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), -65.0, -65.0), 0);
++        assert_eq!(
++            sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), 65.0, 65.0),
++            1
++        );
++        assert_eq!(
++            sample_at_world_xz(bytemuck::cast_slice(&mask.mapped[..]), -65.0, -65.0),
++            0
++        );
+     }
+ }
+--- a/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/process_tree_cmds.rs
+@@ -10,7 +10,7 @@
+ //! - **Move 分支**：MoveTreeCmd 0x20 载荷（coregap-1 已落库）→ 全实现。逐事件
+ //!   `TreeStorage::get(index@+8)`；None → 日志 "MoveTreeCmd references a
+ //!   non-existing tree"（decomp 0x142267430 行 247-270）；Some → 定位
+-//!   PrefabInstanceData 写新位置 → 水面采样（bilinear_sample_at_world_xz）→
++//!   PrefabInstance 写新位置 → 水面采样（bilinear_sample_at_world_xz）→
+ //!   `PlayTreeSoundCmd{kind=1, position}`（真实槽 stride 0x20 另有
+ //!   in_water@+9 / inverse_lerp@+0xc——共享类型缺这两个字段，见分歧 T1）。
+ //! - **Delete 分支**：补 `Entities::contains(entity)` 门控（decomp 行 835）——
+@@ -28,7 +28,6 @@
+ 
+ use country_core::components::{TreeAnimation, TreeComponent, TreeMarkedForDeletion, TreeMoveBend};
+ use country_core::resources::history::tree_edit::{DeleteTreeCmd, InsertTreeCmd};
+-use country_core::resources::prefab::PrefabInstance;
+ use country_core::resources::session::ActiveSession;
+ use country_core::resources::time_of_day::inverse_lerp;
+ use country_core::resources::tree_storage::{
+@@ -37,6 +36,7 @@
+ use country_core::resources::world_raster_defs::WaterRaster;
+ use country_core::systems::audio::PlayTreeSoundCmd;
+ use country_core::systems::audio::tree_audio::TreeAmbience;
++use country_core::systems::prefab::PrefabInstanceData;
+ use country_core::systems::prefab::{DespawnPrefabCmd, SpawnPrefabCmd};
+ use country_core::systems::save::load_completion_checker::LoadingCompletionState;
+ 
+@@ -73,7 +73,7 @@
+ #[allow(clippy::too_many_arguments)]
+ pub fn process_tree_cmds<S: Send + Sync + 'static>(
+     mut storage: ResMut<TreeStorage>,
+-    mut instances: Query<&mut PrefabInstance>,
++    mut instances: Query<&mut PrefabInstanceData>,
+     mut moves: EventReader<MoveTreeCmd>,
+     mut deletes: EventReader<DeleteTreeCmd>,
+     mut inserts: EventReader<InsertTreeCmd>,
+@@ -89,11 +89,11 @@
+     // ---- Move 分支（O：槽 stride 0x20；decomp 行 187-325）。wave3 落库。
+     for cmd in moves.read() {
+         if let Some(entry) = storage.get(TreeStorageIndex(cmd.index)) {
+-            // Original query is the actual 48-byte PrefabInstance placement.
++            // Original query is the actual 48-byte PrefabInstanceData placement.
+             // Entity/component errors reach unwrap_failed @142268583.
+             let mut instance = instances
+                 .get_mut(entry.entity)
+-                .expect("MoveTreeCmd entity has no PrefabInstance placement");
++                .expect("MoveTreeCmd entity has no PrefabInstanceData placement");
+             instance.0.position = cmd.position;
+             let size_ratio = inverse_lerp(0.5, 0.9, instance.0.scale);
+             // O：水面采样（decomp 行 300-303）。结果 `0.0 < level` 是
+@@ -267,7 +267,7 @@
+                 // position@+0x10/+0x18）。
+                 let instance = instances
+                     .get(entry.entity)
+-                    .expect("DeleteTreeCmd live entity has no PrefabInstance placement");
++                    .expect("DeleteTreeCmd live entity has no PrefabInstanceData placement");
+                 sounds.write(PlayTreeSoundCmd {
+                     kind: 2,
+                     selector: 0,
+@@ -344,7 +344,7 @@
+         let mut placement = PlacementDataSsbo::default();
+         placement.position = glam::Vec3::new(1.0, 2.0, 3.0);
+         placement.scale = 0.75;
+-        let entity = world.spawn(PrefabInstance(placement)).id();
++        let entity = world.spawn(PrefabInstanceData(placement)).id();
+         world.resource_mut::<TreeStorage>().insert(
+             TreeStorageIndex(73),
+             TreeStorageEntry {
+@@ -361,7 +361,7 @@
+         schedule.add_systems(process_tree_cmds::<()>);
+         schedule.run(&mut world);
+         assert_eq!(
+-            world.get::<PrefabInstance>(entity).unwrap().0.position,
++            world.get::<PrefabInstanceData>(entity).unwrap().0.position,
+             target
+         );
+         let events = world.resource::<Events<PlayTreeSoundCmd>>();
+@@ -393,7 +393,7 @@
+         let mut placement = PlacementDataSsbo::default();
+         placement.position = glam::Vec3::new(1.0, 2.0, 3.0);
+         placement.scale = 0.75;
+-        let old = world.spawn(PrefabInstance(placement)).id();
++        let old = world.spawn(PrefabInstanceData(placement)).id();
+         world.resource_mut::<TreeStorage>().insert(
+             TreeStorageIndex(73),
+             TreeStorageEntry {
+@@ -436,7 +436,7 @@
+         assert!(world.get::<TreeMarkedForDeletion>(created).is_some());
+     }
+     #[test]
+-    #[should_panic(expected = "MoveTreeCmd entity has no PrefabInstance placement")]
++    #[should_panic(expected = "MoveTreeCmd entity has no PrefabInstanceData placement")]
+     fn live_move_entity_without_placement_preserves_original_unwrap_failure() {
+         let mut world = world();
+         let entity = world.spawn_empty().id();
+--- a/tiny-glade/crates/systems/tree-tool/src/recalc_tree_position_on_terrain_height_change.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/recalc_tree_position_on_terrain_height_change.rs
+@@ -8,8 +8,8 @@
+ 
+ use bevy_ecs::prelude::*;
+ 
+-use country_core::resources::prefab::PrefabInstance;
+ use country_core::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
++use country_core::systems::prefab::PrefabInstanceData;
+ use country_core::systems::terrain::delayed_terrain_changed_msg::OnTerrainChange;
+ 
+ /// 世界边界（O：0x142925980 区 `0x42820000` = 65.0；`ABS(x) <= 65.0`，含边界）。
+@@ -17,7 +17,7 @@
+ 
+ /// `recalc_tree_position_on_terrain_height_change` @0x142268dc0（O 面）。
+ pub fn recalc_tree_position_on_terrain_height_change(
+-    mut trees: Query<&mut PrefabInstance>,
++    mut trees: Query<&mut PrefabInstanceData>,
+     heights: Res<TerrainHeightsData<TerrainHeightSsbo>>,
+     mut changed: EventReader<OnTerrainChange>,
+ ) {
+--- a/tiny-glade/crates/systems/tree-tool/src/ui_delete_tree.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/ui_delete_tree.rs
+@@ -36,7 +36,7 @@
+ pub fn ui_delete_tree<S: Send + Sync + 'static>(
+     mode: Res<AppMode>,
+     ui: Res<UiState>,
+-    trees: Query<(&PrefabInstanceData, &PrefabInstance, &TreeComponent)>,
++    trees: Query<(&PrefabInstance, &PrefabInstanceData, &TreeComponent)>,
+     mut strokes: EventReader<PathDrawEvent>,
+     mut deletes: EventWriter<DeleteTreeCmd>,
+     storage: Res<TreeStorage>,
+--- a/tiny-glade/crates/systems/tree-tool/src/ui_move_tree.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/ui_move_tree.rs
+@@ -61,7 +61,7 @@
+     mode: Res<AppMode>,
+     ui: Res<UiState>,
+     storage: Res<TreeStorage>,
+-    _trees: Query<(&PrefabInstanceData, &PrefabInstance)>,
++    _trees: Query<(&PrefabInstance, &PrefabInstanceData)>,
+     cursor: Res<CursorTerrainRaycast>,
+     heights: Res<TerrainHeightsData<TerrainHeightSsbo>>,
+     mut moves: EventWriter<MoveTreeCmd>,
+--- a/tiny-glade/crates/country-core/src/systems/save/save_game.rs
++++ b/tiny-glade/crates/country-core/src/systems/save/save_game.rs
+@@ -9,14 +9,14 @@
+ //! Sheep/chain_index/history_start/snapshots）由所属域提供序列化载荷，缺失即 panic
+ //! （原版每节必写），不伪造。
+ use crate::resources::critters::{
+-    sheep::{control::capture_sheep_snapshot, Sheep},
+     CritterGoal,
++    sheep::{Sheep, control::capture_sheep_snapshot},
+ };
+ use crate::resources::glade_color_customization::GladeColorCustomization;
++use crate::resources::history::HistoryIdentity;
+ use crate::resources::history::snapshots::current_snapshot;
+ use crate::resources::history::snapshots::set_current_snapshot;
+ use crate::resources::history::transactions::ResolvedHistorySnapshot;
+-use crate::resources::history::HistoryIdentity;
+ use crate::resources::roofs::roof_animation::RoofMarkedForDeletion;
+ use crate::resources::roofs::roof_shape::Roof;
+ pub use crate::resources::save_file::SaveFileSection;
+@@ -26,9 +26,9 @@
+ use crate::systems::camera_rig::CameraRigParametersCache;
+ use crate::systems::save::save_backup_list::BackupSaveFileKind;
+ use crate::systems::save::save_backup_metronome::SaveBackupMetronome;
+-use crate::systems::save::snapshot::capture_game_snapshot_save_data;
+ use crate::systems::save::snapshot::SnapshotDomainData;
+ use crate::systems::save::snapshot::SnapshotSaveData;
++use crate::systems::save::snapshot::capture_game_snapshot_save_data;
+ use crate::utils::components::transform::Transform;
+ use bevy_ecs::prelude::{Query, Res, ResMut, Without};
+ use hashbrown::HashMap;
+@@ -288,8 +288,8 @@
+         'w,
+         's,
+         (
++            &'static crate::resources::prefab::PrefabInstance,
+             &'static crate::systems::prefab::PrefabInstanceData,
+-            &'static crate::resources::prefab::PrefabInstance,
+             &'static crate::components::trees::TreeComponent,
+         ),
+     >,
+@@ -1010,9 +1010,9 @@
+     use super::*;
+     #[test]
+     fn current_history_edits_append_to_the_real_file_without_reopening() {
+-        use super::super::save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList};
++        use super::super::save_thread::{CurrentSaveFile, UnsavedFileList, execute_save_cmd};
+         use crate::resources::history::{
+-            serialized::SavedMultiEdit, transactions::ObservedHistoryLedger, History,
++            History, serialized::SavedMultiEdit, transactions::ObservedHistoryLedger,
+         };
+         let original: serde_json::Value = serde_json::from_str(include_str!(
+             "../../../tests/fixtures/original-intro-history-b.json"
+@@ -1072,7 +1072,7 @@
+     #[test]
+     fn pending_snapshot_cache_requires_late_worker_serialization() {
+         use crate::resources::history::{
+-            transactions::ResolvedHistorySnapshot, HistorySnapshotId, MaybePendingSnapshotId,
++            HistorySnapshotId, MaybePendingSnapshotId, transactions::ResolvedHistorySnapshot,
+         };
+         let owner = MaybePendingSnapshotId::new();
+         let left = vec![ResolvedHistorySnapshot {
+@@ -1108,7 +1108,7 @@
+ 
+ #[cfg(test)]
+ mod original_world_worker_integration {
+-    use super::super::save_thread::{execute_save_cmd, CurrentSaveFile, UnsavedFileList};
++    use super::super::save_thread::{CurrentSaveFile, UnsavedFileList, execute_save_cmd};
+     use super::*;
+     use crate::resources::{
+         color_id::{GateColorIds, HalftimberColorIds, WallColorIds},
+@@ -1116,7 +1116,7 @@
+         stairs::{stairs_removed_supports::StairsRemovedSupports, stairs_state::StairsState},
+         terrain_editing::TerrainEditingData,
+         terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
+-        walls::{decorator_storage::DecoratorStorage, InnerWalls, WallState},
++        walls::{InnerWalls, WallState, decorator_storage::DecoratorStorage},
+         world_raster::DirtyTilePublisher,
+         world_raster_defs::{
+             Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster, GardenRaster, PathRaster,
+--- a/tiny-glade/crates/systems/tree-tool/src/tree_move_bend.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/tree_move_bend.rs
+@@ -13,8 +13,8 @@
+ //! - 变更检测：`step` 与记录 `+0x24/+0x28` 比较（含 NaN 语义），不同则写
+ //!   `[+0x24..0x2c] = {step_x, step_z}` 并打变更 tick。
+ //!
+-//! Placement owner is canonical resources::prefab::PrefabInstance(48B),
+-//! distinct from prefab contents PrefabInstanceData(88B). The threshold branch
++//! Placement owner is canonical systems::prefab::PrefabInstanceData(48B),
++//! distinct from prefab contents PrefabInstance(88B). The threshold branch
+ //! writes zero step (EAX/ECX zeroed at142268cfc), including resetting old bend.
+ //!
+ //! `time_continuous_lerp` 本身判等（0x140c904e0 逐指令：`expf(-delta*rate)` →
+@@ -23,8 +23,8 @@
+ use bevy_ecs::prelude::*;
+ 
+ use country_core::components::TreeMoveBend;
+-use country_core::resources::prefab::PrefabInstance;
+ use country_core::resources::time::GameTime;
++use country_core::systems::prefab::PrefabInstanceData;
+ 
+ /// `utils::time_continuous_lerp`（0x140c904e0，O 反汇编）：
+ /// `a + (b - a) * (1 - expf(-delta * rate))`（`XORPS` 取负 → `MULSS` ×rate →
+@@ -44,7 +44,7 @@
+ 
+ /// B1422689c0, including unordered threshold behavior and actual placement writes.
+ pub fn tree_move_bend(
+-    mut trees: Query<(&mut TreeMoveBend, &mut PrefabInstance)>,
++    mut trees: Query<(&mut TreeMoveBend, &mut PrefabInstanceData)>,
+     time: Res<GameTime>,
+ ) {
+     for (mut bend, mut placement) in &mut trees {
+--- a/tiny-glade/crates/systems/forest/src/tree_animation.rs
++++ b/tiny-glade/crates/systems/forest/src/tree_animation.rs
+@@ -31,7 +31,7 @@
+ //! ## ⚠ 与当前 country_core 类型的分歧（未实现面，详见 RESTORE.md）
+ //!
+ //! TreeAnimation 已恢复为实体自身的时长/进度/树冠可见性/临时隐藏标志。
+-//! Placement writes use canonical PrefabInstance(48B). InteractableForestTree 的
++//! Placement writes use canonical PrefabInstanceData(48B). InteractableForestTree 的
+ //! 动画字段仍借 position 的 x/y/z 偏移承载
+ //! （+0x8/+0xc/+0x10），语义名分歧（以 position 承载）。`Aabb3::intersect_segment` 原为
+ //! 3D AABB 线段求交（0x141240570），当前 utils 无此方法（本地等效实现落地并标注）。
+@@ -42,12 +42,12 @@
+ use country_core::asset_libraries::audio_trigger_library::{AudioTriggerKind, AudioTriggerLibrary};
+ use country_core::components::{TreeAnimation, TreeMarkedForDeletion};
+ use country_core::render::nani::instance_updates::pack_2x16f_uint;
+-use country_core::resources::prefab::PrefabInstance;
+ use country_core::resources::time::GameTime;
+ use country_core::resources::tree_storage::{InteractableForestPlacements, InteractableForestTree};
+ use country_core::systems::camera_rig::main_camera::MainCamera;
+ use country_core::systems::mode_manager::AppMode;
+ use country_core::systems::prefab::DespawnPrefabCmd;
++use country_core::systems::prefab::PrefabInstanceData;
+ use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+ use utils::easing_functions::EasingFunction;
+ 
+@@ -89,7 +89,7 @@
+ pub fn handplaced_tree_animation(
+     mut trees: Query<(
+         &mut TreeAnimation,
+-        &mut PrefabInstance,
++        &mut PrefabInstanceData,
+         Option<&TreeMarkedForDeletion>,
+     )>,
+     time: Res<GameTime>,
+@@ -159,7 +159,7 @@
+     mut trees: Query<(
+         Entity,
+         &mut InteractableForestTree,
+-        &mut PrefabInstance,
++        &mut PrefabInstanceData,
+         Option<&TreeMarkedForDeletion>,
+     )>,
+     time: Res<GameTime>,
+--- a/tiny-glade/crates/systems/tree-tool/src/hide_trees.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/hide_trees.rs
+@@ -1,8 +1,8 @@
+ //! B hide_trees @14226a260: wall requests, then area requests. Each
+ //! resolved query clears the existing animation flag before checking a hit.
+-//! Placement comes from PrefabInstance; the name comes from PrefabInstanceData.
++//! Placement comes from PrefabInstanceData; the name comes from PrefabInstance.
+ use bevy_ecs::prelude::*;
+-use country_core::components::{PrefabInstanceData, TreeAnimation, TreeComponent};
++use country_core::components::{TreeAnimation, TreeComponent};
+ use country_core::resources::history::tree_edit::{DeleteTreeCmd, TreeEdit, TreeEditData};
+ use country_core::resources::history::{EditType, History};
+ use country_core::resources::prefab::PrefabInstance;
+@@ -13,6 +13,7 @@
+     WallId,
+     spatial_index::{GRID_SIDE, WORLD_SIZE, world_space_to_grid_coord_unclamped},
+ };
++use country_core::systems::prefab::PrefabInstanceData;
+ use country_core::systems::wall::wall_state::wall_spatial_hash::{
+     WallSpatialHash, WallSpatialSegment,
+ };
+@@ -100,8 +101,8 @@
+ pub fn hide_trees<S: Send + Sync + 'static>(
+     mut trees: Query<(
+         &mut TreeAnimation,
++        &PrefabInstance,
+         &PrefabInstanceData,
+-        &PrefabInstance,
+         &TreeComponent,
+     )>,
+     storage: Res<TreeStorage>,
+@@ -399,7 +400,7 @@
+     }
+ 
+     fn tree(world: &mut World, index: u64, position: Vec3) -> Entity {
+-        let instance = PrefabInstance(PlacementDataSsbo {
++        let instance = PrefabInstanceData(PlacementDataSsbo {
+             position,
+             scale: 0.75,
+             rotation_angle: 123.0,
+@@ -412,7 +413,7 @@
+             .spawn((
+                 TreeAnimation::preplaced(),
+                 instance,
+-                PrefabInstanceData {
++                PrefabInstance {
+                     prefab_name: PrefabName::new("test/tree"),
+                     ..Default::default()
+                 },
+--- a/tiny-glade/crates/country-core/src/startup/spawn_preplaced_trees.rs
++++ b/tiny-glade/crates/country-core/src/startup/spawn_preplaced_trees.rs
+@@ -1,46 +1,36 @@
+-//! 预置树生成（B `spawn_preplaced_trees` @0x140862270）。
+-//!
+-//! 证据（R10 契约 §2.6，O + 发行资产实读）：
+-//! * 不在 `add_game_startup_systems`；由 `save::impl$1::add_save_load_systems`
+-//!   （0x1409443b0）注册，`run_game_thread` 直调。本模块只提供系统，不改 save。
+-//! * 输入 `Res<ActiveSession>`（assets root、格调）、`ResMut<TreeStorage>`、`Commands`。
+-//! * 配置：`<assets_root>/assets/glade/<theme>/trees.json`，条目
+-//!   `{ prefab, placements }`；placements 文件为
+-//!   `[{ position:[x,y,z], id, scale, rotation_angle, pad0, pad1 }]`（发行资产实读）。
+-//! * 每棵树 `TreeStorage::insert` + 实体 spawn；日志 `Converting pre-placed trees`、
+-//!   `deserialize trees`。
+-//!
+-//! U：树实体的完整组件 bundle（TreeComponent/TreeAnimation/TreeMoveBend 等）、
+-//! prefab 名到实体的消费链、per-glade 路径表其余条目。当前只写已确认的
+-//! `Transform` + `InteractableForestTree` + `TreeStorage`。
+-use crate::resources::session::ActiveSession;
+-use crate::resources::tree_storage::{InteractableForestTree, TreeStorage, TreeStorageEntry};
+-use crate::utils::components::transform::Transform;
++//! Original B140862270: legacy SpawnPreplacedTrees event → owned assets,
++//! tree identity/components → the existing full prefab spawn lifecycle.
++use crate::{
++    components::{ConvertedPreplacedTree, TreeAnimation, TreeComponent, TreeMoveBend},
++    resources::{
++        history::tree_edit::SpawnPreplacedTrees,
++        placement_data::PlacementDataSsbo,
++        session::ActiveSession,
++        tree_storage::{TreeStorage, TreeStorageEntry, TreeStorageIndex},
++    },
++    systems::{audio::tree_audio::TreeAmbience, prefab::SpawnPrefabCmd},
++};
++use asset::prefab::PrefabName;
+ use bevy_ecs::prelude::*;
+-use glam::{Quat, Vec3};
+ use std::path::{Path, PathBuf};
+ 
+ pub const TREES_FILE_NAME: &str = "trees.json";
+-
++fn one() -> f32 {
++    1.0
++}
++/// Original clearing::PlacementConfigEntry visitor141416520: four fields.
+ #[derive(Clone, Debug, serde::Deserialize)]
+ pub struct PreplacedTreeGroup {
+     pub prefab: String,
+     pub placements: String,
++    #[serde(default)]
++    pub particle_emitter: Option<String>,
++    #[serde(default = "one")]
++    pub billboard_expansion_scale: f32,
+ }
+-
+-#[derive(Clone, Copy, Debug, serde::Deserialize)]
+-pub struct TreePlacement {
+-    pub position: [f32; 3],
+-    pub id: u64,
+-    pub scale: f32,
+-    pub rotation_angle: f32,
+-    #[serde(default)]
+-    pub pad0: u32,
+-    #[serde(default)]
+-    pub pad1: u32,
+-}
+-
+-/// O：`<assets_root>/assets/glade/<theme>/trees.json`。
++/// Use the full original48B placement decoder, including both angle aliases
++/// and packed animation defaults. No reduced parallel asset record exists.
++pub type TreePlacement = PlacementDataSsbo;
+ pub fn trees_json_path(assets_root: impl AsRef<Path>, theme: &str) -> PathBuf {
+     assets_root
+         .as_ref()
+@@ -49,104 +39,112 @@
+         .join(theme)
+         .join(TREES_FILE_NAME)
+ }
+-
+ pub fn load_tree_groups(path: impl AsRef<Path>) -> anyhow::Result<Vec<PreplacedTreeGroup>> {
+-    let text = std::fs::read_to_string(path)?;
+-    Ok(serde_json::from_str(&text)?)
++    Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
+ }
+-
+ pub fn load_tree_placements(
+     glade_dir: impl AsRef<Path>,
+     group: &PreplacedTreeGroup,
+ ) -> anyhow::Result<Vec<TreePlacement>> {
+-    let text = std::fs::read_to_string(glade_dir.as_ref().join(&group.placements))?;
+-    Ok(serde_json::from_str(&text)?)
++    // Original RelativePath::to_path, not platform-dependent raw Path::join.
++    let path = relative_path::RelativePath::new(&group.placements).to_path(glade_dir);
++    Ok(serde_json::from_str(&std::fs::read_to_string(path)?)?)
+ }
+ 
+-/// 读会话格调的 trees.json，逐条 spawn 并写入 `TreeStorage`。
+-///
+-/// 运行位置由 save 的注册点决定（契约 §2.6）；本函数不进入
+-/// `add_startup_mesh_systems`。
++/// Update + in_state(Game), registered by original add_save_load_systems.
++/// Both readers of SpawnPreplacedTrees see the same complete event batch.
+ pub fn spawn_preplaced_trees(
+-    session: Option<Res<ActiveSession>>,
+-    mut storage: Option<ResMut<TreeStorage>>,
++    session: Res<ActiveSession>,
+     mut commands: Commands,
+-) {
+-    let (Some(session), Some(storage)) = (session, storage.as_mut()) else {
+-        return;
+-    };
+-    let assets_root = session.assets_root();
+-    let theme = session.meta.glade.assets_folder();
+-    let groups_path = trees_json_path(&assets_root, theme);
+-    let groups = match load_tree_groups(&groups_path) {
+-        Ok(groups) => groups,
+-        Err(error) => {
+-            log::error!(
+-                target: "country_core::startup::spawn_preplaced_trees",
+-                "deserialize trees: {error:#}"
+-            );
+-            return;
++    mut requests: EventReader<SpawnPreplacedTrees>,
++    mut storage: ResMut<TreeStorage>,
++    mut prefabs: EventWriter<SpawnPrefabCmd>,
++) -> bevy_ecs::error::Result {
++    if requests.read().count() == 0 {
++        return Ok(());
++    }
++    log::info!("Converting pre-placed trees");
++    // ActiveSession::assets_root already returns assets/glade/<theme>.
++    // Native builds that path once (14086243e..455), then joins trees.json.
++    let glade_dir = session.assets_root();
++    let groups = load_tree_groups(glade_dir.join(TREES_FILE_NAME))?;
++    let mut accepted = 0u64;
++    for group in groups {
++        // Native exactly compares the18-byte prefab name before opening its
++        // placement file; bushes stay in the original forest asset system.
++        if group.prefab == "clearing/tree/bush" {
++            continue;
+         }
+-    };
+-    let glade_dir = assets_root.join("assets").join("glade").join(theme);
+-    log::info!(
+-        target: "country_core::startup::spawn_preplaced_trees",
+-        "Converting pre-placed trees"
+-    );
+-    for group in &groups {
+-        let placements = match load_tree_placements(&glade_dir, group) {
+-            Ok(placements) => placements,
+-            Err(error) => {
+-                log::error!(
+-                    target: "country_core::startup::spawn_preplaced_trees",
+-                    "deserialize trees ({}): {error:#}",
+-                    group.placements
+-                );
++        let placements = load_tree_placements(&glade_dir, &group)?;
++        let name = PrefabName::new(&group.prefab);
++        for placement in placements {
++            if !(placement.position.x.abs() < 65.0 && placement.position.z.abs() < 65.0) {
+                 continue;
+             }
+-        };
+-        for placement in placements {
+-            let position = Vec3::from_array(placement.position);
+-            let rotation = Quat::from_rotation_y(placement.rotation_angle.to_radians());
++            let id = 100001u64.wrapping_add(accepted);
+             let entity = commands
+                 .spawn((
+-                    Transform {
+-                        rotation,
+-                        translation: position,
+-                        scale: Vec3::splat(placement.scale),
++                    TreeComponent {
++                        id,
++                        is_preplaced: true,
+                     },
+-                    InteractableForestTree {
+-                        id: placement.id,
+-                        position,
+-                        scale: placement.scale,
+-                        _gap: 0,
++                    ConvertedPreplacedTree(name.clone()),
++                    TreeAnimation::preplaced(),
++                    TreeMoveBend {
++                        position: glam::Vec2::new(placement.position.x, placement.position.z),
++                    },
++                    TreeAmbience {
++                        position: placement.position + glam::Vec3::new(0.0, 10.0, 0.0),
+                     },
+                 ))
+                 .id();
+-            let index = storage.next_index();
+-            storage.insert(index, TreeStorageEntry { entity, position });
+-            // U: prefab 名到渲染/动画组件的消费链未恢复。
++            let mut flags = [0u8; 16];
++            flags[0..4].copy_from_slice(&placement.custom1.to_le_bytes());
++            flags[4..8].copy_from_slice(&placement.anim_t_packed.to_le_bytes());
++            flags[8..12].copy_from_slice(&placement.bend_vector.x.to_le_bytes());
++            flags[12..16].copy_from_slice(&placement.bend_vector.y.to_le_bytes());
++            prefabs.write(SpawnPrefabCmd {
++                prefab_name: Some(name.clone()),
++                entity: Some(entity),
++                position: placement.position,
++                scale: placement.scale,
++                rotation: placement.rotation_angle,
++                variant: placement.id as u32,
++                // Original overrides placement+18 with group billboard scale.
++                one: group.billboard_expansion_scale,
++                flags,
++                mode: placement.pad0 as u32,
++            });
++            assert!(
++                storage
++                    .insert(
++                        TreeStorageIndex(id),
++                        TreeStorageEntry {
++                            entity,
++                            position: placement.position
++                        }
++                    )
++                    .is_none(),
++                "pre-placed tree identity already exists"
++            );
++            accepted = accepted.wrapping_add(1);
+         }
+     }
++    Ok(())
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-
+     #[test]
+-    fn shipped_assets_use_the_glade_theme_path_and_schema() {
+-        let path = trees_json_path("root", "summer");
+-        assert_eq!(path, PathBuf::from("root/assets/glade/summer/trees.json"));
+-        let group: PreplacedTreeGroup =
+-            serde_json::from_str(r#"{"prefab":"clearing/tree/mid1","placements":"trees/a.json"}"#)
+-                .unwrap();
+-        assert_eq!(group.prefab, "clearing/tree/mid1");
+-        let placement: TreePlacement = serde_json::from_str(
+-            r#"{"position":[-13.7,0.0,27.4],"id":52,"scale":1.06,"rotation_angle":110.3}"#,
+-        )
+-        .unwrap();
+-        assert_eq!(placement.id, 52);
+-        assert_eq!(placement.position, [-13.7, 0.0, 27.4]);
++    fn original_placement_preserves_full_asset_fields_and_group_scale() {
++        let group: PreplacedTreeGroup = serde_json::from_str(r#"{"prefab":"clearing/tree/mid1","placements":"trees/a.json","billboard_expansion_scale":2.2}"#).unwrap();
++        assert_eq!(group.billboard_expansion_scale, 2.2);
++        let p: TreePlacement = serde_json::from_str(r#"{"position":[1,2,3],"scale":1.06,"rotation_degrees":110.3,"id":52,"custom0":7,"custom1":9,"bend_vector":[0.5,1.5]}"#).unwrap();
++        assert_eq!(
++            (p.id, p.custom0, p.custom1, p.anim_t_packed),
++            (52, 7, 9, 0x3c003c00)
++        );
++        assert_eq!(p.bend_vector, glam::Vec2::new(0.5, 1.5));
+     }
+ }
+--- a/tiny-glade/crates/systems/tree-tool/src/convert_preplaced_trees.rs
++++ b/tiny-glade/crates/systems/tree-tool/src/convert_preplaced_trees.rs
+@@ -1,63 +1,33 @@
+-//! convert_preplaced_trees.rs — 预置树→游戏树转换（B 0x14226be70，O；
+-//! 2026-10-17 fresh 反编译 + reviewer-eco-treetool 复核 + wave3 落库 Wait flag）。
+-//!
+-//! 结构（O，decomp 0x14226be70 行 122-128）：`SpawnPreplacedTrees` 事件到达 →
+-//! `Wait{count=1, flag=1}`；无新事件帧且 flag 置位 → count+1，`count+1 > 2`
+-//! （count>=2）→ 清 flag 执行转换块（一次性子门控）。转换：候选树（
+-//! `Decorators::iter_removed_ids` 位图）→ 位置 → 6 路 `bilinear_sample`（4 路径 +
+-//! 水面 + 花园）+ `terrain_rock_mask::sample_at_world_xz` → **水/岩/花园/路径/墙
+-//! 任一命中 = 未转换 → 发 stride-0x10 事件（payload=树 u64）**；通过全部门禁 →
+-//! 组 stride-0x48 TreeEdit 记录 → `History::insert_starting_edit`。
+-//!
+-//! ## wave3 落库
+-//! - **Wait flag 语义已判等**（分歧 12 已修）：flag 置位才计数，转换后清位——
+-//!   原 Rust 无 flag，`count>2` 后每帧重跑转换块；现按 decomp 行 122-128
+-//!   一次性门控。
+-//! - **分歧 15（未实现）**：`History::insert_starting_edit`——共享
+-//!   `History<EditType,S>`（HistoryTransactions）内部 ledger 不可变借用
+-//!   （`ledger()` 只读），`insert_starting_edit` 需 `&mut ObservedHistoryLedger`；
+-//!   转换通过者本应进 History，现仍空分支（wave3 复查，未冒充）。
+-//! - 分歧 13（岩石掩码 buffer 接线）、分歧 9/14（候选源 = 位图 vs storage 遍历）
+-//!   维持登记。
+-
++//! Original B14226be70: wait for prefab creation after the legacy request,
++//! evaluate the actual TreeStorage owners, then insert one starting edit.
+ use bevy_ecs::prelude::*;
++use country_core::{
++    asset_libraries::ssbo_library::AssetSsboLibrary,
++    components::ConvertedPreplacedTree,
++    resources::{
++        history::{
++            EditType, History,
++            snapshots::{HistoryEntry, insert_starting_edit},
++            tree_edit::{DeleteTreeCmd, SpawnPreplacedTrees, TreeEdit, TreeEditData},
++        },
++        terrain_rock_mask::TerrainRockMaskSsbo,
++        tree_storage::TreeStorage,
++        world_raster_defs::{GardenRaster, WaterRaster},
++    },
++    systems::{
++        paths::PathRastersResources, prefab::PrefabInstanceData,
++        wall::wall_state::wall_spatial_hash::WallSpatialHash,
++    },
++};
+ use std::sync::Arc;
+ 
+-use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+-use country_core::components::ConvertedPreplacedTree;
+-use country_core::resources::history::snapshots::HistoryEntry;
+-use country_core::resources::history::snapshots::insert_starting_edit;
+-use country_core::resources::history::tree_edit::{
+-    DeleteTreeCmd, SpawnPreplacedTrees, TreeEdit, TreeEditData,
+-};
+-use country_core::resources::history::{EditType, History};
+-use country_core::resources::prefab::PrefabInstance;
+-use country_core::resources::terrain_rock_mask::sample_at_world_xz;
+-use country_core::resources::tree_storage::TreeStorage;
+-use country_core::resources::world_raster_defs::{GardenRaster, WaterRaster};
+-use country_core::systems::paths::PathRastersResources;
+-use country_core::systems::prefab::PrefabInstanceData;
+-use country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash;
+-
+-/// 树-墙间距（O：r=7.0 圈，同 forest TREE_SHAPE_GAP；decomp 0x14226be70
+-/// `Circle2d::new` + `WallSpatialHash::query_with_circle_callback`）。
+ pub const TREE_WALL_GAP: f32 = 7.0;
+-
+-/// 转换等待缓冲（O：`Local<Wait>`——{u64 计数 @+0, u8 标志 @+8}；decomp
+-/// 0x14226be70 行 122-128）。wave3 落库 flag 语义（分歧 12 已修）：
+-/// - 事件到达 → `count=1` + `flag=1`；
+-/// - 无事件帧且 flag 置位 → `count+=1`；`count+1 > 2`（即 count>=2）→
+-///   `flag=0` 并执行转换块（一次性子门控——事件簇只转一次，后续无事件帧
+-///   不再重跑转换块）。
+ #[derive(Default)]
+ pub struct Wait {
+-    /// 延迟帧计数（O：@+0 u64；事件到达重置 1，无事件帧自增）。
+     pub count: u64,
+-    /// 触发标志（O：@+8 u8；wave3 补：置位才计数，转换后清位）。
+-    pub flag: u64,
++    pub flag: bool,
+ }
+ 
+-/// `convert_preplaced_trees` @0x14226be70（O 面；wave3 落库 Wait flag）。
+ #[allow(clippy::too_many_arguments)]
+ pub fn convert_preplaced_trees<S: Send + Sync + 'static>(
+     mut spawns: EventReader<SpawnPreplacedTrees>,
+@@ -67,101 +37,81 @@
+     water: Res<WaterRaster>,
+     garden: Res<GardenRaster>,
+     walls: Res<WallSpatialHash>,
+-    _library: Res<AssetSsboLibrary>,
++    library: Res<AssetSsboLibrary>,
+     storage: Res<TreeStorage>,
+-    converted: Query<(
+-        Entity,
+-        &PrefabInstanceData,
+-        &PrefabInstance,
+-        &ConvertedPreplacedTree,
+-    )>,
++    converted: Query<(&PrefabInstanceData, &ConvertedPreplacedTree)>,
+     mut history: ResMut<History<S>>,
+ ) {
+-    // O：延迟帧门控（decomp 0x14226be70 行 122-128）——wave3 落库一次性 flag
+-    // 子门控（分歧 12 已修）。二进制控制流：
+-    // ```
+-    // if 有未读事件 { flag=1; count=1; }
+-    // else if flag 置位 { count += 1; if count+1 > 2 { flag=0; 转换块 } }
+-    // ```
+-    // 注意：转换块执行后 flag 清零，无事件帧不再重跑（原 Rust 每帧重跑转换，
+-    // 已判等修复）。
+-    let trigger = if spawns.read().next().is_some() {
++    // Native reader advances to the end of both event buffers, coalescing all
++    // requests. Taking just .next() would retrigger the delay for each event.
++    if spawns.read().count() != 0 {
+         wait.count = 1;
+-        wait.flag = 1;
+-        false
+-    } else if wait.flag != 0 {
+-        wait.count += 1;
+-        if wait.count > 2 {
+-            wait.flag = 0;
+-            true
+-        } else {
+-            false
+-        }
+-    } else {
+-        false
+-    };
+-    if !trigger {
++        wait.flag = true;
+         return;
+     }
+-    // O：通过全部门禁的树 → `Vec<TreeEdit::Place>`；循环后统一 drain → map(EditType::Tree)
+-    // → `History::insert_starting_edit`（decomp LAB_14226c1f0 尾部：from_iter<EditType,
+-    // Map<Drain<TreeEdit>, closure_env$1>> + insert_starting_edit 0x140a844f0）。
+-    let mut edits: Vec<EditType> = Vec::new();
+-    for (entity, data, instance, _converted) in converted.iter() {
+-        let pos = glam::Vec2::new(instance.0.position.x, instance.0.position.z);
+-        // O：6 路栅格采样（4 路径 + 水面 + 花园；`as_float_grid` 0x140ae4c20 无参
+-        // 一次返回四路引用——2026-10-17 core 签名修正）。
+-        let mut path_sum = 0.0f32;
+-        for grid in path_rasters.as_float_grid() {
+-            path_sum += grid.bilinear_sample_at_world_xz(pos.x, pos.y, 130.0, 130.0);
+-        }
+-        let density = path_sum.clamp(0.0, 1.0);
+-        let water_level = (**water)
++    if !wait.flag {
++        return;
++    }
++    wait.count = wait.count.wrapping_add(1);
++    if wait.count <= 2 {
++        return;
++    }
++    wait.flag = false;
++    log::info!("Adding converted pre-placed trees to history");
++    let rock = library
++        .get::<TerrainRockMaskSsbo>()
++        .expect("TerrainRockMaskSsbo must exist and expose its mapped readback");
++    let mut edits = Vec::new();
++    for (id, entry) in storage.iter() {
++        // Missing/dead Entity or either missing component is a native skip,
++        // not a reverse lookup from every unrelated prefab entity in World.
++        let Ok((placement, original_name)) = converted.get(entry.entity) else {
++            continue;
++        };
++        let placement = &placement.0;
++        let pos = glam::Vec2::new(placement.position.x, placement.position.z);
++        let [a, b, c, d] = path_rasters
++            .as_float_grid()
++            .map(|grid| grid.bilinear_sample_at_world_xz(pos.x, pos.y, 130.0, 130.0));
++        let sum = ((a + b) + c) + d;
++        let water = (**water)
+             .as_ref()
+             .bilinear_sample_at_world_xz(pos.x, pos.y, 130.0, 130.0);
+-        let garden_level = (**garden)
++        let garden = (**garden)
+             .as_ref()
+             .bilinear_sample_at_world_xz(pos.x, pos.y, 130.0, 130.0);
+-        // O：岩石掩码（terrain_rock_mask::sample_at_world_xz）——buffer 来自
+-        // AssetSsboLibrary（FrozenMap<SsboId,BufferState> + 名断言 len 0x3f），
+-        // 取用面 U → 分歧 13（本处以空 buffer 占位，未参与门控）。
+-        let _rock = sample_at_world_xz(&[], pos.x, pos.y);
+-        // O：水/岩/花园/路径任一命中 = 未转换 → 发事件（方向：与 restorer 首批
+-        // 相反；reviewer 复核 + HISTORY 双确认）。
+-        let conflict = water_level > 0.0 || garden_level > 0.0 || density > 0.0;
+-        let mut blocked = conflict;
+-        if !conflict {
+-            // O：density<=0 时才查墙冲突（Circle2d + query_with_circle_callback）。
+-            walls.query_with_circle(pos, TREE_WALL_GAP, |_s, _d| {
+-                blocked = true;
+-            });
++        // Original evaluates rock only when water/garden did not block.
++        let mut blocked = water > 0.0
++            || garden > 0.0
++            || TerrainRockMaskSsbo::sample_mapped_at_world_xz(&rock.mapped[..], pos.x, pos.y) != 0;
++        if !blocked {
++            // MAXSS(0,sum), MINSS(1,sum), UCOMISS/JA: unordered sums
++            // follow the nonpositive branch, then the actual wall cell test.
++            let lower = if 0.0 > sum { 0.0 } else { sum };
++            let density = if 1.0 < lower { 1.0 } else { lower };
++            blocked = density > 0.0;
++            if !blocked {
++                blocked = walls.has_occupied_cells_in_circle(pos, TREE_WALL_GAP);
++            }
+         }
+-        // 树 id 反查（真实链 = 已转换树记录；当前以 storage.iter().find(entity)
+-        // 代理，分歧 9/14）。
+-        let id = storage
+-            .iter()
+-            .find(|(_i, e)| e.entity == entity)
+-            .map(|(i, _e)| i.0)
+-            .expect("converted tree has no bound TreeStorageIndex");
+         if blocked {
+-            // O：未转换（冲突）→ 发 stride-0x10 事件（payload = 树 u64）。
+-            deletes.write(DeleteTreeCmd { id });
++            deletes.write(DeleteTreeCmd { id: id.0 });
+         } else {
+-            // O：通过全部门禁 → 组 stride-0x48 TreeEdit 记录（decomp
+-            // 0x14226c9xx：tag=0 Place + id + PrefabName + position + is_preplaced=1）。
+-            // Source placement is the actual existing 48-byte PrefabInstance.
+             edits.push(EditType::Tree(Arc::new(TreeEdit::Place(
+                 TreeEditData::from_placement(
+-                    country_core::resources::tree_storage::TreeStorageIndex(id),
+-                    &instance.0,
+-                    data.prefab_name.as_name_ref().to_string(),
++                    *id,
++                    placement,
++                    original_name.0.as_name_ref().to_string(),
+                     true,
+                 ),
+             ))));
+         }
+     }
+-    // O：History::insert_starting_edit（0x140a844f0）——`ledger_mut()` 已由
+-    // country-core 落库（分歧 15 关闭）；nonce 原版取 fastrand u64。
+-    let entry = HistoryEntry::from_edits(edits);
+-    insert_starting_edit(history.ledger_mut(), entry, fastrand::u64(..));
++    // Native inserts a MultiEdit even for an empty accepted batch; the shared
++    // starting-edit owner changes cursor/identity and preserves all aux owners.
++    insert_starting_edit(
++        history.ledger_mut(),
++        HistoryEntry::from_edits(edits),
++        fastrand::u64(..),
++    );
+ }
+--- a/tiny-glade/crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs
+@@ -161,7 +161,10 @@
+         use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
+         let clamp_to_cell = |p: [f32; 2]| {
+             let g = world_space_to_grid_coord_unclamped(p);
+-            let g = [g[0].clamp(0, GRID_SIDE as i32 - 1), g[1].clamp(0, GRID_SIDE as i32 - 1)];
++            let g = [
++                g[0].clamp(0, GRID_SIDE as i32 - 1),
++                g[1].clamp(0, GRID_SIDE as i32 - 1),
++            ];
+             grid_coord_to_cell_index(g) as usize
+         };
+         let lo = clamp_to_cell(min);
+@@ -179,10 +182,7 @@
+                     // 每段取到参考点的最近点（fresh 消费端 SnapProposal 语义）。
+                     let closest = segment_closest_point_to(segment, center);
+                     // [f32;2] is not Eq/Hash; dedup on bit patterns.
+-                    let key = (
+-                        [closest[0].to_bits(), closest[1].to_bits()],
+-                        segment.wall,
+-                    );
++                    let key = ([closest[0].to_bits(), closest[1].to_bits()], segment.wall);
+                     if seen.insert(key) {
+                         out.push((closest, segment.wall));
+                     }
+@@ -223,7 +223,10 @@
+         use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
+         let clamp_to_cell = |p: [f32; 2]| {
+             let g = world_space_to_grid_coord_unclamped(p);
+-            let g = [g[0].clamp(0, GRID_SIDE as i32 - 1), g[1].clamp(0, GRID_SIDE as i32 - 1)];
++            let g = [
++                g[0].clamp(0, GRID_SIDE as i32 - 1),
++                g[1].clamp(0, GRID_SIDE as i32 - 1),
++            ];
+             grid_coord_to_cell_index(g) as usize
+         };
+         let lo = clamp_to_cell(min);
+@@ -248,6 +251,48 @@
+                 on_hit(segment, d);
+             }
+         }
++    }
++
++    /// Original B1425defd0 specialization used by converted preplaced trees.
++    /// Its callback rejects any occupied cell, without the different public
++    /// segment-distance/sort/dedup policy of query_with_circle.
++    pub fn has_occupied_cells_in_circle(&self, center: glam::Vec2, radius: f32) -> bool {
++        use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
++        let half = WORLD_SIZE * 0.5;
++        let lo = [center.x - radius, center.y - radius].map(|v| v.max(-half));
++        let hi = [center.x + radius, center.y + radius].map(|v| v.min(half));
++        assert!(
++            lo[0] >= -half && lo[1] >= -half,
++            "original circle lower bounds"
++        );
++        assert!(
++            hi[0] <= half && hi[1] <= half,
++            "original circle upper bounds"
++        );
++        let cell_size = WORLD_SIZE / GRID_SIDE as f32;
++        assert!(cell_size > 0.5, "original wall spatial cell size");
++        let lo = world_space_to_grid_coord_unclamped(lo).map(|v| v.max(0));
++        let hi = world_space_to_grid_coord_unclamped(hi).map(|v| v.min(GRID_SIDE as i32 - 1));
++        let expansion = (cell_size * 0.5) * f32::from_bits(0x3fb5_04f3);
++        for z in lo[1]..=hi[1] {
++            for x in lo[0]..=hi[0] {
++                let middle = |i: i32| {
++                    let t = i as f32 / GRID_SIDE as f32;
++                    (t * half - (1.0 - t) * half) + cell_size * 0.5
++                };
++                let dx = middle(x) - center.x;
++                let dz = middle(z) - center.y;
++                let distance = (dz * dz + dx * dx).sqrt();
++                // Native UCOMISS/JBE excludes equality and unordered input.
++                if radius + expansion > distance {
++                    let index = z as usize * GRID_SIDE + x as usize;
++                    if !self.cells[index].is_empty() {
++                        return true;
++                    }
++                }
++            }
++        }
++        false
+     }
+ 
+     /// B 0x140aa5850 (native-only variant): query with a world-space segment.
+@@ -268,7 +313,8 @@
+             }
+         }
+         candidates.sort_by(|x, y| {
+-            segment_distance2_to_point(x, reference).total_cmp(&segment_distance2_to_point(y, reference))
++            segment_distance2_to_point(x, reference)
++                .total_cmp(&segment_distance2_to_point(y, reference))
+         });
+         // 相邻同墙去重（排序后同墙相邻，keep 最近）。
+         let mut seen_walls = HashSet::new();
+@@ -288,7 +334,8 @@
+             }
+         }
+         candidates.sort_by(|x, y| {
+-            segment_distance2_to_point(x, reference).total_cmp(&segment_distance2_to_point(y, reference))
++            segment_distance2_to_point(x, reference)
++                .total_cmp(&segment_distance2_to_point(y, reference))
+         });
+         let mut seen_walls = HashSet::new();
+         candidates.retain(|segment| seen_walls.insert(segment.wall));
+@@ -523,3 +570,37 @@
+         );
+     }
+ }
++
++#[cfg(test)]
++mod original_occupied_circle_fixtures {
++    use super::*;
++    #[test]
++    fn original_b_837_byte_callback_boundary_vectors() {
++        // Obtained by running untouched original B1425defd0, including its
++        // original geometry/grid helpers, against independently built cells.
++        // Full168-case oracle and binary SHA: round12/preplaced-tree-chain/
++        // original-wall-fixtures.json. These are oracle outputs, not roundtrips.
++        for (center, radius, occupied, reject) in [
++            ([0., 0.], 7., None, false),
++            ([0., 0.], 7., Some([32, 32]), true),
++            ([0., 0.], 7., Some([36, 32]), false),
++            ([65., 65.], 7., Some([63, 63]), true),
++            ([-65., -65.], 7., Some([0, 0]), true),
++            ([72., 72.], 7., Some([63, 63]), false),
++            ([80., 80.], 7., Some([63, 63]), false),
++            ([0., 0.], 0., Some([32, 32]), false),
++        ] {
++            let mut hash = WallSpatialHash::default();
++            if let Some([x, z]) = occupied {
++                // The callback reads cell occupancy only, even with no
++                // geometry record associated with the stored key.
++                hash.cells[z * GRID_SIDE + x].push(7);
++            }
++            assert_eq!(
++                hash.has_occupied_cells_in_circle(glam::Vec2::from_array(center), radius),
++                reject,
++                "center={center:?}, radius={radius}, occupied={occupied:?}"
++            );
++        }
++    }
++}

@@ -1,0 +1,66 @@
+{
+  "status": "production implementation checkpoint; no Cargo run by this worker",
+  "sources": [
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/save/load_game.rs",
+      "sha256": "29a718a08e9e22bb6529daeb32ece222650e8d0ba9e6cf6d64a6780ebc756385"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/save/load_game_migration.rs",
+      "sha256": "6a68a710923aa330cfe6c8bbfd734387098f6453d0d6491129dbc33d07f47021"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/save/save_file_identity.rs",
+      "sha256": "adfa4372fb29dad5fa3c0e853c050b21f822030c8b5c98e38c59f03ccd53dee4"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/save_file.rs",
+      "sha256": "d863791a87e673d3424ad516a24023d120d57a338f8cbc8428c7b03cc4e8ba9b"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/history/transactions.rs",
+      "sha256": "93166860b1a9242a6bc12735e0e7348515fc7e25037484aa9a376eac5abf999e"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/history/tree_edit.rs",
+      "sha256": "a2524b0b9a4a5222330267dfdd955bd774e754f642393604f54be8660f44fced"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/save/tests.rs",
+      "sha256": "9d0d10abb5c631f18ed733b4cbf1fd07e4960ddea164ea48f011e1a229ba553a"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/startup/tests.rs",
+      "sha256": "1648b33a630c4730577d415d31c264429d337b3f1b8e845fb9189815ffa161c9"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "native-flow.json",
+      "sha256": "b61ca641f05955f7752aebd0c85f39d78e839995da8b78eb8f2ea6e50344691b"
+    },
+    {
+      "path": "snapshot-window-consumer.asm",
+      "sha256": "bb7f96227411165281c76fddff36592446206e38552e4f66143e072ebb8c78ac"
+    },
+    {
+      "path": "snapshot-window-cold-block.asm",
+      "sha256": "3df907b79cad40f791110ecceeced4a8b87d92c968e0f2269e0e189d89c68253"
+    }
+  ],
+  "validation": {
+    "rustfmt_parsed": true,
+    "git_diff_check": true,
+    "cargo": "not run; root owns shared build",
+    "runtime": "pending"
+  },
+  "exclusions": [
+    "T13",
+    "rhapsody changes"
+  ],
+  "remaining": [
+    "root independent review and compilation",
+    "actual legacy save + selected snapshot delta replay",
+    "idle History.empty_glade identity constructor not established by this worker"
+  ]
+}

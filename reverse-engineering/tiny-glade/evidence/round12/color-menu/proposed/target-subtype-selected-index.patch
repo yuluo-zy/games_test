@@ -1,0 +1,82 @@
+--- a/tiny-glade/crates/systems/color/src/lib.rs
++++ b/tiny-glade/crates/systems/color/src/lib.rs
+@@ -35,6 +35,8 @@
+ pub struct ShowColorMenuCmd {
+     /// kind（O：autoclose 读 `*event == 0xc`）。
+     pub kind: u8,
++    pub variant: u8,
++    pub reserved: u16,
+     /// DecoratorId uses the native +4 payload, independently of wall ids.
+     pub decorator_id: u32,
+     /// Native +8 WallId payload.
+--- a/tiny-glade/crates/systems/color/src/radial_menu/mod.rs
++++ b/tiny-glade/crates/systems/color/src/radial_menu/mod.rs
+@@ -82,6 +82,8 @@
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct ColorMenuTarget {
+     pub kind: u8,
++    pub variant: u8,
++    pub reserved: u16,
+     pub payload: u32,
+     pub id: u64,
+ }
+@@ -95,7 +97,7 @@
+     pub target: ColorMenuTarget,
+     pub initial: ColorSelectionSnapshot,
+     pub angle_range: Option<utils::angle_range::AngleRange>,
+-    pub selected_index: Option<usize>,
++    pub selected_index: usize,
+     pub interaction_start_index: Option<usize>,
+     pub navigation_indices: Vec<usize>,
+     pub navigation_state: u32,
+@@ -151,7 +153,8 @@
+         let start = span * -0.5 + std::f32::consts::FRAC_PI_4 + start_angle;
+         let angle_range = utils::angle_range::AngleRange::from_min_and_len(start, span);
+         let mut arc_position = start * radius;
+-        let mut selected_index = None;
++        let mut selected_index = 0;
++        let mut matched_initial = false;
+         let mut interactive = Vec::with_capacity(count);
+         let mut entities = Vec::with_capacity(icons.len());
+         for (index, icon) in icons.iter().enumerate() {
+@@ -167,8 +170,9 @@
+             let angle = arc_position / radius;
+             let position = glam::Vec2::new(angle.cos(), angle.sin()) * radius + center;
+             let selected = icon.is_initial_selection(&initial);
+-            if selected && selected_index.is_none() {
+-                selected_index = Some(index);
++            if selected && !matched_initial {
++                selected_index = index;
++                matched_initial = true;
+             }
+             let appearance = (index as f32 * -0.1 + if start_angle > 0.0 { -0.75 } else { 0.0 })
+                 / appearance_divisor;
+@@ -328,6 +332,8 @@
+                 icons,
+                 target: ColorMenuTarget {
+                     kind: 0,
++                    variant: 0,
++                    reserved: 0,
+                     payload: 0,
+                     id: 0x100000008,
+                 },
+@@ -343,7 +349,7 @@
+         assert_eq!(interactive.len(), 14);
+         let owner = world.get::<ColorRadialMenu>(menu).unwrap();
+         assert_eq!(owner.icon_entities.len(), 15);
+-        assert_eq!(owner.selected_index, Some(0));
++        assert_eq!(owner.selected_index, 0);
+         assert_eq!(owner.world_anchor, glam::Vec3::new(10., 20., 30.));
+         let ids = owner.icon_entities.clone();
+         assert!(!interactive.contains(&ids[5]));
+--- a/tiny-glade/crates/systems/color/src/show_color_menu.rs
++++ b/tiny-glade/crates/systems/color/src/show_color_menu.rs
+@@ -501,6 +501,8 @@
+             world.spawn(ColorRadialMenu {
+                 target: ColorMenuTarget {
+                     kind,
++                    variant: 0,
++                    reserved: 0,
+                     payload: 67,
+                     id: 0x100000009,
+                 },

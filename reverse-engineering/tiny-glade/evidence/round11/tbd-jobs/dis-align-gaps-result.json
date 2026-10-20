@@ -1,0 +1,66 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "tbd",
+  "pid": 38944,
+  "project": "D:\\game\\tools\\reverse-runtime\\tbd\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "timeoutSeconds": 120,
+        "code": "from ghidra.program.model.address import AddressSet\nfrom ghidra.program.disassemble import Disassembler\naf=currentProgram.getAddressFactory()\ntx=currentProgram.startTransaction('dis')\ntry:\n    d=Disassembler.getDisassembler(currentProgram,monitor,None)\n    for lo,hi in [('142344687','1423446a0'),('1423446df','142344700'),('14234473f','142344760'),('14234479f','1423447c0'),('1423447e8','142344820')]:\n        a=af.getAddress(lo); b=af.getAddress(hi); d.disassemble(a,AddressSet(a,b),True)\nfinally:\n    currentProgram.endTransaction(tx,True)\nfor lo,hi in [('142344687','1423446a0'),('1423446df','142344700'),('14234473f','142344760'),('14234479f','1423447c0'),('1423447e8','142344820')]:\n    a=af.getAddress(lo); b=af.getAddress(hi); print('RANGE',lo,hi)\n    for ins in currentProgram.getListing().getInstructions(AddressSet(a,b), True): print(ins.getAddress(), ins.toString())\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round11\\tbd-jobs\\dis-align-gaps-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round11\\\\\\\\tbd-jobs\\\\\\\\dis-align-gaps-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 615, \\\"sha256\\\": \\\"3ec20e5661421fa5e01c7abbc110ca1826eda1de27c5af93321001d833841c56\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":16}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.016,
+      "stdout": "RANGE 142344687 1423446a0\n142344687 MOV dword ptr [R15],EBP\n1423446a0 MOV EBP,dword ptr [RSP + 0x20]\nRANGE 1423446df 142344700\n1423446df MOV dword ptr [R15],EBP\n142344700 MOV EBP,dword ptr [RSP + 0x20]\nRANGE 14234473f 142344760\n14234473f MOV dword ptr [R15],EBP\n142344760 MOV EBP,dword ptr [RSP + 0x20]\nRANGE 14234479f 1423447c0\n14234479f MOV dword ptr [R15],EBP\n1423447c0 OUT 0xeb,AL\nRANGE 1423447e8 142344820\n1423447e8 ADD R14,0x20\n1423447ec ADD R15,0x20\n1423447f0 CMP RBP,R15\n1423447f3 JZ 0x1423445a0\n1423447f9 MOV EDI,dword ptr [R14 + 0x10]\n1423447fd TEST EDI,EDI\n1423447ff JZ 0x1423447e8\n142344820 MOV R8D,EBX\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.781,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":9}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "620afea7bb011bcb03f60fa0bff6b4c5",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

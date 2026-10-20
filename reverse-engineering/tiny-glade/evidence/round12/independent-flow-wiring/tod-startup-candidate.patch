@@ -1,0 +1,684 @@
+--- a/crates/country-core/src/startup/startup_time_of_day.rs
++++ b/crates/country-core/src/startup/startup_time_of_day.rs
+@@ -1,69 +1,25 @@
+-//! 默认时刻载入（B `startup_time_of_day` @0x14089d6f0）。
+-//!
+-//! 证据（R10 契约 §2.12，O）：
+-//! * batch4（与 batch2 同 label，I）。
+-//! * `load_default_tod` 内联：读 `assets/tod/default.json`（0x142a99540，len 0x17）；
+-//!   失败 unwrap panic；成功把 0x10 字节序列写回参数（`ResMut<TimeOfDay>` 语义，I）。
+-//!
+-//! U：TimeOfDay 资源字段名（契约 §2.12）；加载器是否就是
+-//! `resources/time_of_day`（I）。本实现以资源现有 serde 字段为准（三 f32）。
+-use crate::resources::time_of_day::TimeOfDay;
+-use bevy_ecs::prelude::*;
++//! Original B startup_time_of_day14089d6f0/448B. The complete native
++//! wrapper reads the required JSON string and deserializes TodSequence, then
++//! replaces that existing owner. File and serde failures both unwrap-panic.
++//! Registered in original Startup batch4, not per-session OnEnter(Game).
++use crate::resources::time_of_day::TodSequence;
++use bevy_ecs::prelude::ResMut;
+ use std::path::Path;
+ 
+-/// O：`0x142a99540`, len 0x17。
+ pub const DEFAULT_TOD_PATH: &str = "assets/tod/default.json";
+ 
+-/// 纯解析入口；文件读取与错误由调用方处理。
+-pub fn load_default_tod_from_str(text: &str) -> anyhow::Result<TimeOfDay> {
++pub fn load_default_tod_from_str(text: &str) -> anyhow::Result<TodSequence> {
+     Ok(serde_json::from_str(text)?)
+ }
+ 
+-/// 读取默认 ToD。相对路径沿用原作的安装目录相对路径约定。
+-pub fn load_default_tod(path: impl AsRef<Path>) -> anyhow::Result<TimeOfDay> {
++pub fn load_default_tod(path: impl AsRef<Path>) -> anyhow::Result<TodSequence> {
+     let text = std::fs::read_to_string(path)?;
+     load_default_tod_from_str(&text)
+ }
+ 
+-/// 启动系统：把默认序列写入真实 `TimeOfDay` 资源；缺资源时插入。
+-/// 原件失败为 unwrap panic；无安装目录的测试宿主会缺文件，因此这里记录
+-/// 错误并保持现有资源（生产中文件存在时行为与原件一致）。
+-pub fn startup_time_of_day(
+-    time: Option<ResMut<TimeOfDay>>,
+-    mut commands: Commands,
+-) {
+-    let loaded = match load_default_tod(DEFAULT_TOD_PATH) {
+-        Ok(loaded) => loaded,
+-        Err(error) => {
+-            log::error!(
+-                target: "country_core::startup::startup_time_of_day",
+-                "load_default_tod({DEFAULT_TOD_PATH}): {error:#}"
+-            );
+-            return;
+-        }
+-    };
+-    match time {
+-        Some(mut time) => *time = loaded,
+-        None => {
+-            commands.insert_resource(loaded);
+-        }
+-    }
++pub fn startup_time_of_day(mut sequence: ResMut<TodSequence>) {
++    // Host relocation only: B reads the same literal relative to installation;
++    // a Cargo-built host keeps installed assets separate from its working dir.
++    let loaded = load_default_tod(paths::installed().join(DEFAULT_TOD_PATH)).unwrap();
++    *sequence = loaded;
+ }
+-
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-
+-    #[test]
+-    fn three_serialized_fields_parse_and_default_path_is_exact() {
+-        let time: TimeOfDay = load_default_tod_from_str(
+-            r#"{"time_of_day":0.5,"sun_xz_rotation":0.25,"latitude_degrees":45.0}"#,
+-        )
+-        .unwrap();
+-        assert_eq!(time.time_of_day, 0.5);
+-        assert_eq!(time.sun_xz_rotation, 0.25);
+-        assert_eq!(time.latitude_degrees, 45.0);
+-        assert_eq!(DEFAULT_TOD_PATH, "assets/tod/default.json");
+-        assert!(load_default_tod_from_str("not json").is_err());
+-    }
+-}
+--- a/crates/tiny-glade/src/run_game.rs
++++ b/crates/tiny-glade/src/run_game.rs
+@@ -572,10 +572,10 @@
+     // R10G1 契约 §1.5 / §1.3：OnEnter(Game) 的 batch2 世界资产（walls→sky→
+     // critters→roof→sheep→clearing→meadow）与 batch4（brush）。全部使用真实
+     // `AssetMeshLibrary`；shader/spawn 仍由各模块宿主接口在设备 owner 内完成。
+-    app.add_systems(
+-        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+-        country_core::startup::startup_time_of_day::startup_time_of_day
+-            .before(country_core::startup::load_glade_tod_and_weather::load_glade_tod_and_weather),
++    // Original batch4 typed add_systems helper140b67b50 is Startup.
++    app.add_systems(
++        bevy_app::Startup,
++        country_core::startup::startup_time_of_day::startup_time_of_day,
+     );
+     app.add_systems(
+         bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+--- /dev/null
++++ b/crates/tiny-glade/tests/fixtures/original-default-tod-b.json
+@@ -0,0 +1,529 @@
++{
++  "entries": [
++    {
++      "time_of_day": 0.0,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.32866657,
++            0.2976653,
++            0.19989444
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.17390057,
++            0.27138948,
++            0.32448062
++          ],
++          "sky_high_color": [
++            0.107430175,
++            0.12669688,
++            0.27529913
++          ]
++        },
++        "base_fog_thickness": 0.046,
++        "fog_tint": [
++          0.76491785,
++          1.0672204,
++          1.0263494
++        ],
++        "speed_bias": -1.0
++      },
++      "temp_ui_id": 11309646118622107426
++    },
++    {
++      "time_of_day": 0.043,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.5872374,
++            0.50836915,
++            0.3395426
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.0844628,
++            0.26412335,
++            0.45479962
++          ],
++          "sky_high_color": [
++            0.042654686,
++            0.11800635,
++            0.21847521
++          ]
++        },
++        "base_fog_thickness": 0.01,
++        "fog_tint": [
++          0.9712597,
++          1.0074952,
++          1.0103832
++        ],
++        "speed_bias": -0.5
++      },
++      "temp_ui_id": 1336293391613269126
++    },
++    {
++      "time_of_day": 0.27,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.48191673,
++            0.39131403,
++            0.252196
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.08690908,
++            0.27562594,
++            0.43454543
++          ],
++          "sky_high_color": [
++            0.033527013,
++            0.13521335,
++            0.2707951
++          ]
++        },
++        "base_fog_thickness": 0.005,
++        "fog_tint": [
++          0.97385174,
++          1.0065603,
++          1.0120116
++        ],
++        "speed_bias": -0.5
++      },
++      "temp_ui_id": 5531877842934678278
++    },
++    {
++      "time_of_day": 0.30999994,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.52716047,
++            0.33240512,
++            0.15983029
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.2133601,
++            0.2078265,
++            0.100866854
++          ],
++          "sky_high_color": [
++            0.11948978,
++            0.1745354,
++            0.28341955
++          ]
++        },
++        "base_fog_thickness": 0.008,
++        "fog_tint": [
++          1.1233599,
++          0.97571766,
++          0.87729067
++        ],
++        "speed_bias": -0.5
++      },
++      "temp_ui_id": 16496915826960245438
++    },
++    {
++      "time_of_day": 0.376,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.47914913,
++            0.17504795,
++            0.037565127
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.3030161,
++            0.11625249,
++            0.032280054
++          ],
++          "sky_high_color": [
++            0.059767596,
++            0.07270231,
++            0.20096828
++          ]
++        },
++        "base_fog_thickness": 0.045,
++        "fog_tint": [
++          1.0,
++          1.0,
++          1.0
++        ],
++        "speed_bias": -0.75
++      },
++      "temp_ui_id": 15989827995463992117
++    },
++    {
++      "time_of_day": 0.422,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.61344045,
++            0.21098588,
++            0.07992499
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.2353494,
++            0.028183853,
++            0.022090716
++          ],
++          "sky_high_color": [
++            0.07430496,
++            0.05700623,
++            0.16698542
++          ]
++        },
++        "base_fog_thickness": 0.06,
++        "fog_tint": [
++          1.130334,
++          0.9754603,
++          0.8593049
++        ],
++        "speed_bias": -0.5
++      },
++      "temp_ui_id": 10024283057948345830
++    },
++    {
++      "time_of_day": 0.48300004,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.27043048,
++            0.049332205,
++            0.02080339
++          ],
++          "moon_tint_color": [
++            0.004748006,
++            0.008386098,
++            0.03021458
++          ],
++          "sky_low_color": [
++            0.14726779,
++            0.026576161,
++            0.031482205
++          ],
++          "sky_high_color": [
++            0.030952217,
++            0.018224059,
++            0.10732123
++          ]
++        },
++        "base_fog_thickness": 0.073,
++        "fog_tint": [
++          1.9516435,
++          0.66913486,
++          1.4752825
++        ],
++        "speed_bias": 1.0
++      },
++      "temp_ui_id": 1227601502205620858
++    },
++    {
++      "time_of_day": 0.513,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "moon_tint_color": [
++            0.012278031,
++            0.033545393,
++            0.16114916
++          ],
++          "sky_low_color": [
++            0.03520015,
++            0.018413035,
++            0.18904911
++          ],
++          "sky_high_color": [
++            0.04644376,
++            0.06655214,
++            0.75024503
++          ]
++        },
++        "base_fog_thickness": 0.108,
++        "fog_tint": [
++          2.098863,
++          0.60966974,
++          1.6308306
++        ],
++        "speed_bias": 0.0
++      },
++      "temp_ui_id": 11290479791016280157
++    },
++    {
++      "time_of_day": 0.545,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "moon_tint_color": [
++            0.029148988,
++            0.08358428,
++            0.5167665
++          ],
++          "sky_low_color": [
++            0.010936922,
++            0.028523391,
++            0.12274663
++          ],
++          "sky_high_color": [
++            0.012025046,
++            0.022438088,
++            0.2700659
++          ]
++        },
++        "base_fog_thickness": 0.095,
++        "fog_tint": [
++          0.9272832,
++          0.96403354,
++          1.5703992
++        ],
++        "speed_bias": 0.0
++      },
++      "temp_ui_id": 17829983095718673577
++    },
++    {
++      "time_of_day": 0.77,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            1.2573857e-7,
++            2.9749577e-8,
++            1.73639e-8
++          ],
++          "moon_tint_color": [
++            0.02232408,
++            0.055405848,
++            0.5648955
++          ],
++          "sky_low_color": [
++            0.014908654,
++            0.031823575,
++            0.078574196
++          ],
++          "sky_high_color": [
++            0.037680123,
++            0.07859005,
++            0.39564133
++          ]
++        },
++        "base_fog_thickness": 0.091,
++        "fog_tint": [
++          0.9193585,
++          0.960112,
++          1.6325805
++        ],
++        "speed_bias": 0.0
++      },
++      "temp_ui_id": 1789671881847202961
++    },
++    {
++      "time_of_day": 0.80999994,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.013237245,
++            0.0043115583,
++            0.0020801388
++          ],
++          "moon_tint_color": [
++            0.016247153,
++            0.019502234,
++            0.12353659
++          ],
++          "sky_low_color": [
++            0.06518329,
++            0.026603298,
++            0.18033594
++          ],
++          "sky_high_color": [
++            0.058951765,
++            0.112672515,
++            0.5290074
++          ]
++        },
++        "base_fog_thickness": 0.153,
++        "fog_tint": [
++          0.78436804,
++          0.89857846,
++          2.639612
++        ],
++        "speed_bias": 0.0
++      },
++      "temp_ui_id": 15642715113325163869
++    },
++    {
++      "time_of_day": 0.83,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.041014034,
++            0.012733876,
++            0.005663844
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.06974824,
++            0.010579797,
++            0.10466751
++          ],
++          "sky_high_color": [
++            0.049780168,
++            0.099887036,
++            0.4882143
++          ]
++        },
++        "base_fog_thickness": 0.15,
++        "fog_tint": [
++          1.0645282,
++          0.8357045,
++          2.4374716
++        ],
++        "speed_bias": 1.0
++      },
++      "temp_ui_id": 4580417811777297136
++    },
++    {
++      "time_of_day": 0.855,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.62432945,
++            0.053423263,
++            0.03929258
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.2233347,
++            0.03918863,
++            0.036937356
++          ],
++          "sky_high_color": [
++            0.06020495,
++            0.039041184,
++            0.17992504
++          ]
++        },
++        "base_fog_thickness": 0.145,
++        "fog_tint": [
++          1.2197697,
++          0.9190489,
++          1.1547534
++        ],
++        "speed_bias": 0.66
++      },
++      "temp_ui_id": 4954546233311415083
++    },
++    {
++      "time_of_day": 0.906,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.6988028,
++            0.123931006,
++            0.07265902
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.09591042,
++            0.025363885,
++            0.016630128
++          ],
++          "sky_high_color": [
++            0.04040243,
++            0.034534167,
++            0.13077912
++          ]
++        },
++        "base_fog_thickness": 0.1,
++        "fog_tint": [
++          1.1592067,
++          0.9570138,
++          0.9570138
++        ],
++        "speed_bias": 0.2
++      },
++      "temp_ui_id": 5942895619854430714
++    },
++    {
++      "time_of_day": 0.95,
++      "snapshot": {
++        "sun_sky": {
++          "sun_tint_color": [
++            0.46774197,
++            0.45483384,
++            0.36340126
++          ],
++          "moon_tint_color": [
++            0.0,
++            0.0,
++            0.0
++          ],
++          "sky_low_color": [
++            0.17465961,
++            0.19428921,
++            0.1313002
++          ],
++          "sky_high_color": [
++            0.058668956,
++            0.10507133,
++            0.30832985
++          ]
++        },
++        "base_fog_thickness": 0.072,
++        "fog_tint": [
++          0.860127,
++          1.0381459,
++          1.0340046
++        ],
++        "speed_bias": -1.0
++      },
++      "temp_ui_id": 871000909820510457
++    }
++  ]
++}
+\ No newline at end of file
+--- /dev/null
++++ b/crates/tiny-glade/tests/original_tod_startup.rs
+@@ -0,0 +1,46 @@
++//! Real original15-keyframe JSON through the actual Startup consumer.
++use bevy_app::{App, Startup};
++use country_core::{resources::time_of_day::{TimeOfDay,TodSequence},
++    startup::startup_time_of_day::{startup_time_of_day,load_default_tod_from_str}};
++
++#[test]
++fn original_default_sequence_replaces_owner_once_and_preserves_saved_time() {
++    let installation=tempfile::tempdir().unwrap();
++    let target=installation.path().join("assets/tod/default.json");
++    std::fs::create_dir_all(target.parent().unwrap()).unwrap();
++    let original=include_str!("fixtures/original-default-tod-b.json");
++    std::fs::write(&target,original).unwrap();
++    paths::initialize_paths_with_installation(0,Some(installation.path()),installation.path()).unwrap();
++    let expected=load_default_tod_from_str(original).unwrap();
++    assert_eq!(expected.entries.len(),15);
++    assert_eq!(expected.entries[0].time_of_day,0.0);
++    assert_eq!(expected.entries[14].time_of_day,0.95);
++    let mut previous=expected.clone();
++    previous.entries.truncate(3);
++    previous.entries[0].snapshot.speed_bias=-88.0;
++    let saved=TimeOfDay{time_of_day:0.77,sun_xz_rotation:0.42,..Default::default()};
++    let mut app=App::new();
++    app.insert_resource(previous.clone());
++    app.insert_resource(saved.clone());
++    app.add_systems(Startup,startup_time_of_day);
++    app.update();
++    assert_eq!(app.world().resource::<TodSequence>(),&expected);
++    assert_eq!(app.world().resource::<TimeOfDay>(),&saved);
++    // Startup must not reload on subsequent updates, even after the file changes.
++    std::fs::write(&target,"{").unwrap();
++    app.update();
++    assert_eq!(app.world().resource::<TodSequence>(),&expected);
++    assert!(load_default_tod_from_str("{").is_err());
++    assert!(load_default_tod_from_str(r#"{"time_of_day":0.3}"#).is_err());
++    let mut invalid=App::new();
++    invalid.insert_resource(previous.clone());
++    invalid.add_systems(Startup,startup_time_of_day);
++    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||invalid.update())).is_err());
++    assert_eq!(invalid.world().resource::<TodSequence>(),&previous);
++    std::fs::remove_file(target).unwrap();
++    let mut missing=App::new();
++    missing.insert_resource(previous.clone());
++    missing.add_systems(Startup,startup_time_of_day);
++    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||missing.update())).is_err());
++    assert_eq!(missing.world().resource::<TodSequence>(),&previous);
++}

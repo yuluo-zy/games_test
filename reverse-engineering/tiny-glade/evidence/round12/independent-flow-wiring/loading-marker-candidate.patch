@@ -1,0 +1,30 @@
+--- a/crates/country-core/src/systems/save/load_game.rs
++++ b/crates/country-core/src/systems/save/load_game.rs
+@@ -887,13 +887,11 @@
+     Ok((parsed, commands, gates, max_wall_id))
+ }
+ 
+-/// 写 `save_folder/loading.tmp`（O：load_game 0x14146d030 后置写标记；@0x142c6416e）。
+-/// 文件内容为读档进度标记；失败仅告警（宿主可据此判定正在读档）。
++/// Original state0 creates/truncates an empty loading.tmp marker; errors are dropped.
+ pub fn write_loading_tmp(session: &SessionId) {
+-    let path = session.save_folder_path().join("loading.tmp");
+-    if let Err(error) = std::fs::write(&path, b"loading") {
+-        log::warn!("Failed writing loading.tmp for {}: {error}", session.0);
+-    }
++    // B14146d750..7b0 sets write/create/truncate, then drops both success
++    // handle and every error. It does not write payload bytes or warn.
++    let _ = std::fs::File::create(session.save_folder_path().join("loading.tmp"));
+ }
+ 
+ /// `load_game` 0x14146d030 的 ECS 系统（消费 `NextSession`，门 AppMode::LoadGame）。
+@@ -1083,6 +1081,9 @@
+     let manager = world.resource::<LoadGameManager>();
+     match manager.state {
+         LoadGameState::Loading => {
++            // Original state0 creates the marker before parsing/applying the
++            // requested source. Failure to create the marker is nonfatal.
++            write_loading_tmp(&world.resource::<crate::resources::session::ActiveSession>().id);
+             // M2/M3：只有全部域写回成功才推进到 ApplyCounter；任何 `?` 失败都转
+             // Failed 终态（下一帧不再重试同一坏文件，也不进入 Loaded 完成路径）。
+             let result = (|| -> anyhow::Result<()> {

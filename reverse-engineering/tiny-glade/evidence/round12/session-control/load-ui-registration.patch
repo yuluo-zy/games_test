@@ -1,0 +1,19 @@
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -502,6 +502,16 @@
+             ),
+         )
+             .chain(),
++    );
++    // Original MenuPlugin14068dee6 /14068e29e: Load36 + in_state(Game).
++    // It consumes the same owning session/menu/history resources as Escape39.
++    app.add_systems(
++        bevy_app::Update,
++        toolbar::menu::load_ui::ui
++            .in_set(GameSystemSet(36))
++            .run_if(bevy_state::condition::in_state(
++                country_core::app_loading_state::AppLoadingState::Game,
++            )),
+     );
+     let mut gui = Schedule::new(bevy_app::Update);
+     configure_gui_consumers(app.world_mut(), &mut gui);

@@ -1,0 +1,186 @@
+--- a/tiny-glade/crates/country-core/src/utils/debug_viz.rs
++++ b/tiny-glade/crates/country-core/src/utils/debug_viz.rs
+@@ -111,6 +111,71 @@
+     pub fn solid(mut self) -> Self {
+         self.solid = true;
+         self
++    }
++
++    /// Original140b02520/676B + factory140b027d0/1585B. Submit the existing
++    /// named-mesh signifier, preserving the original Debug-format identity.
++    pub fn show(&self, stream: &mut UiSignifierStream) {
++        let sphere = *self;
++        let factory = SignifierFactory::from_closure(
++            &self.signifier_name(),
++            Arc::new(move |meshes, shaders, commands| {
++                // Original builder's named-mesh branch14089dde1..de45.
++                // Missing required assets fail; no invisible fallback entity.
++                let mesh = meshes.get_handle_by_name(sphere.color.sphere_mesh_name());
++                let shader = shaders
++                    .get_raster_handle_by_name("vertex_color_shader")
++                    .expect("SignifierEntityBuilder: vertex_color_shader is not registered");
++                let entity = commands.spawn((
++                    DrawableMeshBundle {
++                        mesh,
++                        shader,
++                        transform: Transform {
++                            translation: sphere.center,
++                            scale: Vec3::ZERO,
++                            ..Transform::identity()
++                        },
++                    },
++                    SignifierAnimation {
++                        // Native easing enum tag1. Its inactive union padding
++                        // does not carry game state; initialize that padding.
++                        head: [1, 0, 0, 0, 0, 0, 0, 0],
++                        flag_8: 0,
++                        flag_9: 1,
++                        value: sphere.radius,
++                        duration: 0.0,
++                        t: 0.0,
++                        eased: 0.0,
++                        ..SignifierAnimation::default()
++                    },
++                )).id();
++                // Original builder emits these two markers in this order.
++                commands.entity(entity).insert(UiPass);
++                commands.entity(entity).insert(DontCastShadow);
++                // The legacy public field alpha is native line_width; solid
++                // is native filled_in. Preserve their existing typed callers.
++                if !sphere.solid {
++                    commands.entity(entity).insert(DrawTopology::Alt(sphere.alpha));
++                }
++                vec![entity]
++            }),
++        );
++        stream.write_factory(&factory);
++    }
++
++    fn signifier_name(&self) -> String {
++        let color = match self.color {
++            DebugColor::White => "White".to_owned(),
++            DebugColor::Red => "Red".to_owned(),
++            DebugColor::Blue => "Blue".to_owned(),
++            DebugColor::Green => "Green".to_owned(),
++            DebugColor::Grey => "Grey".to_owned(),
++            DebugColor::Custom(rgb) => format!("Custom({:?})", rgb.to_array()),
++        };
++        format!(
++            "DebugSphere {{ color: {}, radius: {:?}, position: {:?}, line_width: {:?}, filled_in: {:?} }}",
++            color, self.radius, self.center, self.alpha, self.solid
++        )
+     }
+ }
+ 
+--- a/tiny-glade/crates/country-core/src/systems/wall/wall_state/mod.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/wall_state/mod.rs
+@@ -11,3 +11,5 @@
+ pub mod pending_changed;
+ 
+ pub mod publication_policy;
++
++pub mod debug_viz_threshold_curve;
+--- a/tiny-glade/crates/tiny-glade/src/startup_construction_runtime.rs
++++ b/tiny-glade/crates/tiny-glade/src/startup_construction_runtime.rs
+@@ -67,6 +67,7 @@
+         // This explicit adapter edge is not a recovered separate native item.
+         sys::wall::construct_wall_bricks::finalize_wall_holes,
+         sys::wall::construct_wall_bricks::construct_wall_bricks,
++        sys::wall::wall_state::debug_viz_threshold_curve::debug_viz_threshold_curve,
+     ).chain_ignore_deferred().in_set(GameSystemSet(28)));
+     app.add_systems(Update,
+         system_wall_constructor::gpu_output::flush_constructor_output.in_set(GameSystemSet(44)));
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/systems/wall/wall_state/debug_viz_threshold_curve.rs
+@@ -0,0 +1,34 @@
++//! Complete B debug_viz_threshold_curve140a8b0c0/1129B producer.
++use crate::{
++    resources::{gui::DebugGui, walls::public_walls::PublicWalls},
++    systems::ui::signifiers::UiSignifierStream,
++};
++use bevy_ecs::prelude::*;
++
++#[path = "debug_threshold_policy.rs"]
++mod policy;
++
++pub fn debug_viz_threshold_curve(
++    debug: Res<DebugGui>,
++    walls: Res<PublicWalls>,
++    mut signifiers: ResMut<UiSignifierStream>,
++) {
++    if !debug.show_threshold_curve {
++        return;
++    }
++    for (_, wall) in walls.all() {
++        // Original iterates keys and calls the validated PublicWalls::get for
++        // every row, even when the prepared arrays are empty.
++        wall.assert_valid();
++        let Some(path) = wall.prepared_path.as_ref() else {
++            continue;
++        };
++        policy::threshold_spheres(
++            &path.positions,
++            &path.segment_values,
++            wall.arch_segment_heights().unwrap_or(&[]),
++            &wall.segment_heights,
++            |sphere| sphere.show(&mut signifiers),
++        );
++    }
++}
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/systems/wall/wall_state/debug_threshold_policy.rs
+@@ -0,0 +1,54 @@
++//! Original140a8b330..494. The four arrays are zipped to their shortest length.
++use crate::utils::debug_viz::{DebugColor, DebugSphere};
++use glam::Vec3;
++
++pub(super) fn threshold_spheres(
++    positions: &[[f32; 3]],
++    thresholds: &[f32],
++    arch_heights: &[f32],
++    third_heights: &[f32],
++    mut emit: impl FnMut(DebugSphere),
++) {
++    for (((position, &threshold), &arch), &third) in positions
++        .iter()
++        .zip(thresholds)
++        .zip(arch_heights)
++        .zip(third_heights)
++    {
++        let [x, y, z] = *position;
++        emit(DebugSphere {
++            color: DebugColor::White,
++            radius: f32::from_bits(0x3dcccccd),
++            center: Vec3::new(x, y, z),
++            alpha: 1.0,
++            solid: false,
++        });
++        // Original SSE multiplies by zero. Do not replace these positions with
++        // Vec3(x, y + height, z): NaN/Inf and signed-zero behavior would change.
++        let threshold_zero = threshold * 0.0;
++        emit(DebugSphere {
++            color: DebugColor::Red,
++            radius: f32::from_bits(0x3d4ccccd),
++            center: Vec3::new(threshold_zero + x, threshold + y, z + threshold_zero),
++            alpha: 2.0,
++            solid: false,
++        });
++        let third_zero = third * 0.0;
++        emit(DebugSphere {
++            color: DebugColor::Red,
++            radius: f32::from_bits(0x3e19999a),
++            center: Vec3::new(third_zero + x, third + y, z + third_zero),
++            alpha: 0.5,
++            solid: false,
++        });
++        let delta = arch - y;
++        let delta_zero = delta * 0.0;
++        emit(DebugSphere {
++            color: DebugColor::Blue,
++            radius: f32::from_bits(0x3e19999a),
++            center: Vec3::new(delta_zero + x, delta + y, z + delta_zero),
++            alpha: 0.5,
++            solid: false,
++        });
++    }
++}

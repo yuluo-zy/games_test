@@ -1,0 +1,13 @@
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -1133,7 +1133,9 @@
+     take::<AvailableMonitors>(from, to)?;
+     take::<FrameRenderConfig>(from, to)?;
+     take::<AdaptiveRenderState>(from, to)?;
+-    to.send_event(country_core::resources::events::WriteSettingsFileCmd);
++    // main_loop1404da0b5..15a: this exact TypeId is StartupRevealStarted.
++    // It precedes Vermeer.into_disable_hold, after the six real owner moves.
++    to.send_event(country_core::systems::save::load_game::StartupRevealStarted);
+     let vermeer = from
+         .remove_resource::<VermeerState>()
+         .ok_or_else(|| anyhow::anyhow!("B handoff: VermeerState missing"))?;

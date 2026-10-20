@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "task_id": "B-stairs-asm-readiness-only",
+  "target": {
+    "build": "B",
+    "function_va": "0x140af75b0",
+    "input": "original tiny-glade.rne; function-span identity already verified against patched EXE"
+  },
+  "task": "Resolve ONLY floating readiness from original x86-64 instructions: DIVSS, MAXSS, UCOMISS, JBE and the pending update target 0x140af7862. AT&T operands source before destination; xmm7 is 0.05f. Give exact max/clamp behavior for a NaN quotient; whether NaN elapsed is pending or applied; equality; finite numerator/zero divisor vs 0/0. Do not use the C decompiler as authoritative. State assumptions for masked FP exceptions. No event analysis. Keep summary<=30 words, observations<=3, branch_matrix<=5, side_effects<=2, other arrays empty unless essential; total<=900 visible tokens.",
+  "limits": [
+    "Original instruction excerpts supersede decompiler expressions on conflicts.",
+    "Hash probes and irrelevant helper internals omitted because outside these two contracts.",
+    "No semantic callee names/types provided; do not infer them."
+  ],
+  "sources": [
+    {
+      "id": "A1",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 30,
+      "sha256": "69acb179b38aae9efc86565a2a46ddfe38fd9fc56e00dcd387c9bdb0abd54d33",
+      "text": "A1:L1 140af773d:     \tcmpb\t$0xa, (%r11)\nA1:L2 140af7741:     \tjne\t0x140af7722 <.text+0xaf6722>\nA1:L3 140af7743:     \ttestb\t$0x1, 0x8(%r11)\nA1:L4 140af7748:     \tje\t0x140af77f0 <.text+0xaf67f0>\nA1:L5 140af774e:     \tmovss\t0xc(%r11), %xmm1\nA1:L6 140af7754:     \tdivss\t%xmm6, %xmm1\nA1:L7 140af7758:     \tmovss\t0x18(%r11), %xmm0\nA1:L8 140af775e:     \tmaxss\t%xmm7, %xmm1\nA1:L9 140af7762:     \tucomiss\t%xmm1, %xmm0\nA1:L10 140af7765:     \tjbe\t0x140af7862 <.text+0xaf6862>\nA1:L11 140af776b:     \tmovq\t%r11, 0x60(%rbp)\nA1:L12 140af776f:     \tmovq\t0x48(%rbp), %r14\nA1:L13 140af7773:     \tcmpq\t0x38(%rbp), %r14\nA1:L14 140af7777:     \tjne\t0x140af7789 <.text+0xaf6789>\nA1:L15 140af7779:     \tleaq\t0x38(%rbp), %rcx\nA1:L16 140af777d:     \tleaq\t0x1fedc5c(%rip), %rdx   # 0x142ae53e0\nA1:L17 140af7784:     \tcallq\t0x140b81df0 <.text+0xb80df0>\nA1:L18 140af7789:     \tmovq\t0x40(%rbp), %rax\nA1:L19 140af778d:     \tmovq\t%rdi, (%rax,%r14,8)\nA1:L20 140af7791:     \tincq\t%r14\nA1:L21 140af7794:     \tmovq\t%r14, 0x48(%rbp)\nA1:L22 140af7798:     \tmovq\t-0x38(%rbp), %rax\nA1:L23 140af779c:     \tmovss\t0x28(%rax), %xmm0\nA1:L24 140af77a1:     \tmovq\t0x60(%rbp), %rax\nA1:L25 140af77a5:     \taddss\t0x18(%rax), %xmm0\nA1:L26 140af77aa:     \tmovss\t%xmm0, 0x18(%rax)\nA1:L27 140af77af:     \tmovq\t0x10(%rax), %rax\nA1:L28 140af77b3:     \tleaq\t0x10(%rax), %r14\nA1:L29 140af77b7:     \ttestb\t$0x1, 0x10(%rax)\nA1:L30 140af77bb:     \tjne\t0x140af782f <.text+0xaf682f>"
+    },
+    {
+      "id": "A2",
+      "kind": "fresh_original_RNE_disassembly",
+      "line_count": 4,
+      "sha256": "84af218221f30fc50b6adadb848bf86760abe0917373a017e7dcf1bf145f3b09",
+      "text": "A2:L1 140af7862:     \tmovq\t-0x38(%rbp), %rax\nA2:L2 140af7866:     \taddss\t0x28(%rax), %xmm0\nA2:L3 140af786b:     \tmovss\t%xmm0, 0x18(%r11)\nA2:L4 140af7871:     \tjmp\t0x140af7722 <.text+0xaf6722>"
+    }
+  ]
+}

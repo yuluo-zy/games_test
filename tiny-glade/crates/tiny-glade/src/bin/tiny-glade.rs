@@ -6,3 +6,4 @@ fn main() -> anyhow::Result<()> {
     }
     tiny_glade::main::main()
 }
+

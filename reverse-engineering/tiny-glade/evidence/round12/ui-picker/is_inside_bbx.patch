@@ -1,0 +1,10 @@
+diff --git a/tiny-glade/crates/utils/src/geometry/aabb.rs b/tiny-glade/crates/utils/src/geometry/aabb.rs
+--- a/tiny-glade/crates/utils/src/geometry/aabb.rs
++++ b/tiny-glade/crates/utils/src/geometry/aabb.rs
+@@ -212,3 +212,5 @@
+ pub fn is_inside_bbx(point: Vec2, min: Vec2, max: Vec2) -> bool {
+-    Aabb2 { min, max }.contains(point)
++    // B14123ffc0/44B uses cmpltps and seta on all four coordinates.
++    // This helper excludes the boundary; Aabb2::contains has its own contract.
++    min.x < point.x && min.y < point.y && point.x < max.x && point.y < max.y
+ }

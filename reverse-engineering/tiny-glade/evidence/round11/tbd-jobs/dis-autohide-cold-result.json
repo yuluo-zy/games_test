@@ -1,0 +1,66 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "tbd",
+  "pid": 38944,
+  "project": "D:\\game\\tools\\reverse-runtime\\tbd\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "timeoutSeconds": 120,
+        "code": "from ghidra.program.model.address import AddressSet\nfrom ghidra.program.disassemble import Disassembler\naf=currentProgram.getAddressFactory()\ntx=currentProgram.startTransaction('dis')\ntry:\n    d=Disassembler.getDisassembler(currentProgram,monitor,None)\n    for x in ['142343f92','142343fa0','142343fae','142343fc6']:\n        a=af.getAddress(x); d.disassemble(a, AddressSet(a,a.add(0x28)), True)\nfinally:\n    currentProgram.endTransaction(tx,True)\na=af.getAddress('142343f92'); b=af.getAddress('142344010')\nfor ins in currentProgram.getListing().getInstructions(AddressSet(a,b), True):\n    print(ins.getAddress(), ins.toString())\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round11\\tbd-jobs\\dis-autohide-cold-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round11\\\\\\\\tbd-jobs\\\\\\\\dis-autohide-cold-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 552, \\\"sha256\\\": \\\"eea9353fbc98e00b084134973e084ed14eeb738b2c540215d288c01503eb603c\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":13}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.016,
+      "stdout": "142343f92 MOVAPS XMM4,XMM1\n142343f95 MULSS XMM4,XMM12\n142343f9a ADDSS XMM2,XMM4\n142343f9e JMP 0x142343fb6\n142343fa0 MOVAPS XMM4,XMM3\n142343fa3 MULSS XMM4,XMM12\n142343fa8 ADDSS XMM0,XMM4\n142343fac JMP 0x142343fce\n142343fae MOVAPS XMM2,XMM1\n142343fb1 MULSS XMM2,XMM11\n142343fb6 MULSS XMM0,XMM11\n142343fc6 MOVAPS XMM0,XMM3\n142343fc9 MULSS XMM0,XMM11\n142343fce MULSS XMM2,XMM11\n142343fd3 MOVSLDUP XMM4,XMM13\n142343fd8 MULPS XMM4,XMM15\n142343fdc MOV R8,qword ptr [RSP + 0x58]\n142343fe1 MOV RCX,qword ptr [R8 + 0xf8]\n142343fe8 MOV RAX,qword ptr [R8 + 0x100]\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 2.265,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":6}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "fd0aeb48b8b19e445301e1e50170e89f",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

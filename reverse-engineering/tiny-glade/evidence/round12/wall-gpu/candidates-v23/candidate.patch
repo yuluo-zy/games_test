@@ -1,0 +1,1936 @@
+--- a/tiny-glade/crates/country-core/src/asset_libraries/shader_library.rs
++++ b/tiny-glade/crates/country-core/src/asset_libraries/shader_library.rs
+@@ -28,6 +28,11 @@
+ pub type NoHashBuildHasher = BuildHasherDefault<NoHashHasher>;
+ 
+ /// 保存已编译程序，并维护业务名字到句柄的索引。
++/// One Arc owner of the current App's physical shader registry. Consumers in
++/// other crates borrow the same TypeId; no second AssetShaderLibrary is created.
++#[derive(bevy_ecs::resource::Resource, Clone)]
++pub struct SharedAssetShaderLibrary(pub std::sync::Arc<AssetShaderLibrary>);
++
+ pub struct AssetShaderLibrary {
+     pub raster_shaders: FrozenMap<Handle<RasterShaderProgram>, RasterShaderProgram>,
+     pub compute_shaders: FrozenMap<Handle<ComputeShaderProgram>, ComputeShaderProgram>,
+--- a/tiny-glade/crates/systems/wall-constructor/src/construct_gates/systems.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/construct_gates/systems.rs
+@@ -64,14 +64,14 @@
+     mut gates: ResMut<Gates>,
+     mut commands: Commands,
+     meshes: Res<AssetMeshLibrary>,
+-    shaders: Res<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
++    shaders: Res<country_core::asset_libraries::shader_library::SharedAssetShaderLibrary>,
+     walls: Res<PublicWalls>,
+     terrain: Res<TerrainHeightsData>,
+-    ssbo: Res<AssetSsboLibrary>,
++    mut ssbo: ResMut<AssetSsboLibrary>,
+     _signifiers: Res<UiSignifierStream>,
+     mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
+ ) {
+-    let mut brick_updates = hashbrown::HashMap::<u64, Vec<_>>::new();
++    let mut exhausted = false;
+     // TerrainHeightGrid512（512×512 u16 + 高度界；采样修复标志按证据登记）。
+     let terrain_grid = TerrainHeightGrid512 {
+         encoded: std::sync::Arc::from(terrain.heights()),
+@@ -102,10 +102,17 @@
+         };
+         let outcome = construct_gate_cpu(input, &terrain_grid)
+             .expect("invalid or unrecovered gate construction input");
+-        brick_updates
+-            .entry(wall)
+-            .or_default()
+-            .extend(outcome.bricks);
++        let storage = ssbo
++            .get_mut::<country_core::geometry::instanced_wall::BrickTransformSsbo>()
++            .expect("canonical BrickTransformSsbo must exist before gate construction");
++        exhausted |= output.gpu.append_bricks(
++            storage,
++            crate::gpu_output::ConstructorKey {
++                wall,
++                part: crate::gpu_output::ConstructorPart::Gates,
++            },
++            &outcome.bricks,
++        ) != 0;
+         for leaf in outcome.leaves {
+             use country_core::asset_libraries::{
+                 mesh_library::MeshAsset, transient_mesh::TransientMesh,
+@@ -152,6 +159,7 @@
+             );
+             let handle = meshes.add(MeshAsset::new(mesh, None));
+             let shader = shaders
++                .0
+                 .get_raster_handle_by_name("solid_vertex_color_wooden_gate")
+                 .expect("wooden gate shader must be loaded");
+             let entity = commands
+@@ -208,14 +216,9 @@
+         }
+         let _ = &ssbo;
+     }
+-    for (wall, records) in brick_updates {
+-        output.gpu.replace_bricks(
+-            crate::gpu_output::ConstructorKey {
+-                wall,
+-                part: crate::gpu_output::ConstructorPart::Gates,
+-            },
+-            records,
+-        );
++    if exhausted {
++        log::error!(target:"system_wall_constructor::construct_gates",
++            "Gate constructor ran out of bricks");
+     }
+ }
+ 
+@@ -229,7 +232,6 @@
+     mut delete_roof: EventReader<country_core::resources::roofs::commands::DeleteRoofCmd>,
+     mut gates: ResMut<Gates>,
+     mut commands: Commands,
+-    mut output: Option<ResMut<crate::construct_arches::WallConstructorOutput>>,
+ ) {
+     let rebuild = changed
+         .read()
+@@ -237,15 +239,6 @@
+         .chain(create_roof.read().map(|e| WallId(e.0.wall_id().0)))
+         .chain(switch_type.read().map(|e| e.wall));
+     for wall in rebuild {
+-        if let Some(output) = output.as_mut() {
+-            output.gpu.replace_bricks(
+-                crate::gpu_output::ConstructorKey {
+-                    wall: wall.0,
+-                    part: crate::gpu_output::ConstructorPart::Gates,
+-                },
+-                Vec::new(),
+-            );
+-        }
+         for entity in gates.for_wall_mut(wall).drain(..) {
+             commands.entity(Entity::from_bits(entity)).despawn();
+         }
+@@ -255,15 +248,6 @@
+         .map(|e| e.0)
+         .chain(delete_roof.read().map(|e| e.0))
+     {
+-        if let Some(output) = output.as_mut() {
+-            output.gpu.replace_bricks(
+-                crate::gpu_output::ConstructorKey {
+-                    wall: wall.0,
+-                    part: crate::gpu_output::ConstructorPart::Gates,
+-                },
+-                Vec::new(),
+-            );
+-        }
+         if let Some(entities) = gates.per_wall.remove(&wall) {
+             for entity in entities {
+                 commands.entity(Entity::from_bits(entity)).despawn();
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -57,10 +57,7 @@
+ 
+ /// Each original App constructs a separate shader library. The Arc is a Rust
+ /// owner for that App's library; it does not merge the two native libraries.
+-#[derive(Resource, Clone)]
+-pub struct ApplicationShaderLibrary(
+-    pub Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
+-);
++pub use country_core::asset_libraries::shader_library::SharedAssetShaderLibrary as ApplicationShaderLibrary;
+ 
+ /// B `tiny_glade::run_game::impl$2` 对应的输入插件（PDB 未暴露类型名）。
+ ///
+@@ -157,7 +154,9 @@
+         app.insert_resource(country_core::systems::steam::SteamClientResource {
+             client: Some(client.clone()),
+         });
+-        app.world_mut().resource_mut::<country_core::systems::steam::SteamOverlayOpenResources>().client = Some(client);
++        app.world_mut()
++            .resource_mut::<country_core::systems::steam::SteamOverlayOpenResources>()
++            .client = Some(client);
+     } else {
+         // The explicitly named standalone host has neither GFN nor Steam SDK.
+         app.insert_resource(
+@@ -233,22 +232,37 @@
+     country_core::systems::save::add_save_load_events_and_resources(app.world_mut());
+     // B add_save_load_systems1409443b0: set43, exact ActiveSession presence
+     // condition only. Runs each frame to publish real history/section changes.
+-    app.add_systems(bevy_app::Update,
++    app.add_systems(
++        bevy_app::Update,
+         country_core::systems::save::save_game::save_game_system
+             .in_set(GameSystemSet(43))
+-            .run_if(|active: Option<bevy_ecs::prelude::Res<country_core::resources::session::ActiveSession>>|active.is_some()));
++            .run_if(
++                |active: Option<
++                    bevy_ecs::prelude::Res<country_core::resources::session::ActiveSession>,
++                >| active.is_some(),
++            ),
++    );
+     // Original host PostUpdate closure1403bf630: Reload2 -> Game1.
+     // Existing OnEnter(Game) consumes the canonical NextSession and real loader.
+-    app.add_systems(bevy_app::PostUpdate,
+-        |state: bevy_ecs::prelude::Res<bevy_state::state::State<country_core::app_loading_state::AppLoadingState>>,
+-         mut next: bevy_ecs::prelude::ResMut<bevy_state::state::NextState<country_core::app_loading_state::AppLoadingState>>| {
+-            if *state.get()==country_core::app_loading_state::AppLoadingState::Reload {
++    app.add_systems(
++        bevy_app::PostUpdate,
++        |state: bevy_ecs::prelude::Res<
++            bevy_state::state::State<country_core::app_loading_state::AppLoadingState>,
++        >,
++         mut next: bevy_ecs::prelude::ResMut<
++            bevy_state::state::NextState<country_core::app_loading_state::AppLoadingState>,
++        >| {
++            if *state.get() == country_core::app_loading_state::AppLoadingState::Reload {
+                 next.set(country_core::app_loading_state::AppLoadingState::Game);
+             }
+-        });
++        },
++    );
+     // Other domains retain their own OnExit consumers. This is the complete
+     // original host wall/unload consumer, not a blanket despawn replacement.
+-    app.add_systems(bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),crate::app_systems::walls_on_glade_unload);
++    app.add_systems(
++        bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
++        crate::app_systems::walls_on_glade_unload,
++    );
+     app.add_systems(
+         bevy_app::PreStartup,
+         country_core::game_profile::load_game_profile,
+@@ -388,25 +402,36 @@
+     app.add_event::<toolbar::ui_interaction::UiClickEvent>();
+     // Original toolbar::impl1::build @14068dd10..dd96: the photo tuple is
+     // chain_ignore_deferred, set8, gated by AppLoadingState::Game.
+-    app.add_systems(bevy_app::Update, (
+-        country_core::systems::backend::photomode::update_photomode_visibility,
+-        country_core::systems::backend::photomode::process_photomode_transitions,
+-        toolbar::photomode::timelapse::restore_after_timelapse,
+-        toolbar::photomode::photomode_camera_buttons,
+-        country_core::systems::backend::photomode::finish_photomode_frame,
+-    ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(
+-        bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
++    app.add_systems(
++        bevy_app::Update,
++        (
++            country_core::systems::backend::photomode::update_photomode_visibility,
++            country_core::systems::backend::photomode::process_photomode_transitions,
++            toolbar::photomode::timelapse::restore_after_timelapse,
++            toolbar::photomode::photomode_camera_buttons,
++            country_core::systems::backend::photomode::finish_photomode_frame,
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(8))
++            .run_if(bevy_state::condition::in_state(
++                country_core::app_loading_state::AppLoadingState::Game,
++            )),
++    );
+     app.init_resource::<EscMenuState>();
+     app.init_resource::<NextEscMenuState>();
+     app.init_resource::<PrevEscMenuState>();
+     app.add_event::<country_core::resources::events::EscapeMenuJustOpened>();
+     app.insert_resource(country_core::systems::steam::SteamOverlayOpenResources {
+-        open_browser: Some(Arc::new(|url| webbrowser::open(url).map_err(|error| error.to_string()))),
++        open_browser: Some(Arc::new(|url| {
++            webbrowser::open(url).map_err(|error| error.to_string())
++        })),
+         ..Default::default()
+     });
+     app.add_event::<country_core::resources::window::OsWindowCmd>();
+-    app.add_systems(bevy_app::Update,
+-        country_core::systems::steam::forward_browser_window_commands.after(GameSystemSet(39)));
++    app.add_systems(
++        bevy_app::Update,
++        country_core::systems::steam::forward_browser_window_commands.after(GameSystemSet(39)),
++    );
+     // run_game_thread decomp L3503..3517 clears the block covering +0xa.
+     app.insert_resource(TimeOfDayScreen {
+         visible: false,
+@@ -424,7 +449,9 @@
+     // active snapshot then main/paused tuple is chained without deferred flush.
+     app.init_resource::<country_core::systems::main_camera::CameraSnapshot>();
+     app.init_resource::<country_core::resources::read_mouse_depth_value::MouseDepthValue>();
+-    app.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::new());
++    app.insert_resource(
++        country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::new(),
++    );
+     app.insert_resource(country_core::resources::mouse_terrain_raycast::CameraCursorRay::new());
+     app.add_event::<country_core::systems::main_camera::MainCameraMoved>();
+     app.add_event::<country_core::resources::onboarding::NotifyHintSystemCameraMoved>();
+@@ -434,9 +461,11 @@
+         country_core::systems::main_camera::reset_camera
+             .in_set(GameSystemSet(9))
+             .before(country_core::systems::main_camera::camera_snapshot)
+-            .run_if(bevy_ecs::schedule::common_conditions::on_event::<
+-                country_core::resources::session::NewSessionStartedCmd,
+-            >),
++            .run_if(
++                bevy_ecs::schedule::common_conditions::on_event::<
++                    country_core::resources::session::NewSessionStartedCmd,
++                >,
++            ),
+     );
+     app.add_systems(
+         bevy_app::Update,
+@@ -444,10 +473,13 @@
+             country_core::systems::main_camera::camera_snapshot.run_if(is_gameplay_active),
+             (
+                 country_core::systems::main_camera::main_camera_update.run_if(is_gameplay_active),
+-                country_core::systems::main_camera::paused_main_camera_update
+-                    .run_if(bevy_ecs::schedule::common_conditions::not(is_gameplay_active)),
++                country_core::systems::main_camera::paused_main_camera_update.run_if(
++                    bevy_ecs::schedule::common_conditions::not(is_gameplay_active),
++                ),
+             ),
+-        ).chain_ignore_deferred().in_set(GameSystemSet(9)),
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(9)),
+     );
+     app.add_systems(
+         bevy_app::Update,
+@@ -458,7 +490,10 @@
+                 country_core::resources::mouse_capture::mouse_capture,
+                 country_core::resources::read_mouse_depth_value::read_mouse_depth_value_from_gpu,
+             ),
+-        ).chain_ignore_deferred().in_set(GameSystemSet(10)).run_if(is_gameplay_active),
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(10))
++            .run_if(is_gameplay_active),
+     );
+     app.add_event::<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorMoved>();
+     app.add_event::<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>();
+@@ -481,8 +516,11 @@
+         bevy_app::Update,
+         country_core::game_profile::save_game_profile
+             .in_set(GameSystemSet(43))
+-            .run_if(bevy_ecs::schedule::common_conditions::on_event::<
+-                country_core::game_profile::SaveGameProfileCmd>),
++            .run_if(
++                bevy_ecs::schedule::common_conditions::on_event::<
++                    country_core::game_profile::SaveGameProfileCmd,
++                >,
++            ),
+     );
+     // Original in_set @0x14168c0e0 chooses GameSystemSet discriminant 3.
+     // No on_event guard: its value rotation is an unconditional frame step.
+@@ -518,12 +556,16 @@
+     );
+     let mut gui = Schedule::new(bevy_app::Update);
+     configure_gui_consumers(app.world_mut(), &mut gui);
+-    gui.add_systems(crate::gui::gui_debug::show_camera_snapshot_panel
+-        .after(country_core::systems::backend::gui::show_debug_controls));
++    gui.add_systems(
++        crate::gui::gui_debug::show_camera_snapshot_panel
++            .after(country_core::systems::backend::gui::show_debug_controls),
++    );
+     // Reuse its real systems without replacing the existing Update schedule.
+     gui.add_systems(country_core::resources::gui::advance_menu_state_system);
+-    gui.add_systems(crate::gui::gui_escape_menu::do_gui_escape_menu
+-        .before(country_core::resources::gui::advance_menu_state_system));
++    gui.add_systems(
++        crate::gui::gui_escape_menu::do_gui_escape_menu
++            .before(country_core::resources::gui::advance_menu_state_system),
++    );
+     let gui_system = move |world: &mut World| gui.run(world);
+     // Native1405a0512 calls GUI tuple in_set140611040 with stage0x27=39.
+     // The separate time tuple140aad7d0 belongs to stage2; it is not the GUI.
+@@ -610,11 +652,17 @@
+         country_core::systems::weather_system::weather_system.in_set(GameSystemSet(36)),
+     );
+     let time_of_day_without_core = country_core::systems::time_of_day::time_of_day_audio_disabled
+-        .in_set(GameSystemSet(36)).run_if(is_gameplay_active);
++        .in_set(GameSystemSet(36))
++        .run_if(is_gameplay_active);
+     #[cfg(target_os = "windows")]
+-    let time_of_day_without_core = time_of_day_without_core.run_if(
+-        bevy_ecs::schedule::common_conditions::not(bevy_ecs::schedule::common_conditions::resource_exists::<
+-            country_core::resources::audio_resources::AudioCore<country_core::resources::native_audio::NativeStudio>>));
++    let time_of_day_without_core =
++        time_of_day_without_core.run_if(bevy_ecs::schedule::common_conditions::not(
++            bevy_ecs::schedule::common_conditions::resource_exists::<
++                country_core::resources::audio_resources::AudioCore<
++                    country_core::resources::native_audio::NativeStudio,
++                >,
++            >,
++        ));
+     app.add_systems(bevy_app::Update, time_of_day_without_core);
+     app.add_systems(
+         bevy_app::Update,
+@@ -639,31 +687,52 @@
+ /// Original device-input slices in the actual gameplay App's numbered sets.
+ fn install_gameplay_device_input(app: &mut App) {
+     use country_core::systems::backend::input::{
+-        calculate_input_delta, input_record_replay, input_replay_for_trailers,
+-        mod_key, translate_input, translate_input_to_cursor_moved, update_cursor_position,
++        calculate_input_delta, input_record_replay, input_replay_for_trailers, mod_key,
++        translate_input, translate_input_to_cursor_moved, update_cursor_position,
+     };
+-    let demo = app.world().resource::<country_core::game_config::GameConfig>().dev.demo;
++    let demo = app
++        .world()
++        .resource::<country_core::game_config::GameConfig>()
++        .dev
++        .demo;
+     app.insert_resource(translate_input::DemoModeEnabled(demo));
+     // Current retained InputFrame stores derived ActionSetStates. Begin its
+     // private capture policy before the original set1 replay controls/time2.
+-    app.add_systems(bevy_app::Update,
+-        input_record_replay::begin_input_frame.before(GameSystemSet(1)));
+-    app.add_systems(bevy_app::Update,
+-        (country_core::meta_commander::commander_update_system,
+-         (input_record_replay::control_input_replay,
+-          input_replay_for_trailers::record_and_replay_input_for_trailers),
+-         input_record_replay::advance_input_replay_frame)
+-            .chain_ignore_deferred().in_set(GameSystemSet(1)));
++    app.add_systems(
++        bevy_app::Update,
++        input_record_replay::begin_input_frame.before(GameSystemSet(1)),
++    );
++    app.add_systems(
++        bevy_app::Update,
++        (
++            country_core::meta_commander::commander_update_system,
++            (
++                input_record_replay::control_input_replay,
++                input_replay_for_trailers::record_and_replay_input_for_trailers,
++            ),
++            input_record_replay::advance_input_replay_frame,
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(1)),
++    );
+     // Original set5's raw-value recording precedes derivation. Preserve this
+     // host's refactored derived-state recording instead: calculate delta first
+     // so recording/replay does not consume stale states from the prior frame.
+-    app.add_systems(bevy_app::Update,
+-        (translate_input_to_cursor_moved::translate_input_to_cursor_moved,
+-         translate_input::translate_input,
+-         calculate_input_delta::calculate_input_delta,
+-         input_record_replay::input_record_replay,
+-         (mod_key::update_mod_key_state, update_cursor_position::update_cursor_position))
+-            .chain_ignore_deferred().in_set(GameSystemSet(5)));
++    app.add_systems(
++        bevy_app::Update,
++        (
++            translate_input_to_cursor_moved::translate_input_to_cursor_moved,
++            translate_input::translate_input,
++            calculate_input_delta::calculate_input_delta,
++            input_record_replay::input_record_replay,
++            (
++                mod_key::update_mod_key_state,
++                update_cursor_position::update_cursor_position,
++            ),
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(5)),
++    );
+ }
+ 
+ /// Original B owners and recovered slices of the global schedule. This is
+@@ -703,7 +772,9 @@
+         },
+     };
+     // insert_history_resources @140943e10..f2e; native speed write @3e87.
+-    app.insert_resource(History::<country_core::resources::history::MaybePendingSnapshotId>::empty_glade());
++    app.insert_resource(History::<
++        country_core::resources::history::MaybePendingSnapshotId,
++    >::empty_glade());
+     app.insert_resource(ReplayBuffer::new(1.0));
+     app.init_resource::<history::PendingHistoryCommands>();
+     app.init_resource::<history::replay_mode::ReplayModeElapsedTime>();
+@@ -719,7 +790,10 @@
+     app.add_event::<country_core::systems::timelapse_replay::InterruptTimelapse>();
+     app.add_event::<country_core::systems::timelapse_replay::TimelapseReplayFinished>();
+     app.add_event::<country_core::resources::history::tree_edit::SpawnPreplacedTrees>();
+-    app.add_systems(bevy_app::PostUpdate, country_core::systems::timelapse_replay::cleanup_timelapse);
++    app.add_systems(
++        bevy_app::PostUpdate,
++        country_core::systems::timelapse_replay::cleanup_timelapse,
++    );
+     // insert_terrain_resources @1409457c0 creates both actual CPU readback
+     // owners: 0x80000 zero bytes with the original -2.5/24 height bounds.
+     let heights = TerrainHeightsData::<TerrainHeightSsbo>::new();
+@@ -802,7 +876,10 @@
+         bevy_app::Update,
+         (
+             mode_manager::synchronize_mode_manager_ui_context,
+-            mode_manager::mode_manager::<country_core::resources::history::EditType, country_core::resources::history::MaybePendingSnapshotId>,
++            mode_manager::mode_manager::<
++                country_core::resources::history::EditType,
++                country_core::resources::history::MaybePendingSnapshotId,
++            >,
+             country_core::systems::timelapse_replay::start_timelapse,
+             mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
+         )
+@@ -829,7 +906,9 @@
+     app.add_systems(
+         bevy_app::Update,
+         (
+-            history::history_process_system::<country_core::resources::history::MaybePendingSnapshotId>,
++            history::history_process_system::<
++                country_core::resources::history::MaybePendingSnapshotId,
++            >,
+             history::history_clear_previous_state,
+             history::replay_mode::replay_mode,
+             history::finish_replay::finish_replay,
+@@ -848,7 +927,9 @@
+             history::replay_pop_bucket_system,
+             history::finish_replay::finish_replay,
+             country_core::systems::timelapse_replay::finish_timelapse.run_if(
+-                bevy_ecs::schedule::common_conditions::resource_exists::<country_core::resources::session::ActiveSession>,
++                bevy_ecs::schedule::common_conditions::resource_exists::<
++                    country_core::resources::session::ActiveSession,
++                >,
+             ),
+         )
+             .chain_ignore_deferred()
+@@ -1181,8 +1262,11 @@
+     fn shipped_intro_reaches_the_same_live_wall_authority() {
+         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+             .join("../country-core/tests/fixtures/original-intro-history-b.json");
+-        let parsed = country_core::systems::save::load_game::parse_saved_game_data(&path, &country_core::resources::glade_settings::GladeSettings::default())
+-            .expect("original intro sections decode");
++        let parsed = country_core::systems::save::load_game::parse_saved_game_data(
++            &path,
++            &country_core::resources::glade_settings::GladeSettings::default(),
++        )
++        .expect("original intro sections decode");
+         assert_eq!(parsed.chain_index, 12);
+         assert_eq!(parsed.edits.len(), 13);
+         let mut app = App::new();
+@@ -1206,7 +1290,9 @@
+             ran: true,
+             ..Default::default()
+         });
+-        app.insert_resource(History::<country_core::resources::history::MaybePendingSnapshotId>::from_observed(ObservedHistoryLedger {
++        app.insert_resource(History::<
++            country_core::resources::history::MaybePendingSnapshotId,
++        >::from_observed(ObservedHistoryLedger {
+             entries: parsed.edits,
+             cursor: -1,
+             undo_anchor: parsed.history_start.max(0),
+--- a/tiny-glade/crates/country-core/src/resources/walls/material_stats.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/material_stats.rs
+@@ -7,12 +7,26 @@
+     pub lengths: [f32; 7],
+     pub previous_pillar_placements: Vec<[f32; 2]>,
+     pub pillar_placements: Vec<[f32; 2]>,
++    pub previous_fences_segments_seed: u64,
+     pub fences_segments_seed: u64,
+     /// Nativeac..c8: path, lintel segments/pillars, arch segments/pillars,
+     /// gate segments, sewer segments, fence segments.
++    pub previous_counts: [u32; 8],
+     pub counts: [u32; 8],
+ }
+ impl MaterialStats {
++    /// Original publisher140a8b530 moves old current half into new previous;
++    /// the new current half starts empty. This happens only on row publication.
++    pub fn for_new_publication(old: &mut Self) -> Self {
++        Self {
++            previous_lengths: old.lengths,
++            previous_pillar_placements: std::mem::take(&mut old.pillar_placements),
++            previous_fences_segments_seed: old.fences_segments_seed,
++            previous_counts: old.counts,
++            ..Self::default()
++        }
++    }
++
+     /// Original resets only the current half. Advancing the previous half is a
+     /// separate owner operation and must never happen implicitly here.
+     pub fn init_this_update(&mut self, length: f32, special: bool) {
+--- a/tiny-glade/crates/country-core/src/resources/walls/public_wall_state.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/public_wall_state.rs
+@@ -34,6 +34,10 @@
+ 
+ #[derive(Clone, Debug)]
+ pub struct PublicWallState {
++    pub material_stats: super::material_stats::MaterialStats,
++    /// Original +110/+114 readiness and scalar. Distinct from optional profile
++    /// geometry: a correctly initialized no-roof wall still owns a base value.
++    gable_maximum_y: Option<f32>,
+     pub authority: WallState,
+     pub geometry: CollectedWallPublication,
+     pub regular_heights: Option<RegularWallHeightCache>,
+@@ -70,6 +74,8 @@
+         )
+         .ok();
+         Ok(Self {
++            material_stats: super::material_stats::MaterialStats::default(),
++            gable_maximum_y: None,
+             authority: authority.clone(),
+             geometry,
+             regular_heights,
+@@ -101,6 +107,7 @@
+         self.prepared_path = None;
+         self.freeform_heights = None;
+         self.gable_heights = None;
++        self.gable_maximum_y = None;
+         self.segment_heights.clear();
+         let prepared = prepare_wall_path(
+             &self.geometry.outline,
+@@ -200,10 +207,7 @@
+     /// 0x140b2a680（fresh disasm 2026-10-17）：`TEST byte[RCX+0x110],0x1;
+     /// JZ panic_fmt` —— gable 高度未就绪时 **panic**（不回退 max_y）。
+     pub fn max_y_gable(&self) -> f32 {
+-        self.gable_heights
+-            .as_ref()
+-            .expect(MISSING_GABLE_HEIGHT)
+-            .maximum_y
++        self.gable_maximum_y.expect(MISSING_GABLE_HEIGHT)
+     }
+     pub fn flat_roof_y(&self) -> f32 {
+         self.max_y() - 0.79
+@@ -302,15 +306,22 @@
+ 
+     pub fn update_gable_heights(&mut self, roof: Option<&[u8; 88]>) -> Result<(), GableError> {
+         self.gable_heights = None;
+-        if let (Some(base), Some(roof)) = (&self.regular_heights, roof) {
+-            self.gable_heights = Some(apply_gable_arch_heights(
++        // Original78bc70..bc96 writes both ready flags and the base scalar
++        // before it even tests rectangle/roof. Never fallback in the getter.
++        self.gable_maximum_y = Some(self.calculated_max_y().expect(MISSING_HEIGHT));
++        if self.is_rectangle().is_some()
++            && let (Some(base), Some(roof)) = (&self.regular_heights, roof)
++        {
++            let gable = apply_gable_arch_heights(
+                 self.height_outline(),
+                 &base.arch_segment_heights,
+                 base.maximum_y,
+                 self.wall_space_length(),
+                 self.authority.style() >= 2,
+                 roof,
+-            )?);
++            )?;
++            self.gable_maximum_y = Some(gable.maximum_y);
++            self.gable_heights = Some(gable);
+         }
+         Ok(())
+     }
+@@ -349,14 +360,59 @@
+         if let Some(base) = self.calculated_max_y() {
+             bytes[0x108..0x10c].copy_from_slice(&1u32.to_le_bytes());
+             bytes[0x10c..0x110].copy_from_slice(&base.to_le_bytes());
++        }
++        if let Some(gable) = self.gable_maximum_y {
+             bytes[0x110..0x114].copy_from_slice(&1u32.to_le_bytes());
+-            let gable = self
+-                .gable_heights
+-                .as_ref()
+-                .map(|h| h.maximum_y)
+-                .unwrap_or(base);
+             bytes[0x114..0x118].copy_from_slice(&gable.to_le_bytes());
+         }
+         PublicWallBuildingState::from_observed(bytes)
+     }
+ }
++
++#[cfg(test)]
++mod initialization_tests {
++    use super::*;
++    #[test]
++    fn no_roof_gable_maximum_has_explicit_ready_reset_lifecycle() {
++        use crate::resources::roofs::geometry::surface::Curve2;
++        use std::sync::Arc;
++        let authority = WallState::new(
++            Curve2::try_new(vec![[0., 0.], [8., 0.]], false).unwrap(),
++            3.,
++            0,
++            2,
++            false,
++        );
++        let terrain = TerrainHeightGrid512 {
++            encoded: vec![0; 512 * 512].into(),
++            minimum_y: 0.,
++            maximum_y: 0.,
++            sampling_fix: false,
++        };
++        let paths = PathRasters512::from_encoded(
++            std::array::from_fn(|_| Arc::<[u8]>::from(vec![0; 512 * 512])),
++            false,
++        )
++        .unwrap();
++        let mut wall = PublicWallState::collect(&authority, &terrain).unwrap();
++        wall.prepare_paths(&paths).unwrap();
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| wall.max_y_gable())).is_err()
++        );
++        assert!(wall.building_projection().max_y_gable().is_err());
++        wall.update_gable_heights(None).unwrap();
++        assert_eq!(wall.max_y_gable().to_bits(), wall.max_y().to_bits());
++        assert_eq!(
++            wall.building_projection().max_y_gable().unwrap().to_bits(),
++            wall.max_y_gable().to_bits()
++        );
++        assert!(wall.gable_heights.is_none());
++        wall.prepare_paths(&paths).unwrap();
++        assert!(wall.building_projection().max_y_gable().is_err());
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| wall.max_y_gable())).is_err()
++        );
++        wall.update_gable_heights(None).unwrap();
++        assert_eq!(wall.max_y_gable().to_bits(), wall.max_y().to_bits());
++    }
++}
+--- a/tiny-glade/crates/country-core/src/resources/walls/public_walls.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/public_walls.rs
+@@ -259,6 +259,12 @@
+                         self.path_failures.insert(id, error);
+                     }
+                 }
++                if let Some(old) = self.records.get_mut(&id) {
++                    record.material_stats =
++                        super::material_stats::MaterialStats::for_new_publication(
++                            &mut old.material_stats,
++                        );
++                }
+                 self.records.insert(id, record);
+                 self.failures.remove(&id);
+                 self.last_delta.changed.insert(id);
+@@ -286,10 +292,10 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use crate::resources::walls::publication_source::TerrainHeightGrid512;
+     use crate::resources::roofs::Roof;
+     use crate::resources::roofs::geometry::surface::Curve2;
+     use crate::resources::walls::WallState;
++    use crate::resources::walls::publication_source::TerrainHeightGrid512;
+     use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+ 
+     fn curve() -> Curve2 {
+@@ -319,25 +325,29 @@
+         public.associate_roof(WallId(1), Entity::from_raw(9));
+         assert!(public.has_roof(WallId(1)));
+         // 0x140a92100: first-map hit performs `XOR ESI,ESI`.
+-        public.failures.insert(WallId(1), CollectionError::InvalidSource);
++        public
++            .failures
++            .insert(WallId(1), CollectionError::InvalidSource);
+         assert!(!public.has_roof(WallId(1)));
+     }
+ 
+     #[test]
+     fn get_shape_params_returns_the_28_byte_premade_record_only() {
+-        let record = ShapeParameters::from_shape(Shape::Circle(
+-            utils::geometry::Circle2d {
+-                center: glam::Vec2::new(1.0, 2.0),
+-                radius: 3.0,
+-                rotation: 0.0,
+-            },
+-        ))
++        let record = ShapeParameters::from_shape(Shape::Circle(utils::geometry::Circle2d {
++            center: glam::Vec2::new(1.0, 2.0),
++            radius: 3.0,
++            rotation: 0.0,
++        }))
+         .to_record();
+         let mut public = PublicWalls::default();
+-        public
+-            .records
+-            .insert(WallId(3), PublicWallState::collect(&wall_with_shape(record), &terrain()).unwrap());
+-        assert_eq!(public.get_shape_params(WallId(3)).unwrap().to_record(), record);
++        public.records.insert(
++            WallId(3),
++            PublicWallState::collect(&wall_with_shape(record), &terrain()).unwrap(),
++        );
++        assert_eq!(
++            public.get_shape_params(WallId(3)).unwrap().to_record(),
++            record
++        );
+ 
+         // tag 2 (freehand) -> canonical None; missing id -> None.
+         let mut freehand = PublicWalls::default();
+--- a/tiny-glade/crates/systems/wall-constructor/src/segmentation/calculate_wall_path_segmentation.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/segmentation/calculate_wall_path_segmentation.rs
+@@ -19,14 +19,14 @@
+ /// B 0x14074f310：分段计算主入口（每墙掩码产出 → 136B 掩码写回）。
+ pub fn calculate_wall_path_segmentation(
+     mut changed: EventReader<OnWallChanged>,
+-    walls: Res<PublicWalls>,
++    mut walls: ResMut<PublicWalls>,
+     mut masks: ResMut<crate::construct_arches::WallPathSegmentationMasks>,
+     _signifiers: Res<UiSignifierStream>,
+ ) {
+     for event in changed.read() {
+-        let Some(wall) = walls.get(event.0) else {
+-            continue;
+-        };
++        let wall = walls
++            .get_mut(event.0)
++            .expect("segmentation changed event must reference a published wall");
+         let projection = wall.building_projection();
+         let path = wall
+             .prepared_path
+@@ -37,11 +37,15 @@
+                 prepared_positions: &path.positions,
+                 path_values: &path.segment_values,
+                 shape: &projection.shape(),
+-                observed_special_flag: projection.observed_294(),
++                observed_special_flag: projection.observed_296(),
+             };
+-        if let Ok(mask) = wall_path_segmentation(input) {
+-            masks.masks.insert(event.0.0, mask);
+-        }
++        let mask = wall_path_segmentation(input)
++            .expect("invalid authoritative wall path segmentation input");
++        wall.material_stats
++            .init_this_update(path.length, projection.observed_296() != 0);
++        wall.material_stats
++            .set_path_segmentation_count(mask.len() as u32);
++        masks.masks.insert(event.0.0, mask);
+     }
+ }
+ 
+--- a/tiny-glade/crates/country-core/src/resources/walls/publication_fields.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/publication_fields.rs
+@@ -75,6 +75,10 @@
+     pub fn from_observed(bytes: [u8; 0x2a0]) -> Self {
+         Self(bytes)
+     }
++    /// Identified observed fields only; owning Rust vectors are never encoded.
++    pub fn observed_bytes(&self) -> &[u8; 0x2a0] {
++        &self.0
++    }
+     pub fn validate_read(&self) -> Result<(), WallReadError> {
+         validate_public_wall_read(
+             u64::from_le_bytes(self.0[0x10..0x18].try_into().unwrap()),
+--- a/tiny-glade/crates/systems/wall-constructor/src/construct_platform_stairs/mod.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/construct_platform_stairs/mod.rs
+@@ -17,8 +17,13 @@
+ /// B `system_wall_constructor::PlatformStairsStorage`（跨帧平台段存储）。
+ #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+ pub struct PlatformStairsStorage {
+-    /// 墙 id → 平台段记录（布局 I）。
+-    pub segments: hashbrown::HashMap<u64, Vec<[u8; 104]>>,
++    /// Native32B threshold ranges; the28 creator materializes104B segments.
++    pub segments: hashbrown::HashMap<
++        u64,
++        Vec<
++            country_core::systems::wall::construction::platform_segmentation::WallPlatformStepRange,
++        >,
++    >,
+ }
+ 
+ /// B 0x1407744d0。**未实现（零壳）**：真实逻辑为 80B 装饰源
+--- a/tiny-glade/crates/systems/wall-constructor/src/segmentation/split_wall_path_segment_into_platform_stairs.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/segmentation/split_wall_path_segment_into_platform_stairs.rs
+@@ -1,50 +1,71 @@
+-//! 平台楼梯段拆分（segmentation/split_wall_path_segment_into_platform_stairs.rs）。
+-//!
+-//! `split_wall_path_segment_into_platform_stairs`（0x140751960）。
+-//! 候选参数面（skeleton 富化）：`(EventReader<OnWallChanged>,
+-//!  EventReader<CreateRoofCmd>, EventReader<SwitchRoofTypeCmd>,
+-//!  Res<PublicWalls>, Query<&Roof>, …)`。
+-//!
+-//! 机器码（building-segmentation/B-stairs + B-platform-* 冻结）：
+-//! 墙路径段 → 平台楼梯段拆分（平台几何/行列链见
+-//! shared building modules wall_platform_stairs 族）。
++//! B140751960: raw136B masks -> processed136B masks + native32B step ranges.
++//! Original set22 runs this after relationship/invalid-roof updates and before
++//! arches/lintels, using chain_ignore_deferred (no inserted Commands barrier).
++use crate::{
++    construct_arches::WallPathSegmentationMasks,
++    construct_lintels::WallPathSegmentationMasksMinusStairs,
++    construct_platform_stairs::PlatformStairsStorage,
++};
+ use bevy_ecs::prelude::*;
+ use country_core::resources::{
+     roofs::{
+         Roof,
+         commands::{CreateRoofCmd, SwitchRoofTypeCmd},
+     },
+-    walls::public_walls::{OnWallChanged, PublicWalls},
++    walls::{
++        WallId,
++        public_walls::{OnWallChanged, PublicWalls},
++    },
+ };
++use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
++use country_core::systems::wall::construction::platform_segmentation::split_platform_wall_masks;
+ 
+-/// B 0x140751960。
+ pub fn split_wall_path_segment_into_platform_stairs(
+     mut changed: EventReader<OnWallChanged>,
+     mut create_roof: EventReader<CreateRoofCmd>,
+     mut switch_type: EventReader<SwitchRoofTypeCmd>,
+     walls: Res<PublicWalls>,
+     roofs: Query<&Roof>,
++    mut raw: ResMut<WallPathSegmentationMasks>,
++    mut processed: ResMut<WallPathSegmentationMasksMinusStairs>,
++    mut steps: ResMut<PlatformStairsStorage>,
++    _signifiers: Res<UiSignifierStream>,
+ ) {
+-    let recalc: Vec<u64> = changed
++    let mut recalc: Vec<u64> = changed
+         .read()
+         .map(|e| e.0.0)
+         .chain(create_roof.read().map(|e| e.0.wall_id().0))
+         .chain(switch_type.read().map(|e| e.wall.0))
+         .collect();
++    // Native751c..751d performs unsigned sort followed by adjacent dedup.
++    recalc.sort_unstable();
++    recalc.dedup();
+     for wall_id in recalc {
+-        let id = country_core::resources::walls::WallId(wall_id);
+-        let Some(wall) = walls.get(id) else {
+-            continue;
+-        };
+-        let has_roof = walls
+-            .roof_entity(id)
+-            .and_then(|entity| roofs.get(entity).ok())
+-            .is_some();
+-        // 平台楼梯段拆分（B-platform-* 冻结链）：段范围 → 平台段存储
+-        // （掩码/行列源经 calculate_wall_path_segmentation 产出后接线——
+-        // I 级登记：段 104B 记录的生产序待 materializer 链接线）。
+-        if has_roof && wall.simplified_curve_2d().length > 0.0 {
+-            let _ = id;
+-        }
++        let masks = raw
++            .masks
++            .get_mut(&wall_id)
++            .expect("platform segmentation requires raw masks for every event wall");
++        let id = WallId(wall_id);
++        let wall = walls
++            .get(id)
++            .expect("platform segmentation event must reference a published wall");
++        let ranges = steps.segments.entry(wall_id).or_default();
++        ranges.clear(); // Native clears even when the non-flat/shape>=2 clone branch follows.
++        let roof = walls.roof_component(id, |entity| roofs.get(entity).ok());
++        let projection = wall.building_projection();
++        let path = wall
++            .prepared_path
++            .as_ref()
++            .expect("platform segmentation requires prepared wall path");
++        let result = split_platform_wall_masks(
++            projection.observed_bytes(),
++            &path.positions,
++            &path.segment_values,
++            masks,
++            roof.map(Roof::observed),
++        )
++        .expect("invalid authoritative platform segmentation input");
++        processed.masks.insert(wall_id, result.processed_masks);
++        *ranges = result.steps;
+     }
+ }
+--- a/tiny-glade/crates/systems/wall-constructor/src/construct_arches/mod.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/construct_arches/mod.rs
+@@ -58,42 +58,68 @@
+     mut create_roof: EventReader<CreateRoofCmd>,
+     mut switch_type: EventReader<SwitchRoofTypeCmd>,
+     mut walls: ResMut<PublicWalls>,
+-    masks: Res<WallPathSegmentationMasks>,
++    masks: Res<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>,
+     mut arch_segments: ResMut<country_core::resources::walls::arches::ArchSegments>,
+     roofs: Query<&Roof>,
+-    ssbo: Res<AssetSsboLibrary>,
++    mut previous: ResMut<country_core::resources::walls::arches::BuildingHadArchesLastFrame>,
++    mut recalculate: EventWriter<country_core::resources::roofs::commands::RecalculateRoofCmd>,
++    mut ssbo: ResMut<AssetSsboLibrary>,
+     mut output: ResMut<WallConstructorOutput>,
+     mut gates: EventWriter<crate::construct_gates::systems::ConstructGateCmd>,
+ ) {
+-    let recalc: Vec<u64> = changed
++    let mut recalc: Vec<u64> = changed
+         .read()
+         .map(|e| e.0.0)
+         .chain(create_roof.read().map(|e| e.0.wall_id().0))
+         .chain(switch_type.read().map(|e| e.wall.0))
+         .collect();
++    recalc.sort_unstable();
++    recalc.dedup();
++    let mut exhausted = false;
+     for wall_id in recalc {
+         let id = country_core::resources::walls::WallId(wall_id);
+-        let has_roof = walls
+-            .roof_entity(id)
+-            .and_then(|entity| roofs.get(entity).ok())
+-            .is_some();
+-        let Some(segments) = masks.masks.get(&wall_id) else {
+-            continue;
++        // Native76047b calls PublicWalls::has_roof, including its failure-map
++        // and generation test. Query validation belongs only to the tail below.
++        let has_roof = walls.has_roof(id);
++
++        let wall = walls
++            .get_mut(id)
++            .expect("arch event must reference a published wall");
++        let storage = ssbo
++            .get_mut::<country_core::geometry::instanced_wall::BrickTransformSsbo>()
++            .expect("canonical BrickTransformSsbo must exist before arch construction");
++        output.gpu.clear_bricks(storage, wall_id);
++        let outcome = if wall.building_projection().observed_296() != 0 {
++            country_core::systems::wall::construction::arches::WallArchesOutput::default()
++        } else {
++            let segments = masks
++                .masks
++                .get(&wall_id)
++                .expect("arches require processed masks for the source wall");
++            wall.construct_arches(id, segments, has_roof)
++                .expect("invalid or unrecovered authoritative arch input")
+         };
+-        let Some(wall) = walls.get_mut(id) else {
+-            continue;
+-        };
+-        let outcome = wall.construct_arches(id, segments, has_roof);
+-        if let Ok(outcome) = outcome {
++        {
++            let stats = &outcome.material_stats;
++            wall.material_stats
++                .set_arches_segments_count(stats.arches_segments_count());
++            wall.material_stats.add_arches_length(stats.arches_length);
++            wall.material_stats.add_gate_length(stats.gates_length);
++            wall.material_stats
++                .set_gates_segments_count(stats.gates_count as u32);
++            wall.material_stats.add_sewer_length(stats.sewer_length);
++            wall.material_stats
++                .set_sewer_segments_count(stats.sewer_count as u32);
+             arch_segments.0.insert(id, outcome.segments);
+             // W-B2：96B 实例 + ConstructGateCmd120 落盘。
+-            output.gpu.replace_bricks(
++            exhausted |= output.gpu.append_bricks(
++                storage,
+                 crate::gpu_output::ConstructorKey {
+                     wall: wall_id,
+                     part: crate::gpu_output::ConstructorPart::Arches,
+                 },
+-                outcome.instances,
+-            );
++                &outcome.instances,
++            ) != 0;
+             for gate in &outcome.gate_commands {
+                 gates.write(crate::construct_gates::systems::ConstructGateCmd {
+                     wall: gate.wall_id.0,
+@@ -103,15 +129,40 @@
+             }
+             let _ = outcome.segment_count;
+         }
+-        // shape2 分支（style==2 → MaterialStats 直写）——未冻结边界登记。
+-        if segments
+-            .first()
+-            .and_then(|s| s.flags.first().copied())
+-            .unwrap_or(0)
+-            & 2
+-            != 0
+-        {
+-            let _ = ssbo;
++    }
++    if exhausted {
++        log::error!(target:"system_wall_constructor::construct_arches",
++            "Arch constructor ran out of bricks");
++    }
++    // Original762ce0..7630a5 scans all public rows every invocation, not only
++    // this frame's event IDs. Only a live, non-flat associated roof participates.
++    for (id, _) in walls.all() {
++        let Some(entity) = walls
++            .roof_entity(id)
++            .filter(|entity| entity.to_bits() >> 32 != 0)
++        else {
++            continue;
++        };
++        let Ok(roof) = roofs.get(entity) else {
++            continue;
++        };
++        if roof.is_flat() {
++            continue;
+         }
++        let now = arch_segments
++            .0
++            .get(&id)
++            .is_some_and(|segments| segments.len() >= 2);
++        let before = previous.0.get(&id.0).copied().unwrap_or(false);
++        if before != now {
++            recalculate.write(
++                country_core::resources::roofs::commands::RecalculateRoofCmd {
++                    entity,
++                    wall: id,
++                    kind: 3,
++                },
++            );
++        }
++        previous.0.insert(id.0, now);
+     }
+ }
+--- a/tiny-glade/crates/country-core/src/resources/walls/arches.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/arches.rs
+@@ -15,8 +15,8 @@
+ pub struct ArchSegments(pub std::collections::HashMap<super::WallId, Vec<ArchSegment>>);
+ 
+ /// 上一帧是否有拱（O 名；bool 标志）。
+-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+-pub struct BuildingHadArchesLastFrame(pub bool);
++#[derive(Resource, Clone, Debug, Default, PartialEq)]
++pub struct BuildingHadArchesLastFrame(pub std::collections::HashMap<u64, bool>);
+ 
+ /// 一段过梁（O 名；布局 U）。
+ #[derive(Clone, Debug, Default, PartialEq)]
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/systems/wall/construction/arch_stats.rs
+@@ -0,0 +1,45 @@
++//! Original760480..761142 /7629b1..2a49 material classification and counters.
++//! This observes pre-profile materialized segments and raw mask length.
++use super::structures::MaterializedWallSegment;
++#[derive(Clone, Debug, Default)]
++pub struct WallArchMaterialStats {
++    pub total_segments: u64,
++    pub arches_length: f32,
++    pub gates_length: f32,
++    pub sewer_length: f32,
++    pub gates_count: u64,
++    pub sewer_count: u64,
++}
++impl WallArchMaterialStats {
++    pub fn observe_mask(
++        &mut self,
++        length: f32,
++        segments: &[MaterializedWallSegment],
++        has_roof: bool,
++    ) {
++        self.total_segments += segments.len() as u64;
++        if !has_roof || segments.len() != 1 {
++            self.arches_length += length;
++            return;
++        }
++        let points = &segments[0].positions;
++        let mut negative = 0.0f32;
++        for p in points {
++            if p[1] < 0.0 {
++                negative += 1.0;
++            }
++        }
++        // Original UCOMISS/JBE: unordered ratio takes the gate side.
++        if negative / points.len() as f32 > f32::from_bits(0x3f000000) {
++            self.sewer_length += length;
++            self.sewer_count += 1;
++        } else {
++            self.gates_length += length;
++            self.gates_count += 1;
++        }
++    }
++    pub fn arches_segments_count(&self) -> u32 {
++        // The native subtracts gate count only; sewer remains included.
++        self.total_segments.wrapping_sub(self.gates_count) as u32
++    }
++}
+--- a/tiny-glade/crates/country-core/src/systems/wall/construction/mod.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/construction/mod.rs
+@@ -1,11 +1,11 @@
+ //! Shared wall construction algorithms and CPU input contracts.
+ 
++pub mod arches;
++pub mod bricks;
+ pub mod fences;
++pub mod freehand_arches;
+ pub mod gates;
+-pub mod arches;
+-pub mod freehand_arches;
+ pub mod parameters;
+-pub mod bricks;
+ pub mod platform_collision;
+ 
+ #[cfg(feature = "native-physics")]
+@@ -16,3 +16,5 @@
+ pub mod production;
+ pub mod segmentation;
+ pub mod structures;
++
++pub mod arch_stats;
+--- a/tiny-glade/crates/country-core/src/systems/wall/construction/arches.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/construction/arches.rs
+@@ -44,8 +44,9 @@
+     pub wall_id: WallId,
+     pub ordinal: u64,
+ }
+-#[derive(Clone, Debug)]
++#[derive(Clone, Debug, Default)]
+ pub struct WallArchesOutput {
++    pub material_stats: super::arch_stats::WallArchMaterialStats,
+     pub instances: Vec<WallBrickInstance>,
+     pub gate_commands: Vec<ConstructGateCmd120Projection>,
+     pub segment_count: u64,
+@@ -247,6 +248,7 @@
+         return Err(WallArchesError::InvalidInput);
+     }
+     let mut out = WallArchesOutput {
++        material_stats: Default::default(),
+         instances: Vec::new(),
+         gate_commands: Vec::new(),
+         segment_count: 0,
+@@ -263,6 +265,8 @@
+             regular: true,
+             closed: true,
+         })?;
++        out.material_stats
++            .observe_mask(mask.length, &segments, input.has_roof);
+         let override_height = if input.observed_294 != 0 {
+             let mut maximum = 0.;
+             let mut ground = 0.;
+--- a/tiny-glade/crates/country-core/src/systems/wall/construction/freehand_arches.rs
++++ b/tiny-glade/crates/country-core/src/systems/wall/construction/freehand_arches.rs
+@@ -219,6 +219,7 @@
+         return Err(WallArchesError::InvalidInput);
+     }
+     let mut out = WallArchesOutput {
++        material_stats: Default::default(),
+         instances: Vec::new(),
+         gate_commands: Vec::new(),
+         segment_count: 0,
+@@ -235,6 +236,8 @@
+             regular: false,
+             closed: false,
+         })?;
++        out.material_stats
++            .observe_mask(mask.length, &ss, input.has_roof);
+         let override_height = if input.observed_294 != 0 {
+             let mut h = 0.;
+             let mut y = 0.;
+--- a/tiny-glade/crates/systems/wall-constructor/src/init_wall_height_and_arch_segment_height.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/init_wall_height_and_arch_segment_height.rs
+@@ -1,129 +1,40 @@
+-//! 墙高与拱段高初始化（init_wall_height_and_arch_segment_height.rs）。
+-//!
+-//! `init_wall_height_and_arch_segment_height`（0x14078b550，866 行 fresh：
+-//! `evidence/country-core-deep/systems-recovery/groupC/wall-constructor/decomp/
+-//! decomp-0x14078b550.txt`）。
+-//!
+-//! 反编译逐段对应（墙记录锚点 +0x2a0 → 公开投影偏移）：
+-//! 1. 消费本帧 `OnWallChanged`；
+-//! 2. 墙记录 +0x258（shape tag）< 2：published outline（+0x90 指针 /
+-//!    +0x98 数量，[f32;3] stride 0xc 取 +4 = y）做 `max(·, -2.5)`，
+-//!    `+ constrained_extra(+0x284) − 0.46`，再 `max(·, 0.96)`；
+-//!    段高数组填同一值（`regular_wall_height_cache`，core O）。
+-//!    tag ≥ 2：`byte +0x295`（freehand_ty/clutter version）≠0 → 同一均匀高度
+-//!    （不减 0.46）；==0 → 逐点 `max(y + constrained_extra, 0.5)`，
+-//!    最大值从 0.0 起 NaN 感知（`freeform_wall_height_cache`，core O）。
+-//! 3. 两组缓存都写 `{count=1, height}`：基础对 +0x108/+0x10c、gable 对
+-//!    +0x110/+0x114。core 由缓存派生投影（`calculated_max_y` / `gable_heights`）。
+-//! 4. `is_rectangle()` 且 `PublicWalls::roof_entity` 命中：解析 Roof；
+-//!    `Roof::is_gable()` 为真时按 XZ 曲线与 4 个矩形边 u 端点做 gable 剖面
+-//!    叠加（`apply_gable_arch_heights`，core O：u 窗口 ±margin、指数
+-//!    `profile*1.5+(1-profile)*0.5`、eave 缩放、末端闭合偏移），并把
+-//!    gable 最大值写成 `base + roof.height + 0.46`。
+-//!    非矩形/无屋顶：清空 gable 缓存（gable 对回落到基础值）。
+-//!
+-//! 与原版一致：墙记录缺失跳过；roof_entity 命中但实体查询失败/曲线非有限
+-//! 时 panic（原 `unwrap_failed`），不回退默认值。第三段高度数组由后续
+-//! `prepare_paths` 以 prepared segment 数量初始化，本系统不伪造。
++//! B14078b550 relationship portion of wall height initialization.
++//! Prepared base/third caches belong to the actual PublicWallState path owner.
+ use bevy_ecs::prelude::*;
+ use country_core::resources::{
+     roofs::Roof,
+-    walls::{
+-        freeform_height_cache::freeform_wall_height_cache,
+-        height_cache::regular_wall_height_cache,
+-        public_walls::{OnWallChanged, PublicWalls},
+-    },
++    walls::public_walls::{OnWallChanged, PublicWalls},
+ };
+ 
+-/// B 0x14078b550：墙高/拱段高初始化。
+ pub fn init_wall_height_and_arch_segment_height(
+     mut changed: EventReader<OnWallChanged>,
+     mut walls: ResMut<PublicWalls>,
+     roofs: Query<&Roof>,
+ ) {
+     for event in changed.read() {
+-        let wall_id = event.0;
+-        // 原版 roof 解析在基础缓存之后，但先取 entity 以满足借用顺序；
+-        // 命中关系存在而实体失效时保持原 panic。
+-        let roof_bytes = walls.roof_entity(wall_id).map(|entity| {
+-            *roofs
+-                .get(entity)
+-                .expect("init_wall_height: PublicWalls roof relationship points to a missing Roof")
+-                .observed()
+-        });
+-        let Some(wall) = walls.get_mut(wall_id) else {
+-            continue;
++        // Native PublicWalls table absence is unwrap_failed, not silent skip.
++        let wall = walls
++            .get(event.0)
++            .expect("wall height event must reference a published wall");
++        // Native query is reached only for a rectangle. A present association
++        // must resolve the same generation; another roof with equal WallId
++        // cannot replace a stale/missing associated component.
++        let roof = if wall.is_rectangle().is_some() {
++            walls
++                .roof_entity(event.0)
++                .filter(|entity| entity.to_bits() >> 32 != 0)
++                .map(|entity| {
++                    roofs
++                        .get(entity)
++                        .expect("associated rectangle roof component must resolve")
++                })
++        } else {
++            None
+         };
+-        let outline = wall.geometry.outline.clone();
+-        let shape = wall.shape().clone();
+-        let constrained_extra = wall.geometry.metrics.constrained_extra;
+-        if shape.tag() < 2 {
+-            // 0x14078b865..0x14078bc96：regular circle/rectangle base cache。
+-            let cache = regular_wall_height_cache(&outline, &shape, constrained_extra)
+-                .expect("regular wall shape < 2");
+-            wall.regular_heights = Some(cache);
+-            wall.freeform_heights = None;
+-        } else {
+-            // 0x14078b8xx：freeform tag≥2，byte +0x295 选择均匀/逐点高度。
+-            // 原版在本系统内只写 arch 高度数组；第三段数组由 E2 以 prepared
+-            // segment 数初始化，因此这里传 0（随后被 prepare_paths 替换）。
+-            let clutter_version = wall.authority.freehand_ty();
+-            let cache = freeform_wall_height_cache(
+-                &outline,
+-                &shape,
+-                constrained_extra,
+-                clutter_version,
+-                0,
+-            )
+-            .expect("freeform wall shape >= 2");
+-            wall.freeform_heights = Some(cache);
+-            wall.regular_heights = None;
+-        }
+-        if wall.is_rectangle().is_some() {
+-            if let Some(roof) = roof_bytes.as_ref() {
+-                // gable 剖面叠加；方向越界/曲线失败与原 unwrap 一致 panic。
+-                wall.update_gable_heights(Some(roof))
+-                    .expect("gable arch height profile");
+-            } else {
+-                wall.gable_heights = None;
+-            }
+-        } else {
+-            wall.gable_heights = None;
+-        }
++        walls
++            .get_mut(event.0)
++            .unwrap()
++            .update_gable_heights(roof.map(Roof::observed))
++            .expect("invalid authoritative gable height input");
+     }
+ }
+-
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-    use country_core::resources::walls::publication_fields::WallShapeSnapshot;
+-
+-    #[test]
+-    fn regular_cache_uses_outline_max_and_floor() {
+-        // 对应 decomp 0x14078b865：max(y,-2.5)+extra-0.46，下限 0.96。
+-        let shape = WallShapeSnapshot::from_observed([0u8; 28]); // tag 0（圆形）
+-        let positions = [[0.0, 1.0, 0.0], [0.0, 2.0, 0.0]];
+-        let cache = regular_wall_height_cache(&positions, &shape, 0.5).unwrap();
+-        // 2.0 + 0.5 - 0.46 = 2.04
+-        assert_eq!(cache.maximum_y, 2.04);
+-        assert_eq!(cache.arch_segment_heights, vec![2.04, 2.04]);
+-        let low = regular_wall_height_cache(&positions, &shape, -10.0).unwrap();
+-        assert_eq!(low.maximum_y, f32::from_bits(0x3f75c290));
+-    }
+-
+-    #[test]
+-    fn freeform_clutter_zero_keeps_per_point_heights() {
+-        let mut bytes = [0u8; 28];
+-        bytes[0] = 2; // tag 2（freehand）
+-        let shape = WallShapeSnapshot::from_observed(bytes);
+-        let positions = [[0.0, 0.2, 0.0], [0.0, 1.0, 0.0]];
+-        let cache = freeform_wall_height_cache(&positions, &shape, 0.0, 0, 0).unwrap();
+-        // 逐点 max(y,0.5)，最大 1.0。
+-        assert_eq!(cache.arch_segment_heights, vec![0.5, 1.0]);
+-        assert_eq!(cache.maximum_y, 1.0);
+-        let uniform = freeform_wall_height_cache(&positions, &shape, 0.4, 1, 0).unwrap();
+-        // 均匀：max(y,-2.5)+0.4，下限 0.96 → 1.4。
+-        assert_eq!(uniform.maximum_y, 1.4);
+-        assert_eq!(uniform.arch_segment_heights, vec![1.4, 1.4]);
+-    }
+-}
+--- a/tiny-glade/crates/systems/wall-constructor/src/gpu_output.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/gpu_output.rs
+@@ -1,14 +1,13 @@
+ //! Source-owned constructor output -> current sparse SSBO library. These owners
+ //! complement the main wall InstancedWall; they never replace its allocation.
+-//! Rebuild replaces a complete part, deletion releases it, failed allocation or
+-//! device upload retains the pending revision for the next flush.
++//! Original source points clear and append shared per-wall owners directly.
++//! Capacity failure keeps successful prefixes; physical upload failures keep
++//! dirty chunks for the real device retry. Deletion releases the owned chunks.
+ use bevy_ecs::prelude::*;
+ use country_core::{
+     asset_libraries::{runtime::AssetLibraryRuntime, ssbo_library::AssetSsboLibrary},
+     geometry::instanced_wall::BrickTransformSsbo,
+-    render::sparse_instance_buffer::{
+-        SparseInstanceBuffer, SparseInstanceBufferAllocation, SparseSsbo,
+-    },
++    render::sparse_instance_buffer::{SparseInstanceBuffer, SparseInstanceBufferAllocation},
+     resources::{roofs::roof_buffers::WoodenPlankSsbo, walls::public_walls::OnWallDeleted},
+ };
+ use hashbrown::HashMap;
+@@ -25,87 +24,121 @@
+     pub wall: u64,
+     pub part: ConstructorPart,
+ }
+-struct Part<T> {
+-    allocation: Option<SparseInstanceBufferAllocation<T>>,
+-    pending: Option<Vec<T>>,
+-}
+-impl<T> Default for Part<T> {
+-    fn default() -> Self {
+-        Self {
+-            allocation: None,
+-            pending: None,
+-        }
+-    }
+-}
+ #[derive(Resource, Default)]
+ pub struct ConstructorGpuOutput {
+-    bricks: HashMap<ConstructorKey, Part<BrickTransformSsbo>>,
+-    planks: HashMap<ConstructorKey, Part<WoodenPlankSsbo>>,
++    bricks: HashMap<u64, SparseInstanceBufferAllocation<BrickTransformSsbo>>,
++    planks: HashMap<u64, SparseInstanceBufferAllocation<WoodenPlankSsbo>>,
+     /// Capacity and physical-storage errors are observable; never discarded.
+     pub failures: HashMap<ConstructorKey, String>,
+     pub last_device_error: Option<String>,
+ }
+ impl ConstructorGpuOutput {
+-    pub fn replace_bricks(&mut self, key: ConstructorKey, records: Vec<BrickTransformSsbo>) {
+-        self.bricks.entry(key).or_default().pending = Some(records);
+-    }
+-    pub fn replace_planks(&mut self, key: ConstructorKey, records: Vec<WoodenPlankSsbo>) {
+-        self.planks.entry(key).or_default().pending = Some(records);
+-    }
+-    pub fn pending_bricks(&self, key: ConstructorKey) -> Option<&[BrickTransformSsbo]> {
+-        self.bricks.get(&key)?.pending.as_deref()
++    pub fn append_bricks(
++        &mut self,
++        storage: &mut SparseInstanceBuffer<BrickTransformSsbo>,
++        key: ConstructorKey,
++        records: &[BrickTransformSsbo],
++    ) -> usize {
++        let owner = self
++            .bricks
++            .entry(key.wall)
++            .or_insert_with(|| storage.new_allocation());
++        assert!(
++            storage.owns_allocation(owner),
++            "arch/gate owner belongs to another physical storage"
++        );
++        let mut writer = storage.append_writer(owner);
++        let mut failures = 0usize;
++        for record in records {
++            if writer.push(record).is_err() {
++                failures += 1;
++            }
++        }
++        if failures != 0 {
++            self.failures.insert(key, format!("{failures} constructor brick pushes exhausted capacity; successful prefix remains"));
++        }
++        failures
++    }
++    /// Original22 arch constructor clears the one shared arch/gate owner.
++    pub fn clear_bricks(
++        &mut self,
++        storage: &mut SparseInstanceBuffer<BrickTransformSsbo>,
++        wall: u64,
++    ) {
++        let owner = self
++            .bricks
++            .entry(wall)
++            .or_insert_with(|| storage.new_allocation());
++        assert!(
++            storage.owns_allocation(owner),
++            "arch/gate owner belongs to another physical storage"
++        );
++        storage.writer(owner).clear();
++        self.failures.retain(|key, _| {
++            key.wall != wall
++                || !matches!(key.part, ConstructorPart::Arches | ConstructorPart::Gates)
++        });
++    }
++    /// Original per-wall64B owner is shared by lintels/fences. Source systems
++    /// append at their actual22/28 execution points, never deferred/reordered by
++    /// HashMap iteration during44 upload. Every failed push is still attempted.
++    pub fn append_planks(
++        &mut self,
++        storage: &mut SparseInstanceBuffer<WoodenPlankSsbo>,
++        key: ConstructorKey,
++        records: &[WoodenPlankSsbo],
++    ) -> usize {
++        let owner = self
++            .planks
++            .entry(key.wall)
++            .or_insert_with(|| storage.new_allocation());
++        assert!(
++            storage.owns_allocation(owner),
++            "plank owner belongs to another physical storage"
++        );
++        let mut writer = storage.append_writer(owner);
++        let mut failures = 0usize;
++        for record in records {
++            if writer.push(record).is_err() {
++                failures += 1;
++            }
++        }
++        if failures != 0 {
++            self.failures.insert(key, format!("{failures} constructor plank pushes exhausted capacity; successful prefix remains"));
++        }
++        failures
++    }
++    pub fn clear_planks(&mut self, storage: &mut SparseInstanceBuffer<WoodenPlankSsbo>, wall: u64) {
++        let owner = self
++            .planks
++            .entry(wall)
++            .or_insert_with(|| storage.new_allocation());
++        assert!(
++            storage.owns_allocation(owner),
++            "plank owner belongs to another physical storage"
++        );
++        storage.writer(owner).clear();
++        self.failures.retain(|key, _| {
++            key.wall != wall
++                || !matches!(key.part, ConstructorPart::Lintels | ConstructorPart::Fences)
++        });
+     }
+     pub fn brick_allocation(
+         &self,
+         key: ConstructorKey,
+     ) -> Option<&SparseInstanceBufferAllocation<BrickTransformSsbo>> {
+-        self.bricks.get(&key)?.allocation.as_ref()
++        self.bricks.get(&key.wall)
+     }
+     pub fn plank_allocation(
+         &self,
+         key: ConstructorKey,
+     ) -> Option<&SparseInstanceBufferAllocation<WoodenPlankSsbo>> {
+-        self.planks.get(&key)?.allocation.as_ref()
++        self.planks.get(&key.wall)
+     }
+     pub fn remove_wall(&mut self, wall: u64) {
+-        self.bricks.retain(|key, _| key.wall != wall);
+-        self.planks.retain(|key, _| key.wall != wall);
++        self.bricks.retain(|id, _| *id != wall);
++        self.planks.retain(|id, _| *id != wall);
+         self.failures.retain(|key, _| key.wall != wall);
+-    }
+-}
+-fn write_parts<T: SparseSsbo>(
+-    storage: &mut SparseInstanceBuffer<T>,
+-    parts: &mut HashMap<ConstructorKey, Part<T>>,
+-    failures: &mut HashMap<ConstructorKey, String>,
+-) {
+-    storage.take_out_waste();
+-    for (&key, part) in parts {
+-        let Some(pending) = &part.pending else {
+-            continue;
+-        };
+-        let allocation = part
+-            .allocation
+-            .get_or_insert_with(|| storage.new_allocation());
+-        if !storage.owns_allocation(allocation) {
+-            failures.insert(
+-                key,
+-                "constructor allocation belongs to another physical storage".into(),
+-            );
+-            continue;
+-        }
+-        match storage.writer(allocation).replace_all(pending) {
+-            Ok(()) => {
+-                part.pending = None;
+-                failures.remove(&key);
+-            }
+-            Err(_) => {
+-                failures.insert(
+-                    key,
+-                    "constructor sparse instance capacity exhausted; revision remains pending"
+-                        .into(),
+-                );
+-            }
+-        }
+     }
+ }
+ /// Run after source constructors and before the canonical sparse upload. There
+@@ -118,12 +151,11 @@
+     let ConstructorGpuOutput {
+         bricks,
+         planks,
+-        failures,
++        failures: _,
+         last_device_error,
+     } = &mut output.gpu;
+     *last_device_error = None;
+     if let Some(storage) = library.get_mut::<BrickTransformSsbo>() {
+-        write_parts(storage, bricks, failures);
+         if let Err(error) = storage.try_gpu_flush(runtime.buffer_device()) {
+             *last_device_error = Some(error.to_string());
+         }
+@@ -131,12 +163,28 @@
+         *last_device_error = Some("BrickTransformSsbo is not registered".into());
+     }
+     if let Some(storage) = library.get_mut::<WoodenPlankSsbo>() {
+-        write_parts(storage, planks, failures);
+         if let Err(error) = storage.try_gpu_flush(runtime.buffer_device()) {
+             *last_device_error = Some(error.to_string());
+         }
+     } else if !planks.is_empty() {
+         *last_device_error = Some("WoodenPlankSsbo is not registered".into());
++    }
++}
++/// Original19 clear, after publication and before22/28 source appenders.
++pub fn clear_constructor_planks(
++    mut changed: EventReader<country_core::resources::walls::public_walls::OnWallChanged>,
++    walls: Res<country_core::resources::walls::public_walls::PublicWalls>,
++    mut library: ResMut<AssetSsboLibrary>,
++    mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
++) {
++    for event in changed.read() {
++        walls
++            .get(event.0)
++            .expect("plank clear changed event requires published wall");
++        let storage = library
++            .get_mut::<WoodenPlankSsbo>()
++            .expect("canonical WoodenPlankSsbo must exist before wall construction");
++        output.gpu.clear_planks(storage, event.0.0);
+     }
+ }
+ pub fn delete_constructor_output(
+@@ -201,66 +249,88 @@
+         }
+     }
+     #[test]
+-    fn source_replacement_deletion_and_foreign_storage_keep_real_sparse_ownership() {
++    fn arch_gate_tail_owner_clear_delete_and_foreign_storage_are_real() {
+         let key = ConstructorKey {
+             wall: 44,
+             part: ConstructorPart::Arches,
+         };
++        let gates = ConstructorKey {
++            part: ConstructorPart::Gates,
++            ..key
++        };
+         let mut owners = ConstructorGpuOutput::default();
+-        owners.replace_bricks(
+-            key,
+-            vec![
+-                BrickTransformSsbo {
+-                    seed: 7,
+-                    ..Default::default()
+-                };
+-                35
+-            ],
+-        );
+         let mut storage =
+             SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&TestDevice(1), None);
+-        write_parts(&mut storage, &mut owners.bricks, &mut owners.failures);
++        owners.clear_bricks(&mut storage, key.wall);
+         assert_eq!(
+-            storage
+-                .to_draw_multi_instanced()
+-                .iter()
+-                .map(|(_, n)| *n)
+-                .sum::<u32>(),
+-            35
+-        );
+-        let allocation = owners.brick_allocation(key).unwrap();
++            owners.append_bricks(
++                &mut storage,
++                key,
++                &vec![
++                    BrickTransformSsbo {
++                        seed: 7,
++                        ..Default::default()
++                    };
++                    35
++                ]
++            ),
++            0
++        );
+         assert_eq!(
+-            storage
+-                .allocation_to_draw_multi_instanced(allocation)
+-                .iter()
+-                .map(|(_, n)| *n)
+-                .sum::<u32>(),
+-            35
+-        );
+-        assert_eq!(storage.data[0].seed, 7);
+-        owners.replace_bricks(
+-            key,
+-            vec![
+-                BrickTransformSsbo {
+-                    seed: 9,
+-                    ..Default::default()
+-                };
+-                2
+-            ],
+-        );
+-        write_parts(&mut storage, &mut owners.bricks, &mut owners.failures);
++            owners.append_bricks(
++                &mut storage,
++                gates,
++                &vec![
++                    BrickTransformSsbo {
++                        seed: 9,
++                        ..Default::default()
++                    };
++                    2
++                ]
++            ),
++            0
++        );
++        assert!(std::ptr::eq(
++            owners.brick_allocation(key).unwrap(),
++            owners.brick_allocation(gates).unwrap()
++        ));
++        assert_eq!(storage.to_draw_multi_instanced(), vec![(0, 37)]);
++        assert_eq!(storage.data[34].seed, 7);
++        assert_eq!(storage.data[35].seed, 9);
++        owners.clear_bricks(&mut storage, key.wall);
++        assert!(storage.to_draw_multi_instanced().is_empty());
++        assert_eq!(
++            owners.append_bricks(
++                &mut storage,
++                key,
++                &vec![
++                    BrickTransformSsbo {
++                        seed: 11,
++                        ..Default::default()
++                    };
++                    2
++                ]
++            ),
++            0
++        );
+         assert_eq!(storage.to_draw_multi_instanced(), vec![(0, 2)]);
+-        assert_eq!(storage.data[0].seed, 9);
+-        let mut foreign =
+-            SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&TestDevice(2), None);
+-        owners.replace_bricks(key, vec![BrickTransformSsbo::default()]);
+-        write_parts(&mut foreign, &mut owners.bricks, &mut owners.failures);
+-        assert!(owners.failures.contains_key(&key));
+-        assert!(owners.pending_bricks(key).is_some());
+-        assert!(foreign.to_draw_multi_instanced().is_empty());
+         owners.remove_wall(44);
+         storage.take_out_waste();
+         assert!(storage.to_draw_multi_instanced().is_empty());
++        owners.append_bricks(&mut storage, key, &[BrickTransformSsbo::default()]);
++        drop(storage); // Avoid simultaneously allocating two full192MiB shadows.
++        let mut foreign =
++            SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&TestDevice(2), None);
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| owners.append_bricks(
++                &mut foreign,
++                key,
++                &[BrickTransformSsbo::default()]
++            )))
++            .is_err()
++        );
++        assert!(foreign.to_draw_multi_instanced().is_empty());
++        owners.remove_wall(44);
+     }
+     #[test]
+     fn plank_projection_preserves_all_sixty_four_output_bytes() {
+--- a/tiny-glade/crates/systems/wall-constructor/src/construct_lintels/mod.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/construct_lintels/mod.rs
+@@ -39,23 +39,32 @@
+     mut create_roof: EventReader<CreateRoofCmd>,
+     mut walls: ResMut<PublicWalls>,
+     mut masks: ResMut<WallPathSegmentationMasksMinusStairs>,
+-    ssbo: Res<AssetSsboLibrary>,
++    mut ssbo: ResMut<AssetSsboLibrary>,
+     mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
+ ) {
+-    let recalc: Vec<u64> = changed
++    let mut recalc: Vec<u64> = changed
+         .read()
+         .map(|e| e.0.0)
+         .chain(create_roof.read().map(|e| e.0.wall_id().0))
+         .collect();
++    recalc.sort_unstable();
++    recalc.dedup();
+     for wall_id in recalc {
+         let id = country_core::resources::walls::WallId(wall_id);
+         let Some(wall) = walls.get_mut(id) else {
+             continue;
+         };
+         let projection = wall.building_projection();
+-        let Some(segments) = masks.masks.get(&wall_id) else {
++        if projection.observed_296() == 0 {
++            // Native76e198..19d bypasses the complete ordinary-wall mask loop.
++            wall.material_stats.set_lintels_segments_count(0);
++            wall.material_stats.add_lintels_length(0.0);
+             continue;
+-        };
++        }
++        let segments = masks
++            .masks
++            .get(&wall_id)
++            .expect("lintels require processed masks for the source wall");
+         let path = wall
+             .prepared_path
+             .as_ref()
+@@ -65,6 +74,8 @@
+             .expect("lintels require actual arch height cache");
+         let mut third = wall.segment_heights.clone();
+         let mut instances = Vec::new();
++        let mut stats_count = 0u64;
++        let mut stats_length = 0.0f32;
+         for mask in segments {
+             let source = WallSegmentSource {
+                 mask,
+@@ -75,6 +86,15 @@
+                 regular: projection.shape().tag() < 2,
+                 closed: projection.shape().tag() != 2,
+             };
++            // Observe the same pre-profile materializer; complete retained
++            // LintelSegments/pillar-proposal ownership is not implied here.
++            let materialized =
++                country_core::systems::wall::construction::structures::materialize_wall_segments(
++                    source,
++                )
++                .expect("invalid authoritative lintel materialization input");
++            stats_count += materialized.len() as u64;
++            stats_length += mask.length;
+             if let Ok(planks) = construct_lintel_supports(
+                 source,
+                 projection.float_0x284(),
+@@ -88,13 +108,19 @@
+             }
+         }
+         wall.segment_heights = third;
+-        output.gpu.replace_planks(
++        let storage = ssbo
++            .get_mut::<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>()
++            .expect("canonical WoodenPlankSsbo must exist before lintel construction");
++        output.gpu.append_planks(
++            storage,
+             crate::gpu_output::ConstructorKey {
+                 wall: wall_id,
+                 part: crate::gpu_output::ConstructorPart::Lintels,
+             },
+-            instances,
++            &instances,
+         );
+-        let _ = ssbo;
++        wall.material_stats
++            .set_lintels_segments_count(stats_count as u32);
++        wall.material_stats.add_lintels_length(stats_length);
+     }
+ }
+--- a/tiny-glade/crates/systems/wall-constructor/src/construct_fences/mod.rs
++++ b/tiny-glade/crates/systems/wall-constructor/src/construct_fences/mod.rs
+@@ -20,24 +20,20 @@
+ /// B 0x140765830：墙样式为栅栏（Pub296==1）时按段发射围栏柱/板。
+ pub fn construct_fences(
+     mut changed: EventReader<OnWallChanged>,
+-    walls: Res<PublicWalls>,
+-    ssbo: Res<AssetSsboLibrary>,
++    mut walls: ResMut<PublicWalls>,
++    mut ssbo: ResMut<AssetSsboLibrary>,
+     mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
+ ) {
++    let mut exhausted = false;
+     for event in changed.read() {
+-        let Some(wall) = walls.get(event.0) else {
+-            continue;
+-        };
++        let wall = walls
++            .get_mut(event.0)
++            .expect("fence changed event requires a published wall");
+         let projection = wall.building_projection();
+         // Pub296：栅栏样式字节（0x296 偏移）。
+         if projection.observed_296() != 1 {
+-            output.gpu.replace_planks(
+-                crate::gpu_output::ConstructorKey {
+-                    wall: event.0.0,
+-                    part: crate::gpu_output::ConstructorPart::Fences,
+-                },
+-                Vec::new(),
+-            );
++            wall.material_stats.set_fences_segments_count(0);
++            wall.material_stats.set_fences_segments_seed(0);
+             continue;
+         }
+         let curve = wall.simplified_curve_2d();
+@@ -54,28 +50,34 @@
+             observed_public_284: projection.float_0x284(),
+             observed_public_296: projection.observed_296(),
+         };
+-        if let Ok(outcome) = construct_fences_cpu(input) {
+-            // 64B 木板实例落盘。
+-            output.gpu.replace_planks(
+-                crate::gpu_output::ConstructorKey {
+-                    wall: event.0.0,
+-                    part: crate::gpu_output::ConstructorPart::Fences,
+-                },
+-                outcome
+-                    .instances
+-                    .iter()
+-                    .map(crate::gpu_output::wooden_plank)
+-                    .collect(),
+-            );
+-            let _ = (
+-                outcome.posts,
+-                outcome.source_ranges,
+-                outcome.segment_seeds,
+-                outcome.fence_segments_count,
+-                outcome.fence_segments_seed,
+-            );
+-        }
+-        let _ = ssbo;
++        let outcome =
++            construct_fences_cpu(input).expect("invalid or unrecovered authoritative fence input");
++        let instances: Vec<_> = outcome
++            .instances
++            .iter()
++            .map(crate::gpu_output::wooden_plank)
++            .collect();
++        let storage = ssbo
++            .get_mut::<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>()
++            .expect("canonical WoodenPlankSsbo must exist before fence construction");
++        exhausted |= output.gpu.append_planks(
++            storage,
++            crate::gpu_output::ConstructorKey {
++                wall: event.0.0,
++                part: crate::gpu_output::ConstructorPart::Fences,
++            },
++            &instances,
++        ) != 0;
++        // Native765e20..e38 writes these even after partial capacity failure.
++        wall.material_stats
++            .set_fences_segments_count(outcome.fence_segments_count as u32);
++        wall.material_stats
++            .set_fences_segments_seed(outcome.fence_segments_seed);
++    }
++    // Original record level=1 (Error), one enabled log after all wall rows.
++    if exhausted {
++        log::error!(target:"system_wall_constructor::construct_fences",
++            "Fence-pillar constructor ran out of fence pieces");
+     }
+ }
+ 
+--- a/tiny-glade/crates/systems/wall-constructor/Cargo.toml
++++ b/tiny-glade/crates/systems/wall-constructor/Cargo.toml
+@@ -18,6 +18,7 @@
+ hashbrown = "=0.14.5"
+ itertools = "=0.14.0"
+ lerp = "=0.4.0"
++log.workspace = true
+ 
+ [lints]
+ workspace = true
+--- a/tiny-glade/crates/country-core/src/render/sparse_instance_buffer.rs
++++ b/tiny-glade/crates/country-core/src/render/sparse_instance_buffer.rs
+@@ -248,6 +248,21 @@
+     ) -> SparseInstanceBufferWriter<'a, T> {
+         assert!(self.owns_allocation(allocation), "分配不属于当前稀疏缓冲");
+         self.writer_for(allocation.chunk_ids())
++    }
++
++    /// Resume an existing source owner's tail chunk. Native constructor
++    /// callers choose the allocation's last chunk (or the full sentinel when
++    /// empty); generic `writer` retains its existing sentinel-first contract.
++    /// All allocation, push, clear and batch-replace algorithms stay shared.
++    pub fn append_writer<'a>(
++        &'a mut self,
++        allocation: &'a SparseInstanceBufferAllocation<T>,
++    ) -> SparseInstanceBufferWriter<'a, T> {
++        let mut writer = self.writer(allocation);
++        if let Some(&chunk) = writer.allocation_chunks.last() {
++            writer.current_chunk = chunk;
++        }
++        writer
+     }
+ 
+     /// 防止相同元素类型的两个缓冲误用彼此的 chunk 编号。

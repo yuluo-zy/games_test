@@ -1,0 +1,235 @@
+{
+  "id": "B-stairs-entry-change-markers",
+  "input_sha256": "6e2dce0548353e5a530b087367a6f1f09fee45d1ba3a9297dbf0d266f6d33713",
+  "prompt_sha256": "b5f08b75a8ca2ffb6287795a06c793a3e5f6aa5ed6ffde476992ddfbb0283d0b",
+  "packet_sha256": "c59c88e5ec1e8aae5bae8f2c2bc02ef41470985b650fdf5c00ae9e5f2765cf39",
+  "rendered_input_sha256": "053e16ba53655f9e2f53241d5cdd65b12bba6b5415ac72d74ebf1af224db5d08",
+  "render_format": "numbered-plain-text-v1",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 4000,
+    "thinking": "template-disabled"
+  },
+  "elapsed_seconds": 16.888,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 1886,
+    "prompt_tokens": 3728,
+    "total_tokens": 5614,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Entry writes commit param_1[2] copy and capture param_3/param_4 front-word before only output-through-pointer; markers to puVar7/puVar9 occur inside loops before their branch calls; bucket index uses unsigned-wrap subtraction (*0x40) when puVar33[2] < *puVar33.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "Entry prologue executes unconditionally before the puVar33[3]==0 guard: loads *param_1, float at puVar33+5 (byte 0x28), stores param_1[2] dword = *(param_1+0x1c); initializes uStack_90=...fe; fVar22=_UNK.",
+        "refs": [
+          "E1:L1-L6"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "If puVar33[3]==0 returns, but the param_1[2] copy (O1) has already happened; uVar41/*puVar33 reads, index computation, and param_3/param_4 captures are skipped.",
+        "refs": [
+          "E1:L7-L8",
+          "E1:L5"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "uVar28=*puVar33; if puVar33[2]<*puVar33 then uVar28=0; bucket byte offset lVar37=(puVar33[2]-uVar28)*0x40. Because uVar28 is zero only in that wrapped case, the effective front index is puVar33[2] when >= *puVar33, else fixed index 0 (element stride 0x40).",
+        "refs": [
+          "E1:L10-L16"
+        ]
+      },
+      {
+        "id": "O4",
+        "claim": "lVar37 is first the bucket byte offset; E1:L21 reassigns lVar37 to *(uVar41+0x10+bucketOffset), a loaded 8-byte value (later reused as element/command count). This is variable reuse, not unresolved.",
+        "refs": [
+          "E1:L15-L21"
+        ]
+      },
+      {
+        "id": "O5",
+        "claim": "lVar25=uVar41+bucketOffset (bucket base+0x40*index). pcVar5=*(byte*(uVar41+8+bucketOffset)); before loops. Local stack setup uStack_d0=0, puStack_c8=0x8, uStack_c0=0.",
+        "refs": [
+          "E1:L16-L20"
+        ]
+      },
+      {
+        "id": "O6",
+        "claim": "param_3/param_4 marker capture at entry (after guard): uStack_d8=param_3 dword at +0x1c; lStack_e8=*param_3; puVar7=param_3[2]; uStack_d4=param_4 dword at +0x1c; lVar8=*param_4; puVar9=param_4[2]. plStack_b0=*param_5; lVar34=*param_2; uVar6=*param_6.",
+        "refs": [
+          "E1:L22-L30"
+        ]
+      },
+      {
+        "id": "O7",
+        "claim": "Mutation-marker writes: *puVar7=uStack_d8 (param_3 front-word restore) precedes calls FUN_140b76ce0 / FUN_1402c8640 in both branch sites; *puVar9=uStack_d4 (param_4 front-word restore) precedes per-element post-processing/capacity call FUN_1406319d0 at both join sites, and occurs before the E5 store epilogue.",
+        "refs": [
+          "E2:L24-L32",
+          "E4:L13-L21",
+          "E3:L13-L21",
+          "E5:L10-L19"
+        ]
+      },
+      {
+        "id": "O8",
+        "claim": "Epilogue capacity compare lVar35==*(lVar8+0x20) (param_4 count vs capacity) conditionally calls FUN_1406319d0(lVar8+0x20); store stride 0x38 uses lVar35; header writes *(lVar8+0x30)=lVar35+1 and *(lVar8+0x40)+=1.",
+        "refs": [
+          "E3:L16-L20",
+          "E5:L13-L19",
+          "E5:L22-L39"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "puVar33[3]==0",
+        "effect": "return after entry writes O1/O6? Note E1:L5 precedes; E1:L24-L30 not reached",
+        "refs": [
+          "E1:L1-L10"
+        ]
+      },
+      {
+        "condition": "puVar33[2] < *puVar33",
+        "effect": "uVar28=0 -> bucket index forced 0; else index puVar33[2]",
+        "refs": [
+          "E1:L12-L15"
+        ]
+      },
+      {
+        "condition": "*(byte*)(pcStack_a8+0x10 ... branch at E2:L1/L2 and goto target",
+        "effect": "branch at E2:L1/L2 enters E2 body or goto code_r0x000140af77bd/E4 path",
+        "refs": [
+          "E2:L1-L11",
+          "E4:L1"
+        ]
+      },
+      {
+        "condition": "cVar40==0 (pcStack_a8+0x1c)",
+        "effect": "E2 path: FUN_1405b1be0 then FUN_140b76ce0; E4 path: FUN_1402c8640; marker *puVar7=uStack_d8 precedes both",
+        "refs": [
+          "E2:L26-L31",
+          "E4:L15-L20"
+        ]
+      },
+      {
+        "condition": "puVar31==0",
+        "effect": "uVar67=uVar68=0 else split *puVar31 low/high 32-bit",
+        "refs": [
+          "E3:L5-L11",
+          "E5:L2-L8"
+        ]
+      },
+      {
+        "condition": "lVar35 == *(lVar8+0x20)",
+        "effect": "call FUN_1406319d0(lVar8+0x20); after *puVar7 marker",
+        "refs": [
+          "E3:L19-L20",
+          "E5:L17-L18"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": 1,
+        "effect": "write *(undefined4*)param_1[2]=*(undefined4*)((longlong)param_1+0x1c) before empty guard",
+        "refs": [
+          "E1:L5"
+        ]
+      },
+      {
+        "order": 2,
+        "effect": "write *puVar7=uStack_d8 before branch-specific call",
+        "refs": [
+          "E2:L25",
+          "E4:L14"
+        ]
+      },
+      {
+        "order": 3,
+        "effect": "branch-specific call (FUN_140b76ce0 or FUN_1402c8640)",
+        "refs": [
+          "E2:L27-L31",
+          "E4:L16-L20"
+        ]
+      },
+      {
+        "order": 4,
+        "effect": "write *puVar9=uStack_d4 before capacity check/call",
+        "refs": [
+          "E3:L15",
+          "E5:L12"
+        ]
+      },
+      {
+        "order": 5,
+        "effect": "store at param_4 buffer stride 0x38 and increment *(lVar8+0x30)/*(lVar8+0x40)",
+        "refs": [
+          "E5:L22-L39"
+        ]
+      }
+    ],
+    "dependency_reuse": [
+      {
+        "operation": "lVar37 bucket offset -> loaded command count",
+        "game_policy_to_preserve": "keep 0x40-byte bucket stride and wrap-to-index-0 condition; later lVar37 is not byte offset",
+        "refs": [
+          "E1:L15-L21"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "param types/struct field names beyond observed offsets",
+        "needed_evidence": "type/decompiler signature source",
+        "refs": [
+          "E1:L22-L30"
+        ]
+      },
+      {
+        "question": "meaning of FUN_140b76ce0 vs FUN_1402c8640 and uStack_118 contents",
+        "needed_evidence": "callee slices",
+        "refs": [
+          "E2:L26-L31",
+          "E4:L15-L20"
+        ]
+      }
+    ],
+    "integration_checks": [
+      "Entry param_1[2] copy occurs even when puVar33[3]==0",
+      "Front bucket index uses 0 only when puVar33[2]<*puVar33; stride 0x40",
+      "Param_3 marker *puVar7=uStack_d8 precedes calls; param_4 marker *puVar9=uStack_d4 precedes capacity call",
+      "lVar37 reassigned from bucket byte offset to loaded 8-byte value",
+      "Keep exact 0x1c/0x40/0x38 offsets and shared-epilogue control flow"
+    ],
+    "independent_followups": [
+      {
+        "task": "Recover callees FUN_140b76ce0 and FUN_1402c8640",
+        "input_needed": "callee decompilation slices",
+        "output_contract": "observations with refs",
+        "depends_on": [
+          "O7"
+        ]
+      },
+      {
+        "task": "Recover puVar33 struct field/type mapping",
+        "input_needed": "header/types evidence",
+        "output_contract": "field-offset table",
+        "depends_on": [
+          "O3",
+          "O6"
+        ]
+      }
+    ]
+  },
+  "content": "{\"summary\":\"Entry writes commit param_1[2] copy and capture param_3/param_4 front-word before only output-through-pointer; markers to puVar7/puVar9 occur inside loops before their branch calls; bucket index uses unsigned-wrap subtraction (*0x40) when puVar33[2] < *puVar33.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"Entry prologue executes unconditionally before the puVar33[3]==0 guard: loads *param_1, float at puVar33+5 (byte 0x28), stores param_1[2] dword = *(param_1+0x1c); initializes uStack_90=...fe; fVar22=_UNK.\",\"refs\":[\"E1:L1-L6\"]},{\"id\":\"O2\",\"claim\":\"If puVar33[3]==0 returns, but the param_1[2] copy (O1) has already happened; uVar41/*puVar33 reads, index computation, and param_3/param_4 captures are skipped.\",\"refs\":[\"E1:L7-L8\",\"E1:L5\"]},{\"id\":\"O3\",\"claim\":\"uVar28=*puVar33; if puVar33[2]<*puVar33 then uVar28=0; bucket byte offset lVar37=(puVar33[2]-uVar28)*0x40. Because uVar28 is zero only in that wrapped case, the effective front index is puVar33[2] when >= *puVar33, else fixed index 0 (element stride 0x40).\",\"refs\":[\"E1:L10-L16\"]},{\"id\":\"O4\",\"claim\":\"lVar37 is first the bucket byte offset; E1:L21 reassigns lVar37 to *(uVar41+0x10+bucketOffset), a loaded 8-byte value (later reused as element/command count). This is variable reuse, not unresolved.\",\"refs\":[\"E1:L15-L21\"]},{\"id\":\"O5\",\"claim\":\"lVar25=uVar41+bucketOffset (bucket base+0x40*index). pcVar5=*(byte*(uVar41+8+bucketOffset)); before loops. Local stack setup uStack_d0=0, puStack_c8=0x8, uStack_c0=0.\",\"refs\":[\"E1:L16-L20\"]},{\"id\":\"O6\",\"claim\":\"param_3/param_4 marker capture at entry (after guard): uStack_d8=param_3 dword at +0x1c; lStack_e8=*param_3; puVar7=param_3[2]; uStack_d4=param_4 dword at +0x1c; lVar8=*param_4; puVar9=param_4[2]. plStack_b0=*param_5; lVar34=*param_2; uVar6=*param_6.\",\"refs\":[\"E1:L22-L30\"]},{\"id\":\"O7\",\"claim\":\"Mutation-marker writes: *puVar7=uStack_d8 (param_3 front-word restore) precedes calls FUN_140b76ce0 / FUN_1402c8640 in both branch sites; *puVar9=uStack_d4 (param_4 front-word restore) precedes per-element post-processing/capacity call FUN_1406319d0 at both join sites, and occurs before the E5 store epilogue.\",\"refs\":[\"E2:L24-L32\",\"E4:L13-L21\",\"E3:L13-L21\",\"E5:L10-L19\"]},{\"id\":\"O8\",\"claim\":\"Epilogue capacity compare lVar35==*(lVar8+0x20) (param_4 count vs capacity) conditionally calls FUN_1406319d0(lVar8+0x20); store stride 0x38 uses lVar35; header writes *(lVar8+0x30)=lVar35+1 and *(lVar8+0x40)+=1.\",\"refs\":[\"E3:L16-L20\",\"E5:L13-L19\",\"E5:L22-L39\"]}],\"branch_matrix\":[{\"condition\":\"puVar33[3]==0\",\"effect\":\"return after entry writes O1/O6? Note E1:L5 precedes; E1:L24-L30 not reached\",\"refs\":[\"E1:L1-L10\"]},{\"condition\":\"puVar33[2] < *puVar33\",\"effect\":\"uVar28=0 -> bucket index forced 0; else index puVar33[2]\",\"refs\":[\"E1:L12-L15\"]},{\"condition\":\"*(byte*)(pcStack_a8+0x10 ... branch at E2:L1/L2 and goto target\",\"effect\":\"branch at E2:L1/L2 enters E2 body or goto code_r0x000140af77bd/E4 path\",\"refs\":[\"E2:L1-L11\",\"E4:L1\"]},{\"condition\":\"cVar40==0 (pcStack_a8+0x1c)\",\"effect\":\"E2 path: FUN_1405b1be0 then FUN_140b76ce0; E4 path: FUN_1402c8640; marker *puVar7=uStack_d8 precedes both\",\"refs\":[\"E2:L26-L31\",\"E4:L15-L20\"]},{\"condition\":\"puVar31==0\",\"effect\":\"uVar67=uVar68=0 else split *puVar31 low/high 32-bit\",\"refs\":[\"E3:L5-L11\",\"E5:L2-L8\"]},{\"condition\":\"lVar35 == *(lVar8+0x20)\",\"effect\":\"call FUN_1406319d0(lVar8+0x20); after *puVar7 marker\",\"refs\":[\"E3:L19-L20\",\"E5:L17-L18\"]}],\"side_effects\":[{\"order\":1,\"effect\":\"write *(undefined4*)param_1[2]=*(undefined4*)((longlong)param_1+0x1c) before empty guard\",\"refs\":[\"E1:L5\"]},{\"order\":2,\"effect\":\"write *puVar7=uStack_d8 before branch-specific call\",\"refs\":[\"E2:L25\",\"E4:L14\"]},{\"order\":3,\"effect\":\"branch-specific call (FUN_140b76ce0 or FUN_1402c8640)\",\"refs\":[\"E2:L27-L31\",\"E4:L16-L20\"]},{\"order\":4,\"effect\":\"write *puVar9=uStack_d4 before capacity check/call\",\"refs\":[\"E3:L15\",\"E5:L12\"]},{\"order\":5,\"effect\":\"store at param_4 buffer stride 0x38 and increment *(lVar8+0x30)/*(lVar8+0x40)\",\"refs\":[\"E5:L22-L39\"]}],\"dependency_reuse\":[{\"operation\":\"lVar37 bucket offset -> loaded command count\",\"game_policy_to_preserve\":\"keep 0x40-byte bucket stride and wrap-to-index-0 condition; later lVar37 is not byte offset\",\"refs\":[\"E1:L15-L21\"]}],\"unknowns\":[{\"question\":\"param types/struct field names beyond observed offsets\",\"needed_evidence\":\"type/decompiler signature source\",\"refs\":[\"E1:L22-L30\"]},{\"question\":\"meaning of FUN_140b76ce0 vs FUN_1402c8640 and uStack_118 contents\",\"needed_evidence\":\"callee slices\",\"refs\":[\"E2:L26-L31\",\"E4:L15-L20\"]}],\"integration_checks\":[\"Entry param_1[2] copy occurs even when puVar33[3]==0\",\"Front bucket index uses 0 only when puVar33[2]<*puVar33; stride 0x40\",\"Param_3 marker *puVar7=uStack_d8 precedes calls; param_4 marker *puVar9=uStack_d4 precedes capacity call\",\"lVar37 reassigned from bucket byte offset to loaded 8-byte value\",\"Keep exact 0x1c/0x40/0x38 offsets and shared-epilogue control flow\"],\"independent_followups\":[{\"task\":\"Recover callees FUN_140b76ce0 and FUN_1402c8640\",\"input_needed\":\"callee decompilation slices\",\"output_contract\":\"observations with refs\",\"depends_on\":[\"O7\"]},{\"task\":\"Recover puVar33 struct field/type mapping\",\"input_needed\":\"header/types evidence\",\"output_contract\":\"field-offset table\",\"depends_on\":[\"O3\",\"O6\"]}]}"
+}

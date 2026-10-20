@@ -1,0 +1,87 @@
+
+void FUN_1416ee210(undefined8 *param_1,undefined8 param_2)
+
+{
+  longlong *plVar1;
+  longlong **pplVar2;
+  char cVar3;
+  ulonglong auStack_240 [3];
+  undefined8 uStack_228;
+  undefined1 auStack_210 [24];
+  undefined4 uStack_1f8;
+  undefined4 uStack_1f0;
+  undefined8 uStack_1e8;
+  undefined1 uStack_1e0;
+  undefined4 uStack_1db;
+  undefined3 uStack_1d7;
+  undefined2 uStack_1d0;
+  undefined1 uStack_1ce;
+  undefined1 uStack_1cb;
+  longlong *plStack_98;
+  code *pcStack_90;
+  undefined *puStack_88;
+  undefined8 uStack_80;
+  longlong **pplStack_78;
+  undefined8 uStack_70;
+  undefined8 uStack_68;
+  char cStack_35;
+  char cStack_34;
+  undefined8 uStack_28;
+  
+  uStack_28 = 0xfffffffffffffffe;
+  plVar1 = (longlong *)*param_1;
+  FUN_1409dc370(auStack_240,&UNK_142c90560,10);
+  FUN_140c46d20(&puStack_88,auStack_240,param_2);
+  if (cStack_34 == '\0') {
+    auStack_240[0] = auStack_240[0] & 0xffffffffffffff00;
+    if (cStack_35 != '\0') {
+      cVar3 = FUN_140042870(&pplStack_78,auStack_240);
+      if (cVar3 != '\0') goto LAB_1416ee268;
+    }
+    LOCK();
+    *pplStack_78 = (longlong *)((longlong)*pplStack_78 + -1);
+    UNLOCK();
+    if (*pplStack_78 == (longlong *)0x0) {
+      FUN_140c41170(&pplStack_78);
+    }
+  }
+  else {
+LAB_1416ee268:
+    LOCK();
+    *pplStack_78 = (longlong *)((longlong)*pplStack_78 + -1);
+    UNLOCK();
+    if (*pplStack_78 == (longlong *)0x0) {
+      FUN_140c41170(&pplStack_78);
+    }
+    *plVar1 = ((*plVar1 + 1U) / 3) * -3 + *plVar1 + 1;
+  }
+  pcStack_90 = FUN_140d8d6c0;
+  puStack_88 = &UNK_142c90578;
+  uStack_80 = 1;
+  pplStack_78 = &plStack_98;
+  uStack_70 = 1;
+  uStack_68 = 0;
+  plStack_98 = plVar1;
+  FUN_140d79f90(auStack_210,&puStack_88);
+  uStack_1e0 = 0;
+  uStack_1db = 0;
+  uStack_1d7 = 0;
+  auStack_240[0] = 3;
+  uStack_228 = 6;
+  uStack_1f8 = 0;
+  uStack_1f0 = 0;
+  uStack_1e8 = 0;
+  uStack_1d0 = 0x200;
+  uStack_1ce = 2;
+  uStack_1cb = 2;
+  FUN_140c28d40(&puStack_88,auStack_240,param_2);
+  pplVar2 = pplStack_78;
+  LOCK();
+  *pplStack_78 = (longlong *)((longlong)*pplStack_78 + -1);
+  UNLOCK();
+  if (*pplVar2 == (longlong *)0x0) {
+    FUN_140c41170(&pplStack_78);
+  }
+  return;
+}
+

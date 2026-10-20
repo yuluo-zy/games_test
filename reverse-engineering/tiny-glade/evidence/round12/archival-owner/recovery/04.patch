@@ -1,0 +1,60 @@
+*** Begin Patch
+*** Update File: D:/game/reverse-engineering/tiny-glade/evidence/round12/archival-owner/candidate/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@
+     fn extract_before_after_rejects_preview_decorator_state() {
+@@
+         let _ = archivist.extract_before_after(DecoratorStorageAddr::Wall(WallId(3)));
+     }
++
++    #[test]
++    fn diff_uses_each_live_address_prunes_unchanged_and_resets_culling() {
++        let mut archive=DecoratorArchivist::<()>::default();
++        let make=|id| DecoratorInfo {decorator_id:id,..Default::default()};
++        let first=make(1);let second=make(2);let third=make(3);
++        archive.walls.insert(RecoveredWallId(3),TrackedDecorators {
++            items:[(1,info_to_observed(first)),(2,info_to_observed(second))].into(),..Default::default() });
++        archive.special1=Some(TrackedDecorators {items:[(3,info_to_observed(third))].into(),..Default::default()});
++        archive.culling.allow_any=true;archive.culling.allowed_ids.insert(99);
++        let mut storage=LiveDecoratorStorage::default();
++        storage.get_or_insert_default(DecoratorStorageAddr::Wall(WallId(3))).insert(DecoratorId(1),first);
++        // ID2 is removed, ID4 is new, terrain ID3 is unrelated and unchanged.
++        storage.get_or_insert_default(DecoratorStorageAddr::Wall(WallId(3))).insert(DecoratorId(4),make(4));
++        storage.get_or_insert_default(DecoratorStorageAddr::Terrain).insert(DecoratorId(3),third);
++        let out=archive.extract_diff_against_storage(&storage,false);
++        assert_eq!(out.len(),1);
++        let wall=&out[&DecoratorStorageAddr::Wall(WallId(3))];
++        assert_eq!(wall.before.states.keys().copied().collect::<HashSet<_>>(),[DecoratorId(2)].into());
++        assert_eq!(wall.after.states.keys().copied().collect::<HashSet<_>>(),[DecoratorId(4)].into());
++        assert!(archive.walls.is_empty() && archive.special1.is_none());
++        assert!(!archive.culling.allow_any && archive.culling.allowed_ids.is_empty());
++    }
++
++    #[test]
++    fn diff_preview_validation_runs_on_live_after_and_flag_allows_it() {
++        let mut archive=DecoratorArchivist::<()>::default();
++        archive.special1=Some(TrackedDecorators::default());
++        let mut storage=LiveDecoratorStorage::default();
++        storage.get_or_insert_default(DecoratorStorageAddr::Terrain).insert(DecoratorId(8),DecoratorInfo {
++            decorator_id:8,state:1,..Default::default() });
++        let mut strict=DecoratorArchivist::<()>::default();strict.special1=Some(TrackedDecorators::default());
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||strict.extract_diff_against_storage(&storage,false))).is_err());
++        assert!(strict.special1.is_none());
++        assert_eq!(archive.extract_diff_against_storage(&storage,true).len(),1);
++    }
++
++    #[test]
++    fn history_equality_keeps_nan_and_respects_active_destination_and_common_fields() {
++        let zero=DecoratorHistoryState::default();
++        let mut signed=zero.to_bytes();signed[..4].copy_from_slice(&(-0.0f32).to_bits().to_le_bytes());
++        assert!(archived_history_equal(&zero,&DecoratorHistoryState::from_bytes(&signed)));
++        let mut nan=zero.to_bytes();nan[..4].copy_from_slice(&f32::NAN.to_bits().to_le_bytes());
++        let n=DecoratorHistoryState::from_bytes(&nan);assert!(!archived_history_equal(&n,&n));
++        for tag in [2,3,4] {
++            let mut bytes=zero.to_bytes();bytes[0x22]=tag;
++            let b=DecoratorHistoryState::from_bytes(&bytes);
++            bytes[0x1f]=99;let inactive=DecoratorHistoryState::from_bytes(&bytes);
++            assert!(archived_history_equal(&b,&inactive));
++            bytes[0x4c]=1;assert!(!archived_history_equal(&b,&DecoratorHistoryState::from_bytes(&bytes)));
++        }
++    }
+*** End Patch

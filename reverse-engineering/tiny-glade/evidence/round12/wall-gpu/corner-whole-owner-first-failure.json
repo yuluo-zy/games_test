@@ -1,0 +1,7 @@
+{
+  "status": "failed research fixture; not acceptance",
+  "observed": "whole function returned, then output check access violation reading FFFFFFFFFFFFFFFF",
+  "cause_original_evidence": "InProgressHoleStorage::add140f87860 updates fingerprints+38/+40, so24B Vec-only allocation was too small",
+  "fix": "allocate full0x68 WIP state with valid empty raw Vec header; do not hook out add or hashing",
+  "after_fix": "original full9427B returns4real96B records+4real20B kind2 holes"
+}

@@ -1,0 +1,151 @@
+--- a/tiny-glade/crates/country-core/src/systems/ui/resources/widget_params.rs
++++ b/tiny-glade/crates/country-core/src/systems/ui/resources/widget_params.rs
+@@ -18,44 +18,28 @@
+ use bevy_ecs::prelude::*;
+ use glam::{Vec2, Vec3};
+ 
+-/// UI 声音播放事件（O：`add_ui` 0x140945c60 `register_event<PlayUiSound>`；
+-/// PDB 判别 = `enum2$`，**0x20B 步长事件记录**——2026-10-17 coregap-1 fresh 反编译
+-/// `feedback_input_out_of_border` 宿主 0x141be2280：写入 `判别值@+0 (u32)` 与
+-/// `id@+0x18 (u64)`；onboarding hint_display_system 登记 tag 0x14/0x15/0x16 族。
+-///
+-/// 以 `{kind, 载荷区, id}` 承载判别值，避免造未取证的 Rust 枚举变体；audio 域
+-/// `UiSounds` 槽位族按 `kind` 分派。
++/// Original PlayUiSound business payload is 24B. UiSounds stores four such
++/// values. Native Events<EventInstance<PlayUiSound>> appends its own 8B EventId;
++/// that counter is not part of the game event and must not be stored here.
+ #[repr(C)]
+-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
++#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+ pub struct PlayUiSound {
+-    /// 判别值/tag（O：变体 #4 = 4；hint 族 0x14/0x15/0x16）。
+     pub kind: u32,
+-    /// @+8..0x17：载荷区（变体 #4 不写；U，不造字段）。
+-    pub _payload: [u8; 0x10],
+-    /// @+0x18：变体 #4 的载荷 id（O：`feedback_input_out_of_border` 的反馈事件 id）。
+-    pub id: u64,
+-}
+-
++    /// Native +4..24, including nested enum tags at +4. Never drop this word.
++    pub _payload: [u8; 20],
++}
+ impl PlayUiSound {
+-    /// 变体 #4（O：判别值 4 @+0、事件步长 0x20B、id @+0x18）——
+-    /// `feedback_input_out_of_border` 上升沿发射。
+-    pub fn variant4(id: u64) -> Self {
+-        Self {
+-            kind: 4,
+-            _payload: [0; 0x10],
+-            id,
+-        }
+-    }
+-}
+-
+-impl Default for PlayUiSound {
+-    fn default() -> Self {
+-        Self {
+-            kind: 0,
+-            _payload: [0; 0x10],
+-            id: 0,
+-        }
+-    }
++    pub fn from_native_slot(slot: [u8; 24]) -> Self {
++        Self { kind: u32::from_le_bytes(slot[..4].try_into().unwrap()),
++            _payload: slot[4..].try_into().unwrap() }
++    }
++    pub fn native_slot(self) -> [u8; 24] {
++        let mut slot = [0; 24];
++        slot[..4].copy_from_slice(&self.kind.to_le_bytes());
++        slot[4..].copy_from_slice(&self._payload);
++        slot
++    }
++    pub fn variant4() -> Self { Self { kind: 4, ..Default::default() } }
+ }
+ 
+ /// UI 导航状态（O：`add_ui` 0x140945c60 `insert_resource<UiNavState>`）。
+--- a/tiny-glade/crates/systems/onboarding/src/hint_clutter_focus_edit.rs
++++ b/tiny-glade/crates/systems/onboarding/src/hint_clutter_focus_edit.rs
+@@ -96,8 +96,7 @@
+     if query.iter().next().is_some_and(|b| b.0 == 9) {
+         let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
+             kind: 0x13,
+-            _payload: [0; 0x10],
+-            id: 0,
++            _payload: [0; 20],
+         });
+     }
+     true
+--- a/tiny-glade/crates/systems/onboarding/src/hint_display_system.rs
++++ b/tiny-glade/crates/systems/onboarding/src/hint_display_system.rs
+@@ -122,16 +122,14 @@
+             // O：PlayUiSound tag 0x15（21），仅在满显后被标记删除（播放"关闭"音）。
+             let _ = sounds.write(PlayUiSound {
+                 kind: 0x15,
+-                _payload: [0; 0x10],
+-                id: 0,
++                _payload: [0; 20],
+             });
+         }
+         if anim.time == 0.0 {
+             // O：PlayUiSound tag 0x14（20）。
+             let _ = sounds.write(PlayUiSound {
+                 kind: 0x14,
+-                _payload: [0; 0x10],
+-                id: 0,
++                _payload: [0; 20],
+             });
+         }
+     }
+@@ -375,8 +373,7 @@
+         if level != bar.level {
+             let _ = sounds.write(PlayUiSound {
+                 kind: 0x16,
+-                _payload: [0; 0x10],
+-                id: 0,
++                _payload: [0; 20],
+             }); // O：tag 0x16(22)
+             bar.level = level;
+         }
+--- a/tiny-glade/crates/systems/glade-border/src/feedback_input_out_of_border.rs
++++ b/tiny-glade/crates/systems/glade-border/src/feedback_input_out_of_border.rs
+@@ -22,7 +22,7 @@
+ //! 0x141be2280 行 92-93：`*(lVar7 + lVar11*0x20) = 4`（判别值 4）、
+ //! `*(lVar7 + 0x18 + lVar11*0x20) = uVar6`（`uVar6 = *(lVar4+0x40)` =
+ //! EventWriter 计数，bevy 胶水）。crate `EventWriter::write` 自动补实例 id；
+-//! `PlayUiSound::variant4(0)` 的 id@+0x18 由 bevy 记账填充（游戏逻辑无差异）。
++//! `PlayUiSound::variant4()` 的 id@+0x18 由 bevy 记账填充（游戏逻辑无差异）。
+ 
+ use bevy_ecs::prelude::*;
+ 
+@@ -49,7 +49,7 @@
+         if !cache.had_feedback_last_run {
+             // O：写 `PlayUiSound` 变体 #4（判别值 4 @+0，事件步长 0x20B，id @+0x18）。
+             // id = 宿主 EventWriter 计数（bevy 胶水）；crate 以 0 承载。
+-            sounds.write(PlayUiSound::variant4(0));
++            sounds.write(PlayUiSound::variant4());
+         }
+         cache.had_feedback_last_run = true;
+     } else {
+--- a/tiny-glade/crates/systems/onboarding/src/hint_focused_edit.rs
++++ b/tiny-glade/crates/systems/onboarding/src/hint_focused_edit.rs
+@@ -67,8 +67,7 @@
+     if query.iter().next().is_some_and(|b| b.0 == 1) {
+         let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
+             kind: 0x13,
+-            _payload: [0; 0x10],
+-            id: 0,
++            _payload: [0; 20],
+         });
+     }
+     true
+--- a/tiny-glade/crates/country-core/src/systems/timelapse_replay.rs
++++ b/tiny-glade/crates/country-core/src/systems/timelapse_replay.rs
+@@ -65,7 +65,7 @@
+         return;
+     };
+     if history.is_recording() {
+-        sounds.write(PlayUiSound::variant4(0));
++        sounds.write(PlayUiSound::variant4());
+         return;
+     }
+     restore.0 = *mode;

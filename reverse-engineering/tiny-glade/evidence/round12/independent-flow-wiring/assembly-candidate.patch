@@ -1,0 +1,268 @@
+--- a/crates/tiny-glade/src/run_game.rs
++++ b/crates/tiny-glade/src/run_game.rs
+@@ -57,10 +57,7 @@
+ 
+ /// Each original App constructs a separate shader library. The Arc is a Rust
+ /// owner for that App's library; it does not merge the two native libraries.
+-#[derive(Resource, Clone)]
+-pub struct ApplicationShaderLibrary(
+-    pub Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
+-);
++pub use country_core::asset_libraries::shader_library::SharedAssetShaderLibrary as ApplicationShaderLibrary;
+ 
+ /// B `tiny_glade::run_game::impl$2` 对应的输入插件（PDB 未暴露类型名）。
+ ///
+@@ -316,6 +313,10 @@
+     app.insert_resource(rt_worker);
+     app.add_event::<country_core::resources::rt::UpdateRtWorldEvent>();
+     install_history_and_wall_runtime(&mut app, config.dev.demo);
++    app.add_plugins(crate::toolbar_plugin::ToolbarPlugin);
++    crate::decorator_plugin::build(&mut app);
++    crate::wall_constructor_plugin::build(&mut app);
++    install_verified_constructor_slice(&mut app);
+     app.insert_resource(window);
+     // Original insert_resources @140940e35/e4a: both native tag 0.
+     app.init_resource::<country_core::systems::mode_manager::AppMode>();
+@@ -1229,3 +1230,108 @@
+         );
+     }
+ }
++
++fn install_available_wall_recording(app: &mut App) {
++    use bevy_app::Update;
++    use country_core::resources::history::MaybePendingSnapshotId;
++    use country_core::systems::{history, wall};
++    wall::registration::register_wall_drawing_resources(app.world_mut());
++    history::recording::register_recording_events(app.world_mut());
++    // Original add_history_systems @1409438ce: set14, never after wall19.
++    app.add_systems(
++        Update,
++        history::recording::history_start_recording::<MaybePendingSnapshotId>
++            .in_set(GameSystemSet(14)),
++    );
++    // Exact relative order of implemented drawing/snapping leaves from native
++    // main18. This is an explicitly incomplete slice, not the full native tuple.
++    app.add_systems(
++        Update,
++        (
++            wall::ui_draw_wall::ui_draw_wall,
++            wall::ui_continue_wall::suppress_continue_wall,
++            wall::ui_continue_wall::ui_continue_wall,
++            wall::snapping::snapping_init::snapping_init,
++            wall::snapping::snapping_to_ends::snapping_to_ends,
++            wall::snapping::snapping_to_segments::snapping_to_segments,
++            wall::snapping::snapping_maintain::check_for_disable_snapping,
++            wall::snapping::snapping_audio::snapping_audio,
++            wall::snapping::snapping_maintain::snapping_signifiers,
++            wall::snapping::snapping_maintain::snapping_maintain,
++            wall::draw_wall::draw_wall,
++            wall::finish_wall::finish_wall,
++            wall::snapping::telegraph_walls_are_merged::telegraph_walls_are_merged,
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(19))
++            .before(wall::adjust_wall_height::adjust_wall_height),
++    );
++    // Existing typed-event adaptation of the original direct History.add.
++    // The event bridge and drain belong before transaction finish, in set34.
++    app.add_systems(
++        Update,
++        (
++            wall::deferred_wall_history::history_record_wall_changed,
++            wall::history_recording::record_wall_history::<MaybePendingSnapshotId>,
++        )
++            .chain_ignore_deferred()
++            .in_set(GameSystemSet(34)),
++    );
++    // Attach this before the CURRENT set35 process; do not install all history
++    // again, which duplicates replay40 and Pop41 consumers.
++    app.add_systems(
++        Update,
++        history::recording::history_finish_recording_system::<MaybePendingSnapshotId>
++            .in_set(GameSystemSet(35))
++            .before(history::history_process_system::<MaybePendingSnapshotId>),
++    );
++}
++
++/// Evidence-backed partial native registration. Missing platform/pillar/floor
++/// producers are explicit gaps, never mounted empty legacy leaves.
++fn install_verified_constructor_slice(app: &mut App) {
++    use bevy_app::Update;
++    use country_core::systems::wall;
++    wall::registration::register_wall_cpu_resources(app.world_mut());
++    app.init_resource::<country_core::resources::walls::wooden_gates::Gates>();
++    app.init_resource::<country_core::resources::walls::arches::ArchSegments>();
++    app.init_resource::<country_core::resources::walls::arches::BuildingHadArchesLastFrame>();
++    app.add_event::<system_wall_constructor::construct_gates::systems::ConstructGateCmd>();
++    app.add_event::<wall::calc_wall_bend::WallBendChangedEvent>();
++    app.add_event::<wall::history_recording::RecordWallHistory>();
++    app.add_event::<wall::construct_wall_bricks::WallBricksChanged>();
++    app.add_event::<country_core::resources::history::FinishInputRecordingCmd>();
++    app.add_event::<wall::SetWallStyleCmd>();
++    app.add_event::<wall::SetPlasterPeelAmountCmd>();
++    app.add_event::<wall::SetFreehandHeightTypeCmd>();
++    app.add_event::<country_core::systems::ui::resources::widget_params::PlayUiSound>();
++    app.add_event::<toolbar::ui_interaction::UiDragEvent>();
++    app.add_event::<toolbar::ui_interaction::UiJustBecameInFocusEvent>();
++    app.add_event::<toolbar::toolbar_button::UiToolbarButtonResetAllCooldowns>();
++    app.add_event::<country_core::resources::events::ModeJustChanged>();
++    app.add_event::<country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed>();
++    install_available_wall_recording(app);
++    app.add_systems(Update, (
++        wall::calc_wall_bend::calc_wall_bend,
++        system_wall_constructor::gpu_output::clear_constructor_planks,
++        system_wall_constructor::segmentation::calculate_wall_path_segmentation::calculate_wall_path_segmentation,
++        system_wall_constructor::init_wall_height_and_arch_segment_height::init_wall_height_and_arch_segment_height,
++    ).chain_ignore_deferred().after(wall::wall_state::publish_public_wall_state::publish_public_wall_state)
++        .in_set(GameSystemSet(19)));
++    app.add_systems(Update, (
++        system_roof::create_roof::wall_roof_hashmap,
++        system_roof::delete_roof::process_invalid_roof_notifications,
++        system_wall_constructor::segmentation::split_wall_path_segment_into_platform_stairs::split_wall_path_segment_into_platform_stairs,
++        system_wall_constructor::construct_arches::construct_arches,
++        system_wall_constructor::construct_lintels::construct_lintels,
++    ).chain_ignore_deferred().in_set(GameSystemSet(22)));
++    app.add_systems(Update, (
++        system_wall_constructor::construct_gates::systems::update_gates_hashmap,
++        system_wall_constructor::construct_gates::systems::construct_gates,
++        system_wall_constructor::construct_fences::construct_fences,
++        wall::construct_wall_bricks::finalize_wall_holes,
++        wall::construct_wall_bricks::construct_wall_bricks,
++    ).chain_ignore_deferred().in_set(GameSystemSet(28)));
++    app.add_systems(Update,
++        system_wall_constructor::gpu_output::flush_constructor_output.in_set(GameSystemSet(44)));
++}
+--- a/crates/tiny-glade/src/history_runtime.rs
++++ b/crates/tiny-glade/src/history_runtime.rs
+@@ -161,42 +161,50 @@
+         RecalculateWallBricks
+     );
+     app.add_event::<system_roof::ui_edit_roof_ridge_dir::SwitchRoofRidgeDirCmd>();
++    app.add_event::<system_roof::ui_edit_roof_ridge_dir::RecordRidgeSwitchHistoryCmd>();
+     app.init_resource::<sys::ui::signifiers::signifier_create::UiSignifierStream>();
+     app.add_systems(
+         Update,
+         system_roof::replay_roof::replay_roof.in_set(GameSystemSet(40)),
+     );
+-    app.add_systems(
+-        Update,
++    app.add_systems(Update, (
+         (
++            (
++                system_roof::delete_roof::mark_roof_for_deletion,
++                system_roof::update_roof_spatial::update_roof_spatial,
++                system_roof::wall_height_dt::wall_height_dt,
++                system_roof::visual::roof_animation::roof_animation,
++            ).chain_ignore_deferred(),
+             system_roof::create_roof::create_roof,
+-            system_roof::create_roof::wall_roof_hashmap,
+-            system_roof::update_roof_spatial::update_roof_spatial,
+             system_roof::edit_roof::edit_roof,
+-            system_roof::edit_roof::switch_roof_direction,
+-            system_roof::ui_edit_roof_ridge_dir::switch_roof_ridge_direction,
+-            system_roof::edit_roof::set_flat_roof_rim_style,
+-            system_roof::delete_roof::process_invalid_roof_notifications,
+-            system_roof::delete_roof::mark_roof_for_deletion,
+-            system_roof::visual::roof_animation::roof_animation,
+-            system_roof::delete_roof::delete_roofs,
+-            system_roof::update_roof_spatial::update_wall_gable_heights,
+-        )
+-            .chain()
+-            .after(system_roof::replay_roof::replay_roof)
+-            .in_set(GameSystemSet(40)),
+-    );
+-    app.add_systems(
+-        Update,
+-        system_roof::visual::switch_roof_type::switch_roof_type
+-            .after(system_roof::edit_roof::edit_roof)
+-            .in_set(GameSystemSet(40))
+-            .run_if(
+-                |assets: Option<
+-                    Res<country_core::asset_libraries::mesh_library::AssetMeshLibrary>,
+-                >| assets.is_some(),
+-            ),
+-    );
++        ).chain(),
++        system_roof::simulate_roof_tile_for_audio::simulate_roof_tile_for_audio,
++        system_roof::highlight_roof::highlight_roof,
++        system_roof::visual::switch_roof_type::switch_roof_type,
++        system_roof::roof_trigger_volume::calculate_roof_trigger_volumes,
++    ).chain().in_set(GameSystemSet(20)));
++    app.add_systems(Update,
++        system_roof::delete_roof::delete_roofs.in_set(GameSystemSet(21)));
++    app.add_systems(Update, (
++        system_roof::visual::assemble_roof_tiles::assemble_roof_tiles,
++        system_roof::visual::generate_roof_stone_floor_and_roof_bottom::generate_roof_stone_floor_and_roof_bottom,
++        system_roof::visual::place_spires::place_roof_spires,
++    ).in_set(GameSystemSet(29)));
++    app.add_systems(Update,
++        system_roof::deferred_record_roof_history::roof_record_history.in_set(GameSystemSet(34)));
++    app.add_systems(Update,
++        system_roof::ui_edit_roof_ridge_dir::record_switch_roof_ridge_history.in_set(GameSystemSet(34)));
++    app.add_systems(Update,
++        system_roof::gpu_flush_buffers.in_set(GameSystemSet(44)));
++
++    // Existing real command adapters retained pending their original individual
++    // caller-stage adjudication; these are not part of the native20 tuple.
++    app.add_systems(Update, (
++        system_roof::edit_roof::switch_roof_direction,
++        system_roof::ui_edit_roof_ridge_dir::switch_roof_ridge_direction,
++        system_roof::edit_roof::set_flat_roof_rim_style,
++        system_roof::update_roof_spatial::update_wall_gable_heights,
++    ).chain().after(system_roof::replay_roof::replay_roof).in_set(GameSystemSet(40)));
+     app.add_systems(
+         Update,
+         (
+--- a/crates/systems/decorator/src/lib.rs
++++ b/crates/systems/decorator/src/lib.rs
+@@ -127,6 +127,20 @@
+ pub fn add_decorator_systems<S: Send + Sync + 'static, C: Send + Sync + 'static>(
+     app: &mut bevy_app::App,
+ ) {
++    add_decorator_systems_impl::<S, C>(app, true);
++}
++
++/// The production host already owns canonical decorator replay in numeric40.
++/// Preserve every other existing consumer without installing a second tick.
++pub fn add_decorator_systems_without_replay<S: Send + Sync + 'static, C: Send + Sync + 'static>(
++    app: &mut bevy_app::App,
++) {
++    add_decorator_systems_impl::<S, C>(app, false);
++}
++
++fn add_decorator_systems_impl<S: Send + Sync + 'static, C: Send + Sync + 'static>(
++    app: &mut bevy_app::App, install_replay: bool,
++) {
+     use bevy_app::Update;
+ 
+     // 阶段 0/3（契约 §1 阶段 0.3 + 3.1）：子类型派生 → 变换缓存。缓存必须先于
+@@ -175,11 +189,13 @@
+     );
+ 
+     // 回放（0x14080c8d0）消费 `LiveDecoratorArchivist` 的 cull 集；在历史链后。
+-    app.add_systems(
+-        Update,
+-        replay_decorator::replay_decorator
+-            .after(deferred_decorator_history::decorator_record_history::<S>),
+-    );
++    if install_replay {
++        app.add_systems(
++            Update,
++            replay_decorator::replay_decorator
++                .after(deferred_decorator_history::decorator_record_history::<S>),
++        );
++    }
+ }
+ 
+ /// cull 剔除族注册（`DecoratorArchivist<C>` 泛型 → 宿主 App 具化 C 后调用）。
+--- a/crates/tiny-glade/src/decorator_plugin.rs
++++ b/crates/tiny-glade/src/decorator_plugin.rs
+@@ -40,7 +40,7 @@
+     // 装饰归档 owner（原 DecoratorPlugin @140343132/13d 安装；幂等）。
+     app.world_mut()
+         .init_resource::<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>();
+-    system_decorator::add_decorator_systems::<MaybePendingSnapshotId, CollisionPayload>(app);
++    system_decorator::add_decorator_systems_without_replay::<MaybePendingSnapshotId, CollisionPayload>(app);
+     system_decorator::register_cull_oob_systems::<CollisionPayload>(app);
+     system_decorator::ui_systems::register_ui_systems::<CollisionPayload>(app);
+ }

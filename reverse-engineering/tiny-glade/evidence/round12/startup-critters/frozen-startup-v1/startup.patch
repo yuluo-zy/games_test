@@ -1,0 +1,1044 @@
+*** Begin Patch
+*** Update File: tiny-glade/crates/country-core/src/startup/startup_critters.rs
+@@
+-//! 小动物资源载入（B `startup_critters` @0x1409d49a0）。
+-//!
+-//! 证据（decomp 0x1409d49a0 字串池实读）：
+-//! * 文件式网格：`assets/meshes/butterfly.json`（名 `butterfly`）、
+-//!   `duck_flying.json`（名 `duck`）、`duck_heart.json`（名 `duck_heart`）、
+-//!   `splash.json`（名 `splash`）。
+-//! * 着色器：`/critters/butterfly.raster.hlsl`→`butterfly_shader`、
+-//!   `/critters/firefly.raster.hlsl`→`firefly_shader`、
+-//!   `/critters/firefly_glow.raster.hlsl`→`firefly_glow_shader`、
+-//!   `/critters/duck_animated.raster.hlsl`→`duck_shader`、
+-//!   `/splash_particle.raster.hlsl`→`splash_particle`。
+-//! * 音效：`event:/SFX/Butterfly/Shoosh`。
+-//! * 4 个 spawn 记录。
+-//!
+-//! I：网格→着色器的配对与 spawn 顺序由同族命名推断（原件 4 条记录未逐条
+-//! 恢复字段）；U：firefly 网格加载条目未在字串池单独出现（可能复用 butterfly/
+-//! splash 网格），其余 bundle 字段未恢复。
+-use crate::asset_libraries::mesh_library::AssetMeshLibrary;
+-use super::{StartupAssetHost, register_mesh_file};
+-use bevy_ecs::prelude::Res;
++//! Original1409d49a0 asset and global-drawable policy. Species births live in
++//! system-critters so their canonical behavior/audio components retain identity.
++use crate::{
++    asset_libraries::{
++        Handle,
++        mesh_library::{AssetMeshLibrary, MeshAsset},
++        meshwatch::MeshWatch,
++        shader_library::AssetShaderLibrary,
++    },
++    components::drawable::DrawableMeshBundle,
++    render::{
++        mesh::Mesh,
++        shader::{RasterShaderProgram, boundary::ShaderBackend},
++    },
++    systems::render_loop::draw_passes::draw_lists::{DesignatedRenderPass, DontCastShadow},
++    utils::components::transform::Transform,
++};
++use bevy_ecs::prelude::*;
++use glam::Vec3;
++use std::path::Path;
+ 
+-pub const CRITTER_MESHES: [(&str, &str); 4] = [
+-    ("assets/meshes/butterfly.json", "butterfly"),
+-    ("assets/meshes/duck_flying.json", "duck"),
+-    ("assets/meshes/duck_heart.json", "duck_heart"),
+-    ("assets/meshes/splash.json", "splash"),
+-];
++pub const BUTTERFLY_SHOOSH_EVENT: &str = "event:/SFX/Butterfly/Shoosh";
++pub const BUTTERFLY_COUNT: usize = 24;
++pub const FIREFLY_COUNT: usize = 96;
+ 
+-/// 契约 §2.7 的名式网格：`firefly` 没有对应 `assets/meshes/firefly.json`，
+-/// 只能经 mesh atlas/prefab 通道按名查找；该通道未恢复，故不注册伪造文件。
+-pub const CRITTER_NAMED_MESHES: [&str; 1] = ["firefly"];
+-
+-pub const CRITTER_SHADERS: [(&str, &str); 5] = [
+-    ("/critters/butterfly.raster.hlsl", "butterfly_shader"),
+-    ("/critters/firefly.raster.hlsl", "firefly_shader"),
+-    ("/critters/firefly_glow.raster.hlsl", "firefly_glow_shader"),
+-    ("/critters/duck_animated.raster.hlsl", "duck_shader"),
+-    ("/splash_particle.raster.hlsl", "splash_particle"),
+-];
+-
+-/// O（0x142ac22f1 区）。
+-pub const BUTTERFLY_SHOOSH_EVENT: &str = "event:/SFX/Butterfly/Shoosh";
+-
+-/// I：4 条 spawn 记录的网格/着色器配对。
+-pub const CRITTER_DRAWABLES: [(&str, &str); 4] = [
+-    ("butterfly", "butterfly_shader"),
+-    ("duck", "duck_shader"),
+-    ("duck_heart", "duck_shader"),
+-    ("splash", "splash_particle"),
+-];
+-
+-/// O：4 条 spawn 记录的 bundle 尺寸分组。
+-pub const CRITTER_SPAWN_BUNDLES: [(usize, usize); 3] = [(0x78, 2), (0x88, 1), (0xa8, 1)];
+-
+-/// 网格/着色器注册与 4 个实体 spawn；音效事件由宿主音频域消费常量。
+-pub fn startup_critters<H: StartupAssetHost>(host: &mut H) {
+-    let mut meshes = Vec::new();
+-    for (path, name) in CRITTER_MESHES {
+-        meshes.push((name, host.load_mesh(path, Some(name))));
+-    }
+-    let mut shaders = Vec::new();
+-    for (path, name) in CRITTER_SHADERS {
+-        shaders.push((name, host.load_shader(path, name)));
+-    }
+-    for (mesh_name, shader_name) in CRITTER_DRAWABLES {
+-        let mesh = meshes
+-            .iter()
+-            .find(|(name, _)| *name == mesh_name)
+-            .unwrap_or_else(|| panic!("missing critter mesh {mesh_name}"))
+-            .1;
+-        let shader = shaders
+-            .iter()
+-            .find(|(name, _)| *name == shader_name)
+-            .unwrap_or_else(|| panic!("missing critter shader {shader_name}"))
+-            .1;
+-        host.spawn_drawable(mesh, shader);
+-    }
+-    // U: `event:/SFX/Butterfly/Shoosh` 的 FMOD 注册对象类型未恢复。
++fn publish_mesh(
++    mesh: Mesh,
++    name: &str,
++    meshes: &AssetMeshLibrary,
++    watch: &MeshWatch,
++) -> Handle<Mesh> {
++    watch.watch(&mesh);
++    meshes.add(MeshAsset::new(mesh, Some(name.to_owned())))
++}
++fn file_mesh(
++    root: &Path,
++    path: &str,
++    name: &str,
++    meshes: &AssetMeshLibrary,
++    watch: &MeshWatch,
++) -> Handle<Mesh> {
++    let path = root.join(path);
++    let mesh = crate::utils::load_json::load_json_as_mesh(
++        path.to_str().expect("critter mesh path must be UTF-8"),
++    );
++    publish_mesh(mesh, name, meshes, watch)
++}
++fn load_raster(
++    library: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    path: &str,
++    name: &'static str,
++) -> Handle<RasterShaderProgram> {
++    super::load_shaders::load_shader_into_library(library, backend, path, name)
+ }
+ 
++/// Called after the complete24-butterfly/audio birth loop. Original drawable
++/// has identity rotation/translation, scale0.6 and no extra render flags.
++pub fn startup_butterfly_drawable(
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    watch: &MeshWatch,
++    root: &Path,
++    commands: &mut Commands,
++) {
++    let mesh = file_mesh(
++        root,
++        "assets/meshes/butterfly.json",
++        "butterfly",
++        meshes,
++        watch,
++    );
++    let shader = load_raster(
++        shaders,
++        backend,
++        "/critters/butterfly.raster.hlsl",
++        "butterfly_shader",
++    );
++    commands.spawn(DrawableMeshBundle {
++        mesh,
++        shader,
++        transform: Transform::from_scale(Vec3::splat(0.6)),
++    });
++}
++
++/// Called after all96-firefly births, only outside Winter. Existing full
++/// geometry owners produce the actual meshes; no invented firefly asset path.
++pub fn startup_firefly_drawables(
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    watch: &MeshWatch,
++    _root: &Path,
++    commands: &mut Commands,
++) {
++    let sphere = Mesh::try_from(crate::geometry::sphere::Sphere::new(0, 1.0))
++        .expect("original firefly sphere")
++        .add_color_self(Vec3::ONE);
++    let mesh = publish_mesh(sphere, "firefly", meshes, watch);
++    let shader = load_raster(
++        shaders,
++        backend,
++        "/critters/firefly.raster.hlsl",
++        "firefly_shader",
++    );
++    commands.spawn((
++        DrawableMeshBundle {
++            mesh,
++            shader,
++            transform: Transform::identity(),
++        },
++        DontCastShadow,
++    ));
++    let plane = crate::geometry::plane::plane_mesh(1.0).add_color_self(Vec3::ONE);
++    let mesh = publish_mesh(plane, "firefly_glow", meshes, watch);
++    let shader = load_raster(
++        shaders,
++        backend,
++        "/critters/firefly_glow.raster.hlsl",
++        "firefly_glow_shader",
++    );
++    commands.spawn((
++        DrawableMeshBundle {
++            mesh,
++            shader,
++            transform: Transform::identity(),
++        },
++        DesignatedRenderPass(17),
++    ));
++}
++
++/// Unconditional original tail. These are assets for subsequent live duck /
++/// heart / splash producers, not three global draw entities.
++pub fn startup_duck_assets(
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    watch: &MeshWatch,
++    root: &Path,
++) {
++    file_mesh(
++        root,
++        "assets/meshes/duck_flying.json",
++        "duck",
++        meshes,
++        watch,
++    );
++    load_raster(
++        shaders,
++        backend,
++        "/critters/duck_animated.raster.hlsl",
++        "duck_shader",
++    );
++    file_mesh(
++        root,
++        "assets/meshes/duck_heart.json",
++        "duck_heart",
++        meshes,
++        watch,
++    );
++    file_mesh(root, "assets/meshes/splash.json", "splash", meshes, watch);
++    load_raster(
++        shaders,
++        backend,
++        "/splash_particle.raster.hlsl",
++        "splash_particle",
++    );
++}
++
++/// Compatibility mesh-only entry used by the old generic core schedule. The
++/// real device App must use system-critters' complete per-session producer.
+ pub fn startup_critters_meshes(meshes: Res<AssetMeshLibrary>) {
+-    for (path, name) in CRITTER_MESHES {
+-        register_mesh_file(&meshes, path, Some(name));
++    for (path, name) in [
++        ("assets/meshes/butterfly.json", "butterfly"),
++        ("assets/meshes/duck_flying.json", "duck"),
++        ("assets/meshes/duck_heart.json", "duck_heart"),
++        ("assets/meshes/splash.json", "splash"),
++    ] {
++        super::register_mesh_file(&meshes, path, Some(name));
+     }
+ }
+-
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-
+-    #[derive(Default)]
+-    struct Rec {
+-        meshes: Vec<(&'static str, Option<&'static str>)>,
+-        shaders: Vec<(&'static str, &'static str)>,
+-        spawns: Vec<(u64, u64)>,
+-    }
+-
+-    impl StartupAssetHost for Rec {
+-        type Mesh = u64;
+-        type Shader = u64;
+-        fn load_mesh(&mut self, path: &'static str, name: Option<&'static str>) -> u64 {
+-            self.meshes.push((path, name));
+-            self.meshes.len() as u64
+-        }
+-        fn load_shader(&mut self, path: &'static str, name: &'static str) -> u64 {
+-            self.shaders.push((path, name));
+-            100 + self.shaders.len() as u64
+-        }
+-        fn spawn_drawable(&mut self, mesh: u64, shader: u64) {
+-            self.spawns.push((mesh, shader));
+-        }
+-    }
+-
+-    #[test]
+-    fn loads_four_file_meshes_five_shaders_and_spawns_four() {
+-        let mut host = Rec::default();
+-        startup_critters(&mut host);
+-        assert_eq!(host.meshes, CRITTER_MESHES.map(|(p, n)| (p, Some(n))).to_vec());
+-        assert_eq!(host.shaders, CRITTER_SHADERS.to_vec());
+-        assert_eq!(host.spawns.len(), 4);
+-        // butterfly mesh=1, butterfly shader=101
+-        assert_eq!(host.spawns[0], (1, 101));
+-        assert_eq!(CRITTER_NAMED_MESHES, ["firefly"]);
+-        let bundles: usize = CRITTER_SPAWN_BUNDLES.iter().map(|(_, c)| c).sum();
+-        assert_eq!(bundles, 4);
+-        assert_eq!(BUTTERFLY_SHOOSH_EVENT, "event:/SFX/Butterfly/Shoosh");
+-    }
+-}
+*** Update File: tiny-glade/crates/country-core/src/resources/critters/mod.rs
+@@
+ //! 已恢复的小生物共享目标和物种资源。
++pub mod butterfly;
+ pub mod sheep;
+-pub mod butterfly;
+ pub use butterfly::Butterfly;
++
++/// Original shared zero-sized critter marker, registered at140b22db0 and
++/// included in both original startup species bundles.
++#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
++pub struct Critter;
+ 
+ use bevy_ecs::component::Component;
+ use glam::Vec3;
+*** Update File: tiny-glade/crates/systems/critters/src/components.rs
+@@
+ use bevy_ecs::resource::Resource;
+ use glam::{Quat, Vec3};
+ 
+-pub use country_core::resources::critters::CritterGoal;
++pub use country_core::resources::critters::{Critter, CritterGoal};
+ pub use country_core::utils::components::transform::Transform;
+ 
+ /// 轨迹状态（Duck+0xe0/+0xe1/+0xe4 段；与 reconstruction duck.rs DuckGoalState 一致）。
+*** Update File: tiny-glade/crates/systems/critters/src/firefly.rs
+@@
+ //!   `FireflySsbo`，96 上限）。
+ 
+ use bevy_ecs::prelude::*;
++use country_core::render::ssbo::StorageElement;
+ use country_core::resources::time::GameTime;
+-use country_core::render::ssbo::StorageElement;
+ use country_core::systems::render_loop::resources::critters::FireflySsbo;
+ use glam::Vec3;
+ use perchance::PerchanceContext;
+ 
+ use crate::components::{
+     CritterControlState, CritterGoal, CritterVelocityMultiplier, CritterVelocityTarget, Firefly,
+-    Sheep, Transform, Velocity,
++    Transform, Velocity,
+ };
+ use crate::duck::CritterRng;
+ use crate::sample::uniform_sample_sphere;
+@@
+     time: Res<GameTime>,
+     control: Res<CritterControlState>,
+     rng: Res<CritterRng>,
+-    mut query: Query<(&Transform, &mut Firefly, &Velocity, &mut CritterGoal, &Sheep)>,
++    mut query: Query<(&Transform, &mut Firefly, &Velocity, &mut CritterGoal)>,
+ ) {
+     // control 门（O）：`*res + 4 != 1 → return`（不消费 RNG）。
+     if !control.enabled {
+@@
+     }
+     let dt = time.delta;
+     let mut rng_ctx = rng.0.lock().unwrap();
+-    for (transform, mut firefly, velocity, mut goal, _sheep) in &mut query {
++    for (transform, mut firefly, velocity, mut goal) in &mut query {
+         let pos = transform.translation;
+         // CritterGoal 桥接（country-core {position,goal_tag}，DIVERGE 见 shared.rs 头）。
+-        let mut goal_opt = if goal.goal_tag != 0 { Some(goal.position) } else { None };
++        let mut goal_opt = if goal.goal_tag != 0 {
++            Some(goal.position)
++        } else {
++            None
++        };
+         update_firefly_goal_core(
+             &mut firefly.goal_timer,
+             &mut goal_opt,
+@@
+ }
+ 
+ /// set_firefly_velocities_towards_goals（0x142317040）。
+-/// 查询（O）：`(Transform, Sheep, CritterGoal, VelocityTarget, Multiplier)`。
++/// Original PDB: `(Transform, Firefly, CritterGoal, VelocityTarget, Multiplier)`.
+ pub fn set_firefly_velocities_towards_goals(
+     mut query: Query<(
+         &Transform,
+-        &Sheep,
++        &Firefly,
+         &CritterGoal,
+         &mut CritterVelocityTarget,
+         &mut CritterVelocityMultiplier,
+     )>,
+ ) {
+-    for (transform, _sheep, goal, mut target, mut multiplier) in &mut query {
++    for (transform, _firefly, goal, mut target, mut multiplier) in &mut query {
+         let pos = transform.translation;
+         // CritterGoal 桥接：goal_tag!=0 → goal.position；否则零方向。
+         let d = if goal.goal_tag != 0 {
+@@
+         if out.instances.len() >= FireflySsbo::BUFFER_LEN {
+             break;
+         }
+-        out.instances.push(FireflySsbo::from_translation(transform.translation));
++        out.instances
++            .push(FireflySsbo::from_translation(transform.translation));
+     }
+ }
+ 
+*** Update File: tiny-glade/crates/systems/critters/src/lib.rs
+@@
+ //! 缓冲写入与绘制由宿主 render_loop draw_shaders 接线（GPU 后置）。
+ 
+ pub mod audio;
++pub mod bird_spots;
+ pub mod boids;
+-pub mod bird_spots;
+ pub mod butterfly;
+ pub mod components;
+ pub mod duck;
+@@
+ pub mod shared;
+ pub mod sheep;
+ pub mod spawn_ducks;
++pub mod startup_critters;
+ pub mod ui_pet_ducks;
+ pub mod wren;
+ pub mod wren_boids;
+@@
+     schedule.add_systems(
+         (
+             (
+-            spawn_ducks::spawn_ducks,
+-            spawn_ducks::despawn_ducks,
+-            duck::plan_duck_trajectories,
+-            duck::move_ducks_along_trajectories,
+-            duck::update_duck_goals,
+-            duck::set_duck_velocities_towards_goals,
+-            duck::update_duck_ripples,
+-            firefly::update_firefly_goals,
+-            firefly::set_firefly_velocities_towards_goals,
+-            butterfly::update_butterfly_states,
+-            butterfly::update_butterfly_goals,
+-        ).chain(),
+-        (
+-            butterfly::set_butterfly_velocities_towards_goals,
+-            butterfly::update_butterfly_audio,
+-            fish::fish,
+-            // 真实注册面：`OnExit<AppLoadingState>` 上的资源重置（0x14067d440），
+-            // 非 Update 系统。crate 无 bevy_state，宿主在退出加载态时调用
+-            // `fish::despawn_fish`；不得每帧执行（资源布局重建）。
+-            sheep::sheep_behavior::update_sheep_goals,
+-            sheep::sheep_behavior::set_sheep_velocities_towards_goals,
+-            sheep::sheep_behavior::update_sheep_audio,
+-            sheep::sheep_terrain::sheep_walk_on_terrain,
+-            sheep::sheep_walk_animation::sheep_walk_animation,
+-            sheep::sheep_pet_animation::sheep_pet_animation,
+-            sheep::sheep_floatie::sheep_floaties,
+-        ).chain(),
+-        (
+-            sheep::sheep_umbrella::sheep_umbrellas,
+-            sheep::sheep_unstuck::sheep_unstuck,
+-            sheep::sheep_react_to_being_inside_buildings::react_to_being_inside_buildings,
+-            sheep::sheep_react_to_being_inside_buildings::sheep_reaction_emoji,
+-            sheep::sheep_input_record_replay::sheep_input_record_replay,
+-            sheep::ui_pet_sheep::ui_pet_sheep,
+-            ui_pet_ducks::ui_pet_ducks,
+-            ducks_react_to_being_inside_buildings::ducks_react_to_being_inside_buildings,
+-            duck_splash_particle::duck_splash_particle,
+-            wren::update_decorator_bird_spots,
+-            wren::update_roof_bird_spots,
+-            wren::update_wrens,
+-        ).chain(),
+-        (
+-            wren_boids::sim_wren_boids,
+-            shared::critters_avoid_collisions,
+-            shared::smooth_critter_velocities,
+-            shared::move_critters,
+-        ).chain(),
++                spawn_ducks::spawn_ducks,
++                spawn_ducks::despawn_ducks,
++                duck::plan_duck_trajectories,
++                duck::move_ducks_along_trajectories,
++                duck::update_duck_goals,
++                duck::set_duck_velocities_towards_goals,
++                duck::update_duck_ripples,
++                firefly::update_firefly_goals,
++                firefly::set_firefly_velocities_towards_goals,
++                butterfly::update_butterfly_states,
++                butterfly::update_butterfly_goals,
++            )
++                .chain(),
++            (
++                butterfly::set_butterfly_velocities_towards_goals,
++                butterfly::update_butterfly_audio,
++                fish::fish,
++                // 真实注册面：`OnExit<AppLoadingState>` 上的资源重置（0x14067d440），
++                // 非 Update 系统。crate 无 bevy_state，宿主在退出加载态时调用
++                // `fish::despawn_fish`；不得每帧执行（资源布局重建）。
++                sheep::sheep_behavior::update_sheep_goals,
++                sheep::sheep_behavior::set_sheep_velocities_towards_goals,
++                sheep::sheep_behavior::update_sheep_audio,
++                sheep::sheep_terrain::sheep_walk_on_terrain,
++                sheep::sheep_walk_animation::sheep_walk_animation,
++                sheep::sheep_pet_animation::sheep_pet_animation,
++                sheep::sheep_floatie::sheep_floaties,
++            )
++                .chain(),
++            (
++                sheep::sheep_umbrella::sheep_umbrellas,
++                sheep::sheep_unstuck::sheep_unstuck,
++                sheep::sheep_react_to_being_inside_buildings::react_to_being_inside_buildings,
++                sheep::sheep_react_to_being_inside_buildings::sheep_reaction_emoji,
++                sheep::sheep_input_record_replay::sheep_input_record_replay,
++                sheep::ui_pet_sheep::ui_pet_sheep,
++                ui_pet_ducks::ui_pet_ducks,
++                ducks_react_to_being_inside_buildings::ducks_react_to_being_inside_buildings,
++                duck_splash_particle::duck_splash_particle,
++                wren::update_decorator_bird_spots,
++                wren::update_roof_bird_spots,
++                wren::update_wrens,
++            )
++                .chain(),
++            (
++                wren_boids::sim_wren_boids,
++                shared::critters_avoid_collisions,
++                shared::smooth_critter_velocities,
++                shared::move_critters,
++            )
++                .chain(),
+         )
+             .chain(),
+     );
+*** Add File: tiny-glade/crates/systems/critters/src/startup_critters.rs
++//! Complete original1409d49a0 session producer on canonical species components.
++use crate::{
++    audio::AudioHandle,
++    butterfly::ButterflyAudio,
++    components::{
++        Butterfly, Critter, CritterGoal, CritterLocomotion, CritterVelocityMultiplier,
++        CritterVelocityTarget, Firefly, Transform, Velocity,
++    },
++};
++use bevy_ecs::prelude::*;
++use country_core::{
++    asset_libraries::{
++        mesh_library::AssetMeshLibrary, meshwatch::MeshWatch, shader_library::AssetShaderLibrary,
++    },
++    render::shader::boundary::ShaderBackend,
++    resources::{
++        audio_resources::{AudioCore, AudioInstance, Studio},
++        glade_settings::GladeSettings,
++        session::ActiveSession,
++    },
++    startup::startup_critters as assets,
++};
++use glam::{Vec2, Vec3};
++use std::path::Path;
++
++fn butterfly_birth(rng: &fastrand::Rng) -> (Transform, Butterfly) {
++    let x = (rng.f32() + (-0.5)) * 40.0;
++    let z = (rng.f32() + (-0.5)) * 40.0;
++    let transform = Transform::from_translation(Vec3::new(x, 1.0, z));
++    let butterfly = Butterfly {
++        state: 2,
++        state_t: rng.f32() * 30.0 + 1.0,
++        goal_timer: 0.0,
++        dwell: 0.0,
++        phase: 0.0,
++        phase_ref: 0.0,
++    };
++    (transform, butterfly)
++}
++fn firefly_birth(index: u32, rng: &fastrand::Rng) -> Transform {
++    let sequence = utils::sampling::radical_inverse(index, 2);
++    let radial = (rng.f32() * 0.25 + sequence) % 1.0;
++    let angular = (rng.f32() + index as f32) / 96.0;
++    let disk = utils::sampling::uniform_sample_disk(Vec2::new(
++        radial * f32::from_bits(0x3f0c_ccce) + f32::from_bits(0x3db8_51ec),
++        angular,
++    ));
++    let height = rng.f32() + 1.0;
++    Transform::from_translation(Vec3::new(disk.x * 65.0, height, disk.y * 65.0))
++}
++fn movement_bundle() -> (
++    Critter,
++    CritterLocomotion,
++    CritterGoal,
++    CritterVelocityTarget,
++    Velocity,
++    CritterVelocityMultiplier,
++) {
++    (
++        Critter,
++        CritterLocomotion(3),
++        CritterGoal {
++            position: Vec3::ZERO,
++            goal_tag: 0,
++        },
++        CritterVelocityTarget {
++            direction: Vec3::ZERO,
++            retention_per_second: 0.05,
++        },
++        Velocity(Vec3::ZERO),
++        CritterVelocityMultiplier(1.0),
++    )
++}
++
++/// Original audio instantiation precedes every birth's three RNG draws. Errors
++/// retain unwrap failure; Disabled and active instances both remain owned by
++/// the canonical ButterflyAudio wrapper and drop with the entity.
++fn spawn_butterflies<S: Studio>(audio: &AudioCore<S>, commands: &mut Commands)
++where
++    S::Event: Send + Sync + 'static,
++{
++    let rng = fastrand::Rng::with_seed(0x2a729);
++    for _ in 0..assets::BUTTERFLY_COUNT {
++        let instance = audio.instantiate_audio(assets::BUTTERFLY_SHOOSH_EVENT);
++        if let AudioInstance::Err(message) = &instance {
++            panic!("original butterfly audio initialization failed: {message}");
++        }
++        let (transform, butterfly) = butterfly_birth(&rng);
++        commands.spawn((
++            transform,
++            butterfly,
++            ButterflyAudio {
++                handle: AudioHandle::Active(Box::new(instance)),
++            },
++            movement_bundle(),
++        ));
++    }
++}
++fn spawn_fireflies(commands: &mut Commands) {
++    let rng = fastrand::Rng::with_seed(0x29a);
++    for index in 0..assets::FIREFLY_COUNT {
++        commands.spawn((
++            firefly_birth(index as u32, &rng),
++            Firefly { goal_timer: 0.0 },
++            movement_bundle(),
++        ));
++    }
++}
++
++/// The original nine-param system is adapted to the existing physical asset
++/// owner and canonical core audio resource. Must run per OnEnter(Game), after
++/// load_game_session publishes the new ActiveSession/GladeSettings.
++#[allow(clippy::too_many_arguments)]
++pub fn startup_critters<S: Studio>(
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    watch: &MeshWatch,
++    root: &Path,
++    audio: &AudioCore<S>,
++    settings: &GladeSettings,
++    session: &ActiveSession,
++    commands: &mut Commands,
++) where
++    S::Event: Send + Sync + 'static,
++{
++    if settings.butterflies {
++        spawn_butterflies(audio, commands);
++        assets::startup_butterfly_drawable(meshes, shaders, backend, watch, root, commands);
++    }
++    if !session.is_winter() {
++        spawn_fireflies(commands);
++        assets::startup_firefly_drawables(meshes, shaders, backend, watch, root, commands);
++    }
++    assets::startup_duck_assets(meshes, shaders, backend, watch, root);
++}
++
++#[cfg(test)]
++mod original_birth_tests {
++    use super::*;
++    include!("../tests/fixtures/startup_original_b.rs");
++    #[test]
++    fn all_original_seeded_butterfly_and_firefly_births_match_native_components() {
++        let rng = fastrand::Rng::with_seed(0x2a729);
++        for (i, expected) in BUTTERFLIES.into_iter().enumerate() {
++            let (t, b) = butterfly_birth(&rng);
++            assert_eq!(t.translation.to_array().map(f32::to_bits), expected);
++            assert_eq!((b.state, b.state_t.to_bits()), (2, BUTTERFLY_TIMERS[i]));
++            assert_eq!([b.goal_timer, b.dwell, b.phase, b.phase_ref], [0.0; 4]);
++            assert_eq!(t.rotation, glam::Quat::IDENTITY);
++            assert_eq!(t.scale, Vec3::ONE);
++        }
++        let rng = fastrand::Rng::with_seed(0x29a);
++        for (i, expected) in FIREFLIES.into_iter().enumerate() {
++            let actual = firefly_birth(i as u32, &rng).translation.to_array();
++            for (a, b) in actual.into_iter().zip(expected.map(f32::from_bits)) {
++                assert!(
++                    (a - b).abs() <= 4.0 * f32::EPSILON * b.abs().max(1.0),
++                    "firefly{i}: {a} != {b}"
++                );
++            }
++        }
++    }
++
++    use country_core::resources::{
++        audio_instance::PlaybackState,
++        audio_resources::{EventInstance, ListenerAttributes, VcaHandle},
++    };
++    use std::sync::{
++        Arc,
++        atomic::{AtomicUsize, Ordering},
++    };
++    #[derive(Default)]
++    struct Counts {
++        created: AtomicUsize,
++        released: AtomicUsize,
++    }
++    struct RecordingEvent(Arc<Counts>);
++    impl EventInstance for RecordingEvent {
++        type Error = String;
++        fn start(&mut self) -> Result<(), String> {
++            Ok(())
++        }
++        fn stop(&mut self, _: i32) -> Result<(), String> {
++            Ok(())
++        }
++        fn get_playback_state(&self) -> Result<PlaybackState, String> {
++            Ok(PlaybackState::Stopped)
++        }
++        fn set_volume(&mut self, _: f32) -> Result<(), String> {
++            Ok(())
++        }
++        fn set_parameter_by_name(&mut self, _: &str, _: f32) -> Result<(), String> {
++            Ok(())
++        }
++        fn has_parameter(&self, _: &str) -> Result<bool, String> {
++            Ok(false)
++        }
++        fn set_3d_attributes(
++            &mut self,
++            _: [f32; 3],
++            _: [f32; 3],
++            _: [f32; 3],
++            _: [f32; 3],
++        ) -> Result<(), String> {
++            Ok(())
++        }
++        fn get_timeline_position(&self) -> Result<i32, String> {
++            Ok(0)
++        }
++        fn pause(&mut self, _: bool) -> Result<(), String> {
++            Ok(())
++        }
++        fn install_beat_callback(&mut self) -> Result<(), String> {
++            Ok(())
++        }
++        fn release(&mut self) -> Result<(), String> {
++            self.0.released.fetch_add(1, Ordering::SeqCst);
++            Ok(())
++        }
++    }
++    struct Vca;
++    impl VcaHandle for Vca {
++        type Error = String;
++        fn set_volume(&self, _: f32) -> Result<(), String> {
++            Ok(())
++        }
++    }
++    struct RecordingStudio {
++        counts: Arc<Counts>,
++        fail: bool,
++    }
++    impl Studio for RecordingStudio {
++        type Error = String;
++        type Event = RecordingEvent;
++        type Vca = Vca;
++        fn load_bank_file(&mut self, _: &str) -> Result<(), String> {
++            Ok(())
++        }
++        fn load_sample_data(&mut self) -> Result<(), String> {
++            Ok(())
++        }
++        fn get_vca(&self, _: &str) -> Result<Vca, String> {
++            Ok(Vca)
++        }
++        fn set_listener_attributes(&mut self, _: ListenerAttributes) -> Result<(), String> {
++            Ok(())
++        }
++        fn update(&mut self) -> Result<(), String> {
++            Ok(())
++        }
++        fn set_parameter_by_name(&self, _: &str, _: f32) -> Result<(), String> {
++            Ok(())
++        }
++        fn create_event_instance(&self, name: &str) -> Result<Option<RecordingEvent>, String> {
++            assert_eq!(name, assets::BUTTERFLY_SHOOSH_EVENT);
++            if self.fail {
++                return Err("fixture FMOD error".into());
++            }
++            self.counts.created.fetch_add(1, Ordering::SeqCst);
++            Ok(Some(RecordingEvent(self.counts.clone())))
++        }
++    }
++    #[test]
++    fn births_reach_canonical_ecs_queries_and_entity_drop_releases_every_real_instance() {
++        let counts = Arc::new(Counts::default());
++        let audio = AudioCore {
++            studio: Some(RecordingStudio {
++                counts: counts.clone(),
++                fail: false,
++            }),
++            banks: Default::default(),
++        };
++        let mut world = World::new();
++        let mut queue = bevy_ecs::world::CommandQueue::default();
++        {
++            let mut commands = Commands::new(&mut queue, &world);
++            spawn_butterflies(&audio, &mut commands);
++            spawn_fireflies(&mut commands);
++        }
++        queue.apply(&mut world);
++        assert_eq!(
++            world
++                .query::<(
++                    &Butterfly,
++                    &ButterflyAudio,
++                    &Critter,
++                    &CritterLocomotion,
++                    &CritterGoal,
++                    &CritterVelocityTarget,
++                    &Velocity,
++                    &CritterVelocityMultiplier,
++                    &Transform
++                )>()
++                .iter(&world)
++                .count(),
++            24
++        );
++        assert_eq!(
++            world
++                .query::<(
++                    &Firefly,
++                    &Critter,
++                    &CritterLocomotion,
++                    &CritterGoal,
++                    &CritterVelocityTarget,
++                    &Velocity,
++                    &CritterVelocityMultiplier,
++                    &Transform
++                )>()
++                .iter(&world)
++                .count(),
++            96
++        );
++        assert_eq!(counts.created.load(Ordering::SeqCst), 24);
++        assert_eq!(counts.released.load(Ordering::SeqCst), 0);
++        let entities = world.iter_entities().map(|e| e.id()).collect::<Vec<_>>();
++        for entity in entities {
++            world.despawn(entity);
++        }
++        assert_eq!(counts.released.load(Ordering::SeqCst), 24);
++    }
++    #[test]
++    fn original_audio_error_panics_before_a_birth_is_queued() {
++        let audio = AudioCore {
++            studio: Some(RecordingStudio {
++                counts: Arc::default(),
++                fail: true,
++            }),
++            banks: Default::default(),
++        };
++        let world = World::new();
++        let mut queue = bevy_ecs::world::CommandQueue::default();
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            spawn_butterflies(&audio, &mut Commands::new(&mut queue, &world))
++        }));
++        assert!(result.is_err());
++        assert!(queue.is_empty());
++    }
++}
+*** Add File: tiny-glade/crates/systems/critters/tests/fixtures/startup_original_b.rs
++// Generated only from full original-RNE startup execution.
++const BUTTERFLIES: [[u32; 3]; 24] = [
++    [0x408864cc, 0x3f800000, 0x4197f254],
++    [0xc1436090, 0x3f800000, 0x3ec09d60],
++    [0xc1363c30, 0x3f800000, 0xc17ee1ab],
++    [0xc1566889, 0x3f800000, 0x4173a958],
++    [0xbfda6998, 0x3f800000, 0xc029f7e0],
++    [0xbf2ef880, 0x3f800000, 0xc182390d],
++    [0xc1258f4d, 0x3f800000, 0xc13130c3],
++    [0xc146fceb, 0x3f800000, 0x3f3e4600],
++    [0xc001e50c, 0x3f800000, 0xbf729c20],
++    [0x3e6941c0, 0x3f800000, 0x417febc8],
++    [0x40eec8ac, 0x3f800000, 0x40ce9776],
++    [0xc119a8db, 0x3f800000, 0x400f9f6c],
++    [0x3fdedde8, 0x3f800000, 0x414ea671],
++    [0x3f9d3b68, 0x3f800000, 0x415b1893],
++    [0x413494b6, 0x3f800000, 0xc134bbd0],
++    [0x40a3a48a, 0x3f800000, 0xc13002e3],
++    [0x4181ae93, 0x3f800000, 0xc1364bd5],
++    [0xc098b854, 0x3f800000, 0x418012c4],
++    [0xc0e98d42, 0x3f800000, 0xc12cd61d],
++    [0x40970e14, 0x3f800000, 0xc19e18fa],
++    [0x3ff3a980, 0x3f800000, 0x41800978],
++    [0xc084862c, 0x3f800000, 0x3ef4a740],
++    [0xc123d743, 0x3f800000, 0x410ab68c],
++    [0xc1642b7c, 0x3f800000, 0x4153e8f2],
++];
++const BUTTERFLY_TIMERS: [u32; 24] = [
++    0x412aac9a, 0x40fc3cb9, 0x41772b9d, 0x41f422ca, 0x41c29812, 0x412c8093, 0x40955a30, 0x41d59d47,
++    0x4142c36b, 0x4136793a, 0x4169dab4, 0x41977ea0, 0x41aec5fe, 0x415413a0, 0x41066bca, 0x403c0f83,
++    0x3fc86a3e, 0x41746bc2, 0x41974118, 0x41ef2666, 0x410bd37f, 0x41e3b6f2, 0x40f2227c, 0x41d83965,
++];
++const FIREFLIES: [[u32; 3]; 96] = [
++    [0x41d5be09, 0x3f830343, 0x3e0c1237],
++    [0x42275977, 0x3fe6b1a8, 0x406b31c2],
++    [0x41ff17a6, 0x3fadea5a, 0x409e565a],
++    [0x424b3b1f, 0x3fbfef68, 0x412b8ba3],
++    [0x41d09861, 0x3fd915ff, 0x40e8dd57],
++    [0x422a7624, 0x3fb21ebb, 0x418264fb],
++    [0x420a2f00, 0x3fee0519, 0x418386c7],
++    [0x4231d53e, 0x3f9521f1, 0x41c8a71d],
++    [0x41d2c05a, 0x3fb9e9cd, 0x4177383c],
++    [0x4215647c, 0x3fbceed2, 0x41d1f553],
++    [0x41d86363, 0x3fcf046a, 0x41a88246],
++    [0x4219ec90, 0x3fe65460, 0x420b88d7],
++    [0x41a25771, 0x3fa27a29, 0x41acacfe],
++    [0x41f37c37, 0x3fdc4d0d, 0x4217eec9],
++    [0x41cd15cf, 0x3fa3557a, 0x4208e914],
++    [0x414ea6df, 0x3f96e568, 0x41a0c57e],
++    [0x417c8fcd, 0x3ff76f06, 0x41dfa7c2],
++    [0x419b543e, 0x3fae6517, 0x421e50f9],
++    [0x413d7195, 0x3fab0f7d, 0x420240af],
++    [0x4153b068, 0x3feeeaf1, 0x42419a81],
++    [0x40c52018, 0x3fa3f310, 0x41d6ccee],
++    [0x40f697df, 0x3fc9bdaf, 0x42358930],
++    [0x40b10eff, 0x3f8f9483, 0x4229a00b],
++    [0x403bf8a5, 0x3f995f01, 0x424db6c7],
++    [0xbfda09a5, 0x3ff7ae32, 0x41d8941a],
++    [0xc05a738b, 0x3fc84ae4, 0x422a4e48],
++    [0xc0df8d1d, 0x3fd84c5b, 0x420db577],
++    [0xc122f319, 0x3fc2a40f, 0x424b1dab],
++    [0xc130dead, 0x3fefe668, 0x42081ad5],
++    [0xc1972443, 0x3fde607e, 0x423a4a64],
++    [0xc18ad3fa, 0x3fba2c17, 0x4212c6f7],
++    [0xc158fb6e, 0x3fff7783, 0x41d42b15],
++    [0xc16d270a, 0x3fa0956b, 0x41b8e711],
++    [0xc1cd8a17, 0x3f9ee79e, 0x4208386c],
++    [0xc1b94ed2, 0x3fd6b2d3, 0x41dba76c],
++    [0xc20045fc, 0x3fd05546, 0x4211bb96],
++    [0xc1a9c743, 0x3fd62c0d, 0x419a3c00],
++    [0xc20b8a92, 0x3fdfc234, 0x41ee9633],
++    [0xc20445aa, 0x3fee59cd, 0x41b6f169],
++    [0xc190f765, 0x3fb46908, 0x413df622],
++    [0xc1da584a, 0x3fbb7d77, 0x4176ad6e],
++    [0xc21b1f7d, 0x3fda0358, 0x4190d8d0],
++    [0xc21428ce, 0x3f8c98f1, 0x41701ca5],
++    [0xc245f232, 0x3fcceab8, 0x415d64ae],
++    [0xc1fe111d, 0x3ffe2a04, 0x40d56988],
++    [0xc23eef86, 0x3fda1197, 0x41069c4a],
++    [0xc2184fb2, 0x3fe771df, 0x409d5395],
++    [0xc24c8625, 0x3fd4edb9, 0x40554070],
++    [0xc1b3dc88, 0x3fb4de28, 0xbf9f0f4b],
++    [0xc23403b5, 0x3fbd85a3, 0xc070669d],
++    [0xc2199b90, 0x3fe499e5, 0xc0b8660b],
++    [0xc2488468, 0x3fd072f3, 0xc12738dd],
++    [0xc1dcc5af, 0x3fe89a00, 0xc10f4083],
++    [0xc23630f4, 0x3f998fc7, 0xc17f4819],
++    [0xc20bf2a4, 0x3f8f92b5, 0xc17374a8],
++    [0xc1b0d944, 0x3fb65a9c, 0xc13170a7],
++    [0xc1c46c34, 0x3fd672fd, 0xc16c8060],
++    [0xc21954ab, 0x3fa4d9a1, 0xc1cd2bb8],
++    [0xc1f97482, 0x3fc6af98, 0xc1c65591],
++    [0xc188776a, 0x3fd97ffa, 0xc1873815],
++    [0xc1befff2, 0x3f991938, 0xc1d263d0],
++    [0xc1f6ceee, 0x3f86dd7d, 0xc213f88b],
++    [0xc1bd824d, 0x3f80ffe7, 0xc1fe4852],
++    [0xc1ddfce8, 0x3fb00cd5, 0xc22fa484],
++    [0xc1473a5c, 0x3fb0374b, 0xc1c8fe47],
++    [0xc19cf1d7, 0x3fa295ec, 0xc223a54e],
++    [0xc13e0c31, 0x3ffbe06c, 0xc1ebecce],
++    [0xc14c6c73, 0x3fdb1d15, 0xc23c94e6],
++    [0xc0edba9f, 0x3f83f545, 0xc1e85a5b],
++    [0xc0f1a2b3, 0x3ffa751f, 0xc2300ce4],
++    [0xc08e3e51, 0x3fa15336, 0xc212b10b],
++    [0xbfa469b3, 0x3fcab7ac, 0xc24a6ec0],
++    [0x3cc9b1e1, 0x3ff3dbc2, 0xc1faf35a],
++    [0x404d50e9, 0x3fd4e5a2, 0xc234de93],
++    [0x40ea3953, 0x3fde5d8c, 0xc218570e],
++    [0x40a8abc7, 0x3fc3f3c0, 0xc19df2f1],
++    [0x410fd441, 0x3fa4480b, 0xc1f25279],
++    [0x418ba3af, 0x3faa0b29, 0xc230a630],
++    [0x4193d4a2, 0x3f83d399, 0xc21d14a5],
++    [0x411a044a, 0x3fb585c0, 0xc18a21fa],
++    [0x41841ea4, 0x3ff48628, 0xc1c6eb3d],
++    [0x41c5d12b, 0x3f9a24e2, 0xc20f7874],
++    [0x41bb8075, 0x3ffa97b8, 0xc1f328c6],
++    [0x4204ab1f, 0x3fe40621, 0xc216d085],
++    [0x41ba807c, 0x3fe05cba, 0xc1a8ea07],
++    [0x42180632, 0x3f986c0e, 0xc1ede459],
++    [0x41f4b3da, 0x3ff376c5, 0xc1ad38fb],
++    [0x419436c6, 0x3fca0f1f, 0xc136d2b3],
++    [0x41c7ad30, 0x3ffcfd25, 0xc1636623],
++    [0x4223bd91, 0x3fc37909, 0xc1a03ce6],
++    [0x420a7e59, 0x3feb3d20, 0xc14139c3],
++    [0x424055f2, 0x3fefbe56, 0xc180c5e8],
++    [0x42070a0b, 0x3fbe535e, 0xc105b30a],
++    [0x4241bef4, 0x3fa42dd5, 0xc0da7c22],
++    [0x42252d3c, 0x3fff1554, 0xc0ab3b4e],
++    [0x41d68a4b, 0x3fad2354, 0xbf117beb],
++];
+*** Update File: tiny-glade/crates/utils/src/lib.rs
+@@
+ pub mod rdp;
+ pub mod rgb9e5;
+ pub mod rng;
++pub mod sampling;
+ pub mod selective_deserialize;
+ pub mod subtractive_1d_boolean;
+ pub mod swizzlers;
+*** Add File: tiny-glade/crates/utils/src/sampling.rs
++//! Pure game-owned sampling used by original glade startup.
++use glam::Vec2;
++
++/// Original140c909a0. The next digit index is formed by a float product and
++/// saturating cast, not integer division; large indices depend on that order.
++/// Zero index returns before division, including base0. Nonzero/base0 panics.
++pub fn radical_inverse(mut index: u32, base: u32) -> f32 {
++    if index == 0 {
++        return 0.0;
++    }
++    let inverse = 1.0 / base as f32;
++    let mut weight = inverse;
++    let mut result = 0.0;
++    while index != 0 {
++        let digit = index % base;
++        index = (index as f32 * inverse) as u32;
++        result += digit as f32 * weight;
++        weight *= inverse;
++    }
++    result
++}
++
++/// Original140c90700: radial uniform coordinate first, angular coordinate
++/// second. Separate cos/sin calls and multiplications preserve the operation
++/// order. Invalid inputs retain the original floating-point behavior.
++pub fn uniform_sample_disk(sample: Vec2) -> Vec2 {
++    let radius = sample.x.sqrt();
++    let angle = sample.y * std::f32::consts::TAU;
++    Vec2::new(angle.cos() * radius, radius * angle.sin())
++}
+*** End Patch

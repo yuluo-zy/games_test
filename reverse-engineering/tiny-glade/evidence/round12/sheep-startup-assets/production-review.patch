@@ -1,0 +1,735 @@
+--- /dev/null
++++ b/tiny-glade/crates/country-core/src/startup/sheep_assets.rs
+@@ -0,0 +1,149 @@
++//! Complete original startup_sheep asset branch140a093e0. ECS sheep/audio
++//! creation is owned by startup_sheep; all handles below are real library keys.
++use crate::{
++    asset_libraries::{
++        Handle,
++        mesh_library::{AssetMeshLibrary, MeshAsset},
++        meshwatch::MeshWatch,
++        shader_library::AssetShaderLibrary,
++        ssbo_library::AssetSsboLibrary,
++    },
++    render::{
++        mesh::{ATTR_POSITION, Mesh},
++        shader::{RasterShaderProgram, boundary::ShaderBackend},
++        ssbo::rhapsody_boundary::GraphicsDevice,
++    },
++    systems::render_loop::resources::critters::SheepAnimationSsbo,
++};
++use anyhow::Context;
++use std::path::Path;
++pub struct SheepStartupAssets {
++    pub sheep_mesh: Handle<Mesh>,
++    pub sheep_shader: Handle<RasterShaderProgram>,
++    pub heart_mesh: Handle<Mesh>,
++    pub umbrella_mesh: Handle<Mesh>,
++    pub floatie_mesh: Handle<Mesh>,
++    pub accessory_shader: Handle<RasterShaderProgram>,
++}
++fn load(root: &Path, path: &str) -> anyhow::Result<Mesh> {
++    let path = root.join(path);
++    crate::utils::load_json::try_load_json_as_mesh(
++        path.to_str().context("sheep mesh path is not UTF-8")?,
++    )
++}
++fn install(mesh: Mesh, name: &str, meshes: &AssetMeshLibrary, watch: &MeshWatch) -> Handle<Mesh> {
++    watch.watch(&mesh);
++    meshes.add(MeshAsset::new(mesh, Some(name.to_owned())))
++}
++/// Original vertex-major, then frame1..=30 packing. Do not enforce equal
++/// lengths: original ignores extra frame vertices and bounds-checks each
++/// requested position and normal only when its vertex is actually reached.
++pub fn build_sheep_animation(
++    base: &Mesh,
++    frames: &[Mesh; 30],
++    delighted: &Mesh,
++) -> Vec<SheepAnimationSsbo> {
++    build_sheep_animation_rows(sheep_vertex_count(base), frames, delighted)
++}
++fn sheep_vertex_count(base: &Mesh) -> usize {
++    // Native uses the original array len at this point, without a Float3 tag
++    // check. Per-frame and delighted access below does check Float3.
++    base.attributes
++        .get(ATTR_POSITION)
++        .expect("called `Option::unwrap()` on a `None` value")
++        .array_length()
++}
++fn build_sheep_animation_rows(
++    vertex_count: usize,
++    frames: &[Mesh; 30],
++    delighted: &Mesh,
++) -> Vec<SheepAnimationSsbo> {
++    let mut rows = Vec::new();
++    for vertex in 0..vertex_count {
++        let mut positions = [[0.0; 4]; 30];
++        let mut normals = [[0.0; 4]; 30];
++        for (frame, mesh) in frames.iter().enumerate() {
++            let p = mesh.positions_without_indices()[vertex];
++            positions[frame] = [p.x, p.y, p.z, 0.0];
++            let n = mesh.normals_without_indices()[vertex];
++            normals[frame] = [n.x, n.y, n.z, 0.0];
++        }
++        let p = delighted.positions_without_indices()[vertex];
++        let n = delighted.normals_without_indices()[vertex];
++        rows.push(SheepAnimationSsbo {
++            positions,
++            normals,
++            delighted_pos: [p.x, p.y, p.z, 0.0],
++            delighted_normal: [n.x, n.y, n.z, 0.0],
++        });
++    }
++    rows
++}
++#[allow(clippy::too_many_arguments)]
++pub fn load_sheep_startup_assets(
++    installed: &Path,
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    backend: &dyn ShaderBackend,
++    watch: &MeshWatch,
++    ssbos: &AssetSsboLibrary,
++    device: &dyn GraphicsDevice,
++) -> anyhow::Result<SheepStartupAssets> {
++    let sheep_mesh = if let Some(handle) = meshes.try_get_handle_by_name("sheep_mesh") {
++        handle
++    } else {
++        let base = load(installed, "assets/meshes/sheep_animation/1.json")?;
++        let delighted = load(installed, "assets/meshes/sheep_animation/delighted.json")?;
++        let vertex_count = sheep_vertex_count(&base);
++        // Original collect executes every source load, including frame1 again.
++        let frames = (1..=30)
++            .map(|frame| {
++                load(
++                    installed,
++                    &format!("assets/meshes/sheep_animation/{frame}.json"),
++                )
++            })
++            .collect::<anyhow::Result<Vec<_>>>()?;
++        let frames: [Mesh; 30] = frames
++            .try_into()
++            .unwrap_or_else(|_| unreachable!("fixed thirty-frame source range"));
++        let animation = build_sheep_animation_rows(vertex_count, &frames, &delighted);
++        ssbos.add_new_with_data::<SheepAnimationSsbo>(device, &animation);
++        install(base, "sheep_mesh", meshes, watch)
++    };
++    let sheep_shader = super::load_shaders::load_shader_into_library(
++        shaders,
++        backend,
++        "/sheep.raster.hlsl",
++        "sheep_shader",
++    );
++    let heart_mesh = install(
++        load(installed, "assets/meshes/sheep_heart.json")?,
++        "sheep_heart",
++        meshes,
++        watch,
++    );
++    let umbrella_mesh = install(
++        load(installed, "assets/meshes/umbrella.json")?,
++        "umbrella_mesh",
++        meshes,
++        watch,
++    );
++    let floatie_mesh = install(
++        load(installed, "assets/meshes/floatie.json")?,
++        "floatie_mesh",
++        meshes,
++        watch,
++    );
++    let accessory_shader = shaders
++        .get_raster_handle_by_name("solid_vertex_color")
++        .context("solid_vertex_color shader must already be registered")?;
++    Ok(SheepStartupAssets {
++        sheep_mesh,
++        sheep_shader,
++        heart_mesh,
++        umbrella_mesh,
++        floatie_mesh,
++        accessory_shader,
++    })
++}
+--- a/tiny-glade/crates/country-core/src/systems/render_loop/resources/critters.rs
++++ b/tiny-glade/crates/country-core/src/systems/render_loop/resources/critters.rs
+@@ -145,6 +145,14 @@
+     pub delighted_normal: [f32; 4],
+ }
+ 
++// SAFETY: repr(C) contains only62 consecutive [f32;4] arrays. Alignment4
++// and992-byte size leave no implicit padding or invalid initialized byte.
++unsafe impl bytemuck::NoUninit for SheepAnimationSsbo {}
++const _: () = {
++    assert!(core::mem::size_of::<SheepAnimationSsbo>() == 992);
++    assert!(core::mem::align_of::<SheepAnimationSsbo>() == 4);
++};
++
+ impl StorageElement for SheepAnimationSsbo {
+     const NAME: &'static str = "Sheep Animation";
+     // BUFFER_LEN = 0：缓冲大小随初始数据（`new_storage_buffer<SheepAnimationSsbo>` 无 BUFFER_LEN 常量）。
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/tests/original_sheep_animation.rs
+@@ -0,0 +1,122 @@
++//! Original instruction goldens, using already compiled production libraries.
++use country_core::{
++    render::mesh::{ATTR_NORMAL, ATTR_POSITION, Mesh, VertexAttributeValues},
++    startup::sheep_assets::build_sheep_animation,
++};
++use glam::Vec3;
++fn vectors(k: u32) -> Vec<Vec3> {
++    vec![
++        Vec3::new(
++            f32::from_bits(0x3f800000 + k),
++            f32::from_bits(0x80000000),
++            f32::from_bits(0x7fc01234),
++        ),
++        Vec3::new(f32::NEG_INFINITY, 0.0, f32::INFINITY),
++    ]
++}
++fn mesh(positions: Vec<Vec3>, normals: Vec<Vec3>) -> Mesh {
++    let mut m = Mesh::new("original-sheep-fixture");
++    m.set_attribute(ATTR_POSITION, VertexAttributeValues::Float3(positions));
++    m.set_attribute(ATTR_NORMAL, VertexAttributeValues::Float3(normals));
++    m
++}
++fn frames() -> [Mesh; 30] {
++    std::array::from_fn(|i| mesh(vectors(i as u32), vectors(60 + i as u32)))
++}
++#[test]
++fn original_992b_records_preserve_every_frame_channel_and_special_float_payload() {
++    let base = mesh(vectors(0), vectors(0));
++    let frames = frames();
++    let delighted = mesh(vectors(90), vectors(91));
++    let rows = build_sheep_animation(&base, &frames, &delighted);
++    assert_eq!(rows.len(), 2);
++    assert_eq!(
++        bytemuck::cast_slice::<_, u8>(&rows),
++        include_bytes!("fixtures/sheep_animation_synthetic.original.bin")
++    );
++}
++#[test]
++fn original_missing_wrong_type_short_and_zero_vertex_policies() {
++    let cases: Vec<serde_json::Value> =
++        serde_json::from_str(include_str!("fixtures/sheep_animation_original_cases.json")).unwrap();
++    for case in cases {
++        let name = case["name"].as_str().unwrap();
++        let count = case["vertex_count"].as_u64().unwrap() as usize;
++        let mut base = mesh(vectors(0), vectors(0));
++        // Base variant is deliberately Float2: original only takes its array
++        // length. Each requested frame/delighted attribute has a Float3 guard.
++        base.set_attribute(
++            ATTR_POSITION,
++            VertexAttributeValues::Float2(vec![glam::Vec2::ZERO; count]),
++        );
++        let mut frames = frames();
++        let mut delighted = mesh(vectors(90), vectors(91));
++        if let Some(variant) = case["variant"].as_object() {
++            if let Some(index) = variant.get("frame").and_then(|v| v.as_u64()) {
++                let m = &mut frames[index as usize];
++                if let Some(attr) = variant.get("missing").and_then(|v| v.as_str()) {
++                    m.attributes.remove(attr);
++                }
++                if let Some(attr) = variant.get("wrong").and_then(|v| v.as_str()) {
++                    m.set_attribute(
++                        attr,
++                        VertexAttributeValues::Float2(vec![glam::Vec2::ONE; 2]),
++                    );
++                }
++            }
++            if let Some(attr) = variant.get("delighted_missing").and_then(|v| v.as_str()) {
++                delighted.attributes.remove(attr);
++            }
++        }
++        if name.starts_with("short-frame-") {
++            let frame = name.rsplit('-').next().unwrap().parse::<usize>().unwrap();
++            frames[frame].set_attribute(
++                ATTR_POSITION,
++                VertexAttributeValues::Float3(vectors(frame as u32)[..1].to_vec()),
++            );
++        }
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            build_sheep_animation(&base, &frames, &delighted)
++        }));
++        assert_eq!(result.is_err(), !case["panic"].is_null(), "{name}");
++        if let Ok(rows) = result {
++            assert_eq!(
++                rows.len(),
++                case["native_completed_rows"].as_u64().unwrap() as usize,
++                "{name}"
++            );
++        }
++    }
++}
++#[test]
++fn longer_frame_data_is_ignored_beyond_the_base_vertex_count() {
++    let mut base = mesh(vectors(0), vectors(0));
++    base.set_attribute(
++        ATTR_POSITION,
++        VertexAttributeValues::Float3(vectors(0)[..1].to_vec()),
++    );
++    let rows = build_sheep_animation(&base, &frames(), &mesh(vectors(90), vectors(91)));
++    assert_eq!(
++        bytemuck::cast_slice::<_, u8>(&rows),
++        &include_bytes!("fixtures/sheep_animation_synthetic.original.bin")[..992]
++    );
++}
++#[test]
++#[ignore = "run the compiled test executable directly from the original distribution directory"]
++fn original_all_860_asset_vertices_match_native_bytes() {
++    let read = |name: &str| {
++        country_core::utils::load_json::try_load_json_as_mesh(&format!(
++            "assets/meshes/sheep_animation/{name}.json"
++        ))
++        .unwrap()
++    };
++    let base = read("1");
++    let delighted = read("delighted");
++    let frames: [Mesh; 30] = std::array::from_fn(|i| read(&(i + 1).to_string()));
++    let rows = build_sheep_animation(&base, &frames, &delighted);
++    assert_eq!(rows.len(), 860);
++    assert_eq!(
++        bytemuck::cast_slice::<_, u8>(&rows),
++        include_bytes!("fixtures/sheep_animation_860.original.bin")
++    );
++}
+--- /dev/null
++++ b/tiny-glade/crates/tiny-glade/tests/fixtures/sheep_animation_original_cases.json
+@@ -0,0 +1,438 @@
++[
++  {
++    "name": "synthetic-payload-preservation",
++    "vertex_count": 2,
++    "native_completed_rows": 2,
++    "panic": null,
++    "output_sha256": "04fb35b4d5d6380226385ab8fc3a61beed7e8bff8ffd90e004d06f40f366c010",
++    "variant": null
++  },
++  {
++    "name": "missing-0-0-Vertex_Position",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "wrong-type-0-0-Vertex_Position",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "wrong": "Vertex_Position"
++    }
++  },
++  {
++    "name": "missing-0-0-Vertex_Normal",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "wrong-type-0-0-Vertex_Normal",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "wrong": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "missing-0-29-Vertex_Position",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "wrong-type-0-29-Vertex_Position",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "wrong": "Vertex_Position"
++    }
++  },
++  {
++    "name": "missing-0-29-Vertex_Normal",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "wrong-type-0-29-Vertex_Normal",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "wrong": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "missing-1-0-Vertex_Position",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563688,
++      "length": 65533
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "wrong-type-1-0-Vertex_Position",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8320",
++      "index": 0,
++      "length": 3
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "wrong": "Vertex_Position"
++    }
++  },
++  {
++    "name": "missing-1-0-Vertex_Normal",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563736,
++      "length": 65534
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "wrong-type-1-0-Vertex_Normal",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8340",
++      "index": 0,
++      "length": 2
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "wrong": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "missing-1-29-Vertex_Position",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563688,
++      "length": 65533
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "wrong-type-1-29-Vertex_Position",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8320",
++      "index": 0,
++      "length": 3
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "wrong": "Vertex_Position"
++    }
++  },
++  {
++    "name": "missing-1-29-Vertex_Normal",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563736,
++      "length": 65534
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "wrong-type-1-29-Vertex_Normal",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8340",
++      "index": 0,
++      "length": 2
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "wrong": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "missing-2-0-Vertex_Position",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563688,
++      "length": 65533
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "wrong-type-2-0-Vertex_Position",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8320",
++      "index": 0,
++      "length": 3
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "wrong": "Vertex_Position"
++    }
++  },
++  {
++    "name": "missing-2-0-Vertex_Normal",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563736,
++      "length": 65534
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "wrong-type-2-0-Vertex_Normal",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8340",
++      "index": 0,
++      "length": 2
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 0,
++      "wrong": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "missing-2-29-Vertex_Position",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563688,
++      "length": 65533
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "wrong-type-2-29-Vertex_Position",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8320",
++      "index": 0,
++      "length": 3
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "wrong": "Vertex_Position"
++    }
++  },
++  {
++    "name": "missing-2-29-Vertex_Normal",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563736,
++      "length": 65534
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "wrong-type-2-29-Vertex_Normal",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428a8340",
++      "index": 0,
++      "length": 2
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "frame": 29,
++      "wrong": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "delighted-missing-0-Vertex_Position",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "delighted_missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "delighted-missing-1-Vertex_Position",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563496,
++      "length": 65533
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "delighted_missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "delighted-missing-2-Vertex_Position",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563496,
++      "length": 65533
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "delighted_missing": "Vertex_Position"
++    }
++  },
++  {
++    "name": "delighted-missing-0-Vertex_Normal",
++    "vertex_count": 0,
++    "native_completed_rows": 0,
++    "panic": null,
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "delighted_missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "delighted-missing-1-Vertex_Normal",
++    "vertex_count": 1,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563544,
++      "length": 65534
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "delighted_missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "delighted-missing-2-Vertex_Normal",
++    "vertex_count": 2,
++    "native_completed_rows": 0,
++    "panic": {
++      "callee": "0x1428d9310",
++      "index": 5413563544,
++      "length": 65534
++    },
++    "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++    "variant": {
++      "delighted_missing": "Vertex_Normal"
++    }
++  },
++  {
++    "name": "short-frame-0",
++    "vertex_count": 2,
++    "native_completed_rows": 1,
++    "panic": {
++      "callee": "0x1428d9518",
++      "index": 1,
++      "length": 1
++    },
++    "output_sha256": "31707df9071f90e05ee72116c97462bf56ce2cd6e4b5696ed342acd59678341f",
++    "variant": null
++  },
++  {
++    "name": "short-frame-29",
++    "vertex_count": 2,
++    "native_completed_rows": 1,
++    "panic": {
++      "callee": "0x1428d9518",
++      "index": 1,
++      "length": 1
++    },
++    "output_sha256": "31707df9071f90e05ee72116c97462bf56ce2cd6e4b5696ed342acd59678341f",
++    "variant": null
++  }
++]

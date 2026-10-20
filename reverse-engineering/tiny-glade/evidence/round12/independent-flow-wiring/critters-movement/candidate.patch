@@ -1,0 +1,1719 @@
+--- a/crates/systems/critters/src/shared.rs
++++ b/crates/systems/critters/src/shared.rs
+@@ -1,495 +1,218 @@
+-//! shared 移动 / 避让链（B 主基线，fresh 反编译级证据，2026-10-17 重建）。
+-//!
+-//! 证据：smooth_critter_velocities 0x142318c10 / move_critters 0x142318fa0 /
+-//! critters_avoid_collisions 0x1423179a0。逐语句重建要点：
+-//! - smooth_critter_velocities：`retention = powf(target.retention_per_second, dt)`；
+-//!   `vel = vel*retention + dir*(1-retention)`（x/y 打包、z 分量的乘法顺序与反编译一致）；
+-//!   另写 CritterVelocityMultiplier = 查询环境值（uVar6 = Query+0x14；bevy-free 无法复现）。
+-//!   已知差分失败项：`powf(0, dt<0)=+inf` 时 `inf + (-inf)` 的 QNaN 符号位
+-//!   原码 ffc00000 vs Rust 7fc00000 —— LLVM QNaN 规范化差异（公式/顺序一致，非逻辑分歧）。
+-//! - move_critters 每实体（0x142319506 起）：
+-//!   1. `translation.y = max(y, 0)`；写 multiplier = 查询环境值。
+-//!   2. multiplier 门：None → 视为 1.0 走完整避让路径；Some(m) 且 m 精确为 0.0 →
+-//!      仅墙体路径（WallSpatialHash::query → PublicWalls::get → max_y_gable<y 跳过 →
+-//!      Circle2d+LineInterval::relate）；否则完整路径。
+-//!   3. 完整路径：位移 = vel*dt*mult；水面在**预测位置**采样；locomotion==2 →
+-//!      `rock>0 | water>0 | (water<=0 & Duck)` 阻塞；非 loc2 → `water<=0 & Duck` 阻塞；
+-//!      Duck/Sheep → legacy_spherecast（球距 <1.0 且命中码!=2 阻塞；Sheep 半径 0.8、
+-//!      其它 0.5，crate helper 无半径面）；**Sheep** 且 loc!=4 → pos/pos+disp 双 water
+-//!      采样（`pos<=0 && disp>0` 阻塞）。
+-//!   4. 应用位移；朝向 = from_rotation_arc(dir_x0z, up) 与旧旋转按 weight 混合（符号翻转 +
+-//!      nlerp + 归一化）。
+-//!   5. BirdSpots（Option）：按记录把 spot 写到 translation + rot*(spot 局部偏移)。
+-//! - critters_avoid_collisions 每实体（0x1423180f0 起）：
+-//!   1. 仅处理 CritterGoal.active==1；dir = normalize(goal-pos)（x/z 2D）。
+-//!   2. locomotion==2 → 在 `pos+dir*0.1` 采 water 与 rock，任一 >0 → 直接清目标。
+-//!   3. **Duck**（cursor 列 +0x130）→ **两位置 4+4** path 栅格采样：
+-//!      `c0=clamp(Σ4 sample(pos))`；`d=(c0>0)?|goal.position|:0.3`；
+-//!      `c1=clamp(Σ4 sample(pos+dir*d))`；仅 `c1>0` → 清目标；否则 spherecast 路。
+-//!      **Sheep**（0x68-stride Option）→ 直接 spherecast 路。**其它** → 墙体 relate：
+-//!      任一墙段 **Intersection（判别 0）→ 清目标**；遍历完无 Intersection → 保留目标。
+-//!   4. spherecast：命中码==2 或球距 >=1.0 → 保留目标；球距 <0.4 且 **Duck** →
+-//!      EventWriter<DespawnDuckCmd>。
+-//!   5. 收尾 *goal.active=0。
+-//!
+-//! 2026-10-17 已解：move_critters 的水面阻塞/water2 用 **Duck**（列 +0x130），双水采样
+-//! 与半径 0.8 用 **Sheep**（列 +0x138）；avoid 的 "water8" = **Duck**（列 +0x130，
+-//! 两位置 4+4 采样）。仍未定：墙体 relate 的 Circle2d/LineInterval 形状（fresh 为
+-//! Circle2d::new_rotated + line_segment）、move_critters 的纯墙体路径（无 Duck/Sheep
+-//! 实体）未实现、PublicWalls::get 缺失的 panic 路径、spherecast 半径参数、BirdSpots
+-//! 局部偏移常量。
+-//!
+-//! 命中码语义（RE-ANALYSIS §6.2/6.3 已补证，2026-10-17 落库）：spherecast 命中码
+-//! `hitcode==2` = 岩石命中 —— move_critters `(local_318 != 2) && 球距<1.0` 才阻塞（码 2 不
+-//! 阻塞）；critters_avoid_collisions `local_258==2 || 球距>=1.0` → 保留目标。mult==0 时
+-//! 位移项恒 0（仅墙体 relate/朝向分支，bevy-free 以 blocked=true 跳位移等价）。
+-
++//! Shared critter movement policies, original B1423179a0/142318c10/142318fa0.
++//! Native Query bookkeeping writes change ticks, not velocity multipliers.
++//! Canonical mapped mask, Water/Garden rasters and RaycastWorld are mandatory.
+ use bevy_ecs::prelude::*;
+-use country_core::resources::terrain_rock_mask;
+-use country_core::resources::time::GameTime;
+-use country_core::resources::walls::public_walls::PublicWalls;
+-use country_core::resources::world_raster::WorldRaster;
+-use country_core::systems::collision::world::RaycastWorld;
+-use country_core::systems::paths::PathRastersResources;
+-use country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash;
+-use glam::{Quat, Vec2, Vec3};
+-use utils::geometry::line_relation::{LineInterval, LineRelation};
+-
+-use crate::components::{
+-    BirdSpots, CritterGoal, CritterLocomotion, CritterVelocityMultiplier, CritterVelocityTarget,
+-    Duck, Sheep, Transform, Velocity,
++use country_core::{
++    asset_libraries::ssbo_library::AssetSsboLibrary,
++    resources::{terrain_rock_mask::TerrainRockMaskSsbo, time::GameTime,
++        walls::public_walls::PublicWalls, world_raster::RasterBufferRef,
++        world_raster_defs::{WaterRaster,GardenRaster}},
++    systems::{collision::world::RaycastWorld, paths::PathRastersResources,
++        ui::signifiers::signifier_create::UiSignifierStream,
++        wall::wall_state::wall_spatial_hash::WallSpatialHash},
+ };
+-
+-/// `smooth_critter_velocities`（0x142318c10）。逐实体（O 反编译）：
+-/// `retention = powf(retention_per_second, dt)`；`velocity = velocity*retention +
+-/// target.dir*(1-retention)`（3 轴）；另写 Multiplier = 查询环境值。
+-pub fn smooth_critter_velocities(
+-    time: Res<GameTime>,
+-    mut query: Query<(&CritterVelocityTarget, &mut Velocity, &CritterVelocityMultiplier)>,
+-) {
+-    let dt = time.delta;
+-    for (target, mut velocity, multiplier) in &mut query {
+-        smooth_velocity(&mut velocity.0, *target, dt);
+-        // 证据：multiplier 每帧由查询环境值回写（bevy-free 无法复现查询内值）。
+-        let _ = multiplier.0;
+-    }
+-}
+-
+-/// 速度平滑核心（逐字段与反编译一致；powf@0x142923f70）。
+-pub fn smooth_velocity(velocity: &mut Vec3, target: CritterVelocityTarget, dt: f32) {
+-    let retention = target.retention_per_second.powf(dt);
+-    let weight = 1.0 - retention;
+-    *velocity = Vec3::new(
+-        velocity.x * retention + target.direction.x * weight,
+-        velocity.y * retention + target.direction.y * weight,
+-        velocity.z * retention + target.direction.z * weight,
+-    );
+-}
+-
+-/// `move_critters`（0x142318fa0）。查询 7 列（init@0x14230ecf0）。
+-#[allow(clippy::type_complexity)]
+-pub fn move_critters(
+-    time: Res<GameTime>,
+-    water: Res<WorldRaster<512>>,
+-    rock_mask: Res<TerrainRockMask>,
+-    raycast: Res<RaycastWorldHandle>,
+-    walls_hash: Res<WallSpatialHash>,
+-    walls: Res<PublicWalls>,
+-    mut query: Query<(
+-        &mut Transform,
+-        &CritterLocomotion,
+-        &Velocity,
+-        Option<&CritterVelocityMultiplier>,
+-        Option<&Duck>,
+-        Option<&Sheep>,
+-        Option<&mut BirdSpots>,
+-    )>,
+-) {
+-    let dt = time.delta;
+-    let decay = 0.01_f32.powf(dt);
+-    let w = (*water).as_ref();
+-    for (mut transform, locomotion, velocity, multiplier, duck, sheep, mut bird_spots) in &mut query
+-    {
+-        let pos = &mut transform.translation;
+-        pos.y = pos.y.max(0.0);
+-
+-        // multiplier 门（反汇编 0x142319bb2/0x142319bc1）：
+-        // None → 1.0；Some(0.0) → 仅墙体路径（墙体避让逻辑在 critters_avoid_collisions 承担，
+-        // 此处视为已阻塞不位移）；Some(m) → 完整避让路径。
+-        let mult = match multiplier.map(|m| m.0) {
+-            None => 1.0,
+-            Some(m) if m == 0.0 => 0.0,
+-            Some(m) => m,
+-        };
+-
+-        // 避让路径（反编译 0x142319bc1）。blocked → 跳 LAB_142319506（位移/朝向/BirdSpots
+-        // 一并跳过，FIX⑨）。
+-        //
+-        // mult==0 语义（RE-ANALYSIS §6.2 坐实）：二进制 `fVar32 != 0.0 || NaN(fVar32)` 才进入
+-        // LAB_142319bc1 位移块；multiplier 精确为 0.0 → 直接跳 LAB_142319506（位移项恒 0，
+-        // 位移/墙体 relate/朝向/BirdSpots 一并跳过——此处 blocked=true 同义）。
+-        let displacement = velocity.0 * (dt * mult);
+-        let blocked = if mult == 0.0 {
+-            true
+-        } else {
+-            let mut blocked = false;
+-            // 水面采样在**预测位置** pos+displacement（fresh 0x142319c2c-0x142319c4f：
+-            // 采样 x/z = transform x/z + disp）。
+-            let px = pos.x + displacement.x;
+-            let pz = pos.z + displacement.z;
+-            let water_pred = w.bilinear_sample_at_world_xz(px, pz, 130.0, 130.0);
+-            // `!(water>0)` 覆盖 unordered（NaN）分支——二进制 SETBE/SETA 组合。
+-            let not_water = !(water_pred > 0.0);
+-            if locomotion.samples_rock_mask() {
+-                // loc==2（fresh 0x142319c5f-0x142319ca6）：
+-                // `rock>0 || water>0 || (water<=0 && duck)` → blocked。
+-                let rock = terrain_rock_mask::sample_at_world_xz(rock_mask.mask(), px, pz) > 0;
+-                if rock || water_pred > 0.0 || (not_water && duck.is_some()) {
+-                    blocked = true;
+-                }
+-            } else if not_water && duck.is_some() {
+-                // 非 loc==2（fresh 0x142319cb0-0x142319cc0）：仅 Duck 在陆面
+-                // （`water<=0 & water2`）阻塞。
+-                blocked = true;
++use glam::{Mat3,Quat,Vec2,Vec3};
++use utils::geometry::line_relation::{LineInterval,LineRelation};
++use crate::components::{BirdSpots,CritterGoal,CritterLocomotion,CritterVelocityMultiplier,
++    CritterVelocityTarget,Duck,Sheep,Transform,Velocity};
++
++/// Original typed Query is exactly (Target, mut Velocity), with no multiplier
++/// filter. Its changed-tick column must not be reinterpreted as business data.
++pub fn smooth_critter_velocities(time:Res<GameTime>,mut query:Query<(&CritterVelocityTarget,&mut Velocity)>) {
++    for (target,mut velocity) in &mut query { smooth_velocity(&mut velocity.0,*target,time.delta); }
++}
++pub fn smooth_velocity(velocity:&mut Vec3,target:CritterVelocityTarget,dt:f32) {
++    let retention=target.retention_per_second.powf(dt);let weight=1.0-retention;
++    *velocity=Vec3::new(velocity.x*retention+target.direction.x*weight,
++        velocity.y*retention+target.direction.y*weight,
++        retention*velocity.z+weight*target.direction.z);
++}
++
++/// External world reads are separated from the per-entity game policy so the
++/// exact same policy can consume recorded native boundary inputs in tests.
++/// Implementations return actual samples/hits; they do not choose movement.
++pub trait CritterEnvironment {
++    fn water(&self,position:Vec2)->f32;
++    fn garden(&self,position:Vec2)->f32;
++    fn rock(&self,position:Vec2)->u32;
++    fn paths(&self,position:Vec2)->[f32;4];
++    fn wall_intersection(&self,position:Vec3,end:Vec2,locomotion:u32,require_public_for_flying:bool)->bool;
++    fn spherecast(&self,origin:Vec3,direction:Vec3,radius:f32)->Option<Vec3>;
++}
++struct LiveEnvironment<'a> {
++    water:RasterBufferRef<'a,512>,garden:Option<RasterBufferRef<'a,512>>,
++    paths:Option<[RasterBufferRef<'a,512>;4]>,rock:&'a [TerrainRockMaskSsbo],
++    walls:&'a PublicWalls,hash:&'a WallSpatialHash,raycast:&'a RaycastWorld,
++}
++impl CritterEnvironment for LiveEnvironment<'_> {
++    fn water(&self,p:Vec2)->f32 {self.water.bilinear_sample_at_world_xz(p.x,p.y,130.0,130.0)}
++    fn garden(&self,p:Vec2)->f32 {self.garden.expect("move_critters requires GardenRaster").bilinear_sample_at_world_xz(p.x,p.y,130.0,130.0)}
++    fn rock(&self,p:Vec2)->u32 {TerrainRockMaskSsbo::sample_mapped_at_world_xz(self.rock,p.x,p.y)}
++    fn paths(&self,p:Vec2)->[f32;4] {self.paths.as_ref().expect("avoid requires four PathRasters").map(|grid|grid.bilinear_sample_at_world_xz(p.x,p.y,130.0,130.0))}
++    fn wall_intersection(&self,p:Vec3,end:Vec2,loc:u32,require:bool)->bool {wall_intersection(self.hash,self.walls,p,end,loc,require)}
++    fn spherecast(&self,origin:Vec3,direction:Vec3,radius:f32)->Option<Vec3> {
++        let hit=self.raycast.legacy_spherecast(origin,direction,radius);
++        // Native legacy +0x30 discriminant2 means miss, never "rock slot2".
++        hit.is_hit().then_some(hit.position)
++    }
++}
++
++/// Native query140aa5730 returns only the current cell's original segment rows.
++/// Move loc3 skips PublicWalls::get entirely; avoid still requires that owner,
++/// and skips only its height test. Keep those two different failure contracts.
++pub fn wall_intersection(hash:&WallSpatialHash,walls:&PublicWalls,p:Vec3,end:Vec2,loc:u32,require_public_for_flying:bool)->bool {
++    let path=LineInterval::line_segment(Vec2::new(p.x,p.z),end);
++    for segment in hash.segments_at_world_xz([p.x,p.z]) {
++        if loc!=3 || require_public_for_flying {
++            let state=walls.get(segment.wall).expect("critters require PublicWalls segment owner");
++            if loc!=3 && state.max_y_gable()<p.y {continue;}
++        }
++        let wall=LineInterval::line_segment(Vec2::from_array(segment.endpoints[0]),Vec2::from_array(segment.endpoints[1]));
++        if matches!(path.relate(wall),LineRelation::Intersection(_)) {return true;}
++    }
++    false
++}
++fn locomotion_ignores_spheres(loc:u32)->bool {loc<7 && (99u32>>loc)&1!=0}
++fn distance_from_hit(origin:Vec3,hit:Vec3)->f32 {
++    let delta=hit-origin;((delta.y*delta.y+delta.x*delta.x)+delta.z*delta.z).sqrt()
++}
++fn unchecked_direction(v:Vec3)->Vec3 {
++    let inverse=1.0/(v.z*v.z+(v.y*v.y+v.x*v.x)).sqrt();v*inverse
++}
++fn clamp01_native(v:f32)->f32 {
++    let lower=if 0.0>v {0.0}else{v};if 1.0<lower {1.0}else{lower}
++}
++fn path_sum(values:[f32;4])->f32 {clamp01_native(((values[0]+values[1])+values[2])+values[3])}
++
++/// Full native per-entity movement, including blocked-path early returns.
++#[allow(clippy::too_many_arguments)]
++pub fn advance_critter(env:&impl CritterEnvironment,transform:&mut Transform,loc:u32,
++    velocity:Vec3,multiplier:Option<f32>,duck:bool,sheep:bool,spots:Option<&mut BirdSpots>,dt:f32,rotation_retention:f32)->bool {
++    // MAXSS y,0 selects positive zero for NaN and negative/negative-zero y.
++    transform.translation.y=if transform.translation.y>0.0 {transform.translation.y}else{0.0};
++    let mult=multiplier.unwrap_or(1.0);
++    if mult==0.0 {return false;}
++    // Preserve the original two multiplies (velocity*dt)*mult on every lane.
++    let displacement=(velocity*dt)*mult;
++    let position=transform.translation;
++    let predicted=Vec2::new(position.x+displacement.x,position.z+displacement.z);
++    let water=env.water(predicted);
++    if loc==2 {
++        let rock=env.rock(predicted);
++        if rock!=0 || water>0.0 || (!(water>0.0) && duck) {return false;}
++    } else if !(water>0.0) && duck {return false;}
++    if duck || sheep {
++        if !locomotion_ignores_spheres(loc) {
++            let direction=unchecked_direction(displacement);
++            if let Some(hit)=env.spherecast(position,direction,if sheep {0.8}else{0.5}) {
++                if distance_from_hit(position,hit)<1.0 {return false;}
+             }
+-            if !blocked && (duck.is_some() || sheep.is_some()) {
+-                // fresh 0x142319cc3/d0：Duck 或 Sheep 存在 → spherecast 路（否则本应走
+-                // 墙体 relate 路——该路径在 move_critters 仍未实现，登记）。
+-                // 内层门：loc>6 或 loc∉{0,1,5,6}（99>>loc&1==0）。
+-                if locomotion.0 > 6 || !locomotion.wall_hash_only() {
+-                    let dir = Vec3::new(velocity.0.x, 0.0, velocity.0.z);
+-                    // B-ecstate FIX：半径 = Sheep 0.8@0x142a16cb8 / 其它 0.5@0x142925870。
+-                    let radius = if sheep.is_some() { 0.8 } else { 0.5 };
+-                    let sphere = legacy_spherecast(&raycast, *pos, dir, radius);
+-                    // 命中码==2（岩石）→ 不阻塞；否则球距 <1.0 → 阻塞。
+-                    if sphere.hit && sphere.hitcode != 2 && sphere.distance < 1.0 {
+-                        blocked = true;
+-                    }
+-                    // water2（fresh 0x14231a1bd-0x14231a240）：**Sheep**（`[rbp+0x23c]`
+-                    // = cursor 列 +0x138）且 loc!=4 时取 `water(pos)` 与
+-                    // `water(pos+disp)`；当期点 !(>0) 且预测点 >0 → 阻塞。
+-                    if !blocked && sheep.is_some() && locomotion.0 != 4 {
+-                        let s_now = w.bilinear_sample_at_world_xz(pos.x, pos.z, 130.0, 130.0);
+-                        if !(s_now > 0.0) && water_pred > 0.0 {
+-                            blocked = true;
+-                        }
+-                    }
+-                }
+-            } else if !blocked {
+-                // B-ecstate FIX：纯墙 relate 路（无 Duck 且无 Sheep，fresh 0x142319cc3 后）。
+-                // WallSpatialHash::query → PublicWalls::get → max_y_gable<pos.y 跳过（loc!=3）
+-                // → circle+line_segment+relate；Intersection（判别 0）→ 阻塞；遍历尽 → 位移。
+-                let dir = Vec3::new(velocity.0.x, 0.0, velocity.0.z);
+-                let min = [pos.x - 4.0, pos.z - 4.0];
+-                let max = [pos.x + 4.0, pos.z + 4.0];
+-                let segment = LineInterval::line_segment(
+-                    Vec2::new(pos.x, pos.z),
+-                    Vec2::new(pos.x + dir.x, pos.z + dir.z),
+-                );
+-                for (_endpoint, wall_id) in walls_hash.query_with_aabb_clamped(min, max) {
+-                    // B-ecstate FIX：二进制 PublicWalls::get 缺失 → unwrap_failed panic
+-                    // （0x142319d31 TEST RAX; JZ unwrap_failed）。
+-                    let state = walls.get(wall_id).expect("PublicWalls::get missing");
+-                    if locomotion.0 != 3 && state.max_y_gable() < pos.y {
+-                        continue;
+-                    }
+-                    for seg in walls_hash.segments_for_wall(wall_id) {
+-                        let other = LineInterval::line_segment(
+-                            Vec2::new(seg.endpoints[0][0], seg.endpoints[0][1]),
+-                            Vec2::new(seg.endpoints[1][0], seg.endpoints[1][1]),
+-                        );
+-                        if matches!(segment.relate(other), LineRelation::Intersection(_)) {
+-                            blocked = true;
+-                            break;
+-                        }
+-                    }
+-                    if blocked {
+-                        break;
+-                    }
+-                }
++            // Original stack+118 is GardenRaster, distinct from WaterRaster
++            // at+E8. Sheep loc4 alone skips this two-position garden boundary.
++            if sheep && loc!=4 {
++                let current=env.garden(Vec2::new(position.x,position.z));
++                let predicted=env.garden(predicted);
++                if !(current>0.0) && predicted>0.0 {return false;}
+             }
+-            blocked
+-        };
+-
+-        if !blocked {
+-            pos.x += displacement.x;
+-            pos.y += displacement.y;
+-            pos.z += displacement.z;
+-
+-            // 朝向：from_rotation_arc(dir_x0z, up) 与旧旋转按 weight 混合 + 归一化。
+-            let dir = Vec3::new(velocity.0.x, 0.0, velocity.0.z);
+-            if dir.length_squared() > 1e-6 {
+-                let target = Quat::from_rotation_arc(dir.normalize(), Vec3::Y);
+-                // 最短路径符号翻转（反汇编 XOR sign bit）后 nlerp。
+-                let flip = target.dot(transform.rotation) < 0.0;
+-                let t2 = if flip { -target } else { target };
+-                transform.rotation = transform.rotation.lerp(t2, 1.0 - decay).normalize();
+-            }
+-
+-            // BirdSpots（Option）：spot 写到 translation + rot*(局部偏移)。
+-            if let Some(spots) = bird_spots.as_deref_mut() {
+-                for spot in &mut spots.spots {
+-                    // 反汇编 0x142319e5a：偏移 (-0.495, 1.567, 0.0) 经 rot 旋转后加 translation。
+-                    let off = Vec3::new(-0.495, 1.567, 0.0);
+-                    spot.pos = transform.translation + transform.rotation * off;
+-                }
+-            }
+-        }
+-    }
+-}
+-
+-/// `critters_avoid_collisions`（0x1423179a0）。只处理 `CritterGoal.active == 1`；
+-/// 收尾清 active。逐实体控制流（O 反编译 0x1423180f0 起）：
+-/// 1) locomotion==2 且岩石采样>0 → 直接清目标（阻塞放弃）；
+-/// 2) water8 标志（鸭子路径）→ 8×bilinear 求和 clamp[0,1]>0（在水面）→ 清目标（抵达）；
+-///    否则墙体路径：WallSpatialHash::query 逐墙（locomotion==3 跳过 PublicWalls 过滤、
+-///    max_y_gable<pos.y 跳过）relate 判交，任一相交 → 保留目标；
+-/// 3) spherecast：命中码==2 或球距 >=1.0 → 保留目标；球距 <0.4 且 water8 → DespawnDuckCmd；
+-///    否则清目标。
+-/// 分歧点：water8 标志到 Option 组件的精确映射（本实现以 !samples_rock_mask 近似，见模块头）。
+-pub fn critters_avoid_collisions(
+-    water: Res<WorldRaster<512>>,
+-    rock_mask: Res<TerrainRockMask>,
+-    walls_hash: Res<WallSpatialHash>,
+-    walls: Res<PublicWalls>,
+-    raycast: Res<RaycastWorldHandle>,
+-    path_rasters: PathRastersResources,
+-    mut ev_despawn: EventWriter<crate::spawn_ducks::DespawnDuckCmd>,
+-    mut query: Query<(
+-        Entity,
+-        &Transform,
+-        &mut CritterGoal,
+-        &CritterLocomotion,
+-        Option<&Sheep>,
+-        Option<&Duck>,
+-    )>,
+-) {
+-    // O 0x142318219：`PathRastersResources::as_float_grid()`（四路 path 栅格引用）。
+-    let path_grids = path_rasters.as_float_grid();
+-    let w = (*water).as_ref();
+-    for (entity, transform, mut goal, locomotion, sheep, duck) in &mut query {
+-        // CritterGoal 桥接（country-core 组改 {position,goal_tag}，字节序与 B active@0,pos@4
+-        // 不一致——DIVERGE）：goal_tag!=0 → Some(position)。
+-        if goal.goal_tag == 0 {
+-            continue;
+-        }
+-        let target = goal.position;
+-        let pos = transform.translation;
+-        let to = target - pos;
+-        // B-ecstate FIX：二进制 normalize 非法 → dir=(0,0) 后**继续**（0x142318351-361）；
+-        // 旧 Rust 在此提前清目标并 continue（goal.position==pos 时行为差），已移除。
+-        let dir = Vec3::new(to.x, 0.0, to.z).normalize_or_zero();
+-
+-        // 1) locomotion==2：在 `pos + dir*0.1`（xmm13=0.1）同时采 water 与 rock，
+-        //    任一 >0 → 放弃目标（fresh 0x1423183c4-0x14231840a：SETBE/SETA + OR AL）。
+-        if locomotion.samples_rock_mask() {
+-            let probe_x = pos.x + dir.x * f32::from_bits(0x3dcccccd);
+-            let probe_z = pos.z + dir.z * f32::from_bits(0x3dcccccd);
+-            let rock = terrain_rock_mask::sample_at_world_xz(rock_mask.mask(), probe_x, probe_z) > 0;
+-            let water_level = w.bilinear_sample_at_world_xz(probe_x, probe_z, 130.0, 130.0);
+-            if rock || water_level > 0.0 {
+-                goal.goal_tag = 0;
+-                continue;
+-            }
+-        }
+-
+-        // 2) Duck / Sheep / 其它 三路（fresh 0x1423183e1-0x142318410 分支）：
+-        // - **Duck**（local_fc，cursor 列 +0x130）：**两位置 4+4 采样**（fresh
+-        //   0x142318410-0x1423185c0）：`c0=clamp(Σ4 sample(pos))`；
+-        //   `d=(c0>0)?|goal.position|:0.3`；`c1=clamp(Σ4 sample(pos+dir*d))`；
+-        //   **仅 c1>0 → 清目标**；否则落 spherecast 路。
+-        // - **Sheep**（local_f4，0x68-stride 记录）→ 直接 spherecast 路。
+-        // - 其它（无 Duck/Sheep）→ 墙体 relate 路：任一墙段 **Intersection → 清目标**；
+-        //   遍历完无 Intersection → 保留目标。
+-        let mut keep_goal = false;
+-        if duck.is_some() {
+-            let mut sum0 = 0.0f32;
+-            for grid in path_grids.iter() {
+-                sum0 += grid.bilinear_sample_at_world_xz(pos.x, pos.z, 130.0, 130.0);
+-            }
+-            let c0 = sum0.clamp(0.0, 1.0);
+-            // `ucomiss c0,0; ja`：仅有序大于 0 用目标半径，否则 0.3（0x3e99999a）。
+-            let d = if c0 > 0.0 {
+-                goal.position.length()
+-            } else {
+-                f32::from_bits(0x3e99999a)
+-            };
+-            let px = pos.x + dir.x * d;
+-            let pz = pos.z + dir.z * d;
+-            let mut sum1 = 0.0f32;
+-            for grid in path_grids.iter() {
+-                sum1 += grid.bilinear_sample_at_world_xz(px, pz, 130.0, 130.0);
+-            }
+-            if sum1.clamp(0.0, 1.0) > 0.0 {
+-                // 预测点在路径上 → 抵达（清目标）。
+-                goal.goal_tag = 0;
+-                continue;
+-            }
+-        } else if sheep.is_none() {
+-            // 墙体路径（fresh 0x14231841d 之后的 relate 循环）。
+-            let min = [pos.x - 4.0, pos.z - 4.0];
+-            let max = [pos.x + 4.0, pos.z + 4.0];
+-            let pos2d = Vec2::new(pos.x, pos.z);
+-            let goal2d = Vec2::new(pos.x + dir.x, pos.z + dir.z);
+-            let segment = LineInterval::line_segment(pos2d, goal2d);
+-            let mut intersect = false;
+-            for (_endpoint, wall_id) in walls_hash.query_with_aabb_clamped(min, max) {
+-                // B-ecstate FIX：二进制 `PublicWalls::get` 缺失 → unwrap_failed panic
+-                // （0x142318773 TEST RAX; JZ unwrap_failed）；旧 Rust continue 兜底。
+-                let state = walls.get(wall_id).expect("PublicWalls::get missing");
+-                if !locomotion.skips_public_walls() && state.max_y_gable() < pos.y {
+-                    continue;
+-                }
+-                for seg in walls_hash.segments_for_wall(wall_id) {
+-                    let other = LineInterval::line_segment(
+-                        Vec2::new(seg.endpoints[0][0], seg.endpoints[0][1]),
+-                        Vec2::new(seg.endpoints[1][0], seg.endpoints[1][1]),
+-                    );
+-                    // 0x142318xxx `do{...}while((int)relate != 0)`：Intersection（判别 0）
+-                    // 才退出循环 → 清目标；Disjoint/Parallel/Collinear 继续找下一墙。
+-                    if matches!(segment.relate(other), LineRelation::Intersection(_)) {
+-                        intersect = true;
+-                        break;
+-                    }
+-                }
+-                if intersect {
+-                    break;
+-                }
+-            }
+-            if intersect {
+-                goal.goal_tag = 0;
+-                continue;
+-            }
+-            // 遍历完仍无 Intersection → 保留目标（LAB_142317e4f）。
+-            keep_goal = true;
+-        }
+-
+-        // 3) spherecast（Duck 未在路径上 / Sheep / 未保留的墙体路径）。
+-        if !keep_goal {
+-            // FIX④：loc<7 且位集（loc∈{0,1,5,6}）→ 直接保留目标（二进制 LAB_1423185c6
+-            // `(loc<7)&&(99>>(loc&31)&1)!=0 → goto next-entity`）。
+-            if !(locomotion.0 < 7 && locomotion.wall_hash_only()) {
+-                // B-ecstate FIX：半径 = Sheep 0.8 / 其它 0.5（0x14231866f）。
+-                let radius = if sheep.is_some() { 0.8 } else { 0.5 };
+-                let sphere = legacy_spherecast(&raycast, pos, dir, radius);
+-                // `local_258 == 2`（命中码2=岩石）或 球距>=1.0 → 保留目标；仅命中码!=2
+-                // 且球距<1.0 才清目标。
+-                if sphere.hit && sphere.hitcode != 2 && sphere.distance < 1.0 {
+-                    // <0.4 且 Duck → DespawnDuckCmd（fresh 0x142318502：local_fc = Duck）。
+-                    if sphere.distance < 0.4 && duck.is_some() {
+-                        let _ = ev_despawn.write(crate::spawn_ducks::DespawnDuckCmd { entity });
+-                    }
+-                    goal.goal_tag = 0;
+-                }
+-                // 否则（未命中/球距>=1.0/命中码2）→ 保留目标。
+-            }
+-        }
+-    }
+-}
+-
+-/// legacy_spherecast 契约：固定 10 槽序（reviewer-B RNE 抽验）+ 紧凑结果 marker@+0x30。
+-pub const LEGACY_SPHERECAST_SLOT_ORDER: [u32; 10] = [0, 1, 3, 7, 6, 4, 11, 2, 12, 13];
+-
+-#[derive(Clone, Copy, Debug, Default)]
+-pub struct SpherecastResult {
+-    pub hit: bool,
+-    pub distance: f32,
+-    /// legacy_spherecast 命中码（二进制返回结构 +0x1c 段 `local_318`）。语义（RE-ANALYSIS
+-    /// §6.2/6.3 补证）：`2`=岩石/障碍命中（move_critters 不阻塞、critters_avoid_collisions
+-    /// 保留目标）；`3`=墙 gable 跳过；其余=普通命中。无命中=0。
+-    pub hitcode: u32,
+-}
+-
+-/// 按证据顺序对 17 槽做球检（mask = 1<<slot），取最近命中。
+-/// B-ecstate FIX：`radius` 为 legacy_spherecast 第 4 参数（二进制 Sheep 0.8@0x142a16cb8 /
+-/// 其它 0.5@0x142925870）；旧实现未传。
+-pub fn legacy_spherecast(
+-    raycast: &RaycastWorldHandle,
+-    origin: Vec3,
+-    dir: Vec3,
+-    radius: f32,
+-) -> SpherecastResult {
+-    let mut best: Option<(f32, u32)> = None;
+-    for &slot in LEGACY_SPHERECAST_SLOT_ORDER.iter() {
+-        if let Some((t, _)) = raycast.slot_query(origin, dir, radius, slot) {
+-            let better = match best {
+-                Some((b, _)) => t < b,
+-                None => true,
+-            };
+-            if better {
+-                best = Some((t, slot));
+-            }
+-        }
+-    }
+-    match best {
+-        Some((distance, hitcode)) => SpherecastResult {
+-            hit: true,
+-            distance,
+-            hitcode,
+-        },
+-        None => SpherecastResult {
+-            hit: false,
+-            distance: f32::MAX,
+-            hitcode: 0,
+-        },
+-    }
+-}
+-
+-/// RaycastWorld 资源包装（core 的 RaycastWorld 非 Resource；装配层构造）。
+-#[derive(Resource)]
+-pub struct RaycastWorldHandle(pub RaycastWorld);
+-
+-impl Default for RaycastWorldHandle {
+-    fn default() -> Self {
+-        Self(RaycastWorld::new())
+-    }
+-}
+-
+-impl std::fmt::Debug for RaycastWorldHandle {
+-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        f.write_str("RaycastWorldHandle")
+-    }
+-}
+-
+-impl RaycastWorldHandle {
+-    /// 单槽射线查询（native-physics 装配层经 core `RaycastWorld::raycast(mask)` 实现；
+-    /// 非 native 壳返回 None）。`radius` = legacy_spherecast 第 4 参数（0.8 Sheep / 0.5 其它）。
+-    pub fn slot_query(
+-        &self,
+-        _origin: Vec3,
+-        _dir: Vec3,
+-        _radius: f32,
+-        _slot: u32,
+-    ) -> Option<(f32, u32)> {
+-        None
+-    }
+-}
+-
+-/// 岩石掩码资源（宿主每帧从 GPU 回读填充）。
+-#[derive(Resource, Clone, Debug, Default)]
+-pub struct TerrainRockMask {
+-    mask: Vec<u32>,
+-}
+-
+-impl TerrainRockMask {
+-    pub fn mask(&self) -> &[u32] {
+-        &self.mask
+-    }
+-    pub fn set_mask(&mut self, mask: Vec<u32>) {
+-        self.mask = mask;
+-    }
+-}
+-
+-/// 旧近似的 8 偏移采样表（已被 2026-10-17 fresh 反汇编证伪：critters_avoid 的
+-/// "water8" 实为 **4 路 PathRasters 同点采样**；保留仅供历史对照，不参与逻辑）。
+-#[allow(dead_code)]
+-const WATER_SAMPLE_OFFSETS: [(f32, f32); 8] = [
+-    (0.0, 0.0),
+-    (1.0, 0.0),
+-    (-1.0, 0.0),
+-    (0.0, 1.0),
+-    (0.0, -1.0),
+-    (1.0, 1.0),
+-    (-1.0, -1.0),
+-    (0.5, 0.5),
+-];
++        }
++    } else if env.wall_intersection(position,predicted,loc,false) {return false;}
++    transform.translation+=displacement;
++    let flat=Vec3::new(displacement.x,0.0,displacement.z);
++    if let Some(direction)=flat.try_normalize() {
++        let target=Quat::from_rotation_arc(-Vec3::Z,direction);
++        let sign=target.dot(transform.rotation).to_bits()&0x8000_0000;
++        let old=transform.rotation.to_array().map(|lane|f32::from_bits(lane.to_bits()^sign));
++        let retention=rotation_retention;let weight=1.0-retention;let next=target.to_array();
++        let blended=Quat::from_array(core::array::from_fn(|i|old[i]*retention+next[i]*weight));
++        let length=blended.length();
++        transform.rotation=Quat::from_array(blended.to_array().map(|lane|lane/length));
++    }
++    if let Some(spots)=spots {
++        let position=bird_spot_position(transform);
++        for spot in &mut spots.spots {spot.pos=position;}
++    }
++    true
++}
++pub fn bird_spot_position(transform:&Transform)->Vec3 {
++    let basis=Mat3::from_quat(transform.rotation);
++    // Native local offset is (0,1.567,-0.495), with all three scale lanes.
++    // Retain the zero-x term: scale.x=Inf/NaN has observable IEEE behavior.
++    let offset=(basis.z_axis*transform.scale.z*-0.495+basis.y_axis*transform.scale.y*1.567)
++        +basis.x_axis*transform.scale.x*0.0;
++    transform.translation+offset
++}
++
++#[allow(clippy::too_many_arguments,clippy::type_complexity)]
++pub fn move_critters(time:Res<GameTime>,water:Res<WaterRaster>,garden:Res<GardenRaster>,
++    buffers:Res<AssetSsboLibrary>,raycast:Res<RaycastWorld>,walls_hash:Res<WallSpatialHash>,walls:Res<PublicWalls>,
++    mut query:Query<(&mut Transform,&CritterLocomotion,&Velocity,Option<&CritterVelocityMultiplier>,Option<&Duck>,Option<&Sheep>,Option<&mut BirdSpots>)>) {
++    let mask=buffers.get::<TerrainRockMaskSsbo>().expect("move_critters requires canonical mapped TerrainRockMaskSsbo");
++    let env=LiveEnvironment {water:water.0.as_ref(),garden:Some(garden.0.as_ref()),paths:None,
++        rock:mask.mapped,walls:&walls,hash:&walls_hash,raycast:&raycast};
++    let rotation_retention=0.01_f32.powf(time.delta);
++    for (mut transform,loc,velocity,multiplier,duck,sheep,mut spots) in &mut query {
++        advance_critter(&env,&mut transform,loc.0,velocity.0,multiplier.map(|value|value.0),duck.is_some(),sheep.is_some(),spots.as_deref_mut(),time.delta,rotation_retention);
++    }
++}
++
++/// Returns whether the original Duck despawn event must be emitted.
++pub fn avoid_critter_collision(env:&impl CritterEnvironment,transform:&Transform,goal:&mut CritterGoal,loc:u32,duck:bool,sheep:bool)->bool {
++    if goal.goal_tag!=1 {return false;}
++    let position=transform.translation;let to=goal.position-position;
++    let direction=Vec2::new(to.x,to.z).normalize_or_zero();
++    let probe=Vec2::new(position.x+direction.x*0.1,position.z+direction.y*0.1);
++    let water=env.water(probe);
++    if loc==2 && (env.rock(probe)!=0 || water>0.0) {goal.goal_tag=0;return false;}
++    if duck {
++        let current=path_sum(env.paths(Vec2::new(position.x,position.z)));
++        let distance=if current>0.0 {goal.position.length()}else{0.3};
++        let predicted=Vec2::new(position.x+direction.x*distance,position.z+direction.y*distance);
++        if path_sum(env.paths(predicted))>0.0 {goal.goal_tag=0;return false;}
++    } else if !sheep {
++        // This endpoint is goal+unit-direction, not position+unit-direction.
++        let end=Vec2::new(goal.position.x+direction.x,goal.position.z+direction.y);
++        if env.wall_intersection(position,end,loc,true) {goal.goal_tag=0;}
++        return false;
++    }
++    if locomotion_ignores_spheres(loc) {return false;}
++    let direction=unchecked_direction(Vec3::new(direction.x,0.0,direction.y));
++    if let Some(hit)=env.spherecast(position,direction,if sheep {0.8}else{0.5}) {
++        let distance=distance_from_hit(position,hit);
++        if distance<1.0 {
++            goal.goal_tag=0;
++            return duck && distance<0.4;
++        }
++    }
++    false
++}
++#[allow(clippy::too_many_arguments,clippy::type_complexity)]
++pub fn critters_avoid_collisions(water:Res<WaterRaster>,buffers:Res<AssetSsboLibrary>,walls_hash:Res<WallSpatialHash>,walls:Res<PublicWalls>,raycast:Res<RaycastWorld>,
++    path_rasters:PathRastersResources,_signifiers:Res<UiSignifierStream>,mut ev_despawn:EventWriter<crate::spawn_ducks::DespawnDuckCmd>,
++    mut query:Query<(Entity,&Transform,&mut CritterGoal,&CritterLocomotion,Option<&Sheep>,Option<&Duck>)>) {
++    let mask=buffers.get::<TerrainRockMaskSsbo>().expect("critters_avoid_collisions requires canonical mapped TerrainRockMaskSsbo");
++    let env=LiveEnvironment {water:water.0.as_ref(),garden:None,paths:Some(path_rasters.as_float_grid()),
++        rock:mask.mapped,walls:&walls,hash:&walls_hash,raycast:&raycast};
++    for (entity,transform,mut goal,loc,sheep,duck) in &mut query {
++        if avoid_critter_collision(&env,transform,&mut goal,loc.0,duck.is_some(),sheep.is_some()) {
++            ev_despawn.write(crate::spawn_ducks::DespawnDuckCmd {entity});
++        }
++    }
++}
++
++/// Compatibility name now has the same Resource TypeId as the real core world;
++/// no private empty world or unimplemented slot_query remains.
++pub use country_core::systems::collision::world::RaycastWorld as RaycastWorldHandle;
++pub const LEGACY_SPHERECAST_SLOT_ORDER:[u32;10]=[0,1,3,7,6,4,11,2,12,13];
++#[derive(Clone,Copy,Debug,Default)]
++pub struct SpherecastResult {pub hit:bool,pub distance:f32,pub hitcode:u32}
++pub fn legacy_spherecast(raycast:&RaycastWorldHandle,origin:Vec3,direction:Vec3,radius:f32)->SpherecastResult {
++    let hit=raycast.legacy_spherecast(origin,direction,radius);
++    if hit.is_hit() {SpherecastResult {hit:true,distance:distance_from_hit(origin,hit.position),hitcode:0}}
++    else {SpherecastResult {hit:false,distance:f32::MAX,hitcode:2}}
++}
++
++/// Historical shadow retained only for still-unrestored species leaf APIs.
++/// The recovered shared systems above never consume or initialize this owner.
++#[derive(Resource,Clone,Debug,Default)]
++pub struct TerrainRockMask {mask:Vec<u32>}
++impl TerrainRockMask {pub fn mask(&self)->&[u32] {&self.mask} pub fn set_mask(&mut self,mask:Vec<u32>) {self.mask=mask;}}
+--- a/crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs
++++ b/crates/country-core/src/systems/wall/wall_state/wall_spatial_hash.rs
+@@ -122,6 +122,17 @@
+             .flatten()
+             .filter_map(|id| self.segments.get(id))
+     }
++    /// B query140aa5730/273B: only the point's current cell, no clamping,
++    /// radius, sorting, wall deduplication or whole-wall expansion. Float to
++    /// i32 uses native Rust saturation (NaN ->0); -65 is included, +65 outside.
++    pub fn segments_at_world_xz(&self, position: [f32; 2]) -> impl Iterator<Item = &WallSpatialSegment> {
++        let cell = crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped(position);
++        let valid = cell[0] >= 0 && cell[1] >= 0
++            && cell[0] < GRID_SIDE as i32 && cell[1] < GRID_SIDE as i32;
++        valid.then_some(cell[1].wrapping_mul(GRID_SIDE as i32).wrapping_add(cell[0]) as usize)
++            .into_iter().flat_map(move |index| self.segments_in_cell(index))
++    }
++
+     pub fn segments_in_cell(&self, cell: usize) -> impl Iterator<Item = &WallSpatialSegment> {
+         self.cells
+             .get(cell)
+--- /dev/null
++++ b/crates/systems/critters/tests/original_shared_movement.rs
+@@ -0,0 +1,679 @@
++//! Native per-entity movement CFG outputs with explicit world boundary
++//! inputs. Actual Bevy smooth query and actual core point-query/wall owner
++//! contracts have additional nonempty tests below. No GPU/startup pass claimed.
++use system_critters::{shared::*,components::*};
++use glam::{Vec2,Vec3,Quat};
++use std::cell::{Cell,RefCell};
++#[derive(Debug,PartialEq)]enum Call {Sample(&'static str,[u32;2]),Sphere([u32;3],[u32;3],u32),Wall([u32;2])}
++struct Env {water:Vec<f32>,garden:Vec<f32>,rock:u32,sphere:Option<Vec3>,wall_blocked:bool,wall_missing:bool,
++ water_index:Cell<usize>,garden_index:Cell<usize>,calls:RefCell<Vec<Call>>}
++impl Env {fn sample(&self,kind:&'static str,p:Vec2,values:&[f32],index:&Cell<usize>)->f32 {self.calls.borrow_mut().push(Call::Sample(kind,p.to_array().map(f32::to_bits)));let i=index.get();index.set(i+1);values[i.min(values.len()-1)]}}
++impl CritterEnvironment for Env {
++ fn water(&self,p:Vec2)->f32 {self.sample("water",p,&self.water,&self.water_index)}
++ fn garden(&self,p:Vec2)->f32 {self.sample("garden",p,&self.garden,&self.garden_index)}
++ fn rock(&self,p:Vec2)->u32 {self.calls.borrow_mut().push(Call::Sample("rock",p.to_array().map(f32::to_bits)));self.rock}
++ fn paths(&self,_p:Vec2)->[f32;4] {panic!("movement must not read path rasters")}
++ fn wall_intersection(&self,p:Vec3,_end:Vec2,loc:u32,require:bool)->bool {self.calls.borrow_mut().push(Call::Wall([p.x.to_bits(),p.z.to_bits()]));assert!(!(self.wall_missing&&(loc!=3||require)),"native PublicWalls::get failure");self.wall_blocked}
++ fn spherecast(&self,p:Vec3,d:Vec3,r:f32)->Option<Vec3> {self.calls.borrow_mut().push(Call::Sphere(p.to_array().map(f32::to_bits),d.to_array().map(f32::to_bits),r.to_bits()));self.sphere}
++}
++fn transform_bits(t:&Transform)->[u32;10] {let q=t.rotation.to_array();let p=t.translation.to_array();let s=t.scale.to_array();[q[0],q[1],q[2],q[3],p[0],p[1],p[2],s[0],s[1],s[2]].map(f32::to_bits)}
++#[test]fn native_per_entity_movement_policy_and_boundary_arguments() {
++ let mut cases=0;
++ { // loc0-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,0,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc0-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc0-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc0-other boundary calls");cases+=1;
++ }
++ { // loc0-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,0,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc0-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc0-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc0-duck boundary calls");cases+=1;
++ }
++ { // loc0-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,0,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc0-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc0-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc0-sheep boundary calls");cases+=1;
++ }
++ { // loc0-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,0,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc0-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc0-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc0-both boundary calls");cases+=1;
++ }
++ { // loc1-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,1,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc1-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc1-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc1-other boundary calls");cases+=1;
++ }
++ { // loc1-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,1,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc1-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc1-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc1-duck boundary calls");cases+=1;
++ }
++ { // loc1-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,1,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc1-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc1-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc1-sheep boundary calls");cases+=1;
++ }
++ { // loc1-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,1,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc1-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc1-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc1-both boundary calls");cases+=1;
++ }
++ { // loc2-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc2-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc2-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sample("rock",[1056964608,3208642560]),Call::Wall([0,0])],"case loc2-other boundary calls");cases+=1;
++ }
++ { // loc2-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case loc2-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case loc2-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sample("rock",[1056964608,3208642560])],"case loc2-duck boundary calls");cases+=1;
++ }
++ { // loc2-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc2-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc2-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sample("rock",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case loc2-sheep boundary calls");cases+=1;
++ }
++ { // loc2-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case loc2-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case loc2-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sample("rock",[1056964608,3208642560])],"case loc2-both boundary calls");cases+=1;
++ }
++ { // loc3-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc3-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc3-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc3-other boundary calls");cases+=1;
++ }
++ { // loc3-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc3-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc3-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1056964608)],"case loc3-duck boundary calls");cases+=1;
++ }
++ { // loc3-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc3-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc3-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case loc3-sheep boundary calls");cases+=1;
++ }
++ { // loc3-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc3-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc3-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case loc3-both boundary calls");cases+=1;
++ }
++ { // loc4-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,4,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc4-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc4-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc4-other boundary calls");cases+=1;
++ }
++ { // loc4-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,4,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc4-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc4-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1056964608)],"case loc4-duck boundary calls");cases+=1;
++ }
++ { // loc4-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,4,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc4-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc4-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773)],"case loc4-sheep boundary calls");cases+=1;
++ }
++ { // loc4-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,4,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc4-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc4-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773)],"case loc4-both boundary calls");cases+=1;
++ }
++ { // loc5-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,5,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc5-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc5-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc5-other boundary calls");cases+=1;
++ }
++ { // loc5-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,5,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc5-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc5-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc5-duck boundary calls");cases+=1;
++ }
++ { // loc5-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,5,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc5-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc5-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc5-sheep boundary calls");cases+=1;
++ }
++ { // loc5-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,5,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc5-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc5-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc5-both boundary calls");cases+=1;
++ }
++ { // loc6-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,6,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc6-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc6-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc6-other boundary calls");cases+=1;
++ }
++ { // loc6-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,6,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc6-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc6-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc6-duck boundary calls");cases+=1;
++ }
++ { // loc6-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,6,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc6-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc6-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc6-sheep boundary calls");cases+=1;
++ }
++ { // loc6-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,6,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc6-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc6-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560])],"case loc6-both boundary calls");cases+=1;
++ }
++ { // loc7-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,7,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc7-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc7-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc7-other boundary calls");cases+=1;
++ }
++ { // loc7-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,7,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc7-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc7-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1056964608)],"case loc7-duck boundary calls");cases+=1;
++ }
++ { // loc7-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,7,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc7-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc7-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case loc7-sheep boundary calls");cases+=1;
++ }
++ { // loc7-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,7,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc7-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc7-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case loc7-both boundary calls");cases+=1;
++ }
++ { // loc8-other
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,8,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc8-other transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc8-other spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case loc8-other boundary calls");cases+=1;
++ }
++ { // loc8-duck
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,8,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc8-duck transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc8-duck spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1056964608)],"case loc8-duck boundary calls");cases+=1;
++ }
++ { // loc8-sheep
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,8,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc8-sheep transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc8-sheep spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case loc8-sheep boundary calls");cases+=1;
++ }
++ { // loc8-both
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![1.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,8,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),true,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case loc8-both transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case loc8-both spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case loc8-both boundary calls");cases+=1;
++ }
++ { // mult-None
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),None,false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case mult-None transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case mult-None spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case mult-None boundary calls");cases+=1;
++ }
++ { // mult-0
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(0.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case mult-0 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case mult-0 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![],"case mult-0 boundary calls");cases+=1;
++ }
++ { // mult--0.0
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(f32::from_bits(2147483648)),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case mult--0.0 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case mult--0.0 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![],"case mult--0.0 boundary calls");cases+=1;
++ }
++ { // mult--1
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(-1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,1061766501,0,1058943529,3204448256,3196059648,1061158912,1073741824,1077936128,1082130432],"case mult--1 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[3223003613,1083076248,1067180351],"case mult--1 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[3204448256,1061158912]),Call::Wall([0,0])],"case mult--1 boundary calls");cases+=1;
++ }
++ { // mult-nan
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(f32::from_bits(2143289344)),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,2143289344,2143289344,2143289344,1073741824,1077936128,1082130432],"case mult-nan transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[2143289344,2143289344,2143289344],"case mult-nan spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[2143289344,2143289344]),Call::Wall([0,0])],"case mult-nan boundary calls");cases+=1;
++ }
++ { // dt-0
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=0.0;
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case dt-0 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,1083600536,3221057700],"case dt-0 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[0,0]),Call::Wall([0,0])],"case dt-0 boundary calls");cases+=1;
++ }
++ { // dt--0.125
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(3187671040);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3202184224,0,1063702693,3196059648,3187671040,1052770304,1073741824,1077936128,1082130432],"case dt--0.125 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067821996,1083338392,3210557950],"case dt--0.125 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[3196059648,1052770304]),Call::Wall([0,0])],"case dt--0.125 boundary calls");cases+=1;
++ }
++ { // dt-1e-12
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(730643660);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,739032268,730643660,2891127602,1073741824,1077936128,1082130432],"case dt-1e-12 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[739032268,1083600536,3221057700],"case dt-1e-12 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[739032268,2891127602]),Call::Wall([0,0])],"case dt-1e-12 boundary calls");cases+=1;
++ }
++ { // velocity-[0, 0, 0]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([0.0,0.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case velocity-[0, 0, 0] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,1083600536,3221057700],"case velocity-[0, 0, 0] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[0,0]),Call::Wall([0,0])],"case velocity-[0, 0, 0] boundary calls");cases+=1;
++ }
++ { // velocity-[0, 2, 0]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([0.0,2.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,1056964608,0,1073741824,1077936128,1082130432],"case velocity-[0, 2, 0] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,1084649112,3221057700],"case velocity-[0, 2, 0] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[0,0]),Call::Wall([0,0])],"case velocity-[0, 2, 0] boundary calls");cases+=1;
++ }
++ { // velocity-[1e-15, 0, 0]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([f32::from_bits(646978941),0.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3204739764,0,1062933248,630201725,0,0,1073741824,1077936128,1082130432],"case velocity-[1e-15, 0, 0] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1071672215,1083600536,3211494663],"case velocity-[1e-15, 0, 0] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[630201725,0]),Call::Wall([0,0])],"case velocity-[1e-15, 0, 0] boundary calls");cases+=1;
++ }
++ { // velocity-[inf, 0, 1]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([f32::from_bits(2139095040),0.0,1.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,2139095040,0,1048576000,1073741824,1077936128,1082130432],"case velocity-[inf, 0, 1] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[2139095040,1083600536,3218960548],"case velocity-[inf, 0, 1] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[2139095040,1048576000]),Call::Wall([0,0])],"case velocity-[inf, 0, 1] boundary calls");cases+=1;
++ }
++ { // velocity-[0, 0, 1]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([0.0,0.0,1.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3211287246,0,3201755818,0,0,1048576000,1073741824,1077936128,1082130432],"case velocity-[0, 0, 1] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[3217104264,1083600536,1069818114],"case velocity-[0, 0, 1] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[0,1048576000]),Call::Wall([0,0])],"case velocity-[0, 0, 1] boundary calls");cases+=1;
++ }
++ { // velocity-[0, 0, -1]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([0.0,0.0,-1.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,3196059648,1073741824,1077936128,1082130432],"case velocity-[0, 0, -1] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,1083600536,3222190162],"case velocity-[0, 0, -1] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[0,3196059648]),Call::Wall([0,0])],"case velocity-[0, 0, -1] boundary calls");cases+=1;
++ }
++ { // wall-intersect
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:true,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([4.0,0.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case wall-intersect transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case wall-intersect spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1065353216,0]),Call::Sample("rock",[1065353216,0]),Call::Wall([0,0])],"case wall-intersect boundary calls");cases+=1;
++ }
++ { // wall-parallel
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([4.0,0.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3204739764,0,1062933248,1065353216,0,0,1073741824,1077936128,1082130432],"case wall-parallel transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1076901324,1083600536,3211494663],"case wall-parallel spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1065353216,0]),Call::Sample("rock",[1065353216,0]),Call::Wall([0,0])],"case wall-parallel boundary calls");cases+=1;
++ }
++ { // wall-low
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([4.0,0.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3204739764,0,1062933248,1065353216,0,0,1073741824,1077936128,1082130432],"case wall-low transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1076901324,1083600536,3211494663],"case wall-low spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1065353216,0]),Call::Sample("rock",[1065353216,0]),Call::Wall([0,0])],"case wall-low boundary calls");cases+=1;
++ }
++ { // wall-missing
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:true,wall_missing:true,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,2,Vec3::from_array([4.0,0.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert!(actual.is_err());
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1065353216,0]),Call::Sample("rock",[1065353216,0]),Call::Wall([0,0])],"case wall-missing boundary calls");cases+=1;
++ }
++ { // wall-flying-missing
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:true,wall_missing:true,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([4.0,0.0,0.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case wall-flying-missing transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case wall-flying-missing spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1065353216,0]),Call::Wall([0,0])],"case wall-flying-missing boundary calls");cases+=1;
++ }
++ { // sphere-None
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case sphere-None transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case sphere-None spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case sphere-None boundary calls");cases+=1;
++ }
++ { // sphere-0
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:Some(Vec3::from_array([0.0,0.0,0.0])),wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case sphere-0 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case sphere-0 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773)],"case sphere-0 boundary calls");cases+=1;
++ }
++ { // sphere-0.39999998
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:Some(Vec3::from_array([f32::from_bits(1053609164),0.0,0.0])),wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case sphere-0.39999998 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case sphere-0.39999998 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773)],"case sphere-0.39999998 boundary calls");cases+=1;
++ }
++ { // sphere-0.4
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:Some(Vec3::from_array([f32::from_bits(1053609165),0.0,0.0])),wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case sphere-0.4 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case sphere-0.4 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773)],"case sphere-0.4 boundary calls");cases+=1;
++ }
++ { // sphere-0.99999994
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:Some(Vec3::from_array([f32::from_bits(1065353215),0.0,0.0])),wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case sphere-0.99999994 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case sphere-0.99999994 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773)],"case sphere-0.99999994 boundary calls");cases+=1;
++ }
++ { // sphere-1
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:Some(Vec3::from_array([1.0,0.0,0.0])),wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case sphere-1 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case sphere-1 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case sphere-1 boundary calls");cases+=1;
++ }
++ { // sphere-1.0000001
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:Some(Vec3::from_array([f32::from_bits(1065353217),0.0,0.0])),wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case sphere-1.0000001 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case sphere-1.0000001 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case sphere-1.0000001 boundary calls");cases+=1;
++ }
++ { // sphere-nan
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,0.0,0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:Some(Vec3::from_array([f32::from_bits(2143289344),0.0,0.0])),wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case sphere-nan transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case sphere-nan spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case sphere-nan boundary calls");cases+=1;
++ }
++ { // garden-[0, 1]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0,1.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case garden-[0, 1] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case garden-[0, 1] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case garden-[0, 1] boundary calls");cases+=1;
++ }
++ { // garden-[1, 0]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![1.0,0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case garden-[1, 0] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case garden-[1, 0] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case garden-[1, 0] boundary calls");cases+=1;
++ }
++ { // garden-[nan, 1]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![f32::from_bits(2143289344),1.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),false);assert_eq!(transform_bits(&transform),[0,0,0,1065353216,0,0,0,1073741824,1077936128,1082130432],"case garden-[nan, 1] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[0,0,0],"case garden-[nan, 1] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case garden-[nan, 1] boundary calls");cases+=1;
++ }
++ { // garden-[0, nan]
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(3196059648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0,f32::from_bits(2143289344)],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,true,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case garden-[0, nan] transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case garden-[0, nan] spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Sphere([0,0,0],[1057543799,1049155191,3209511346],1061997773),Call::Sample("garden",[0,0]),Call::Sample("garden",[1056964608,3208642560])],"case garden-[0, nan] boundary calls");cases+=1;
++ }
++ { // y-nan
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(2143289344),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case y-nan transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case y-nan spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case y-nan boundary calls");cases+=1;
++ }
++ { // y--0.0
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(2147483648),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case y--0.0 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case y--0.0 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case y--0.0 boundary calls");cases+=1;
++ }
++ { // y-0.0
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(0),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1048576000,3208642560,1073741824,1077936128,1082130432],"case y-0.0 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1084124824,3223622865],"case y-0.0 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case y-0.0 boundary calls");cases+=1;
++ }
++ { // y-1.0
++ let mut transform=Transform {rotation:Quat::from_array([0.0,0.0,0.0,1.0]),translation:Vec3::from_array([0.0,f32::from_bits(1065353216),0.0]),scale:Vec3::from_array([2.0,3.0,4.0])};
++ let env=Env {water:vec![0.0],garden:vec![0.0],rock:0,sphere:None,wall_blocked:false,wall_missing:false,water_index:Cell::new(0),garden_index:Cell::new(0),calls:RefCell::new(vec![])};
++ let mut spots=BirdSpots {spots:vec![BirdSpot {pos:Vec3::ZERO,occupied:true};2]};let dt=f32::from_bits(1048576000);
++ let actual=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||advance_critter(&env,&mut transform,3,Vec3::from_array([2.0,1.0,-3.0]),Some(1.0),false,false,Some(&mut spots),dt,0.01_f32.powf(dt))));
++ assert_eq!(actual.unwrap(),true);assert_eq!(transform_bits(&transform),[0,3192704923,0,1065014210,1056964608,1067450368,3208642560,1073741824,1077936128,1082130432],"case y-1.0 transform");
++ assert_eq!(spots.spots[0].pos.to_array().map(f32::to_bits),[1067668792,1086221976,3223622865],"case y-1.0 spot");assert!(spots.spots.iter().all(|s|s.occupied));
++ assert_eq!(*env.calls.borrow(),vec![Call::Sample("water",[1056964608,3208642560]),Call::Wall([0,0])],"case y-1.0 boundary calls");cases+=1;
++ }
++ assert_eq!(cases,71);
++}
++#[test]fn actual_smoothing_query_does_not_require_optional_multiplier() {
++ use bevy_ecs::{world::World,schedule::Schedule};
++ let mut world=World::new();world.insert_resource(country_core::resources::time::GameTime {delta:0.25,..Default::default()});
++ let target=CritterVelocityTarget {direction:Vec3::new(7.0,-3.0,2.0),retention_per_second:0.05};let initial=Vec3::new(-2.0,1.0,4.0);
++ let entity=world.spawn((target,Velocity(initial))).id();let mut schedule=Schedule::default();schedule.add_systems(smooth_critter_velocities);schedule.run(&mut world);
++ let mut expected=initial;smooth_velocity(&mut expected,target,0.25);assert_eq!(world.get::<Velocity>(entity).unwrap().0,expected);assert_ne!(expected,initial);assert!(world.get::<CritterVelocityMultiplier>(entity).is_none());
++}
++#[test]fn actual_point_cell_geometry_and_two_public_owner_failure_contracts() {
++ use country_core::{resources::walls::{WallId,public_walls::PublicWalls},systems::wall::wall_state::wall_spatial_hash::{WallSpatialHash,WallSpatialSegment}};
++ let mut hash=WallSpatialHash::default();let walls=PublicWalls::default();
++ hash.add_segment(WallSpatialSegment {endpoints:[[0.5,-1.0],[0.5,1.0]],source_u:[0.0,1.0],relative_heights:[0.0;2],terrain_heights:[0.0;2],wall:WallId(91)});
++ assert!(wall_intersection(&hash,&walls,Vec3::ZERO,Vec2::new(1.0,0.0),3,false));
++ assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||wall_intersection(&hash,&walls,Vec3::ZERO,Vec2::new(1.0,0.0),3,true))).is_err());
++ assert!(!wall_intersection(&hash,&walls,Vec3::new(65.0,0.0,0.0),Vec2::ZERO,2,true));
++}
++#[test]fn compatibility_raycast_name_is_the_canonical_world_identity() {
++ assert_eq!(std::any::TypeId::of::<RaycastWorldHandle>(),std::any::TypeId::of::<country_core::systems::collision::world::RaycastWorld>());
++}
+--- /dev/null
++++ b/crates/country-core/tests/original_wall_point_query.rs
+@@ -0,0 +1,302 @@
++use country_core::{resources::walls::WallId,systems::wall::wall_state::wall_spatial_hash::{WallSpatialHash,WallSpatialSegment}};
++#[test]fn full_original_point_query_boundaries_and_no_wall_dedup() {
++ let mut hash=WallSpatialHash::default();
++ for i in 0..4096usize {
++  let p=[-65.0+(i%64) as f32*(130.0/64.0)+1.015625,-65.0+(i/64) as f32*(130.0/64.0)+1.015625];
++  hash.add_segment(WallSpatialSegment {endpoints:[p,p],source_u:[0.0,1.0],relative_heights:[0.0;2],terrain_heights:[0.0;2],wall:WallId(i as u64)});
++ }
++ let cases:&[([u32;2],Option<u64>)]=&[
++ ([4286578688,4286578688],None),
++ ([4286578688,3769465068],None),
++ ([4286578688,3263299585],None),
++ ([4286578688,3263299584],None),
++ ([4286578688,3263299583],None),
++ ([4286578688,3262898176],None),
++ ([4286578688,3212967936],None),
++ ([4286578688,3045472189],None),
++ ([4286578688,0],None),
++ ([4286578688,1065484288],None),
++ ([4286578688,1115414528],None),
++ ([4286578688,1115815935],None),
++ ([4286578688,1115815936],None),
++ ([4286578688,1115815937],None),
++ ([4286578688,1621981420],None),
++ ([4286578688,2139095040],None),
++ ([4286578688,2143289344],None),
++ ([3769465068,4286578688],None),
++ ([3769465068,3769465068],None),
++ ([3769465068,3263299585],None),
++ ([3769465068,3263299584],None),
++ ([3769465068,3263299583],None),
++ ([3769465068,3262898176],None),
++ ([3769465068,3212967936],None),
++ ([3769465068,3045472189],None),
++ ([3769465068,0],None),
++ ([3769465068,1065484288],None),
++ ([3769465068,1115414528],None),
++ ([3769465068,1115815935],None),
++ ([3769465068,1115815936],None),
++ ([3769465068,1115815937],None),
++ ([3769465068,1621981420],None),
++ ([3769465068,2139095040],None),
++ ([3769465068,2143289344],None),
++ ([3263299585,4286578688],None),
++ ([3263299585,3769465068],None),
++ ([3263299585,3263299585],None),
++ ([3263299585,3263299584],None),
++ ([3263299585,3263299583],None),
++ ([3263299585,3262898176],None),
++ ([3263299585,3212967936],None),
++ ([3263299585,3045472189],None),
++ ([3263299585,0],None),
++ ([3263299585,1065484288],None),
++ ([3263299585,1115414528],None),
++ ([3263299585,1115815935],None),
++ ([3263299585,1115815936],None),
++ ([3263299585,1115815937],None),
++ ([3263299585,1621981420],None),
++ ([3263299585,2139095040],None),
++ ([3263299585,2143289344],None),
++ ([3263299584,4286578688],None),
++ ([3263299584,3769465068],None),
++ ([3263299584,3263299585],None),
++ ([3263299584,3263299584],Some(0)),
++ ([3263299584,3263299583],Some(0)),
++ ([3263299584,3262898176],Some(64)),
++ ([3263299584,3212967936],Some(1984)),
++ ([3263299584,3045472189],Some(2048)),
++ ([3263299584,0],Some(2048)),
++ ([3263299584,1065484288],Some(2048)),
++ ([3263299584,1115414528],Some(4032)),
++ ([3263299584,1115815935],None),
++ ([3263299584,1115815936],None),
++ ([3263299584,1115815937],None),
++ ([3263299584,1621981420],None),
++ ([3263299584,2139095040],None),
++ ([3263299584,2143289344],Some(0)),
++ ([3263299583,4286578688],None),
++ ([3263299583,3769465068],None),
++ ([3263299583,3263299585],None),
++ ([3263299583,3263299584],Some(0)),
++ ([3263299583,3263299583],Some(0)),
++ ([3263299583,3262898176],Some(64)),
++ ([3263299583,3212967936],Some(1984)),
++ ([3263299583,3045472189],Some(2048)),
++ ([3263299583,0],Some(2048)),
++ ([3263299583,1065484288],Some(2048)),
++ ([3263299583,1115414528],Some(4032)),
++ ([3263299583,1115815935],None),
++ ([3263299583,1115815936],None),
++ ([3263299583,1115815937],None),
++ ([3263299583,1621981420],None),
++ ([3263299583,2139095040],None),
++ ([3263299583,2143289344],Some(0)),
++ ([3262898176,4286578688],None),
++ ([3262898176,3769465068],None),
++ ([3262898176,3263299585],None),
++ ([3262898176,3263299584],Some(1)),
++ ([3262898176,3263299583],Some(1)),
++ ([3262898176,3262898176],Some(65)),
++ ([3262898176,3212967936],Some(1985)),
++ ([3262898176,3045472189],Some(2049)),
++ ([3262898176,0],Some(2049)),
++ ([3262898176,1065484288],Some(2049)),
++ ([3262898176,1115414528],Some(4033)),
++ ([3262898176,1115815935],None),
++ ([3262898176,1115815936],None),
++ ([3262898176,1115815937],None),
++ ([3262898176,1621981420],None),
++ ([3262898176,2139095040],None),
++ ([3262898176,2143289344],Some(1)),
++ ([3212967936,4286578688],None),
++ ([3212967936,3769465068],None),
++ ([3212967936,3263299585],None),
++ ([3212967936,3263299584],Some(31)),
++ ([3212967936,3263299583],Some(31)),
++ ([3212967936,3262898176],Some(95)),
++ ([3212967936,3212967936],Some(2015)),
++ ([3212967936,3045472189],Some(2079)),
++ ([3212967936,0],Some(2079)),
++ ([3212967936,1065484288],Some(2079)),
++ ([3212967936,1115414528],Some(4063)),
++ ([3212967936,1115815935],None),
++ ([3212967936,1115815936],None),
++ ([3212967936,1115815937],None),
++ ([3212967936,1621981420],None),
++ ([3212967936,2139095040],None),
++ ([3212967936,2143289344],Some(31)),
++ ([3045472189,4286578688],None),
++ ([3045472189,3769465068],None),
++ ([3045472189,3263299585],None),
++ ([3045472189,3263299584],Some(32)),
++ ([3045472189,3263299583],Some(32)),
++ ([3045472189,3262898176],Some(96)),
++ ([3045472189,3212967936],Some(2016)),
++ ([3045472189,3045472189],Some(2080)),
++ ([3045472189,0],Some(2080)),
++ ([3045472189,1065484288],Some(2080)),
++ ([3045472189,1115414528],Some(4064)),
++ ([3045472189,1115815935],None),
++ ([3045472189,1115815936],None),
++ ([3045472189,1115815937],None),
++ ([3045472189,1621981420],None),
++ ([3045472189,2139095040],None),
++ ([3045472189,2143289344],Some(32)),
++ ([0,4286578688],None),
++ ([0,3769465068],None),
++ ([0,3263299585],None),
++ ([0,3263299584],Some(32)),
++ ([0,3263299583],Some(32)),
++ ([0,3262898176],Some(96)),
++ ([0,3212967936],Some(2016)),
++ ([0,3045472189],Some(2080)),
++ ([0,0],Some(2080)),
++ ([0,1065484288],Some(2080)),
++ ([0,1115414528],Some(4064)),
++ ([0,1115815935],None),
++ ([0,1115815936],None),
++ ([0,1115815937],None),
++ ([0,1621981420],None),
++ ([0,2139095040],None),
++ ([0,2143289344],Some(32)),
++ ([1065484288,4286578688],None),
++ ([1065484288,3769465068],None),
++ ([1065484288,3263299585],None),
++ ([1065484288,3263299584],Some(32)),
++ ([1065484288,3263299583],Some(32)),
++ ([1065484288,3262898176],Some(96)),
++ ([1065484288,3212967936],Some(2016)),
++ ([1065484288,3045472189],Some(2080)),
++ ([1065484288,0],Some(2080)),
++ ([1065484288,1065484288],Some(2080)),
++ ([1065484288,1115414528],Some(4064)),
++ ([1065484288,1115815935],None),
++ ([1065484288,1115815936],None),
++ ([1065484288,1115815937],None),
++ ([1065484288,1621981420],None),
++ ([1065484288,2139095040],None),
++ ([1065484288,2143289344],Some(32)),
++ ([1115414528,4286578688],None),
++ ([1115414528,3769465068],None),
++ ([1115414528,3263299585],None),
++ ([1115414528,3263299584],Some(63)),
++ ([1115414528,3263299583],Some(63)),
++ ([1115414528,3262898176],Some(127)),
++ ([1115414528,3212967936],Some(2047)),
++ ([1115414528,3045472189],Some(2111)),
++ ([1115414528,0],Some(2111)),
++ ([1115414528,1065484288],Some(2111)),
++ ([1115414528,1115414528],Some(4095)),
++ ([1115414528,1115815935],None),
++ ([1115414528,1115815936],None),
++ ([1115414528,1115815937],None),
++ ([1115414528,1621981420],None),
++ ([1115414528,2139095040],None),
++ ([1115414528,2143289344],Some(63)),
++ ([1115815935,4286578688],None),
++ ([1115815935,3769465068],None),
++ ([1115815935,3263299585],None),
++ ([1115815935,3263299584],None),
++ ([1115815935,3263299583],None),
++ ([1115815935,3262898176],None),
++ ([1115815935,3212967936],None),
++ ([1115815935,3045472189],None),
++ ([1115815935,0],None),
++ ([1115815935,1065484288],None),
++ ([1115815935,1115414528],None),
++ ([1115815935,1115815935],None),
++ ([1115815935,1115815936],None),
++ ([1115815935,1115815937],None),
++ ([1115815935,1621981420],None),
++ ([1115815935,2139095040],None),
++ ([1115815935,2143289344],None),
++ ([1115815936,4286578688],None),
++ ([1115815936,3769465068],None),
++ ([1115815936,3263299585],None),
++ ([1115815936,3263299584],None),
++ ([1115815936,3263299583],None),
++ ([1115815936,3262898176],None),
++ ([1115815936,3212967936],None),
++ ([1115815936,3045472189],None),
++ ([1115815936,0],None),
++ ([1115815936,1065484288],None),
++ ([1115815936,1115414528],None),
++ ([1115815936,1115815935],None),
++ ([1115815936,1115815936],None),
++ ([1115815936,1115815937],None),
++ ([1115815936,1621981420],None),
++ ([1115815936,2139095040],None),
++ ([1115815936,2143289344],None),
++ ([1115815937,4286578688],None),
++ ([1115815937,3769465068],None),
++ ([1115815937,3263299585],None),
++ ([1115815937,3263299584],None),
++ ([1115815937,3263299583],None),
++ ([1115815937,3262898176],None),
++ ([1115815937,3212967936],None),
++ ([1115815937,3045472189],None),
++ ([1115815937,0],None),
++ ([1115815937,1065484288],None),
++ ([1115815937,1115414528],None),
++ ([1115815937,1115815935],None),
++ ([1115815937,1115815936],None),
++ ([1115815937,1115815937],None),
++ ([1115815937,1621981420],None),
++ ([1115815937,2139095040],None),
++ ([1115815937,2143289344],None),
++ ([1621981420,4286578688],None),
++ ([1621981420,3769465068],None),
++ ([1621981420,3263299585],None),
++ ([1621981420,3263299584],None),
++ ([1621981420,3263299583],None),
++ ([1621981420,3262898176],None),
++ ([1621981420,3212967936],None),
++ ([1621981420,3045472189],None),
++ ([1621981420,0],None),
++ ([1621981420,1065484288],None),
++ ([1621981420,1115414528],None),
++ ([1621981420,1115815935],None),
++ ([1621981420,1115815936],None),
++ ([1621981420,1115815937],None),
++ ([1621981420,1621981420],None),
++ ([1621981420,2139095040],None),
++ ([1621981420,2143289344],None),
++ ([2139095040,4286578688],None),
++ ([2139095040,3769465068],None),
++ ([2139095040,3263299585],None),
++ ([2139095040,3263299584],None),
++ ([2139095040,3263299583],None),
++ ([2139095040,3262898176],None),
++ ([2139095040,3212967936],None),
++ ([2139095040,3045472189],None),
++ ([2139095040,0],None),
++ ([2139095040,1065484288],None),
++ ([2139095040,1115414528],None),
++ ([2139095040,1115815935],None),
++ ([2139095040,1115815936],None),
++ ([2139095040,1115815937],None),
++ ([2139095040,1621981420],None),
++ ([2139095040,2139095040],None),
++ ([2139095040,2143289344],None),
++ ([2143289344,4286578688],None),
++ ([2143289344,3769465068],None),
++ ([2143289344,3263299585],None),
++ ([2143289344,3263299584],Some(0)),
++ ([2143289344,3263299583],Some(0)),
++ ([2143289344,3262898176],Some(64)),
++ ([2143289344,3212967936],Some(1984)),
++ ([2143289344,3045472189],Some(2048)),
++ ([2143289344,0],Some(2048)),
++ ([2143289344,1065484288],Some(2048)),
++ ([2143289344,1115414528],Some(4032)),
++ ([2143289344,1115815935],None),
++ ([2143289344,1115815936],None),
++ ([2143289344,1115815937],None),
++ ([2143289344,1621981420],None),
++ ([2143289344,2139095040],None),
++ ([2143289344,2143289344],Some(0)),
++ ];
++ for &(point,expected) in cases {let walls:Vec<_>=hash.segments_at_world_xz(point.map(f32::from_bits)).map(|s|s.wall.0).collect();assert_eq!(walls,expected.into_iter().collect::<Vec<_>>(),"point bits {point:?}");}
++ let p=[1.0,1.0];let row=WallSpatialSegment {endpoints:[p,p],source_u:[0.0,1.0],relative_heights:[0.0;2],terrain_heights:[0.0;2],wall:WallId(9000)};
++ hash.add_segment(row);hash.add_segment(row);assert_eq!(hash.segments_at_world_xz(p).filter(|s|s.wall.0==9000).count(),2,"original cell preserves both rows of one wall");
++}

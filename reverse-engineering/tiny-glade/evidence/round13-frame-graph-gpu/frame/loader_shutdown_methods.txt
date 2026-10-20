@@ -1,0 +1,38 @@
+    /// Stop producers, retaining pending Worlds through GPU/readback retries.
+    pub(crate) fn stop_worker(&mut self) -> anyhow::Result<()> {
+        self.cancel.store(true, std::sync::atomic::Ordering::Release);
+        let mut first_error = None;
+        if let Some(worker) = self.worker.take() {
+            if worker.join().is_err() {
+                first_error = Some(anyhow::anyhow!("async gameplay worker panicked during shutdown"));
+            }
+        }
+        while let Ok(result) = self.receiver.try_recv() {
+            if let Ok(gameplay) = result {
+                assert!(self.pending.is_none(), "async loader sent its World twice");
+                self.pending = Some(gameplay);
+            }
+        }
+        match first_error { Some(error) => Err(error), None => Ok(()) }
+    }
+
+    pub(crate) fn worker_stopped(&self) -> bool {
+        self.worker.is_none()
+    }
+
+    pub(crate) fn disconnect_save_workers(&mut self) -> anyhow::Result<()> {
+        assert!(self.worker_stopped(), "save cleanup raced the async gameplay worker");
+        if let Some(gameplay) = &mut self.pending {
+            crate::shutdown_runtime::disconnect_save_worker(gameplay.world_mut())?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn hurry_screenshots(&mut self) -> anyhow::Result<()> {
+        assert!(self.worker_stopped(), "screenshot cleanup raced the async gameplay worker");
+        if let Some(gameplay) = &mut self.pending {
+            crate::shutdown_runtime::hurry_world_screenshots(gameplay.world_mut())?;
+        }
+        Ok(())
+    }
+

@@ -1,0 +1,180 @@
+//! B MouseDepthValue CPU owner and its original GPU/replay readback consumer.
+//! Constructor is inlined at140940e10..e1f (56 zero bytes); full readback
+//! @140a1a480 is1390B. The GPU owner remains canonical MouseDepthValueSsbo.
+use crate::{
+    asset_libraries::ssbo_library::AssetSsboLibrary,
+    input::{InputRecordReplayMode, recording::MouseDepthReplayFrame},
+    resources::{
+        compute_mouse_depth_value::MouseDepthValueSsbo, mouse_terrain_raycast::CursorPositionSS,
+        window::WindowSize,
+    },
+    systems::{
+        backend::input::input_record_replay::InputRecordReplayState,
+        camera_rig::main_camera::MainCamera,
+    },
+};
+use bevy_ecs::prelude::*;
+use glam::{Vec2, Vec3};
+
+/// Semantic fields at original offsets0/4/8/14/20/2c. No GPU buffer, native
+/// pointer or second cursor authority is stored in this CPU resource.
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct MouseDepthValue {
+    pub depth: f32,
+    pub view_depth: f32,
+    pub mouse_position: Vec3,
+    pub center_position: Vec3,
+    pub filtered_mouse_position: Vec3,
+    pub filtered_center_position: Vec3,
+}
+impl MouseDepthValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn replay_frame(&self) -> MouseDepthReplayFrame {
+        MouseDepthReplayFrame {
+            depth: self.depth,
+            mouse_position: self.mouse_position,
+            center_position: self.center_position,
+        }
+    }
+    pub fn restore_replay_frame(&mut self, frame: MouseDepthReplayFrame) {
+        self.depth = frame.depth;
+        self.mouse_position = frame.mouse_position;
+        self.center_position = frame.center_position;
+    }
+    /// Sequential bounds checks preserve the original valid prefix if a
+    /// malformed mapped carrier is shorter than four records. Nonfinite
+    /// components reject only their own depth/xyz group, retaining old values.
+    pub fn apply_gpu_samples(&mut self, samples: &[MouseDepthValueSsbo]) {
+        let first = samples[0].0;
+        if first[3].is_finite() {
+            self.depth = first[3];
+        }
+        let xyz =
+            |record: MouseDepthValueSsbo| Vec3::from_array([record.0[0], record.0[1], record.0[2]]);
+        let first_xyz = xyz(samples[0]);
+        if first_xyz.is_finite() {
+            self.mouse_position = first_xyz;
+        }
+        let center = xyz(samples[1]);
+        if center.is_finite() {
+            self.center_position = center;
+        }
+        let filtered_mouse = xyz(samples[2]);
+        if filtered_mouse.is_finite() {
+            self.filtered_mouse_position = filtered_mouse;
+        }
+        let filtered_center = xyz(samples[3]);
+        if filtered_center.is_finite() {
+            self.filtered_center_position = filtered_center;
+        }
+    }
+    /// Original inverse-projection scalar expression after any replay override.
+    /// It deliberately does not sanitize a zero window or nonfinite quotient.
+    pub fn update_view_depth(&mut self, camera: &MainCamera, cursor: Vec2, window: WindowSize) {
+        let x = cursor.x / window.width as f32;
+        let y = cursor.y / window.height as f32;
+        let x = x + x - 1.0;
+        let y = y + y - 1.0;
+        let numerator = self.depth * camera.read_f32(0x68)
+            + (x * camera.read_f32(0x48) - y * camera.read_f32(0x58))
+            + camera.read_f32(0x78);
+        let denominator = self.depth * camera.read_f32(0x6c)
+            + (x * camera.read_f32(0x4c) - y * camera.read_f32(0x5c))
+            + camera.read_f32(0x7c);
+        self.view_depth = -(numerator / denominator);
+    }
+}
+
+/// B Update set10 under the original shared gameplay-active condition.
+/// Native registration chains camera ray -> terrain ray -> (capture,readback).
+/// The library maps the real readback allocation; absence is an original panic.
+pub fn read_mouse_depth_value_from_gpu(
+    camera: Res<MainCamera>,
+    cursor: Res<CursorPositionSS>,
+    window: Res<WindowSize>,
+    library: Res<AssetSsboLibrary>,
+    mut value: ResMut<MouseDepthValue>,
+    mut replay: ResMut<InputRecordReplayState>,
+) {
+    if replay.mode == InputRecordReplayMode::DisableInput {
+        return;
+    }
+    let buffer = library
+        .get::<MouseDepthValueSsbo>()
+        .expect("MouseDepthValueSsbo is absent or has the wrong storage type");
+    value.apply_gpu_samples(buffer.mapped);
+    match replay.mode {
+        InputRecordReplayMode::AutoRecordPanicRepro | InputRecordReplayMode::Records => {
+            replay
+                .stream
+                .last_frame_mut()
+                .expect("readback requires the actual just-recorded input frame")
+                .mouse_depth = value.replay_frame();
+        }
+        InputRecordReplayMode::Replay => {
+            let recorded = replay
+                .current_frame()
+                .expect("input replay current frame is out of range")
+                .mouse_depth;
+            value.restore_replay_frame(recorded);
+        }
+        InputRecordReplayMode::None => {}
+        InputRecordReplayMode::DisableInput => {
+            unreachable!("disabled mode returned before GPU access")
+        }
+    }
+    value.update_view_depth(&camera, cursor.0, *window);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn original_finite_groups_keep_the_previous_values_independently() {
+        let mut value = MouseDepthValue::new();
+        value.apply_gpu_samples(&[
+            MouseDepthValueSsbo([1.0, 2.0, 3.0, 0.25]),
+            MouseDepthValueSsbo([4.0, 5.0, 6.0, 0.5]),
+            MouseDepthValueSsbo([7.0, 8.0, 9.0, 0.75]),
+            MouseDepthValueSsbo([10.0, 11.0, 12.0, 1.0]),
+        ]);
+        value.apply_gpu_samples(&[
+            MouseDepthValueSsbo([f32::NAN, 22.0, 23.0, 0.125]),
+            MouseDepthValueSsbo([24.0, 25.0, 26.0, f32::NAN]),
+            MouseDepthValueSsbo([f32::INFINITY, 28.0, 29.0, 0.0]),
+            MouseDepthValueSsbo([30.0, 31.0, 32.0, f32::INFINITY]),
+        ]);
+        assert_eq!(value.depth, 0.125);
+        assert_eq!(value.mouse_position, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(value.center_position, Vec3::new(24.0, 25.0, 26.0));
+        assert_eq!(value.filtered_mouse_position, Vec3::new(7.0, 8.0, 9.0));
+        assert_eq!(value.filtered_center_position, Vec3::new(30.0, 31.0, 32.0));
+    }
+    #[test]
+    fn short_mapping_panics_after_writing_the_actual_valid_prefix() {
+        let mut value = MouseDepthValue::new();
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                value.apply_gpu_samples(&[MouseDepthValueSsbo([1.0, 2.0, 3.0, 0.25])]);
+            }))
+            .is_err()
+        );
+        assert_eq!(value.depth, 0.25);
+        assert_eq!(value.mouse_position, Vec3::new(1.0, 2.0, 3.0));
+    }
+    #[test]
+    fn replay_overrides_only_the_three_original_recorded_values() {
+        let mut value = MouseDepthValue::new();
+        value.filtered_mouse_position = Vec3::new(4.0, 5.0, 6.0);
+        let recorded = MouseDepthReplayFrame {
+            depth: 0.5,
+            mouse_position: Vec3::X,
+            center_position: Vec3::Y,
+        };
+        value.restore_replay_frame(recorded);
+        assert_eq!(value.replay_frame(), recorded);
+        assert_eq!(value.filtered_mouse_position, Vec3::new(4.0, 5.0, 6.0));
+    }
+}

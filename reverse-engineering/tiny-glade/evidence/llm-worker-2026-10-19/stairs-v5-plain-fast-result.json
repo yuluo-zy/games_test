@@ -1,0 +1,426 @@
+{
+  "id": "B-replay-stairs-v5-plain-fast",
+  "input_sha256": "3360a60a9960ab9ea35c2dddb3fbaf6b1c69b012bf9daf73b24c6806c5c219f4",
+  "prompt_sha256": "5c66b1acd11c82c31604b80c6412cf264e05c1a53e811b8e8837139c7ba0ed55",
+  "packet_sha256": "6ad2146b88b68b736c479aef9009d1396fd2086777c7617793b6e255dec76624",
+  "rendered_input_sha256": "fe9c2b4c99f308aa8f9991b3959f03bd60e49aae9044a757a769e780d1334ef1",
+  "render_format": "numbered-plain-text-v1",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 8000,
+    "thinking": "template-disabled"
+  },
+  "elapsed_seconds": 33.541,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 4596,
+    "prompt_tokens": 14918,
+    "total_tokens": 19514,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Decompiled replay_stairs walks a 0x30-byte record slice, collects break indices, reverses them, then removes records by index in reverse order with per-variant drops and a shift-fill; it appends 0x38-byte replay commands built from lookup results.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "Observed: early return when puVar33[3]==0 before any collection or removal; the vector element stride for the input slice is 0x30 and element count is derived from puVar33[2]-max(*puVar33,puVar33[2]<*puVar33?0:*puVar33).",
+        "refs": [
+          "D1:L118-L127"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "Observed: two collection sites push the pre-increment index (uVar38) into a temporary ulonglong buffer at puStack_c8, growing via FUN_140b81df0 with different &UNK seeds (0x142ae53c8 vs 0x142ae53e0); same pattern at both occurrences.",
+        "refs": [
+          "D1:L183-L190",
+          "D1:L345-L350"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "Observed: output record stride 0x38 at lVar8+0x28; fields written are uVar27 at +0, cVar40 at +8, 16-byte frame at +9, 16-byte frame at +0x18, pair uVar67/uVar68 at +0x28, byte 1 at +0x30; lVar8+0x30 (count) and lVar8+0x40 (counter) both increment by one.",
+        "refs": [
+          "D1:L499-L516"
+        ]
+      },
+      {
+        "id": "O4",
+        "claim": "Observed: removal loop iterates the collected indices in buffer order, bounds-checks against lVar25+0x10, copies the record at that index to a stack temp, calls func_0x000142923c10 to shift the tail by 0x30 bytes, then decrements the length; per-case drop dispatch on uStack_118 with 11 distinct outcomes.",
+        "refs": [
+          "D1:L569-L601",
+          "D1:L602-L695"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "puVar33[3]==0 (input record count zero)",
+        "effect": "return immediately, no collection, no removal, no cleanup",
+        "refs": [
+          "D1:L118-L120"
+        ]
+      },
+      {
+        "condition": "puVar33[2] < *puVar33 (wrapped span)",
+        "effect": "uVar28=0 and element span becomes (puVar33[2]-0)*0x40 in lVar37 (record_bytes = stride*0x40? see unknowns)",
+        "refs": [
+          "D1:L123-L126"
+        ]
+      },
+      {
+        "condition": "puVar33[2] >= *puVar33",
+        "effect": "uVar28=*puVar33 and lVar37=(puVar33[2]-uVar28)*0x40",
+        "refs": [
+          "D1:L121-L126"
+        ]
+      },
+      {
+        "condition": "record byte at *puStack_b8=='\\n' AND (*(byte*)((char*)puStack_b8+8) & 1)==0",
+        "effect": "collect index uVar38; may grow buffer via FUN_140b81df0(&uStack_d0,&UNK_142ae53c8); store puStack_c8[uVar28]=uVar38; then read tag at *(pcStack_a8+0x10)+0x10",
+        "refs": [
+          "D1:L183-L192"
+        ]
+      },
+      {
+        "condition": "tag byte &1 == 0 at first collection site",
+        "effect": "goto code_r0x000140af77bd (second construction branch)",
+        "refs": [
+          "D1:L192-L193",
+          "D1:L355"
+        ]
+      },
+      {
+        "condition": "tag byte &1 != 0 at first collection site",
+        "effect": "fall into code_r0x000140af782f (first construction branch)",
+        "refs": [
+          "D1:L192-L194"
+        ]
+      },
+      {
+        "condition": "not ('\\n' && flag==0) branch: compute f=*(+0xc)/fVar3 then max with fVar22(=0.05f from _UNK_142930d70 per C1)",
+        "effect": "fVar17 = (*(+0xc)/fVar3) if that <=fVar22 keep, else fVar22; ordered FP so NaN in (*+0xc)/fVar3 makes comparison false and picks fVar22",
+        "refs": [
+          "D1:L336-L339",
+          "C1:L1"
+        ]
+      },
+      {
+        "condition": "*(+0x18) <= fVar17",
+        "effect": "add *(lVar34+0x28) to *(puStack_b8+0x18) and continue outer loop (goto code_r0x000140af7722)",
+        "refs": [
+          "D1:L340-L343"
+        ]
+      },
+      {
+        "condition": "*(+0x18) > fVar17 (or unordered)",
+        "effect": "collect index uVar38 via second site, add delta to *(pcStack_a8+0x18), read tag at *(pcStack_a8+0x10)+0x10",
+        "refs": [
+          "D1:L345-L353"
+        ]
+      },
+      {
+        "condition": "flag&1==0 at second site",
+        "effect": "goto code_r0x000140af782f (first construction branch)",
+        "refs": [
+          "D1:L353-L354"
+        ]
+      },
+      {
+        "condition": "flag&1!=0 at second site",
+        "effect": "fall into code_r0x000140af77bd (second construction branch)",
+        "refs": [
+          "D1:L353-L355"
+        ]
+      },
+      {
+        "condition": "both construct branches: pcStack_a8[0x1c]==0",
+        "effect": "call FUN_1405b1be0(lVar29,lVar35+4) then FUN_140b76ce0(&uStack_118,lStack_e8,ret); call FUN_1402c8640(lStack_e8,*(lVar35+4),*(lVar35+8)) only in the opposite branch",
+        "refs": [
+          "D1:L206-L214",
+          "D1:L367-L375"
+        ]
+      },
+      {
+        "condition": "both construct branches: pcStack_a8[0x1c]!=0",
+        "effect": "call FUN_1402c8640(lStack_e8,*(lVar35+4),*(lVar35+8)); the other branch's two calls run instead",
+        "refs": [
+          "D1:L212-L214",
+          "D1:L369-L375"
+        ]
+      },
+      {
+        "condition": "plStack_b0[3]!=0 (hash map non-empty) AND inner probe matches auVar44 bytes",
+        "effect": "call FUN_1405b0ed0 to derive hash, probe, on match load uStack_a0/uStack_fd from entry; goto joined",
+        "refs": [
+          "D1:L218-L276",
+          "D1:L379-L437"
+        ]
+      },
+      {
+        "condition": "plStack_b0[3]!=0 but probe exhausts the uVar23 chain without id match",
+        "effect": "break out; then zero uStack_a0/uStack_98/uStack_fd at L313-L315 / L474-L476",
+        "refs": [
+          "D1:L297-L311",
+          "D1:L458-L472"
+        ]
+      },
+      {
+        "condition": "plStack_b0[3]==0",
+        "effect": "skip FUN_1405b0ed0/probe; uStack_a0=0 at L313/L378 CONCAT preserved high dword; uStack_98=0; uStack_fd=0",
+        "refs": [
+          "D1:L218",
+          "D1:L313-L315"
+        ]
+      },
+      {
+        "condition": "after joined_0x140af7b8d / joined_0x140af79e5: puVar31==0",
+        "effect": "uVar67=0,uVar68=0; else uVar67=low32(*puVar31),uVar68=high32(*puVar31)",
+        "refs": [
+          "D1:L316-L324",
+          "D1:L478-L486"
+        ]
+      },
+      {
+        "condition": "puVar31!=0 and (*(byte*)(lVar25/lVar26+0x41)|0xf8)>0xf9",
+        "effect": "puVar31 forced to 0 (so above zero branch taken); otherwise puVar31=lVar25/lVar26+0x30",
+        "refs": [
+          "D1:L200-L205",
+          "D1:L361-L366"
+        ]
+      },
+      {
+        "condition": "after writing output record: lVar35==*(lVar8+0x20)",
+        "effect": "call FUN_1406319d0(lVar8+0x20) before accepting new length (reallocation)",
+        "refs": [
+          "D1:L490-L496",
+          "D1:L328-L333"
+        ]
+      },
+      {
+        "condition": "1 < uStack_c0 (collected count>1)",
+        "effect": "reverse buffer in place using 128-bit block swaps (block-of-4 path when >=8, else scalar swap loop pairing front/back)",
+        "refs": [
+          "D1:L521-L565"
+        ]
+      },
+      {
+        "condition": "uStack_c0==0 after reversal",
+        "effect": "skip removal loop; proceed to buffer free check",
+        "refs": [
+          "D1:L569",
+          "D1:L697-L698"
+        ]
+      },
+      {
+        "condition": "removal loop: uVar41>=*(lVar25+0x10)",
+        "effect": "call FUN_1428d90e9 (does-not-return, invalidInstructionException)",
+        "refs": [
+          "D1:L574-L579"
+        ]
+      },
+      {
+        "condition": "per-variant drop on uStack_118",
+        "effect": "case0/1/2/5/6/7/8/9/default: LOCK dec *(ptr), if zero call FUN_140b5cfc0/FUN_140b5d010/func_0x000140b5d010/FUN_140b5c040/func_0x0001402e5d80/func_0x0001406978e0; case3: dec then FUN_140b5c2a0(&uStack_110) if zero; case4: call FUN_140891eb0(&uStack_110) (WallReplayCmd drop per S1)",
+        "refs": [
+          "D1:L602-L695",
+          "S1:L1-L3"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": "1",
+        "effect": "param_1[2] deref written from param_1+0x1c; param_3[2] deref written from param_3+0x1c (once per record processed); param_4[2] deref written from param_4+0x1c (once per record processed)",
+        "refs": [
+          "D1:L116",
+          "D1:L207",
+          "D1:L368",
+          "D1:L327",
+          "D1:L489"
+        ]
+      },
+      {
+        "order": "2",
+        "effect": "two possible buffer growth calls FUN_140b81df0(&uStack_d0,&UNK_142ae53c8) and (&uStack_d0,&UNK_142ae53e0) when capacity equals length at the respective collection site",
+        "refs": [
+          "D1:L187-L189",
+          "D1:L347-L349"
+        ]
+      },
+      {
+        "order": "3",
+        "effect": "per-record: if pcStack_a8[0x1c]==0 then FUN_1405b1be0+FUN_140b76ce0(&uStack_118,lStack_e8,ret); else FUN_1402c8640(lStack_e8,*(lVar35+4),*(lVar35+8)); the two are mutually exclusive per branch",
+        "refs": [
+          "D1:L208-L214",
+          "D1:L369-L375"
+        ]
+      },
+      {
+        "order": "4",
+        "effect": "per-record: if plStack_b0[3]!=0, FUN_1405b0ed0(plVar24,&uStack_a0) then probe; on match load uStack_a0 and uStack_fd; on full miss set uStack_a0/uStack_98/uStack_fd to 0 and fall through with uVar67/uVar68 from puVar31 (or 0 if puVar31==0)",
+        "refs": [
+          "D1:L218-L324",
+          "D1:L379-L486"
+        ]
+      },
+      {
+        "order": "5",
+        "effect": "output write: *(lVar8+0x28)+lVar35*0x38 gets uVar27 (payload1), tag cVar40 at +8, 16B at +9, 16B at +0x18, uVar67:uVar68 at +0x28, byte 1 at +0x30; then *(lVar8+0x30)=lVar35+1 and *(lVar8+0x40)+=1",
+        "refs": [
+          "D1:L499-L516"
+        ]
+      },
+      {
+        "order": "6",
+        "effect": "reversal of puStack_c8 in place (block-of-4 128-bit swaps and/or scalar pair swaps depending on length thresholds)",
+        "refs": [
+          "D1:L521-L565"
+        ]
+      },
+      {
+        "order": "7",
+        "effect": "per collected index (buffer order): load record to stack temp, func_0x000142923c10(src=base+idx*0x30,dst=src+0x30,(~idx+len)*0x30) shifts tail, then *(lVar25+0x10)=len-1",
+        "refs": [
+          "D1:L574-L601"
+        ]
+      },
+      {
+        "order": "8",
+        "effect": "per removed record: switch(uStack_118) dispatch; cases 0,1,2,5,6,7,8,9,default LOCK-decrement *(longlong*)CONCAT53(uStack_105,uStack_109._1_3_) and call zero-only dtor (see branch row); case3 LOCK-decrement and FUN_140b5c2a0(&uStack_110); case4 FUN_140891eb0(&uStack_110)",
+        "refs": [
+          "D1:L602-L695"
+        ]
+      },
+      {
+        "order": "9",
+        "effect": "final: if plStack_b0!=0 call func_0x000140613c20(puStack_b8,(longlong)plStack_b0<<3,8) freeing the index buffer; return",
+        "refs": [
+          "D1:L699-L702"
+        ]
+      }
+    ],
+    "dependency_reuse": [
+      {
+        "operation": "temporary ulonglong buffer of collected indices",
+        "game_policy_to_preserve": "growth via FUN_140b81df0 with element-size seed argument; capacity-equals-length triggers growth before storing; final free via func_0x000140613c20(buf,len<<3,8) only when len>0",
+        "refs": [
+          "D1:L128-L130",
+          "D1:L187-L189",
+          "D1:L347-L349",
+          "D1:L699-L701"
+        ]
+      },
+      {
+        "operation": "hash-map lookup on plStack_b0 (plVar24=plStack_b0+4)",
+        "game_policy_to_preserve": "inferred: lookup is FUN_1405b0ed0 followed by a Swiss-table style probe over 16-byte groups with byte-tag fast reject and delta chain; preserve absence result (all-zero uStack_a0/uStack_98/uStack_fd) rather than substituting a default",
+        "refs": [
+          "D1:L219",
+          "D1:L225-L311",
+          "D1:L380-L472"
+        ]
+      },
+      {
+        "operation": "output vector push onto lVar8+0x20/0x28/0x30/0x40",
+        "game_policy_to_preserve": "inferred: on full capacity call FUN_1406319d0(lVar8+0x20) first, then write the 0x38 record at index lVar35 and update count and counter",
+        "refs": [
+          "D1:L331-L333",
+          "D1:L490-L496",
+          "D1:L499-L516"
+        ]
+      }
+    ],
+    "unknowns": [
+      {
+        "question": "What is the exact semantic type of the 0x40-byte record (stride) vs 0x30-byte input record stride; the discrepancy between lVar37=(end-begin)*0x40 and lVar37*0x30 for the end compare is not resolved",
+        "needed_evidence": "type layout of puVar33[] element and of pcVar5[] element (0x30 stride)",
+        "refs": [
+          "D1:L126-L127",
+          "D1:L180-L181"
+        ]
+      },
+      {
+        "question": "ABI/signature of FUN_140a1c930, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640, FUN_1405b0ed0, FUN_1406319d0, FUN_140b81df0, func_0x000142923c10, func_0x000140613c20, FUN_1428d90e9, and dtor pointers per case; not proven here",
+        "needed_evidence": "PDB/export table labels and ABI headers at those VAs",
+        "refs": [
+          "D1:L196",
+          "D1:L209-L213",
+          "D1:L357",
+          "D1:L373-L374",
+          "D1:L380",
+          "D1:L332",
+          "D1:L188",
+          "D1:L348",
+          "D1:L600",
+          "D1:L576",
+          "D1:L609",
+          "D1:L636",
+          "D1:L640",
+          "D1:L648",
+          "D1:L657",
+          "D1:L666",
+          "D1:L675",
+          "D1:L684",
+          "D1:L693",
+          "D1:L700"
+        ]
+      },
+      {
+        "question": "Which semantic variant corresponds to each uStack_118 case 0..9 and default; S1 only confirms case4 calls WallReplayCmd::drop_in_place",
+        "needed_evidence": "PDB enum labels for the replay_stairs output record variant tag",
+        "refs": [
+          "D1:L602-L695",
+          "S1:L1-L6"
+        ]
+      },
+      {
+        "question": "What is the semantic of uVar31/puVar31 tag-byte test (*(lVar25+0x41)|0xf8)>0xf9 -- variant discriminant predicate; whether it maps to an Option-like or niche-based tag",
+        "needed_evidence": "type layout of the map value at lVar25",
+        "refs": [
+          "D1:L200-L205",
+          "D1:L361-L366"
+        ]
+      },
+      {
+        "question": "Whether pcStack_a8+0x1c branch direction (==0 vs !=0) corresponds to a specific add/remove or insert direction; only call-address and argument shape are observed",
+        "needed_evidence": "PDB/type info for the 0x30-byte input record and constants FUN_1405b1be0/FUN_1402c8640",
+        "refs": [
+          "D1:L206-L214",
+          "D1:L367-L375"
+        ]
+      }
+    ],
+    "integration_checks": [
+      "Verify removal iterates collected indices in the same order stored (which is reverse of scan/append order after L521-L565 reversal) and that per-record tail shift length equals (~idx+len)*0x30 against the source's equality",
+      "Assert the split between L206-L214 vs L367-L375 with the tag predicate pcStack_a8[0x1c]==0 preserves the call pairing observed (FUN_1405b1be0+FUN_140b76ce0 vs FUN_1402c8640) in each of the two construction branches",
+      "Verify output record field layout: uVar27 at +0, tag byte at +8, frames at +9 and +0x18, uVar67/uVar68 at +0x28, byte 1 at +0x30, count at lVar8+0x30 incrementing after reallocation check against lVar8+0x20",
+      "Check that the FP guarded branch preserves ordered comparison semantics of *(f32)(+0xc)/fVar3 against fVar22 and *(f32)(+0x18) against fVar17 including unordered/NaN -> take the else path (else compare <=); do not substitute >= for the complement"
+    ],
+    "independent_followups": [
+      {
+        "task": "Map each FUN_1405b0ed0/FUN_1405b1be0/FUN_1402c8640/FUN_140b76ce0/FUN_1406319d0/FUN_140b81df0/func_0x000142923c10/func_0x000140613c20 FD VAs to PDB public labels and ABI",
+        "input_needed": "PDB public symbols and headers for VAs 0x1405b0ed0,0x1405b1be0,0x1402c8640,0x140b76ce0,0x1406319d0,0x140b81df0,0x142923c10,0x140613c20",
+        "output_contract": "JSON: [{va,name,module,signature_shape}]; unknown where PDB lacks a label",
+        "depends_on": [
+          "D1:L196-L218",
+          "D1:L328-L380"
+        ]
+      },
+      {
+        "task": "Determine semantic of uStack_118 case 0..9 and default using retained PDB or fresh type dump for the output-record variant tag",
+        "input_needed": "PDB type/enum for country_core replay_stairs output record variant (or reproduction of drops at VAs 0x140b5cfc0,0x140b5c2a0,0x140b5c040,0x140b5cd40,0x140b5d010,0x1402e5d80,0x1406978e0,0x140891eb0)",
+        "output_contract": "JSON: [{case,tag_value_or_enum_name,drop_target_va,evidence}]",
+        "depends_on": [
+          "D1:L602-L695",
+          "S1:L1-L6"
+        ]
+      }
+    ]
+  },
+  "content": "{\"summary\":\"Decompiled replay_stairs walks a 0x30-byte record slice, collects break indices, reverses them, then removes records by index in reverse order with per-variant drops and a shift-fill; it appends 0x38-byte replay commands built from lookup results.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"Observed: early return when puVar33[3]==0 before any collection or removal; the vector element stride for the input slice is 0x30 and element count is derived from puVar33[2]-max(*puVar33,puVar33[2]<*puVar33?0:*puVar33).\",\"refs\":[\"D1:L118-L127\"]},{\"id\":\"O2\",\"claim\":\"Observed: two collection sites push the pre-increment index (uVar38) into a temporary ulonglong buffer at puStack_c8, growing via FUN_140b81df0 with different &UNK seeds (0x142ae53c8 vs 0x142ae53e0); same pattern at both occurrences.\",\"refs\":[\"D1:L183-L190\",\"D1:L345-L350\"]},{\"id\":\"O3\",\"claim\":\"Observed: output record stride 0x38 at lVar8+0x28; fields written are uVar27 at +0, cVar40 at +8, 16-byte frame at +9, 16-byte frame at +0x18, pair uVar67/uVar68 at +0x28, byte 1 at +0x30; lVar8+0x30 (count) and lVar8+0x40 (counter) both increment by one.\",\"refs\":[\"D1:L499-L516\"]},{\"id\":\"O4\",\"claim\":\"Observed: removal loop iterates the collected indices in buffer order, bounds-checks against lVar25+0x10, copies the record at that index to a stack temp, calls func_0x000142923c10 to shift the tail by 0x30 bytes, then decrements the length; per-case drop dispatch on uStack_118 with 11 distinct outcomes.\",\"refs\":[\"D1:L569-L601\",\"D1:L602-L695\"]}],\"branch_matrix\":[{\"condition\":\"puVar33[3]==0 (input record count zero)\",\"effect\":\"return immediately, no collection, no removal, no cleanup\",\"refs\":[\"D1:L118-L120\"]},{\"condition\":\"puVar33[2] < *puVar33 (wrapped span)\",\"effect\":\"uVar28=0 and element span becomes (puVar33[2]-0)*0x40 in lVar37 (record_bytes = stride*0x40? see unknowns)\",\"refs\":[\"D1:L123-L126\"]},{\"condition\":\"puVar33[2] >= *puVar33\",\"effect\":\"uVar28=*puVar33 and lVar37=(puVar33[2]-uVar28)*0x40\",\"refs\":[\"D1:L121-L126\"]},{\"condition\":\"record byte at *puStack_b8=='\\\\n' AND (*(byte*)((char*)puStack_b8+8) & 1)==0\",\"effect\":\"collect index uVar38; may grow buffer via FUN_140b81df0(&uStack_d0,&UNK_142ae53c8); store puStack_c8[uVar28]=uVar38; then read tag at *(pcStack_a8+0x10)+0x10\",\"refs\":[\"D1:L183-L192\"]},{\"condition\":\"tag byte &1 == 0 at first collection site\",\"effect\":\"goto code_r0x000140af77bd (second construction branch)\",\"refs\":[\"D1:L192-L193\",\"D1:L355\"]},{\"condition\":\"tag byte &1 != 0 at first collection site\",\"effect\":\"fall into code_r0x000140af782f (first construction branch)\",\"refs\":[\"D1:L192-L194\"]},{\"condition\":\"not ('\\\\n' && flag==0) branch: compute f=*(+0xc)/fVar3 then max with fVar22(=0.05f from _UNK_142930d70 per C1)\",\"effect\":\"fVar17 = (*(+0xc)/fVar3) if that <=fVar22 keep, else fVar22; ordered FP so NaN in (*+0xc)/fVar3 makes comparison false and picks fVar22\",\"refs\":[\"D1:L336-L339\",\"C1:L1\"]},{\"condition\":\"*(+0x18) <= fVar17\",\"effect\":\"add *(lVar34+0x28) to *(puStack_b8+0x18) and continue outer loop (goto code_r0x000140af7722)\",\"refs\":[\"D1:L340-L343\"]},{\"condition\":\"*(+0x18) > fVar17 (or unordered)\",\"effect\":\"collect index uVar38 via second site, add delta to *(pcStack_a8+0x18), read tag at *(pcStack_a8+0x10)+0x10\",\"refs\":[\"D1:L345-L353\"]},{\"condition\":\"flag&1==0 at second site\",\"effect\":\"goto code_r0x000140af782f (first construction branch)\",\"refs\":[\"D1:L353-L354\"]},{\"condition\":\"flag&1!=0 at second site\",\"effect\":\"fall into code_r0x000140af77bd (second construction branch)\",\"refs\":[\"D1:L353-L355\"]},{\"condition\":\"both construct branches: pcStack_a8[0x1c]==0\",\"effect\":\"call FUN_1405b1be0(lVar29,lVar35+4) then FUN_140b76ce0(&uStack_118,lStack_e8,ret); call FUN_1402c8640(lStack_e8,*(lVar35+4),*(lVar35+8)) only in the opposite branch\",\"refs\":[\"D1:L206-L214\",\"D1:L367-L375\"]},{\"condition\":\"both construct branches: pcStack_a8[0x1c]!=0\",\"effect\":\"call FUN_1402c8640(lStack_e8,*(lVar35+4),*(lVar35+8)); the other branch's two calls run instead\",\"refs\":[\"D1:L212-L214\",\"D1:L369-L375\"]},{\"condition\":\"plStack_b0[3]!=0 (hash map non-empty) AND inner probe matches auVar44 bytes\",\"effect\":\"call FUN_1405b0ed0 to derive hash, probe, on match load uStack_a0/uStack_fd from entry; goto joined\",\"refs\":[\"D1:L218-L276\",\"D1:L379-L437\"]},{\"condition\":\"plStack_b0[3]!=0 but probe exhausts the uVar23 chain without id match\",\"effect\":\"break out; then zero uStack_a0/uStack_98/uStack_fd at L313-L315 / L474-L476\",\"refs\":[\"D1:L297-L311\",\"D1:L458-L472\"]},{\"condition\":\"plStack_b0[3]==0\",\"effect\":\"skip FUN_1405b0ed0/probe; uStack_a0=0 at L313/L378 CONCAT preserved high dword; uStack_98=0; uStack_fd=0\",\"refs\":[\"D1:L218\",\"D1:L313-L315\"]},{\"condition\":\"after joined_0x140af7b8d / joined_0x140af79e5: puVar31==0\",\"effect\":\"uVar67=0,uVar68=0; else uVar67=low32(*puVar31),uVar68=high32(*puVar31)\",\"refs\":[\"D1:L316-L324\",\"D1:L478-L486\"]},{\"condition\":\"puVar31!=0 and (*(byte*)(lVar25/lVar26+0x41)|0xf8)>0xf9\",\"effect\":\"puVar31 forced to 0 (so above zero branch taken); otherwise puVar31=lVar25/lVar26+0x30\",\"refs\":[\"D1:L200-L205\",\"D1:L361-L366\"]},{\"condition\":\"after writing output record: lVar35==*(lVar8+0x20)\",\"effect\":\"call FUN_1406319d0(lVar8+0x20) before accepting new length (reallocation)\",\"refs\":[\"D1:L490-L496\",\"D1:L328-L333\"]},{\"condition\":\"1 < uStack_c0 (collected count>1)\",\"effect\":\"reverse buffer in place using 128-bit block swaps (block-of-4 path when >=8, else scalar swap loop pairing front/back)\",\"refs\":[\"D1:L521-L565\"]},{\"condition\":\"uStack_c0==0 after reversal\",\"effect\":\"skip removal loop; proceed to buffer free check\",\"refs\":[\"D1:L569\",\"D1:L697-L698\"]},{\"condition\":\"removal loop: uVar41>=*(lVar25+0x10)\",\"effect\":\"call FUN_1428d90e9 (does-not-return, invalidInstructionException)\",\"refs\":[\"D1:L574-L579\"]},{\"condition\":\"per-variant drop on uStack_118\",\"effect\":\"case0/1/2/5/6/7/8/9/default: LOCK dec *(ptr), if zero call FUN_140b5cfc0/FUN_140b5d010/func_0x000140b5d010/FUN_140b5c040/func_0x0001402e5d80/func_0x0001406978e0; case3: dec then FUN_140b5c2a0(&uStack_110) if zero; case4: call FUN_140891eb0(&uStack_110) (WallReplayCmd drop per S1)\",\"refs\":[\"D1:L602-L695\",\"S1:L1-L3\"]}]  , \"side_effects\":[{\"order\":\"1\",\"effect\":\"param_1[2] deref written from param_1+0x1c; param_3[2] deref written from param_3+0x1c (once per record processed); param_4[2] deref written from param_4+0x1c (once per record processed)\",\"refs\":[\"D1:L116\",\"D1:L207\",\"D1:L368\",\"D1:L327\",\"D1:L489\"]},{\"order\":\"2\",\"effect\":\"two possible buffer growth calls FUN_140b81df0(&uStack_d0,&UNK_142ae53c8) and (&uStack_d0,&UNK_142ae53e0) when capacity equals length at the respective collection site\",\"refs\":[\"D1:L187-L189\",\"D1:L347-L349\"]},{\"order\":\"3\",\"effect\":\"per-record: if pcStack_a8[0x1c]==0 then FUN_1405b1be0+FUN_140b76ce0(&uStack_118,lStack_e8,ret); else FUN_1402c8640(lStack_e8,*(lVar35+4),*(lVar35+8)); the two are mutually exclusive per branch\",\"refs\":[\"D1:L208-L214\",\"D1:L369-L375\"]},{\"order\":\"4\",\"effect\":\"per-record: if plStack_b0[3]!=0, FUN_1405b0ed0(plVar24,&uStack_a0) then probe; on match load uStack_a0 and uStack_fd; on full miss set uStack_a0/uStack_98/uStack_fd to 0 and fall through with uVar67/uVar68 from puVar31 (or 0 if puVar31==0)\",\"refs\":[\"D1:L218-L324\",\"D1:L379-L486\"]},{\"order\":\"5\",\"effect\":\"output write: *(lVar8+0x28)+lVar35*0x38 gets uVar27 (payload1), tag cVar40 at +8, 16B at +9, 16B at +0x18, uVar67:uVar68 at +0x28, byte 1 at +0x30; then *(lVar8+0x30)=lVar35+1 and *(lVar8+0x40)+=1\",\"refs\":[\"D1:L499-L516\"]},{\"order\":\"6\",\"effect\":\"reversal of puStack_c8 in place (block-of-4 128-bit swaps and/or scalar pair swaps depending on length thresholds)\",\"refs\":[\"D1:L521-L565\"]},{\"order\":\"7\",\"effect\":\"per collected index (buffer order): load record to stack temp, func_0x000142923c10(src=base+idx*0x30,dst=src+0x30,(~idx+len)*0x30) shifts tail, then *(lVar25+0x10)=len-1\",\"refs\":[\"D1:L574-L601\"]},{\"order\":\"8\",\"effect\":\"per removed record: switch(uStack_118) dispatch; cases 0,1,2,5,6,7,8,9,default LOCK-decrement *(longlong*)CONCAT53(uStack_105,uStack_109._1_3_) and call zero-only dtor (see branch row); case3 LOCK-decrement and FUN_140b5c2a0(&uStack_110); case4 FUN_140891eb0(&uStack_110)\",\"refs\":[\"D1:L602-L695\"]},{\"order\":\"9\",\"effect\":\"final: if plStack_b0!=0 call func_0x000140613c20(puStack_b8,(longlong)plStack_b0<<3,8) freeing the index buffer; return\",\"refs\":[\"D1:L699-L702\"]}],\"dependency_reuse\":[{\"operation\":\"temporary ulonglong buffer of collected indices\",\"game_policy_to_preserve\":\"growth via FUN_140b81df0 with element-size seed argument; capacity-equals-length triggers growth before storing; final free via func_0x000140613c20(buf,len<<3,8) only when len>0\",\"refs\":[\"D1:L128-L130\",\"D1:L187-L189\",\"D1:L347-L349\",\"D1:L699-L701\"]},{\"operation\":\"hash-map lookup on plStack_b0 (plVar24=plStack_b0+4)\",\"game_policy_to_preserve\":\"inferred: lookup is FUN_1405b0ed0 followed by a Swiss-table style probe over 16-byte groups with byte-tag fast reject and delta chain; preserve absence result (all-zero uStack_a0/uStack_98/uStack_fd) rather than substituting a default\",\"refs\":[\"D1:L219\",\"D1:L225-L311\",\"D1:L380-L472\"]},{\"operation\":\"output vector push onto lVar8+0x20/0x28/0x30/0x40\",\"game_policy_to_preserve\":\"inferred: on full capacity call FUN_1406319d0(lVar8+0x20) first, then write the 0x38 record at index lVar35 and update count and counter\",\"refs\":[\"D1:L331-L333\",\"D1:L490-L496\",\"D1:L499-L516\"]}],\"unknowns\":[{\"question\":\"What is the exact semantic type of the 0x40-byte record (stride) vs 0x30-byte input record stride; the discrepancy between lVar37=(end-begin)*0x40 and lVar37*0x30 for the end compare is not resolved\",\"needed_evidence\":\"type layout of puVar33[] element and of pcVar5[] element (0x30 stride)\",\"refs\":[\"D1:L126-L127\",\"D1:L180-L181\"]},{\"question\":\"ABI/signature of FUN_140a1c930, FUN_1405b1be0, FUN_140b76ce0, FUN_1402c8640, FUN_1405b0ed0, FUN_1406319d0, FUN_140b81df0, func_0x000142923c10, func_0x000140613c20, FUN_1428d90e9, and dtor pointers per case; not proven here\",\"needed_evidence\":\"PDB/export table labels and ABI headers at those VAs\",\"refs\":[\"D1:L196\",\"D1:L209-L213\",\"D1:L357\",\"D1:L373-L374\",\"D1:L380\",\"D1:L332\",\"D1:L188\",\"D1:L348\",\"D1:L600\",\"D1:L576\",\"D1:L609\",\"D1:L636\",\"D1:L640\",\"D1:L648\",\"D1:L657\",\"D1:L666\",\"D1:L675\",\"D1:L684\",\"D1:L693\",\"D1:L700\"]},{\"question\":\"Which semantic variant corresponds to each uStack_118 case 0..9 and default; S1 only confirms case4 calls WallReplayCmd::drop_in_place\",\"needed_evidence\":\"PDB enum labels for the replay_stairs output record variant tag\",\"refs\":[\"D1:L602-L695\",\"S1:L1-L6\"]},{\"question\":\"What is the semantic of uVar31/puVar31 tag-byte test (*(lVar25+0x41)|0xf8)>0xf9 -- variant discriminant predicate; whether it maps to an Option-like or niche-based tag\",\"needed_evidence\":\"type layout of the map value at lVar25\",\"refs\":[\"D1:L200-L205\",\"D1:L361-L366\"]},{\"question\":\"Whether pcStack_a8+0x1c branch direction (==0 vs !=0) corresponds to a specific add/remove or insert direction; only call-address and argument shape are observed\",\"needed_evidence\":\"PDB/type info for the 0x30-byte input record and constants FUN_1405b1be0/FUN_1402c8640\",\"refs\":[\"D1:L206-L214\",\"D1:L367-L375\"]}],\"integration_checks\":[\"Verify removal iterates collected indices in the same order stored (which is reverse of scan/append order after L521-L565 reversal) and that per-record tail shift length equals (~idx+len)*0x30 against the source's equality\",\"Assert the split between L206-L214 vs L367-L375 with the tag predicate pcStack_a8[0x1c]==0 preserves the call pairing observed (FUN_1405b1be0+FUN_140b76ce0 vs FUN_1402c8640) in each of the two construction branches\",\"Verify output record field layout: uVar27 at +0, tag byte at +8, frames at +9 and +0x18, uVar67/uVar68 at +0x28, byte 1 at +0x30, count at lVar8+0x30 incrementing after reallocation check against lVar8+0x20\",\"Check that the FP guarded branch preserves ordered comparison semantics of *(f32)(+0xc)/fVar3 against fVar22 and *(f32)(+0x18) against fVar17 including unordered/NaN -> take the else path (else compare <=); do not substitute >= for the complement\"]  , \"independent_followups\":[{\"task\":\"Map each FUN_1405b0ed0/FUN_1405b1be0/FUN_1402c8640/FUN_140b76ce0/FUN_1406319d0/FUN_140b81df0/func_0x000142923c10/func_0x000140613c20 FD VAs to PDB public labels and ABI\",\"input_needed\":\"PDB public symbols and headers for VAs 0x1405b0ed0,0x1405b1be0,0x1402c8640,0x140b76ce0,0x1406319d0,0x140b81df0,0x142923c10,0x140613c20\",\"output_contract\":\"JSON: [{va,name,module,signature_shape}]; unknown where PDB lacks a label\",\"depends_on\":[\"D1:L196-L218\",\"D1:L328-L380\"]},{\"task\":\"Determine semantic of uStack_118 case 0..9 and default using retained PDB or fresh type dump for the output-record variant tag\",\"input_needed\":\"PDB type/enum for country_core replay_stairs output record variant (or reproduction of drops at VAs 0x140b5cfc0,0x140b5c2a0,0x140b5c040,0x140b5cd40,0x140b5d010,0x1402e5d80,0x1406978e0,0x140891eb0)\",\"output_contract\":\"JSON: [{case,tag_value_or_enum_name,drop_target_va,evidence}]\",\"depends_on\":[\"D1:L602-L695\",\"S1:L1-L6\"]}]}"
+}

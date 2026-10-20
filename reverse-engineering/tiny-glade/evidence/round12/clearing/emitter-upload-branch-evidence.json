@@ -1,0 +1,12 @@
+{
+  "original_pe_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "start": "0x140a79683",
+  "end_exclusive": "0x140a79760",
+  "sha256": "62deaf9abd380e1953f86a40608f66cae51463051a73ff4acbf2a2e4c0addd89",
+  "lookup": "140a796a4 call1412c7380 AssetSsboLibrary::get_mut<ParticleEmitterSsbo>",
+  "none": "140a796b0 test rax,rax;140a796b3 je140a79739",
+  "empty": "140a796b9 test rdi,rdi;140a796bc je140a79739",
+  "present_nonempty": "140a796c5 compares complete byte length against buffer+18;140a79723 uploads whole vector",
+  "publish": "140a79739..140a7975d min(vector_len,1100) on None/empty/upload-success paths",
+  "acceptance": "Preserve optional original branch; actual App GPU acceptance must independently require the canonical startup SSBO allocation and a nonempty upload."
+}

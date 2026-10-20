@@ -1,0 +1,409 @@
+--- a/tiny-glade/crates/tiny-glade/src/render_bridge.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_bridge.rs
+@@ -34,6 +34,9 @@
+     tables: HostTables,
+     raster: Arc<RasterShared>,
+     shaders: Arc<AssetShaderLibrary>,
++    /// A built graph still owns this session's declaration/specification state.
++    /// A BuiltCoreGraph guard releases it on cancellation or abandonment.
++    pending_build: Rc<Cell<Option<GraphId>>>,
+ }
+ 
+ /// This App's exact physical handle namespaces and their retained owners.
+@@ -82,12 +85,13 @@
+             tables,
+             raster,
+             shaders,
++            pending_build: Rc::new(Cell::new(None)),
+         })
+     }
+ 
+     /// Captured before moving the original gameplay SubApp to its worker.
+     pub fn warmup_owners(&self) -> rhapsody::Result<CoreRenderOwners> {
+-        if self.session.borrow().named_resource_count() != 0 {
++        if self.pending_build.get().is_some() || self.session.borrow().named_resource_count() != 0 {
+             return Err(rhapsody::Error::invalid_usage(
+                 "gameplay warmup cannot fork an existing temporal owner",
+             ));
+@@ -110,6 +114,7 @@
+             tables: owners.tables,
+             raster: owners.raster,
+             shaders: owners.shaders,
++            pending_build: Rc::new(Cell::new(None)),
+         })
+     }
+ 
+@@ -153,10 +158,13 @@
+             ));
+         }
+         let mut named = completed.named.lock();
+-        if let Some(named) = named.take() {
+-            self.session
+-                .borrow_mut()
+-                .adopt_completed_named_resources(named)?;
++        if let Some(completed) = named.as_ref() {
++            let mut session = self.session.borrow_mut();
++            // Keep the actual owners available when activation must be retried.
++            // No state can change between this borrowed preflight and adoption:
++            // the session is thread local and this RefMut remains held.
++            session.validate_completed_named_resources_adoption(completed)?;
++            session.adopt_completed_named_resources(named.take().expect("validated warmup"))?;
+         }
+         Ok(())
+     }
+@@ -241,8 +249,15 @@
+     pub fn build_frame<T>(
+         &mut self,
+         build: impl FnOnce(&mut CoreGraphFrame<'_>) -> rhapsody::Result<T>,
+-    ) -> rhapsody::Result<(T, rhapsody::rg::BuiltGraph)> {
++    ) -> rhapsody::Result<(T, BuiltCoreGraph)> {
++        if self.pending_build.get().is_some() {
++            return Err(rhapsody::Error::invalid_usage(
++                "execute, compile or cancel the built core graph before beginning another frame",
++            ));
++        }
+         let graph = self.session.borrow_mut().begin_frame()?;
++        let graph_id = graph.graph_id();
++        self.pending_build.set(Some(graph_id));
+         let declarer = Rc::new(FrameDeclarer {
+             session: self.session.clone(),
+             scope: FrameScope {
+@@ -263,20 +278,40 @@
+             ));
+         }
+         let graph = frame.take_graph()?;
+-        Ok((value, graph.build()))
++        Ok((
++            value,
++            BuiltCoreGraph {
++                session: self.session.clone(),
++                pending_build: self.pending_build.clone(),
++                graph: Some(graph.build()),
++            },
++        ))
+     }
+ 
+     pub fn execute_built(
+         &mut self,
+-        graph: rhapsody::rg::BuiltGraph,
++        graph: BuiltCoreGraph,
+     ) -> rhapsody::Result<SessionFrameReceipt> {
++        let graph = self.claim_built(graph)?;
+         self.session.borrow_mut().execute_frame(graph)
+     }
+ 
+-    pub fn compile_built(
+-        &mut self,
+-        graph: rhapsody::rg::BuiltGraph,
+-    ) -> rhapsody::Result<CompiledCoreGraph> {
++    /// Reject a different App's graph before consuming its declaration.
++    /// A rejected guard cancels through its originating session when dropped.
++    fn claim_built(&self, mut graph: BuiltCoreGraph) -> rhapsody::Result<rhapsody::rg::BuiltGraph> {
++        if !Rc::ptr_eq(&self.session, &graph.session)
++            || self.pending_build.get() != Some(graph.graph_id())
++        {
++            return Err(rhapsody::Error::invalid_usage(
++                "built graph belongs to another bridge or declaration",
++            ));
++        }
++        self.pending_build.set(None);
++        Ok(graph.graph.take().expect("built graph consumed once"))
++    }
++
++    pub fn compile_built(&mut self, graph: BuiltCoreGraph) -> rhapsody::Result<CompiledCoreGraph> {
++        let graph = self.claim_built(graph)?;
+         let frame = self.session.borrow_mut().compile_frame(graph)?;
+         Ok(CompiledCoreGraph {
+             session: self.session.clone(),
+@@ -316,7 +351,8 @@
+         self.session.borrow().has_presentation()
+     }
+ 
+-    pub fn cancel_built(&mut self, graph: rhapsody::rg::BuiltGraph) -> rhapsody::Result<()> {
++    pub fn cancel_built(&mut self, graph: BuiltCoreGraph) -> rhapsody::Result<()> {
++        let graph = self.claim_built(graph)?;
+         self.session.borrow_mut().cancel_frame(graph)
+     }
+ 
+@@ -388,6 +424,36 @@
+ 
+     pub fn wait_submits_done(&mut self, timeout_ns: u64) -> rhapsody::Result<()> {
+         self.session.borrow_mut().wait_submits_done(timeout_ns)
++    }
++}
++
++/// An uncompiled declaration tied to its originating App/session. Dropping it
++/// cancels through that owner, retiring callbacks and frame imports exactly once.
++#[must_use = "execute, compile or cancel this graph; dropping cancels its declaration"]
++pub struct BuiltCoreGraph {
++    session: Rc<RefCell<VulkanGraphSession>>,
++    pending_build: Rc<Cell<Option<GraphId>>>,
++    graph: Option<rhapsody::rg::BuiltGraph>,
++}
++impl BuiltCoreGraph {
++    pub fn graph_id(&self) -> GraphId {
++        self.graph
++            .as_ref()
++            .expect("built graph consumed once")
++            .graph_id()
++    }
++}
++impl Drop for BuiltCoreGraph {
++    fn drop(&mut self) {
++        if let Some(graph) = self.graph.take() {
++            let id = graph.graph_id();
++            if let Err(error) = self.session.borrow_mut().cancel_frame(graph) {
++                log::warn!("cancelling uncompiled core frame: {error}");
++            }
++            if self.pending_build.get() == Some(id) {
++                self.pending_build.set(None);
++            }
++        }
+     }
+ }
+ 
+@@ -810,6 +876,9 @@
+             // cannot mutate the graph that was just cancelled or a future frame.
+             Err(graph) => graph.replace(RenderGraph::new()),
+         };
++        if self.bridge.pending_build.get() == Some(graph.graph_id()) {
++            self.bridge.pending_build.set(None);
++        }
+         if let Err(error) = self.bridge.session.borrow_mut().cancel_frame(graph.build()) {
+             log::warn!("cancelling unsubmitted core frame: {error}");
+         }
+--- a/tiny-glade/crates/rhapsody/src/rg/vulkan.rs
++++ b/tiny-glade/crates/rhapsody/src/rg/vulkan.rs
+@@ -2123,9 +2123,9 @@
+ 
+     /// Restore the same actual named owners into the App's original idle
+     /// session. It never merges two histories or overwrites live GPU work.
+-    pub fn adopt_completed_named_resources(
+-        &mut self,
+-        completed: CompletedNamedResources,
++    pub fn validate_completed_named_resources_adoption(
++        &self,
++        completed: &CompletedNamedResources,
+     ) -> crate::Result<()> {
+         if self.active_prepared.is_some()
+             || !self.pending.is_empty()
+@@ -2153,6 +2153,17 @@
+         for resource in completed.named.resources.resources.values() {
+             resource.check_device(&self.backend.device)?;
+         }
++        Ok(())
++    }
++
++    /// Consume a completed owner's cache only after all adoption checks succeed.
++    /// Call the borrowed validation first when retaining the transfer on failure
++    /// is required by an application-owned one-shot channel.
++    pub fn adopt_completed_named_resources(
++        &mut self,
++        completed: CompletedNamedResources,
++    ) -> crate::Result<()> {
++        self.validate_completed_named_resources_adoption(&completed)?;
+         for (token, family) in completed.families {
+             self.backend.import_families.insert(token, family);
+         }
+@@ -2580,6 +2591,9 @@
+             self.active_prepared = Some(graph_id);
+         } else {
+             named.state.abandon_frame();
++            if named.graph_id == Some(graph_id) {
++                named.graph_id = None;
++            }
+             self.result_cache.abort(graph_id);
+             self.cancel_presentation_of(graph_id);
+         }
+@@ -2619,6 +2633,7 @@
+         let result = run_retire_callbacks(frame.retire);
+         if let Some(named) = &mut self.named {
+             named.state.abandon_frame();
++            named.graph_id = None;
+         }
+         self.collect_frame_imports();
+         result
+@@ -3086,6 +3101,11 @@
+                     }
+                 }
+             }
++        }
++        // The declaration was consumed regardless of submit success. Pending
++        // GPU work and committed history have their own independent owners.
++        if let Some(named) = &mut self.named {
++            named.graph_id = None;
+         }
+         self.collect_frame_imports();
+         result
+--- a/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs
++++ b/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs
+@@ -66,9 +66,13 @@
+     let canonical = world.resource::<country_core::render::device::GraphicsDeviceResource>();
+     // Exercise the canonical ECS device, not a second host or the old
+     // unsupported compatibility implementation. Its IDs must resolve here.
+-    let target = GraphicsDevice::create_buffer(canonical.device(),
+-        &BufferDesc::new(8, 0x22, 2), "core bridge target", None)
+-        .unwrap();
++    let target = GraphicsDevice::create_buffer(
++        canonical.device(),
++        &BufferDesc::new(8, 0x22, 2),
++        "core bridge target",
++        None,
++    )
++    .unwrap();
+     assert!(buffers.managed_buffer(&target).is_some());
+     let retired = Rc::new(Cell::new(false));
+     let flag = retired.clone();
+@@ -217,3 +221,122 @@
+     // Cancellation must leave the same session reusable.
+     bridge.render_frame(|_| Ok(())).unwrap();
+ }
++
++#[test]
++fn built_graph_lease_survives_rejected_rebuild_and_releases_on_compiled_drop() {
++    let Some(mut bridge) = bridge() else { return };
++    let retired = Rc::new(Cell::new(0));
++    let flag = retired.clone();
++    let (_, built) = bridge
++        .build_frame(|frame| {
++            frame.with_graph(|graph| {
++                graph
++                    .add_pass("original pending declaration")
++                    .with_side_effect()
++                    .render(|_| true);
++                graph.on_retire(move || flag.set(flag.get() + 1));
++                Ok(())
++            })
++        })
++        .unwrap();
++    let invoked = Cell::new(false);
++    assert!(
++        bridge
++            .build_frame(|_| {
++                invoked.set(true);
++                Ok(())
++            })
++            .is_err()
++    );
++    assert!(
++        !invoked.get(),
++        "rejected begin must not invoke another builder"
++    );
++    assert_eq!(retired.get(), 0, "the first declaration must remain live");
++    let compiled = bridge.compile_built(built).unwrap();
++    assert_eq!(
++        compiled.snapshot().pass_order,
++        ["original pending declaration"]
++    );
++    assert!(
++        bridge.build_frame(|_| Ok(())).is_err(),
++        "prepared frame still owns its session"
++    );
++    drop(compiled);
++    assert_eq!(retired.get(), 1);
++    let (_, retry) = bridge.build_frame(|_| Ok(())).unwrap();
++    bridge.cancel_built(retry).unwrap();
++    let (_, retry) = bridge.build_frame(|_| Ok(())).unwrap();
++    bridge.cancel_built(retry).unwrap();
++}
++
++#[test]
++fn foreign_built_graph_retires_the_originating_lease_without_submitting() {
++    let Some(mut origin) = bridge() else { return };
++    let mut other = CoreRenderBridge::from_owners(origin.warmup_owners().unwrap()).unwrap();
++    let retired = Rc::new(Cell::new(false));
++    let flag = retired.clone();
++    let (_, foreign) = origin
++        .build_frame(|frame| {
++            frame.with_graph(|graph| {
++                graph
++                    .add_pass("foreign work")
++                    .with_side_effect()
++                    .render(|_| {
++                        panic!("foreign graph must never record");
++                    });
++                graph.on_retire(move || flag.set(true));
++                Ok(())
++            })
++        })
++        .unwrap();
++    let error = other.execute_built(foreign).unwrap_err();
++    assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
++    assert!(retired.get());
++    assert_eq!(
++        other.with_session(|session| session.pending_frame_count()),
++        0
++    );
++    let (_, retry) = origin.build_frame(|_| Ok(())).unwrap();
++    origin.cancel_built(retry).unwrap();
++    let (_, retry) = other.build_frame(|_| Ok(())).unwrap();
++    other.cancel_built(retry).unwrap();
++}
++
++#[test]
++fn dropped_uncompiled_graph_cancels_imports_and_leaves_the_session_reusable() {
++    let Some(mut bridge) = bridge() else { return };
++    let buffers = bridge.hosts().buffers.clone();
++    let target = buffers
++        .create_buffer(&BufferDesc::new(8, 0x22, 2), "abandoned declaration", None)
++        .unwrap();
++    let retired = Rc::new(Cell::new(0));
++    let flag = retired.clone();
++    let (_, built) = bridge
++        .build_frame(|frame| {
++            frame.import_buffer(&target, 0)?;
++            frame.with_graph(|graph| {
++                graph.on_retire(move || flag.set(flag.get() + 1));
++                Ok(())
++            })
++        })
++        .unwrap();
++    assert_eq!(
++        bridge.with_session(|session| session.frame_import_count()),
++        1
++    );
++    assert_eq!(retired.get(), 0);
++    drop(built);
++    assert_eq!(retired.get(), 1);
++    assert_eq!(
++        bridge.with_session(|session| session.frame_import_count()),
++        0
++    );
++    assert_eq!(
++        bridge.with_session(|session| session.pending_frame_count()),
++        0
++    );
++    let (_, retry) = bridge.build_frame(|_| Ok(())).unwrap();
++    bridge.cancel_built(retry).unwrap();
++    assert!(buffers.release(&target));
++}
+--- a/tiny-glade/crates/tiny-glade/tests/original_scene_compute_gpu.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_scene_compute_gpu.rs
+@@ -1332,6 +1332,16 @@
+     });
+     let (world, completed, actual_warmup_current) = worker.join().unwrap();
+     fixture.world = world;
++    // An outstanding declaration makes activation temporarily inadmissible.
++    // Rejecting it must preserve the worker's actual one-shot owners/parity,
++    // so activation can be retried after this graph is cancelled.
++    let (_, unsubmitted) = fixture.bridge.build_frame(|_| Ok(())).unwrap();
++    assert!(fixture.bridge.accept_gameplay_warmup(&completed).is_err());
++    fixture.bridge.cancel_built(unsubmitted).unwrap();
++    let (_, unsubmitted) = fixture.bridge.build_frame(|_| Ok(())).unwrap();
++    let compiled = fixture.bridge.compile_built(unsubmitted).unwrap();
++    assert!(fixture.bridge.accept_gameplay_warmup(&completed).is_err());
++    drop(compiled);
+     fixture.bridge.accept_gameplay_warmup(&completed).unwrap();
+     // Repeated activation is harmless after the single actual ownership move.
+     fixture.bridge.accept_gameplay_warmup(&completed).unwrap();
+--- a/tiny-glade/crates/tiny-glade/tests/original_raster_gpu.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_raster_gpu.rs
+@@ -181,7 +181,7 @@
+ }
+ fn pixels(
+     bridge: &mut CoreRenderBridge,
+-    built: rhapsody::rg::BuiltGraph,
++    built: tiny_glade::render_bridge::BuiltCoreGraph,
+     readback: Arc<rhapsody::resource::Buffer>,
+ ) -> Vec<u8> {
+     bridge

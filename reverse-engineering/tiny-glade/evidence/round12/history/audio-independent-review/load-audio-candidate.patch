@@ -1,0 +1,196 @@
+--- a/tiny-glade/crates/country-core/src/startup/load_audio.rs
++++ b/tiny-glade/crates/country-core/src/startup/load_audio.rs
+@@ -1,75 +1,70 @@
+-//! 音频启动注册（B `startup::load_audio` @0x140b0e0f0）。
+-//!
+-//! 证据（R10 契约 §2.2 + dependency 注解，O）：
+-//! * 阶段：batch1/PreStartup。
+-//! * 第 1 参数调用 `AudioSamplesLoadedPromise::recv`（0x140a57100）。
+-//! * 向第 2 参数（`&mut Schedule`）追加 **2** 个系统配置：12 字节
+-//!   `FUN_1412dccf0`、8 字节 `FUN_1412d91b0`。
+-//! * 日志 target `country_core::startup::load_audio`。
+-//!
+-//! I：两个匿名 builder 对应 `game_loading_audio` 的两个系统
+-//! （`init_game_loading_audio` 0x140b1ae70 / `loading_audio` 0x140b1b1b0——两者
+-//! 由同一 `snapshot:/Loading` 状态资源串联，配置体量 12/8 与常量一致）。
+-use crate::resources::audio_resources::{AudioSamplesLoadedPromise, Studio};
+-use bevy_ecs::schedule::Schedule;
+-use std::time::Duration;
++//! Original load_audio140b0e0f0: wait for samples, then queue resource commands.
++//! The12/8-byte queue entries are commands, not Schedule system builders.
++use crate::{
++    asset_libraries::audio_trigger_library::AudioTriggerLibrary,
++    resources::audio_resources::{AudioSamplesLoadedPromise, EventInstance},
++    systems::audio::{game_loading_audio::GameLoadingAudioState, terrain_stairs_audio::StairsCounter},
++};
++use bevy_ecs::prelude::Commands;
++use std::time::{Duration, Instant};
+ 
+-/// O（decomp 分配尺寸）：load_audio 构造的三条音频对象。
+-pub const AUDIO_OBJECT_SIZES: [usize; 3] = [0x1c, 0xc, 0x8];
+-/// O（契约 §2.2）：追加到 Schedule 的两条系统配置。
+-pub const AUDIO_SCHEDULE_ENTRIES: [(&str, usize); 2] =
+-    [("FUN_1412dccf0", 0xc), ("FUN_1412d91b0", 8)];
+ pub const WAITED_LOG_PREFIX: &str = "Waited ";
+ 
+-/// 生产装配：把 `game_loading_audio` 的两个系统加入宿主 Schedule（PreStartup）。
+-pub fn add_game_loading_audio_systems<S>(schedule: &mut Schedule)
+-where
+-    S: Studio + Send + Sync + 'static,
+-{
+-    use bevy_ecs::schedule::{IntoScheduleConfigs, common_conditions::resource_exists};
+-    schedule.add_systems(
+-        (
+-            crate::systems::audio::game_loading_audio::init_game_loading_audio::<S>,
+-            crate::systems::audio::game_loading_audio::loading_audio::<S>,
+-        )
+-            .chain()
+-            .run_if(resource_exists::<crate::resources::audio_resources::AudioCore<S>>),
+-    );
++/// The actual caller supplies its canonical event owner. No audio event is
++/// created here: init_game_loading_audio is a separate Startup producer.
++pub fn load_audio<E: EventInstance + Send + Sync + 'static>(
++    loaded_samples: &AudioSamplesLoadedPromise<()>,
++    commands: &mut Commands,
++) {
++    let start = Instant::now();
++    let _ = loaded_samples.recv();
++    log::info!(target:"country_core::startup::load_audio", "{}", waited_log(start.elapsed()));
++    commands.insert_resource(AudioTriggerLibrary::default());
++    commands.insert_resource(StairsCounter::default());
++    commands.insert_resource(GameLoadingAudioState::<E>::empty_after_samples());
++    commands.remove_resource::<AudioSamplesLoadedPromise<()>>();
+ }
+ 
+-/// O：先消费已载入样本 promise，再追加两个 loading-audio 系统。
+-pub fn load_audio<S>(
+-    loaded_samples: Option<&AudioSamplesLoadedPromise<S::Event>>,
+-    schedule: &mut Schedule,
+-) where
+-    S: Studio + Send + Sync + 'static,
+-{
+-    if let Some(promise) = loaded_samples {
+-        let _ = promise.recv();
+-    }
+-    add_game_loading_audio_systems::<S>(schedule);
+-    // U: 三条音频对象（0x1c/0xc/8）的具体构造类型未恢复。
+-}
+-
+-/// 原件日志前缀的可见形式；`elapsed` 由宿主计时器提供。
+ pub fn waited_log(elapsed: Duration) -> String {
+     format!("{WAITED_LOG_PREFIX}{:?}", elapsed)
+ }
+ 
+-#[cfg(test)]
+-mod tests {
++#[cfg(test)] mod tests {
+     use super::*;
+-
+-    #[test]
+-    fn constants_match_the_two_schedule_builders_and_log_prefix() {
+-        assert_eq!(AUDIO_OBJECT_SIZES, [0x1c, 0xc, 0x8]);
+-        assert_eq!(
+-            AUDIO_SCHEDULE_ENTRIES,
+-            [("FUN_1412dccf0", 0xc), ("FUN_1412d91b0", 8)]
+-        );
+-        assert!(waited_log(Duration::from_millis(3)).starts_with("Waited "));
+-        // 两个系统确实属于 game_loading_audio（名字级交叉检查）。
+-        let _ = crate::systems::audio::game_loading_audio::LOADING_SNAPSHOT;
+-        let _ = crate::systems::audio::game_loading_audio::LOADING_EVENT;
++    use crate::resources::audio_instance::PlaybackState;
++    use bevy_ecs::{prelude::World, world::CommandQueue};
++    struct NeverEvent;
++    impl EventInstance for NeverEvent {
++        type Error = &'static str;
++        fn start(&mut self)->Result<(),Self::Error>{panic!("load_audio must not create/start events")}
++        fn stop(&mut self,_:i32)->Result<(),Self::Error>{unreachable!()}
++        fn get_playback_state(&self)->Result<PlaybackState,Self::Error>{unreachable!()}
++        fn set_volume(&mut self,_:f32)->Result<(),Self::Error>{unreachable!()}
++        fn set_parameter_by_name(&mut self,_:&str,_:f32)->Result<(),Self::Error>{unreachable!()}
++        fn has_parameter(&self,_:&str)->Result<bool,Self::Error>{unreachable!()}
++        fn set_3d_attributes(&mut self,_:[f32;3],_:[f32;3],_:[f32;3],_:[f32;3])->Result<(),Self::Error>{unreachable!()}
++        fn get_timeline_position(&self)->Result<i32,Self::Error>{unreachable!()}
++        fn pause(&mut self,_:bool)->Result<(),Self::Error>{unreachable!()}
++        fn install_beat_callback(&mut self)->Result<(),Self::Error>{unreachable!()}
++    }
++    #[test] fn actual_wait_publishes_four_deferred_resource_commands_without_starting_audio() {
++        let mut world=World::new();let(sender,promise)=AudioSamplesLoadedPromise::channel();sender.send(()).unwrap();
++        world.insert_resource(promise);world.insert_resource(StairsCounter{count:99});
++        let mut state=GameLoadingAudioState::<NeverEvent>::empty_after_samples();state.loading=true;state.timer=99.;world.insert_resource(state);
++        let mut queue=CommandQueue::default();
++        load_audio::<NeverEvent>(world.resource(),&mut Commands::new(&mut queue,&world));
++        assert_eq!(world.resource::<StairsCounter>().count,99);
++        assert!(world.contains_resource::<AudioSamplesLoadedPromise<()>>());
++        queue.apply(&mut world);
++        assert_eq!(world.resource::<StairsCounter>().count,0);
++        assert!(world.contains_resource::<AudioTriggerLibrary>());
++        let state=world.resource::<GameLoadingAudioState<NeverEvent>>();assert!(state.snapshot.is_none());assert!(!state.loading);assert_eq!(state.timer.to_bits(),0);
++        assert!(!world.contains_resource::<AudioSamplesLoadedPromise<()>>());
++    }
++    #[test] fn disconnected_samples_panic_before_any_resource_command_is_published() {
++        let mut world=World::new();let(sender,promise)=AudioSamplesLoadedPromise::<()>::channel();drop(sender);world.insert_resource(promise);world.insert_resource(StairsCounter{count:17});
++        let mut queue=CommandQueue::default();
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||load_audio::<NeverEvent>(world.resource(),&mut Commands::new(&mut queue,&world)))).is_err());
++        queue.apply(&mut world);assert_eq!(world.resource::<StairsCounter>().count,17);assert!(!world.contains_resource::<GameLoadingAudioState<NeverEvent>>());assert!(!world.contains_resource::<AudioTriggerLibrary>());
+     }
+ }
+--- a/tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs
+@@ -26,6 +26,12 @@
+ }
+ 
+ impl<E: EventInstance> GameLoadingAudioState<E> {
++    /// Original load_audio inserts this empty owner before the separate
++    /// init_game_loading_audio Startup consumer starts the snapshot.
++    pub fn empty_after_samples() -> Self {
++        Self { snapshot:None, loading:false, timer:0.0 }
++    }
++
+     pub fn new<S: Studio<Event=E>>(core: &AudioCore<S>) -> Self {
+         Self { snapshot: Some(instantiate_started(core,LOADING_SNAPSHOT)), loading:false,timer:0.0 }
+     }
+--- a/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
++++ b/tiny-glade/crates/country-core/src/systems/audio/terrain_stairs_audio.rs
+@@ -98,7 +98,7 @@
+ 
+ /// StairsCounter (native `+0x40` counter, incremented when a ring event is
+ /// pushed).
+-#[derive(Debug, Default, Clone, Copy)]
++#[derive(Resource, Debug, Default, Clone, Copy)]
+ pub struct StairsCounter {
+     pub count: u32,
+ }
+--- a/tiny-glade/crates/country-core/src/startup/run_game.rs
++++ b/tiny-glade/crates/country-core/src/startup/run_game.rs
+@@ -86,9 +86,8 @@
+             >),
+     );
+     register_startup_systems::<B>(startup_schedule);
+-    // batch1/PreStartup 的 load_audio：追加 game_loading_audio 两个系统。
+-    // promise 由音频域在真正的样本载入点提供；这里不伪造已载入状态。
+-    crate::startup::load_audio::load_audio::<S>(None, startup_schedule);
++    // The host runs the real sample-completion resource commands at
++    // PreStartup; load_audio does not register Schedule systems.
+     register_session_systems(session_schedule);
+     register_update_systems::<B, S>(update_schedule);
+ }
+--- a/tiny-glade/crates/tiny-glade/src/audio_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/audio_host.rs
+@@ -110,11 +110,12 @@
+     Ok(())
+ }
+ 
+-fn receive_samples(world: &mut World) {
+-    if let Some(samples) = world.remove_resource::<AudioSamplesLoadedPromise<()>>() {
+-        let start = std::time::Instant::now();
+-        let _ = samples.recv();
+-        log::debug!("{}", country_core::startup::load_audio::waited_log(start.elapsed()));
++fn receive_samples(
++    samples: Option<Res<AudioSamplesLoadedPromise<()>>>,
++    mut commands: Commands,
++) {
++    if let Some(samples) = samples {
++        country_core::startup::load_audio::load_audio::<NativeEvent>(&samples, &mut commands);
+     }
+ }
+ fn photo_audio(mut events: EventReader<country_core::systems::backend::photomode::PhotoModeAudioParameter>, core: Res<AudioCore<NativeStudio>>) {

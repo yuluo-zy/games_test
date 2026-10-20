@@ -1,0 +1,66 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "tbd",
+  "pid": 38944,
+  "project": "D:\\game\\tools\\reverse-runtime\\tbd\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "timeoutSeconds": 120,
+        "code": "from ghidra.program.model.address import AddressSet\nfrom ghidra.program.disassemble import Disassembler\naf=currentProgram.getAddressFactory()\ntx=currentProgram.startTransaction('dis')\ntry:\n    d=Disassembler.getDisassembler(currentProgram,monitor,None)\n    for x in ['14234462a','14234463a','142344648','142344660','142344680','1423446a0','1423446c0','1423446e0','142344700','142344720','142344740','142344760','142344780','1423447a0','1423447c0','1423447e0','142344800','142344820','142344840','14234485d','14234486d','1423448a0']:\n        a=af.getAddress(x); d.disassemble(a, AddressSet(a,a.add(0x40)), True)\nfinally:\n    currentProgram.endTransaction(tx,True)\na=af.getAddress('14234462a'); b=af.getAddress('1423448a0')\nfor ins in currentProgram.getListing().getInstructions(AddressSet(a,b), True):\n    print(ins.getAddress(), ins.toString())\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\round11\\tbd-jobs\\dis-align-cold-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\round11\\\\\\\\tbd-jobs\\\\\\\\dis-align-cold-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 3447, \\\"sha256\\\": \\\"9bfc2b492f5feb20c6a38160f6d3b87b419851042a4764cafe8651ffa558ca15\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":45}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.047,
+      "stdout": "14234462a JMP 0x142344600\n142344630 MOVZX EAX,byte ptr [R13 + 0xf0]\n142344638 LEA RCX,[0x14304e6d8]\n14234463f MOVSXD RAX,dword ptr [RCX + RAX*0x4]\n142344643 ADD RAX,RCX\n142344646 JMP RAX\n142344648 MOV EBP,dword ptr [RSP + 0x20]\n14234464c MOV R15,qword ptr [RSP + 0x28]\n142344651 MOV dword ptr [R15],EBP\n142344654 MOV RCX,RSI\n142344657 MOV EDX,R14D\n14234465a MOV R8D,EDI\n14234465d CALL 0x142376050\n142344662 MOV dword ptr [R15],EBP\n142344665 MOV RCX,RSI\n142344668 MOV EDX,R14D\n14234466b MOV R8D,EDI\n14234466e CALL 0x142375ce0\n142344673 MOV dword ptr [R15],EBP\n142344676 MOV RCX,RSI\n142344679 MOV EDI,dword ptr [RSP + 0x24]\n14234467d MOV EDX,EDI\n14234467f MOV R8D,R12D\n142344682 CALL 0x142375b40\n142344687 MOV dword ptr [R15],EBP\n1423446a0 MOV EBP,dword ptr [RSP + 0x20]\n1423446a4 MOV R15,qword ptr [RSP + 0x28]\n1423446a9 MOV dword ptr [R15],EBP\n1423446ac MOV RCX,RSI\n1423446af MOV EDX,R14D\n1423446b2 MOV R8D,EDI\n1423446b5 CALL 0x142376230\n1423446ba MOV dword ptr [R15],EBP\n1423446bd MOV RCX,RSI\n1423446c0 MOV EDX,R14D\n1423446c3 MOV R8D,EDI\n1423446c6 CALL 0x142375f80\n1423446cb MOV dword ptr [R15],EBP\n1423446ce MOV RCX,RSI\n1423446d1 MOV EDI,dword ptr [RSP + 0x24]\n1423446d5 MOV EDX,EDI\n1423446d7 MOV R8D,R12D\n1423446da CALL 0x142375eb0\n1423446df MOV dword ptr [R15],EBP\n142344700 MOV EBP,dword ptr [RSP + 0x20]\n142344704 MOV R15,qword ptr [RSP + 0x28]\n142344709 MOV dword ptr [R15],EBP\n14234470c MOV RCX,RSI\n14234470f MOV EDX,R14D\n142344712 MOV R8D,EDI\n142344715 CALL 0x142376050\n14234471a MOV dword ptr [R15],EBP\n14234471d MOV RCX,RSI\n142344720 MOV EDX,R14D\n142344723 MOV R8D,EDI\n142344726 CALL 0x142376300\n14234472b MOV dword ptr [R15],EBP\n14234472e MOV RCX,RSI\n142344731 MOV EDI,dword ptr [RSP + 0x24]\n142344735 MOV EDX,EDI\n142344737 MOV R8D,R12D\n14234473a CALL 0x142375b40\n14234473f MOV dword ptr [R15],EBP\n142344760 MOV EBP,dword ptr [RSP + 0x20]\n142344764 MOV R15,qword ptr [RSP + 0x28]\n142344769 MOV dword ptr [R15],EBP\n14234476c MOV RCX,RSI\n14234476f MOV EDX,R14D\n142344772 MOV R8D,EDI\n142344775 CALL 0x142375c10\n14234477a MOV dword ptr [R15],EBP\n14234477d MOV RCX,RSI\n142344780 MOV EDX,R14D\n142344783 MOV R8D,EDI\n142344786 CALL 0x142375f80\n14234478b MOV dword ptr [R15],EBP\n14234478e MOV RCX,RSI\n142344791 MOV EDI,dword ptr [RSP + 0x24]\n142344795 MOV EDX,EDI\n142344797 MOV R8D,R12D\n14234479a CALL 0x142375eb0\n14234479f MOV dword ptr [R15],EBP\n1423447c0 OUT 0xeb,AL\n1423447c2 SUB EAX,0x66666666\n1423447c7 NOP dword ptr CS:[RAX + RAX*0x1]\n1423447d0 MOV EAX,dword ptr [RSP + 0x20]\n1423447d4 MOV RCX,qword ptr [RSP + 0x28]\n1423447d9 MOV dword ptr [RCX],EAX\n1423447db MOV RCX,RSI\n1423447de MOV EDX,EDI\n1423447e0 MOV R8D,EBX\n1423447e3 CALL 0x142376300\n1423447e8 ADD R14,0x20\n1423447ec ADD R15,0x20\n1423447f0 CMP RBP,R15\n1423447f3 JZ 0x1423445a0\n1423447f9 MOV EDI,dword ptr [R14 + 0x10]\n1423447fd TEST EDI,EDI\n1423447ff JZ 0x1423447e8\n142344820 MOV R8D,EBX\n142344823 CMP AL,0x1\n142344825 JA 0x142344850\n142344827 CALL 0x142375eb0\n14234482c MOVZX EAX,byte ptr [R13 + 0xf0]\n142344834 LEA RCX,[0x14304e6e8]\n14234483b MOVSXD RAX,dword ptr [RCX + RAX*0x4]\n14234483f ADD RAX,RCX\n142344842 JMP RAX\n142344850 CALL 0x142375b40\n142344855 MOVZX EAX,byte ptr [R13 + 0xf0]\n14234485d LEA RCX,[0x14304e6e8]\n14234486d MOV EAX,dword ptr [RSP + 0x20]\n142344871 MOV RCX,qword ptr [RSP + 0x28]\n142344876 MOV dword ptr [RCX],EAX\n142344878 MOV RCX,RSI\n14234487b MOV EDX,EDI\n14234487d MOV R8D,EBX\n142344880 CALL 0x142375ce0\n142344885 JMP 0x1423447e8\n1423448a0 PUSH R15\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 1.234,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":10}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "6e57a0f851abba8206b6fd662d6612ce",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "id": "B-stairs-asm-event-only",
+  "input_sha256": "c1639f90323a320980b73b9d18cb319379b8c90a418f3747d957b13293920815",
+  "prompt_sha256": "b5f08b75a8ca2ffb6287795a06c793a3e5f6aa5ed6ffde476992ddfbb0283d0b",
+  "packet_sha256": "b1cd0b5fb04f26dd8d5e295cb8ef96066f581dfec8ddb7cce5d7674bc748595b",
+  "rendered_input_sha256": "f147daa389b2d7020a7c987fb89d2492105df3a3a530569a8c983abfd91af595",
+  "render_format": "numbered-plain-text-v1",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+  "endpoint_origin": "https://it-litellm.espressif.cn",
+  "request_options": {
+    "max_tokens": 12000,
+    "thinking": "template-low"
+  },
+  "elapsed_seconds": 48.781,
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 6269,
+    "prompt_tokens": 3963,
+    "total_tokens": 10232,
+    "completion_tokens_details": {
+      "reasoning_tokens": 5228
+    }
+  },
+  "accepted_transport": true,
+  "semantically_verified": false,
+  "validation_errors": [],
+  "analysis": {
+    "summary": "Event tag at +0x8: payload bit0=0 stores (dir+0x11)&0xff; bit0=1 stores (0x12-dir)&0xff; scheduling flag selects entry only.",
+    "observations": [
+      {
+        "id": "O1",
+        "claim": "The event tag is written as movb %r14b,0x8(%rax,%rcx) for a 0x38-byte record; reaching 0x140af76dc applies addb $0x11,%r14b immediately before that store.",
+        "refs": [
+          "A8:L1-L5"
+        ]
+      },
+      {
+        "id": "O2",
+        "claim": "Hypothesis 'every event path adds 0x11' is rejected: both A5 final outcomes target 0x140af76dc (add), while both A7 final outcomes target 0x140af76e0 (bypass); the compare only controls the helper call.",
+        "refs": [
+          "A5:L12-L17",
+          "A7:L3-L8",
+          "A8:L1-L2"
+        ]
+      },
+      {
+        "id": "O3",
+        "claim": "Payload bit0=0 routes via 0x140af77bd and loads dir=movzbl 0x1c(%rax),%r14d, then A5 adds 0x11. Payload bit0=1 routes via 0x140af782f and computes r14b=$0x12-subb 0x1c(%rax), then A7 bypasses add. Earlier bit test at 0x8(%r11) only selects 0x140af774e vs 0x140af77f0; both later test the same payload bit, so it does not change the formula.",
+        "refs": [
+          "A1:L3-L4",
+          "A1:L29-L30",
+          "A3:L15-L16",
+          "A4:L1-L2",
+          "A6:L1-L3",
+          "A5:L12-L17",
+          "A7:L3-L8"
+        ]
+      }
+    ],
+    "branch_matrix": [
+      {
+        "condition": "payload bit0=0: 0x140af77b7 jne not taken / 0x140af7829 je taken -> 0x140af77bd; dir load at 0x140af78c5; final A5 reaches 0x140af76dc",
+        "effect": "tag = (dir + 0x11) mod 256",
+        "refs": [
+          "A1:L29-L30",
+          "A3:L15-L16",
+          "A4:L1-L2",
+          "A5:L12-L17",
+          "A8:L1-L5"
+        ]
+      },
+      {
+        "condition": "payload bit0=1: 0x140af77b7 jne taken to 0x140af782f; subtraction at 0x140af7a82; final A7 reaches 0x140af76e0",
+        "effect": "tag = (0x12 - dir) mod 256; no +0x11",
+        "refs": [
+          "A1:L29-L30",
+          "A3:L15-L19",
+          "A6:L1-L3",
+          "A7:L3-L8",
+          "A8:L1-L5"
+        ]
+      },
+      {
+        "condition": "A5 compare at 0x140af7a11 jne or equal-with-call",
+        "effect": "both outcomes jump/fall to 0x140af76dc; addb $0x11 executes",
+        "refs": [
+          "A5:L12-L17"
+        ]
+      },
+      {
+        "condition": "A7 compare at 0x140af7bb5 jne or equal-with-call",
+        "effect": "both outcomes jump/fall to 0x140af76e0; addb $0x11 bypassed",
+        "refs": [
+          "A7:L3-L8"
+        ]
+      }
+    ],
+    "side_effects": [
+      {
+        "order": 1,
+        "effect": "r14b is set either by zero-extended byte load from event+0x1c or by 8-bit subtraction 0x12 - byte[event+0x1c].",
+        "refs": [
+          "A4:L1-L2",
+          "A6:L1-L3"
+        ]
+      },
+      {
+        "order": 2,
+        "effect": "Only the 0x140af76dc epilogue executes addb $0x11,%r14b; the 0x140af76e0 epilogue skips it.",
+        "refs": [
+          "A8:L1-L2",
+          "A5:L13-L17",
+          "A7:L4-L8"
+        ]
+      },
+      {
+        "order": 3,
+        "effect": "The resulting low byte is stored to record offset +0x8; 8-bit add/sub semantics imply modulo-256 wrap.",
+        "refs": [
+          "A6:L3",
+          "A8:L1-L5"
+        ]
+      }
+    ],
+    "dependency_reuse": [],
+    "unknowns": [],
+    "integration_checks": [
+      "Confirm omitted inter-block edges 0x140af77bd->0x140af78c1 and post-call 0x140af7837 path->0x140af7a7b in the full listing; supplied slices establish only their endpoints."
+    ],
+    "independent_followups": []
+  },
+  "content": "{\"summary\":\"Event tag at +0x8: payload bit0=0 stores (dir+0x11)&0xff; bit0=1 stores (0x12-dir)&0xff; scheduling flag selects entry only.\",\"observations\":[{\"id\":\"O1\",\"claim\":\"The event tag is written as movb %r14b,0x8(%rax,%rcx) for a 0x38-byte record; reaching 0x140af76dc applies addb $0x11,%r14b immediately before that store.\",\"refs\":[\"A8:L1-L5\"]},{\"id\":\"O2\",\"claim\":\"Hypothesis 'every event path adds 0x11' is rejected: both A5 final outcomes target 0x140af76dc (add), while both A7 final outcomes target 0x140af76e0 (bypass); the compare only controls the helper call.\",\"refs\":[\"A5:L12-L17\",\"A7:L3-L8\",\"A8:L1-L2\"]},{\"id\":\"O3\",\"claim\":\"Payload bit0=0 routes via 0x140af77bd and loads dir=movzbl 0x1c(%rax),%r14d, then A5 adds 0x11. Payload bit0=1 routes via 0x140af782f and computes r14b=$0x12-subb 0x1c(%rax), then A7 bypasses add. Earlier bit test at 0x8(%r11) only selects 0x140af774e vs 0x140af77f0; both later test the same payload bit, so it does not change the formula.\",\"refs\":[\"A1:L3-L4\",\"A1:L29-L30\",\"A3:L15-L16\",\"A4:L1-L2\",\"A6:L1-L3\",\"A5:L12-L17\",\"A7:L3-L8\"]}],\"branch_matrix\":[{\"condition\":\"payload bit0=0: 0x140af77b7 jne not taken / 0x140af7829 je taken -> 0x140af77bd; dir load at 0x140af78c5; final A5 reaches 0x140af76dc\",\"effect\":\"tag = (dir + 0x11) mod 256\",\"refs\":[\"A1:L29-L30\",\"A3:L15-L16\",\"A4:L1-L2\",\"A5:L12-L17\",\"A8:L1-L5\"]},{\"condition\":\"payload bit0=1: 0x140af77b7 jne taken to 0x140af782f; subtraction at 0x140af7a82; final A7 reaches 0x140af76e0\",\"effect\":\"tag = (0x12 - dir) mod 256; no +0x11\",\"refs\":[\"A1:L29-L30\",\"A3:L15-L19\",\"A6:L1-L3\",\"A7:L3-L8\",\"A8:L1-L5\"]},{\"condition\":\"A5 compare at 0x140af7a11 jne or equal-with-call\",\"effect\":\"both outcomes jump/fall to 0x140af76dc; addb $0x11 executes\",\"refs\":[\"A5:L12-L17\"]},{\"condition\":\"A7 compare at 0x140af7bb5 jne or equal-with-call\",\"effect\":\"both outcomes jump/fall to 0x140af76e0; addb $0x11 bypassed\",\"refs\":[\"A7:L3-L8\"]}],\"side_effects\":[{\"order\":1,\"effect\":\"r14b is set either by zero-extended byte load from event+0x1c or by 8-bit subtraction 0x12 - byte[event+0x1c].\",\"refs\":[\"A4:L1-L2\",\"A6:L1-L3\"]},{\"order\":2,\"effect\":\"Only the 0x140af76dc epilogue executes addb $0x11,%r14b; the 0x140af76e0 epilogue skips it.\",\"refs\":[\"A8:L1-L2\",\"A5:L13-L17\",\"A7:L4-L8\"]},{\"order\":3,\"effect\":\"The resulting low byte is stored to record offset +0x8; 8-bit add/sub semantics imply modulo-256 wrap.\",\"refs\":[\"A6:L3\",\"A8:L1-L5\"]}],\"dependency_reuse\":[],\"unknowns\":[],\"integration_checks\":[\"Confirm omitted inter-block edges 0x140af77bd->0x140af78c1 and post-call 0x140af7837 path->0x140af7a7b in the full listing; supplied slices establish only their endpoints.\"],\"independent_followups\":[]}"
+}

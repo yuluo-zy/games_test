@@ -1,0 +1,3 @@
+use std::{path::Path,fs};
+fn scan(base:&Path,dir:&Path) { for entry in fs::read_dir(dir).unwrap(){let p=entry.unwrap().path();if p.is_dir(){scan(base,&p);continue}let rel=p.strip_prefix(base).unwrap();let names=[rel.to_string_lossy().replace('\\',"/"),rel.with_extension("").to_string_lossy().replace('\\',"/"),p.file_stem().unwrap().to_string_lossy().into_owned(),format!("grading_lut:{}",p.file_stem().unwrap().to_string_lossy())];for name in names {let h=xxhash_rust::xxh3::xxh3_64(name.as_bytes());if [0xbbc2dfc4c6824251u64,0x579f39ab91a01865,0xa647e80af4e9395f].contains(&h){println!("{h:016x} {name}");}}}}
+fn main(){for sub in ["assets","compiled-assets/textures"]{let base=Path::new("D:/game/ljxsj_92385/Tiny Glade").join(sub);scan(&base,&base)}}

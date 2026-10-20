@@ -1,0 +1,35 @@
+--- a/tiny-glade/crates/country-core/src/startup/init_photomode_state.rs
++++ b/tiny-glade/crates/country-core/src/startup/init_photomode_state.rs
+@@ -20,6 +20,16 @@
+     pub walk_camera_initialized: bool,
+     /// 是否显示焦点标记。
+     pub show_focus_marker: bool,
++}
++
++/// Original OnEnter(Game) init_photomode_state, inlined in run_unsafe1408397a0.
++/// This is a session reset, distinct from on_enable_photomode's selective reset.
++/// Original demo is process-global; the host supplies the same immutable value.
++pub fn init_photomode_state(
++    mut state: bevy_ecs::prelude::ResMut<PhotomodeState>,
++    config: bevy_ecs::prelude::Res<crate::game_config::GameConfig>,
++) {
++    *state = PhotomodeState::new(config.dev.demo);
+ }
+ 
+ impl Default for PhotomodeState {
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -524,6 +524,13 @@
+     app.add_systems(
+         bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+         country_core::startup::load_glade_tod_and_weather::load_glade_tod_and_weather
++            .after(country_core::startup::startup_session::load_game_session),
++    );
++    // Original session tuple140839b80's first descriptor140839c98 resets the
++    // whole photo owner; preserve the distinct selective photo-entry method.
++    app.add_systems(
++        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
++        country_core::startup::init_photomode_state::init_photomode_state
+             .after(country_core::startup::startup_session::load_game_session),
+     );
+     app.add_systems(

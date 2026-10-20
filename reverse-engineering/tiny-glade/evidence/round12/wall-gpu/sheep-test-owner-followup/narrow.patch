@@ -1,0 +1,66 @@
+--- a/tiny-glade/crates/country-core/tests/sheep_snapshot_native.rs
++++ b/tiny-glade/crates/country-core/tests/sheep_snapshot_native.rs
+@@ -9,7 +9,7 @@
+             control::{SheepControlSnapshot, SheepSnapshot, capture_sheep_snapshot},
+         },
+     },
+-    systems::debug::sheep_controls::{SheepControl, apply_sheep_snapshot, sheep_controls},
++    systems::debug::sheep_controls::{SheepControl, sheep_controls},
+     utils::components::transform::Transform,
+ };
+ use glam::{Quat, Vec3};
+@@ -117,6 +117,12 @@
+ #[test]
+ fn ecs_freeze_preserves_other_fields_and_extra_entities() {
+     let mut world = World::new();
++    world.insert_resource(country_core::systems::mode_manager::AppMode::default());
++    world.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::default());
++    world.insert_resource(country_core::systems::ui::resources::ui_state::UiState::at_startup());
++    world.insert_resource(country_core::resources::gui::DebugGui::default());
++    world.insert_resource(bevy_input::ButtonInput::<bevy_input::keyboard::KeyCode>::default());
++
+     world
+         .init_resource::<Events<country_core::systems::history::finish_replay::CmdUnfreezeSheep>>();
+     let original = Transform {
+@@ -149,16 +155,18 @@
+             force_reach_goal: true,
+         },
+     };
++    let wireframe = world.spawn_empty().id();
++    let solid = world.spawn_empty().id();
+     let control_owner = world
+         .spawn(SheepControl {
+             snapshot: Some(SheepControlSnapshot {
+                 sheep: vec![saved.clone()],
+             }),
+-            ..SheepControl::new(Entity::from_raw(1), Entity::from_raw(2))
++            ..SheepControl::new(wireframe, solid)
+         })
+         .id();
+     let mut schedule = Schedule::default();
+-    schedule.add_systems((apply_sheep_snapshot, sheep_controls).chain());
++    schedule.add_systems(sheep_controls);
+     schedule.run(&mut world);
+     let transform = world.get::<Transform>(entity).unwrap();
+     assert_eq!(transform.translation, saved.position);
+@@ -186,11 +194,19 @@
+         SheepSaveSectionValue, sheep_save_section_system,
+     };
+     let mut world = World::new();
++    world.insert_resource(country_core::systems::mode_manager::AppMode::default());
++    world.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::default());
++    world.insert_resource(country_core::systems::ui::resources::ui_state::UiState::at_startup());
++    world.insert_resource(country_core::resources::gui::DebugGui::default());
++    world.insert_resource(bevy_input::ButtonInput::<bevy_input::keyboard::KeyCode>::default());
++
+     world.init_resource::<SheepSaveSectionValue>();
++    let wireframe = world.spawn_empty().id();
++    let solid = world.spawn_empty().id();
+     let control_owner = world
+         .spawn(SheepControl {
+             snapshot: Some(SheepControlSnapshot { sheep: vec![] }),
+-            ..SheepControl::new(Entity::from_raw(1), Entity::from_raw(2))
++            ..SheepControl::new(wireframe, solid)
+         })
+         .id();
+     let mut schedule = Schedule::default();

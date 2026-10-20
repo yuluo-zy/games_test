@@ -1,0 +1,277 @@
+--- a/tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs
++++ b/tiny-glade/crates/country-core/src/resources/history/decorator_edit.rs
+@@ -232,14 +232,44 @@
+ /// `from_iter<Addr,(AddrHistoryState,AddrHistoryState)>`。单地址（`Decorators` 桶）
+ /// 的状态由 `extract_before_after_impl`（0x140b2be70）经
+ /// `from_iter<DecoratorId, DecoratorHistoryState, Map<Iter<HashMap<DecoratorId,DecoratorInfo>>, impl$1::from>>`
+-/// 构建（逐条目 `DecoratorInfo → DecoratorHistoryState`）；removed 面（桶
+-/// `removed_ids`）为恢复语义所需，字段精确位置以类型面登记。
+-#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
++/// 构建（逐条目 `DecoratorInfo → DecoratorHistoryState`）。原1417c1490
++/// 以0x30偏移序列化before/after两份纯map；live removed journal属于
++/// Decorators.removed_ids，不属于历史快照。
++#[derive(Clone, Debug, Default, PartialEq)]
+ pub struct DecoratorStorageAddrHistoryState {
+     /// 该地址逐 id 的 DecoratorHistoryState。
+     pub states: HashMap<DecoratorId, DecoratorHistoryState>,
+-    /// 该地址已移除的 id 集（桶 `removed_ids` 面；恢复时从 d2s 移除）。
+-    pub removed: HashSet<DecoratorId>,
++}
++
++/// Original1417c1490 serializes before@0 and after@0x30 through the same
++/// HashMap<DecoratorId,DecoratorHistoryState> serializer. There is no journal
++/// set or nested states field in this snapshot. Live Decorators.removed_ids
++/// remains owned by the live storage and is restored independently.
++impl serde::Serialize for DecoratorStorageAddrHistoryState {
++    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
++        use crate::systems::save::snapshot::decorator_history_state_json;
++        let mut map = serializer.serialize_map(Some(self.states.len()))?;
++        for (id, state) in &self.states {
++            let value = decorator_history_state_json(state).map_err(serde::ser::Error::custom)?;
++            map.serialize_entry(&id.0.to_string(), &value)?;
++        }
++        map.end()
++    }
++}
++impl<'de> serde::Deserialize<'de> for DecoratorStorageAddrHistoryState {
++    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
++        use crate::systems::save::snapshot::DecoratorInfoJson;
++        let input =
++            <HashMap<u32, DecoratorInfoJson> as serde::Deserialize>::deserialize(deserializer)?;
++        let mut states = HashMap::with_capacity(input.len());
++        for (id, state) in input {
++            states.insert(
++                DecoratorId(id),
++                state.to_history_state().map_err(serde::de::Error::custom)?,
++            );
++        }
++        Ok(Self { states })
++    }
+ }
+ 
+ /// 装饰存储地址的历史差分（原生 `DecoratorStorageHistoryDiff`）。
+@@ -870,19 +900,10 @@
+ /// defaults and style-specific fields instead of serializing native byte slots.
+ impl serde::Serialize for DecoratorHistoryEdit {
+     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+-        use crate::systems::save::snapshot::{
+-            decorator_history_state_json, decorator_storage_addr_json,
+-        };
++        use crate::systems::save::snapshot::decorator_storage_addr_json;
+         let encode =
+             |state: &DecoratorStorageAddrHistoryState| -> Result<serde_json::Value, S::Error> {
+-                let mut out = serde_json::Map::new();
+-                for (id, value) in &state.states {
+-                    out.insert(
+-                        id.0.to_string(),
+-                        decorator_history_state_json(value).map_err(serde::ser::Error::custom)?,
+-                    );
+-                }
+-                Ok(serde_json::Value::Object(out))
++                serde_json::to_value(state).map_err(serde::ser::Error::custom)
+             };
+         let mut diffs = Vec::with_capacity(self.diffs.len());
+         for (addr, diff) in &self.diffs {
+@@ -931,6 +952,61 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    #[test]
++    fn address_history_state_is_one_owned_map_and_preserves_original_nonempty_wire() {
++        assert_eq!(
++            std::mem::size_of::<DecoratorStorageAddrHistoryState>(),
++            std::mem::size_of::<HashMap<DecoratorId, DecoratorHistoryState>>()
++        );
++        let fixture: serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),
++            "/../../../reverse-engineering/tiny-glade/evidence/round12/decorator-addr-schema/original-nonempty-address-state.json"))).unwrap();
++        assert_eq!(fixture["version"], 27);
++        let original = fixture["diff"].clone();
++        let diff: DecoratorStorageHistoryDiff = serde_json::from_value(original.clone()).unwrap();
++        assert!(!diff.before.states.is_empty() && !diff.after.states.is_empty());
++        let saved = serde_json::to_value(&diff).unwrap();
++        fn retained(original: &serde_json::Value, saved: &serde_json::Value) {
++            match original {
++                serde_json::Value::Object(map) => {
++                    for (key, value) in map {
++                        retained(value, saved.get(key).expect("original field missing"));
++                    }
++                }
++                serde_json::Value::Array(values) => {
++                    let actual = saved.as_array().unwrap();
++                    assert_eq!(values.len(), actual.len());
++                    for (a, b) in values.iter().zip(actual) {
++                        retained(a, b);
++                    }
++                }
++                serde_json::Value::Number(number) => {
++                    let actual = saved.as_number().unwrap();
++                    if let (Some(a), Some(b)) = (number.as_u64(), actual.as_u64()) {
++                        assert_eq!(a, b);
++                    } else {
++                        assert_eq!(
++                            (number.as_f64().unwrap() as f32).to_bits(),
++                            (actual.as_f64().unwrap() as f32).to_bits()
++                        );
++                    }
++                }
++                _ => assert_eq!(original, saved),
++            }
++        }
++        retained(&original, &saved);
++        assert_eq!(saved.as_object().unwrap().len(), 2);
++        for side in ["before", "after"] {
++            assert!(
++                saved[side]
++                    .as_object()
++                    .unwrap()
++                    .keys()
++                    .all(|id| id.parse::<u32>().is_ok())
++            );
++            assert!(saved[side].get("states").is_none() && saved[side].get("removed").is_none());
++        }
++    }
+ 
+     fn info(style: u8, state: u8) -> DecoratorInfo {
+         DecoratorInfo {
+--- a/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/decorator_archivist.rs
+@@ -132,16 +132,9 @@
+                 out.insert(
+                     address,
+                     DecoratorStorageHistoryDiff {
+-                        // The original AddrHistoryState is one48B map. Legacy
+-                        // projection removed-sets have no native producer here.
+-                        before: DecoratorStorageAddrHistoryState {
+-                            states: before,
+-                            removed: HashSet::new(),
+-                        },
+-                        after: DecoratorStorageAddrHistoryState {
+-                            states: after,
+-                            removed: HashSet::new(),
+-                        },
++                        // Original AddrHistoryState is one48B owned map.
++                        before: DecoratorStorageAddrHistoryState { states: before },
++                        after: DecoratorStorageAddrHistoryState { states: after },
+                     },
+                 );
+             }
+@@ -301,10 +294,7 @@
+             DecoratorHistoryState::from(&observed_to_info(info)),
+         );
+     }
+-    DecoratorStorageAddrHistoryState {
+-        states,
+-        removed: tracked.removed.iter().copied().map(DecoratorId).collect(),
+-    }
++    DecoratorStorageAddrHistoryState { states }
+ }
+ 
+ /// `extract_before_after_all` 闭包（内联，fresh 不收敛）的 Rust 重建：
+@@ -336,24 +326,12 @@
+         before_states.insert(DecoratorId(*id), DecoratorHistoryState::from(&b));
+         after_states.insert(DecoratorId(*id), DecoratorHistoryState::from(&a));
+     }
+-    let mut before_removed: HashSet<DecoratorId> =
+-        cur.removed.iter().copied().map(DecoratorId).collect();
+-    let mut after_removed: HashSet<DecoratorId> =
+-        cur.removed.iter().copied().map(DecoratorId).collect();
+-    if let Some(b) = before.as_ref() {
+-        before_removed.extend(b.removed.iter().copied().map(DecoratorId));
+-    }
+-    if let Some(a) = after.as_ref() {
+-        after_removed.extend(a.removed.iter().copied().map(DecoratorId));
+-    }
+     (
+         DecoratorStorageAddrHistoryState {
+             states: before_states,
+-            removed: before_removed,
+         },
+         DecoratorStorageAddrHistoryState {
+             states: after_states,
+-            removed: after_removed,
+         },
+     )
+ }
+@@ -681,8 +659,6 @@
+         let out = archivist.extract_diff();
+         let diff = out.get(&DecoratorStorageAddr::Wall(WallId(7))).unwrap();
+         assert_eq!(diff.before.states.len(), 1);
+-        assert_eq!(diff.before.removed.len(), 1);
+-        assert!(diff.before.removed.contains(&DecoratorId(999)));
+         // 归档已清空。
+         assert!(archivist.walls.is_empty());
+         assert!(archivist.special1.is_none());
+@@ -1064,11 +1040,11 @@
+         let wall = &out[&DecoratorStorageAddr::Wall(WallId(3))];
+         assert_eq!(
+             wall.before.states.keys().copied().collect::<HashSet<_>>(),
+-            [DecoratorId(2)].into()
++            HashSet::from([DecoratorId(2)])
+         );
+         assert_eq!(
+             wall.after.states.keys().copied().collect::<HashSet<_>>(),
+-            [DecoratorId(4)].into()
++            HashSet::from([DecoratorId(4)])
+         );
+         assert!(archive.walls.is_empty() && archive.special1.is_none());
+         assert!(!archive.culling.allow_any && archive.culling.allowed_ids.is_empty());
+--- a/tiny-glade/crates/systems/decorator/src/restore_archived_decorators.rs
++++ b/tiny-glade/crates/systems/decorator/src/restore_archived_decorators.rs
+@@ -197,6 +197,11 @@
+     if old.is_none() {
+         storage.decorator_to_storage.insert(DecoratorId(id), addr);
+     } else {
++        assert!(
++            storage.decorator_to_storage.get(DecoratorId(id)).is_some(),
++            "d2s update: no such {}",
++            id
++        );
+         storage.decorator_to_storage.update(DecoratorId(id), addr);
+     }
+     true
+@@ -267,6 +272,44 @@
+             5
+         ));
+         assert!(storage.lookup_decorator_info(DecoratorId(5)).is_none());
++    }
++
++    #[test]
++    fn overwrite_existing_item_rejects_missing_index_without_inserting_one() {
++        let mut archive = DecoratorArchivist::<()>::default();
++        let info = country_core::resources::walls::decorator::DecoratorInfo {
++            decorator_id: 5,
++            ..Default::default()
++        };
++        archive.special1 = Some(TrackedDecorators {
++            items: [(
++                5,
++                ObservedDecoratorInfo(crate::apply_decorator_op::info_to_bytes(info)),
++            )]
++            .into(),
++            ..Default::default()
++        });
++        let mut storage = DecoratorStorage::default();
++        storage
++            .get_or_insert_default(DecoratorStorageAddr::Terrain)
++            .insert(DecoratorId(5), info);
++        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            overwrite_decorator_state_from_archivist(
++                &mut storage,
++                &archive,
++                DecoratorStorageAddress::ObservedSpecial1,
++                5,
++            )
++        }));
++        assert!(result.is_err());
++        assert!(storage.lookup_storage(DecoratorId(5)).is_none());
++        assert!(
++            storage
++                .get(DecoratorStorageAddr::Terrain)
++                .unwrap()
++                .get(DecoratorId(5))
++                .is_some()
++        );
+     }
+ 
+     #[test]

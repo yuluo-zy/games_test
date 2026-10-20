@@ -1,0 +1,855 @@
+--- a/tiny-glade/crates/tiny-glade/src/world_postprocess.rs
++++ b/tiny-glade/crates/tiny-glade/src/world_postprocess.rs
+@@ -292,54 +292,42 @@
+     "export 0x22",
+ ];
+ 
+-/// Explicit reconstruction inputs for native values that have no recovered
+-/// producer. Each field is documented with its native evidence; supplying one
+-/// must not be read as equivalence with compile_main.
++/// Native menu policy result carried through graph declaration.
+ #[derive(Clone, Copy, Debug)]
+ pub struct PainterlyTailControl {
+-    /// `stack0x1a88` bool, shared by T6 `enabled` and T7 `skip_generate` (O
+-    /// argument positions; the producer of the byte is U).
++    /// `stack0x1a88`: Game loading state && menu.should_show_world && menu.is_open.
+     pub enabled: bool,
+-    /// Resource 0xff byte used by `painterly_pass`'s `instant` selection (U).
+-    pub instant_flag_ff: bool,
+-    /// Resource 0x80 u32 used when 0xff is clear (U).
+-    pub count_80: u32,
+ }
+ 
+ #[derive(Clone, Copy, Debug)]
+ pub struct WorldTailControls {
+-    /// `stack0x1ac0`; both native writes (0x140162840, 0x140162930) store 1.
+-    /// It is final_post's `flag94` and the wireframe/ui_pass gate (O).
++    /// `stack0x1ac0`: selected actual-world/PrimaryRT branch, including zero
++    /// for static menu reuse. Also final_post flag94 and wireframe/UI gate.
+     pub flag_0x1ac0: bool,
+-    /// render_world result byte `stack0x1897` (U: no recovered producer).
+-    /// `None` selects the native `bVar43 & 1 == 1` (Keep) branch.
+-    pub bvar43: Option<u8>,
+-    /// `AppMode` `+8` byte read by `render_menu_bg` (U).
+-    pub menu_bg_flag: u8,
++    /// First Awaiting screenshot purpose. No Awaiting capture is native 7.
++    pub bvar43: u8,
+     pub painterly: PainterlyTailControl,
+-    /// T8 logo condition; `*0x14362c098 == 1` is the demo byte, while
+-    /// `bVar43 ∈ {3,4}` / `settings+0xf3 == 1` have no recovered producer (U).
++    /// Demo-purpose branch or ordinary purpose3 with GameConfig.ui.game_logo.
+     pub logo_overlay: bool,
+-    /// T18 cursor resource `+0xf4` (U).
++    /// T18 GameConfig.ui.custom_cursor (+0xf4).
+     pub cursor_visible: bool,
+ }
+ 
+-/// Load-time reconstruction defaults for [`WorldTailControls`]. Every non-O
+-/// field is the value the native load-time globals/stack carry when no producer
+-/// is registered, and the delivery lists them as U. `flag_0x1ac0` is O = 1.
+-pub const fn load_time_tail_controls() -> WorldTailControls {
+-    WorldTailControls {
+-        flag_0x1ac0: true,
+-        bvar43: None,
+-        menu_bg_flag: 0,
++/// Snapshot native tail inputs from their canonical owners. The main-world
++/// branch determines flag_0x1ac0; it cannot be inferred from display state.
++pub fn resolve_world_tail_controls(world: &World, decision: crate::world_graph::MainWorldDecision) -> rhapsody::Result<WorldTailControls> {
++    let config = world.get_resource::<GameConfig>().ok_or_else(|| tail_missing("GameConfig"))?;
++    let purpose = crate::screenshot::active_capture_purpose(world);
++    Ok(WorldTailControls {
++        flag_0x1ac0: decision.render_world,
++        bvar43: purpose,
+         painterly: PainterlyTailControl {
+-            enabled: false,
+-            instant_flag_ff: false,
+-            count_80: 0,
++            enabled: decision.painterly_enabled,
+         },
+-        logo_overlay: false,
+-        cursor_visible: false,
+-    }
++        logo_overlay: if config.dev.demo { matches!(purpose, 3 | 4) }
++            else { purpose == 3 && config.ui.game_logo },
++        cursor_visible: config.ui.custom_cursor,
++    })
+ }
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+@@ -351,19 +339,13 @@
+     pub blur: RgTexture,
+     /// `vermeer_pass` return value: entering phase != Disabled (O).
+     pub vermeer_active: bool,
+-    /// T10 gate shared by T11-T21. The caller uses this for its owned egui backend.
++    /// T10 gate shared by T11-T19. Loading and egui remain outside it.
+     pub ui_visible: bool,
+ }
+ 
+ fn tail_missing(name: &str) -> rhapsody::Error {
+     rhapsody::Error::invalid_usage(format!(
+         "original compile_main 0x140161cd0 tail: missing {name}"
+-    ))
+-}
+-
+-fn tail_unsupported(step: &str, reason: &str) -> rhapsody::Error {
+-    rhapsody::Error::unsupported(format!(
+-        "original compile_main 0x140161cd0 tail step `{step}`: {reason}"
+     ))
+ }
+ 
+@@ -389,42 +371,16 @@
+     Ok(())
+ }
+ 
+-fn warn_deferred_tail_steps() {
+-    use std::sync::Once;
+-    static ONCE: Once = Once::new();
+-    ONCE.call_once(|| {
+-        log::warn!(
+-            target: "tiny_glade::world_tail",
+-            "compile_main tail: active session previews and painterly auxiliary inputs remain unrecovered; \
+-             warm-up covers W1-W54 plus the implemented tail subset, not complete compile_main"
+-        );
+-    });
+-}
+-
+ /// `stack0x1490` LUT selection (0x140161cd0.c:1126-1149). The native branches
+ /// are `bVar43 == 7 || ((b-2) != 3 && (b-2) < 5)` -> Custom(flattened name,
+ /// flattened +0x18, flag 0); otherwise the niche byte is `b & 1` (1 = Keep,
+ /// 0 = Default).
+-fn lut_selection(bvar43: Option<u8>, cfg: &ImageFormationConfig) -> final_post::LutSelect {
+-    match bvar43 {
+-        Some(b) => {
+-            let k = b.wrapping_sub(2);
+-            if b == 7 || (k != 3 && k < 5) {
+-                final_post::LutSelect::Custom {
+-                    name: cfg.name.clone(),
+-                    blend: cfg.params_18[0],
+-                    flag: 0,
+-                }
+-            } else if b & 1 == 1 {
+-                final_post::LutSelect::Keep
+-            } else {
+-                final_post::LutSelect::Default
+-            }
+-        }
+-        // U: no bVar43 producer is recovered; the `b & 1 == 1` (Keep) branch is
+-        // the load-time-unknown value. Documented, not claimed equivalent.
+-        None => final_post::LutSelect::Keep,
+-    }
++fn lut_selection(b: u8, cfg: &ImageFormationConfig) -> final_post::LutSelect {
++    let k = b.wrapping_sub(2);
++    if b == 7 || (k != 3 && k < 5) {
++        final_post::LutSelect::Custom { name: cfg.name.clone(), blend: cfg.params_18[0], flag: 0 }
++    } else if b & 1 == 1 { final_post::LutSelect::Keep }
++    else { final_post::LutSelect::Default }
+ }
+ 
+ /// Current grading section fields read by `final_post` (O offsets):
+@@ -479,13 +435,17 @@
+     frame: &mut CoreGraphFrame<'_>,
+     world: &mut World,
+     out_extent: [u32; 2],
++    shadows: bool,
+ ) -> rhapsody::Result<(
+     country_core::systems::render_loop::draw_passes::ui_2d_pass::MeiTextOutput,
+-    AttachmentTexture,
++    Option<AttachmentTexture>,
+ )> {
+     use country_core::{
+         asset_libraries::texture_library::AssetTextureLibrary, name_hash::NameHash,
+     };
++    if !world.contains_resource::<tg_text::TextRenderer>() {
++        return Err(tail_missing("TextRenderer (Update44 text_flush_system)"));
++    }
+     let raster = frame.raster_resources();
+     {
+         // Native MEI binds the blue_noise disk texture (hash verified against
+@@ -515,18 +475,78 @@
+             .cloned()
+             .ok_or_else(|| tail_missing("MEI text_flush_system output"))?
+     };
+-    let temp = frame.with_compute(|compute| {
++    let temp = if shadows { Some(frame.with_compute(|compute| {
+         Ok(compute.create_raw_texture("mei temp", &TextureDesc::new_2d(out_extent, 0x2b)))
+-    })?;
++    })?) } else { None };
+     Ok((
+         text,
+-        AttachmentTexture {
++        temp.map(|temp| AttachmentTexture {
+             id: temp.resource,
+             extent: (out_extent[0], out_extent[1]),
+             format: 0x2b,
+             sample_count: 1,
+-        },
++        }),
+     ))
++}
++
++/// T6 through the existing effect host. RNE163131/163144 retain both
++/// real render_world auxiliaries. Native EscMenuState::Settings(Image) skips
++/// before the mutable PainterlyState lookup and its changed tick.
++fn run_painterly(
++    frame: &mut CoreGraphFrame<'_>, world: &mut World, target: RgTexture,
++    post: &WorldPostOutputs, controls: &WorldTailControls,
++) -> rhapsody::Result<()> {
++    use crate::frame_world::{FrameLibraries, FrameWorldAccess};
++    use country_core::{asset_libraries::{placement_data_library::AssetPlacementDataLibrary,
++        ssbo_library::AssetSsboLibrary, texture_library::AssetTextureLibrary,
++        vao_library::AssetVAOLibrary}, resources::gui::EscMenuState};
++    let menu = world.get_resource::<EscMenuState>().ok_or_else(|| tail_missing("EscMenuState"))?.view();
++    if menu.tag == 7 && menu.flag == 1 { return Ok(()); }
++    if !world.contains_resource::<painterly::PainterlyState>() { return Err(tail_missing("PainterlyState")); }
++    let shaders = frame.shader_library();
++    let backend = frame.shader_backend();
++    world.resource_scope(|world, mut state: bevy_ecs::change_detection::Mut<painterly::PainterlyState>| {
++        use bevy_ecs::change_detection::DetectChangesMut;
++        state.set_changed();
++        let instant_flag = world.get_resource::<country_core::resources::gui::DebugGui>()
++            .ok_or_else(|| tail_missing("DebugGui"))?.painterly_instant;
++        // The frame counter lookup is skipped when the debug byte is true.
++        let count = if instant_flag { None } else {
++            Some(world.get_resource::<country_core::render::frame_constants::FrameConstants>()
++                .ok_or_else(|| tail_missing("FrameConstants"))?.frame_counter)
++        };
++        if !controls.painterly.enabled {
++            state.phase = painterly::PainterlyPhase::Disabled;
++            return Ok(());
++        }
++        // The native reset precedes temporal/shader/resource lookup failures.
++        if state.phase == painterly::PainterlyPhase::Disabled || instant_flag || count == Some(0) {
++            state.progress = 0.0;
++            state.phase = painterly::PainterlyPhase::Pending;
++            state.timer = 0.0;
++        }
++        let time = world.get_resource::<bevy_time::Time>().map(|time| painterly::TimeView {
++            delta_secs_f64: time.delta_secs_f64(), delta_secs: time.delta_secs(),
++        });
++        let raster = frame.raster_resources();
++        let access = FrameWorldAccess::new(FrameLibraries {
++            shaders: shaders.as_ref(),
++            textures: world.get_resource::<AssetTextureLibrary>().ok_or_else(|| tail_missing("AssetTextureLibrary"))?,
++            ssbos: world.get_resource::<AssetSsboLibrary>().ok_or_else(|| tail_missing("AssetSsboLibrary"))?,
++            vaos: world.get_resource::<AssetVAOLibrary>().ok_or_else(|| tail_missing("AssetVAOLibrary"))?,
++            placement: world.get_resource::<AssetPlacementDataLibrary>().ok_or_else(|| tail_missing("AssetPlacementDataLibrary"))?,
++            constants: raster.dynamic_constants(),
++        }, frame.compute_device()).with_resource_graph_factory(frame.resource_graph_factory());
++        let mut effects = crate::effects_host::EffectsHost::new(frame, &access, &*backend, shaders.as_ref(),
++            Some(painterly::AppModeView { state: menu.tag, flag: menu.flag }), time, None, false);
++        let color = effects.register_texture_with_samples(target, 4);
++        let aux_b = effects.register_texture(post.depth);
++        let aux_c = effects.register_texture(post.coc);
++        painterly::painterly_pass(&mut effects, &mut state,
++            painterly::PainterlyInputs { color, aux_b, aux_c, enabled: controls.painterly.enabled },
++            || Some(instant_flag), || count);
++        effects.finish()
++    })
+ }
+ 
+ /// T7 `vermeer_pass` through the recovered Painterly effect host. The state and
+@@ -536,9 +556,9 @@
+     frame: &mut CoreGraphFrame<'_>,
+     world: &mut World,
+     target: RgTexture,
+-    mode: u32,
++    _mode: u32,
+     photomode: bool,
+-    controls: &WorldTailControls,
++    _controls: &WorldTailControls,
+ ) -> rhapsody::Result<bool> {
+     use crate::frame_world::{FrameLibraries, FrameWorldAccess};
+     use country_core::asset_libraries::{
+@@ -553,16 +573,27 @@
+     let debug = *world
+         .get_resource::<vermeer::VermeerDebugControl>()
+         .ok_or_else(|| tail_missing("VermeerDebugControl"))?;
+-    let dt = world
+-        .get_resource::<bevy_time::Time>()
+-        .map(|time| time.delta_secs())
+-        .unwrap_or(0.0);
++    let skip_generate = world.get_resource::<FrameRenderConfig>().ok_or_else(|| tail_missing("FrameRenderConfig"))?.flag_20;
++    let menu = world.get_resource::<country_core::resources::gui::EscMenuState>()
++        .ok_or_else(|| tail_missing("EscMenuState"))?.view();
+     // Original process static143634c9c survives each frame; never recreate
+     // prev_active=false before the native temporal-reuse conjunction.
+     world.init_resource::<vermeer::VermeerPassLocals>();
+     world.resource_scope(
+         |world, mut state: bevy_ecs::change_detection::Mut<vermeer::VermeerState>| {
+         world.resource_scope(|world, mut locals: bevy_ecs::change_detection::Mut<vermeer::VermeerPassLocals>| {
++        use bevy_ecs::change_detection::DetectChangesMut;
++        state.set_changed();
++        if state.phase == vermeer::VermeerPhase::Disabled {
++            if debug.restart { state.activate(false, false); }
++            else { locals.prev_active = false; }
++            return Ok(false);
++        }
++        // Only an active reveal consumes Time and GPU/asset owners. The native
++        // missing-Time unwrap remains after its temporal/acquire declarations.
++        let time = world.get_resource::<bevy_time::Time>().map(|time| painterly::TimeView {
++            delta_secs_f64: time.delta_secs_f64(), delta_secs: time.delta_secs(),
++        });
+         world.resource_scope(|world, mut finished: bevy_ecs::change_detection::Mut<
+             bevy_ecs::event::Events<country_core::systems::save::load_game::StartupRevealFinished>>| {
+             let raster = frame.raster_resources();
+@@ -592,18 +623,15 @@
+                 &*backend,
+                 shaders.as_ref(),
+                 Some(painterly::AppModeView {
+-                    state: mode,
+-                    flag: controls.menu_bg_flag,
++                    state: menu.tag,
++                    flag: menu.flag,
+                 }),
+-                Some(painterly::TimeView {
+-                    delta_secs_f64: f64::from(dt),
+-                    delta_secs: dt,
+-                }),
++                time,
+                 Some(debug),
+                 // Static 0x143634d90 selects the alternate background name (U).
+                 false,
+             ).with_startup_reveal_finished_events(&mut finished);
+-            let target = effects.register_texture(target);
++            let target = effects.register_texture_with_samples(target, 4);
+             let active = vermeer::vermeer_pass(
+                 &mut effects,
+                 &mut locals,
+@@ -611,8 +639,8 @@
+                 vermeer::VermeerPassParams {
+                     target,
+                     photomode,
+-                    // O: the same stack0x1a88 bool as painterly's `enabled` (U).
+-                    skip_generate: controls.painterly.enabled,
++                    // RNE140163264 reads the real FrameRenderConfig+0x20 byte.
++                    skip_generate,
+                 },
+             );
+             effects.finish()?;
+@@ -982,10 +1010,11 @@
+     frame: &mut CoreGraphFrame<'_>,
+     world: &mut World,
+     lists: &DrawLists,
+-    taa: &RgTexture,
++    post: &WorldPostOutputs,
+     out_extent: [u32; 2],
+     controls: &WorldTailControls,
+ ) -> rhapsody::Result<WorldTailOutputs> {
++    let taa = &post.taa;
+     if out_extent.contains(&0) {
+         return Err(rhapsody::Error::invalid_usage(
+             "original compile_main tail: display extent contains zero",
+@@ -1006,15 +1035,20 @@
+         .ok_or_else(|| tail_missing("GameConfig"))?
+         .video
+         .clone();
+-    // T1: `ImageFormationConfigs::current_mut` then `ColorGradingState::flattened`
+-    // (0x140b00b20). CPU only: no GPU resource, no pass.
++    // T1: original purpose1/5 select the initial configuration for flattening;
++    // the remaining purposes select current_mut. final_post independently
++    // reads the current configuration for lens/contrast fields.
++    // ColorGradingState::flattened@140b00b20 is CPU-only.
+     let formation = world
+         .get_resource::<ImageFormationConfigs>()
+         .ok_or_else(|| tail_missing("ImageFormationConfigs"))?
+         .current()
+         .clone();
+-    let flattened = formation.flattened();
+-    warn_deferred_tail_steps();
++    let purpose = controls.bvar43;
++    let flattened = if matches!(purpose, 1 | 5) {
++        world.resource::<ImageFormationConfigs>().configs[0].flattened()
++    } else { formation.flattened() };
++
+ 
+     // T2: unconditional `bidirectional_blur_pyramid` (0x1409ed860) on W54 taa.
+     let blur = crate::scene_compute::with_env(frame, world, |env| {
+@@ -1078,9 +1112,8 @@
+         arg_f1: video.gamma_shift,
+         shader: Some(shader),
+         cfg: grading_config(&formation),
+-        // Native reads the GladeTheme resource's first u32 and compares 0x13.
+-        // The only observable branch is photomode (AppMode tag 19 == 0x13).
+-        theme: if photomode { 0x13 } else { 0 },
++        // TypeId c2b8... is AppMode, independently proved by registration.
++        theme: mode,
+         custom_lut: None, // no custom LUT texture producer is recovered (U)
+     };
+     let elapsed = world
+@@ -1107,14 +1140,9 @@
+     // T5: original canonical EscMenuState gate and captured texture owner.
+     crate::menu_background_host::render(frame, world, msaa_att)?;
+ 
+-    // T6: `painterly_pass` (0x1408a6410). The `enabled` byte and both auxiliary
+-    // textures (r9 / [rsp+0x20]) are U; never fabricate them.
+-    if controls.painterly.enabled {
+-        return Err(tail_unsupported(
+-            "painterly_pass",
+-            "PainterlyState and the two auxiliary texture inputs are not recovered",
+-        ));
+-    }
++    // T6: original r9=returned depth, stack20=returned CoC. Disabled also
++    // calls the state consumer, which must clear an earlier Ready phase.
++    run_painterly(frame, world, msaa, post, controls)?;
+ 
+     // T7: `vermeer_pass` (0x1408a82f0) on the same MSAA target.
+     let vermeer_active = run_vermeer(frame, world, msaa, mode, photomode, controls)?;
+@@ -1134,6 +1162,13 @@
+         })?;
+     }
+ 
++    // T9 runs only in the screenshot-purpose branch that reaches it (the
++    // same demo branch also draws the logo for purpose4).
++    let purpose = controls.bvar43;
++    if purpose == 3 || (world.resource::<GameConfig>().dev.demo && purpose == 4) {
++        crate::screenshot::shared_texture_capture::opportunity(frame, world, 3, msaa, 4)?;
++    }
++
+     // T10: native UI block gate `(vermeer_active & mode != 0x13) == 0`.
+     let ui_visible = !vermeer_active || photomode;
+     if ui_visible {
+@@ -1148,7 +1183,9 @@
+         // Toolbar writers share the same canonical UiInteractionState TypeId.
+         let (ui_elements, ui_ws_elements) = collect_ui_2d(world);
+         // T17 prerequisites (MEI buffers + real text output + "mei temp").
+-        let (mei_text, mei_temp) = prepare_mei(frame, world, out_extent)?;
++        let shadows = world.get_resource::<country_core::resources::gui::EscMenuState>()
++            .ok_or_else(|| tail_missing("EscMenuState"))?.cast_ui_shadows();
++        let (mei_text, mei_temp) = prepare_mei(frame, world, out_extent, shadows)?;
+         let window = window_dims(world)?;
+         let shaders = frame.shader_library();
+         frame.with_raster(|host| {
+@@ -1166,7 +1203,7 @@
+             // T16 is unconditional inside the native T10 UI gate.
+             ui_2d_pass::ui_2d_pass(&mut ctx, &msaa_att, window, &ui_elements, &ui_ws_elements);
+             // T17 MEI compositing on "mei temp" then the MSAA target.
+-            ui_2d_pass::mei_pass(&mut ctx, &msaa_att, &mei_temp, window, &mei_text);
++            ui_2d_pass::mei_pass_with_shadows(&mut ctx, &msaa_att, mei_temp.as_ref(), window, &mei_text);
+             // T18 custom cursor (visibility byte is U).
+             custom_cursor_pass::custom_cursor_pass(
+                 &mut ctx,
+@@ -1174,14 +1211,19 @@
+                 window,
+                 controls.cursor_visible,
+             );
+-            // T20 loading draw list (normally empty during gameplay).
+-            ui_pass::loading_screen_pass(&mut ctx, &msaa_att, lists);
+             Ok(())
+         })?;
+-    }
+-
+-    // T4's shared-texture requests are declared above. File/Steam requests at
+-    // T9/T19/T22 and the T23 panic branch still need their full GPU/IO owners.
++        crate::screenshot::shared_texture_capture::opportunity(frame, world, 4, msaa, 4)?;
++    }
++    // T20 is outside the reveal/UI gate (RNE1401634af). The native loading
++    // list and caller-owned EguiBackend still render during an active reveal.
++    frame.with_raster(|host| {
++        let mut new_host = || -> Box<dyn country_core::render::pass_builder::draw_stream::PassHost> { Box::new(host.sibling()) };
++        let lookup = LibraryShaders(shaders.as_ref());
++        let mut ctx = DrawPassCtx::new(world, elapsed, &mut new_host, &lookup);
++        ui_pass::loading_screen_pass(&mut ctx, &msaa_att, lists);
++        Ok(())
++    })?;
+ 
+     Ok(WorldTailOutputs {
+         msaa,
+--- a/tiny-glade/crates/tiny-glade/src/effects_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/effects_host.rs
+@@ -37,6 +37,7 @@
+     backend: &'a dyn ShaderBackend,
+     shaders: &'a AssetShaderLibrary,
+     textures: HashMap<u32, RgTexture>,
++    texture_sample_counts: HashMap<u32, u8>,
+     named_textures: HashMap<u64, p::TexRef>,
+     app_mode: Option<p::AppModeView>,
+     time: Option<p::TimeView>,
+@@ -54,7 +55,7 @@
+         debug: Option<VermeerDebugControl>, alt_background: bool,
+     ) -> Self {
+         Self { frame, access, backend, shaders, textures: HashMap::new(),
+-            named_textures: HashMap::new(), app_mode, time, debug, alt_background,
++            texture_sample_counts: HashMap::new(), named_textures: HashMap::new(), app_mode, time, debug, alt_background,
+             reveal_finished_events: None, error: None }
+     }
+ 
+@@ -66,6 +67,13 @@
+     /// Record the actual graph handle returned by its producer. A logical index
+     /// is never replaced with a fabricated GPU handle.
+     pub fn register_texture(&mut self, texture: RgTexture) -> p::TexRef {
++        self.register_texture_with_samples(texture, 1)
++    }
++
++    /// RgTexture's compatibility description omits sample_count. Preserve it
++    /// for external raster targets instead of relabelling a 4x image as 1x.
++    pub fn register_texture_with_samples(&mut self, texture: RgTexture, samples: u8) -> p::TexRef {
++        self.texture_sample_counts.insert(texture.resource, samples);
+         self.textures.insert(texture.resource, texture);
+         p::TexRef(texture.resource)
+     }
+@@ -135,7 +143,11 @@
+             return Err(rhapsody::Error::invalid_usage("effect shader identity changed during this frame"));
+         }
+         let target = match desc.color { p::RasterColor::Texture(t) | p::RasterColor::View(t) => self.texture(t)? };
+-        let target_attachment = attachment(target);
++        let target_attachment = AttachmentTexture {
++            sample_count: self.texture_sample_counts.get(&target.resource).copied()
++                .expect("registered effect texture sample count"),
++            ..attachment(target)
++        };
+         let color = match desc.color {
+             p::RasterColor::Texture(_) => ColorAttachment::Texture(target_attachment),
+             p::RasterColor::View(_) => ColorAttachment::View { view: [0; 4], texture: target_attachment },
+--- a/tiny-glade/crates/tiny-glade/src/production_renderer.rs
++++ b/tiny-glade/crates/tiny-glade/src/production_renderer.rs
+@@ -69,7 +69,6 @@
+         |frame, world, lists| {
+             // Update44 already consumed the text stream. Reuse that exact
+             // output in warm-up instead of destructively flushing twice.
+-            require_world_mei_output(world)?;
+             frame.with_main_prelude(world, |frame, world| {
+                 let extent = world_extent(world, None, None)?;
+                 let id = build_full_world_stage(frame, world, lists, extent, None)?;
+@@ -207,47 +206,18 @@
+         .map(|(name, _)| *name)
+ }
+ 
+-fn world_targets(
+-    frame: &mut CoreGraphFrame<'_>,
+-    extent: [u32; 2],
+-) -> rhapsody::Result<(
+-    country_core::render::pass_builder::pass_resource_access::RgTexture,
+-    country_core::render::pass_builder::pass_resource_access::RgTexture,
+-)> {
+-    // Descriptions are owned by country-core so the minimal and full paths
+-    // cannot drift: `main color` carries mip_levels(6) (0x140bd5460), `main
+-    // depth` is plain new_2d(extent, 0x82).
+-    let depth_desc = core_world_frame::main_depth_desc(extent);
+-    let color_desc = core_world_frame::main_color_desc(extent);
+-    frame.with_compute(|compute| {
+-        let depth = compute.create_raw_texture(core_world_frame::MAIN_DEPTH_NAME, &depth_desc);
+-        let color = compute.create_raw_texture(core_world_frame::MAIN_COLOR_NAME, &color_desc);
+-        Ok((depth, color))
+-    })
+-}
+-
+-/// Update44 owns the one destructive text flush. Graph declaration, warm-up
+-/// and OOM retries consume its already uploaded output; flushing here again
+-/// would replace the real primitive count with an empty stream.
+-fn require_world_mei_output(world: &World) -> rhapsody::Result<()> {
+-    if !world.contains_resource::<tg_text::TextRenderer>() {
+-        return Err(rhapsody::Error::invalid_usage(
+-            "original compile_main tail: missing TextRenderer producer",
+-        ));
+-    }
+-    let gpu = world
+-        .get_resource::<crate::loading_graph::LoadingGpuResources>()
+-        .ok_or_else(|| {
+-            rhapsody::Error::invalid_usage(
+-                "original compile_main tail: missing LoadingGpuResources MEI owner",
+-            )
+-        })?;
+-    if gpu.mei.output().is_none() {
+-        return Err(rhapsody::Error::invalid_usage(
+-            "original compile_main tail: missing Update44 text_flush_system output",
+-        ));
+-    }
+-    Ok(())
++fn world_color_target(
++    frame: &mut CoreGraphFrame<'_>, extent: [u32; 2],
++) -> rhapsody::Result<country_core::render::pass_builder::pass_resource_access::RgTexture> {
++    frame.with_compute(|compute| Ok(compute.create_raw_texture(
++        core_world_frame::MAIN_COLOR_NAME, &core_world_frame::main_color_desc(extent))))
++}
++
++fn world_depth_target(
++    frame: &mut CoreGraphFrame<'_>, extent: [u32; 2],
++) -> rhapsody::Result<country_core::render::pass_builder::pass_resource_access::RgTexture> {
++    frame.with_compute(|compute| Ok(compute.create_raw_texture(
++        core_world_frame::MAIN_DEPTH_NAME, &core_world_frame::main_depth_desc(extent))))
+ }
+ 
+ /// Native `plVar39[6]` target extent (I: `FrameRenderConfig.extent_8`, the same
+@@ -277,7 +247,8 @@
+     extent: [u32; 2],
+     egui: Option<(&mut EguiGpu, &mut EguiBackend)>,
+ ) -> rhapsody::Result<u32> {
+-    let (depth, color) = world_targets(frame, extent)?;
++    let color = world_color_target(frame, extent)?;
++    let decision = crate::world_graph::select_main_world(world)?;
+     let controls = crate::world_graph::WorldGraphControls {
+         // O: *0x14362c0d8 is a process debug byte initialised to zero; no
+         // recovered producer exists, so the load-time value is used.
+@@ -289,23 +260,44 @@
+             disable_temporal_history: false,
+         },
+     };
+-    let out = crate::world_graph::build_world(frame, world, lists, extent, depth, color, controls)?;
++    let debug_rt = crate::gui::gui_debug::RENDER_OVERRIDE_SHOW_DEBUG_RT_VIEW
++        .load(std::sync::atomic::Ordering::Relaxed);
++    let out = if decision.render_world && !debug_rt {
++        let depth = world_depth_target(frame, extent)?;
++        crate::world_graph::build_world(frame, world, lists, extent, depth, color, controls)?
++    } else {
++        if decision.render_world {
++            // Original 140162840 selects the recovered Primary RT algorithm,
++            // not a clear operation and not an empty stand-in world.
++            crate::scene_compute::with_env(frame, world, |env| {
++                let pass = country_core::systems::render_loop::compute_passes::primary_rt_debug::primary_rt_debug(env, &color);
++                env.record(pass);
++                Ok(())
++            })?;
++        }
++        // Both original no-world branches use these real independent dummies.
++        let depth = world_depth_target(frame, extent)?;
++        let coc = frame.with_compute(|compute| Ok(compute.create_raw_texture("coc",
++            &country_core::rhapsody_types::TextureDesc::new_2d([1, 1], 9))))?;
++        crate::world_postprocess::WorldPostOutputs { depth, coc, taa: color }
++    };
+     // Native compile_main 0x140161cd0 continues after render_world with
+     // grading -> blur -> final_post -> UI, then exports the MSAA target at 0x22.
+     let display = display_extent(world)?;
++    let tail_controls = crate::world_postprocess::resolve_world_tail_controls(world, decision)?;
+     let tail = crate::world_postprocess::build_world_tail(
+         frame,
+         world,
+         lists,
+-        &out.taa,
++        &out,
+         display,
+-        &crate::world_postprocess::load_time_tail_controls(),
++        &tail_controls,
+     )?;
+     // T21 (B compile_main :1363): the main-frame owner supplies Some, while
+     // the loading frame and the worker warm-up have no EguiBackend. Keep this
+     // after T20 loading_screen_pass and before the final 0x22 export; all draws
+     // target the same 4x MSAA image and the existing per-App GPU namespaces.
+-    if tail.ui_visible {
++    {
+         if let Some((gpu, backend)) = egui {
+             let shaders = frame.shader_library();
+             let target =
+@@ -321,6 +313,7 @@
+                 })?;
+         }
+     }
++    crate::screenshot::shared_texture_capture::opportunity(frame, world, 6, tail.msaa, 4)?;
+     frame.with_graph(|graph| {
+         let id = graph.resource_handle(tail.msaa.resource)?;
+         graph.export(id, WORLD_EXPORT_ACCESS)?;
+@@ -338,7 +331,6 @@
+ ) -> rhapsody::Result<CompiledGameGraph> {
+     // Original `text_flush_system` runs in Update44. Compile and OOM retry
+     // reuse that uploaded stream without consuming the text renderer again.
+-    require_world_mei_output(world)?;
+     let gpu = &mut renderer.egui;
+     let (output, built) = renderer.bridge.build_frame(|frame| {
+         frame.with_main_prelude(world, |frame, world| {
+@@ -500,6 +492,10 @@
+                 );
+             }
+         }
++        country_core::systems::render_loop::painterly::startup_painterly(&mut VermeerShaders {
++            library: &shaders,
++            backend: bridge.shader_backend(),
++        });
+         country_core::systems::render_loop::vermeer::startup_vermeer(&mut VermeerShaders {
+             library: &shaders,
+             backend: bridge.shader_backend(),
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -903,6 +903,8 @@
+         ..Default::default()
+     });
+     app.insert_resource(VermeerDebugControl::default());
++    // Original PainterlyPlugin::build@1408a63e0 owns an independent Disabled state.
++    app.init_resource::<country_core::systems::render_loop::painterly::PainterlyState>();
+ }
+ 
+ /// B's independent loading App (run_game_thread @1405a4380 onward). This
+--- a/tiny-glade/crates/country-core/src/resources/gui.rs
++++ b/tiny-glade/crates/country-core/src/resources/gui.rs
+@@ -480,7 +480,7 @@
+ 
+ /// Owned controls whose meaning is established by the original widgets. Field
+ /// spellings are descriptive; the offset comments refer to B, not this layout.
+-/// The three flags at B +0xfb/+0xfc/+0xff and the snapshot request at +0 remain
++/// The flags at B +0xfb/+0xfc remain
+ /// outside this semantic model until their consumers have been identified.
+ #[derive(Resource, Clone, Debug, PartialEq)]
+ pub struct DebugGui {
+@@ -512,6 +512,9 @@
+     pub disable_wall_snapping: bool,
+     /// B +0xfe, labelled `Disable eraser higlight` in the original UI.
+     pub suppress: bool,
++    /// B +0xff, read by painterly_pass@1408a65b0. Forces immediate strokes.
++    /// DebugGui::default@14093fdf8 zeroes the eight-byte f9..100 region.
++    pub painterly_instant: bool,
+     /// B +0x100.
+     pub force_music_richness: bool,
+     /// B +0x101, the independently toggled experimental window.
+@@ -550,6 +553,7 @@
+             hide_brush_previews: false,
+             disable_wall_snapping: false,
+             suppress: false,
++            painterly_instant: false,
+             force_music_richness: false,
+             experimental_window: false,
+             trigger_proxy_visualization: DebugTriggerProxyVis::ShowAll,
+--- a/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/ui_2d_pass.rs
++++ b/tiny-glade/crates/country-core/src/systems/render_loop/draw_passes/ui_2d_pass.rs
+@@ -323,14 +323,26 @@
+     window: (u32, u32),
+     text: &MeiTextOutput,
+ ) {
++    mei_pass_with_shadows(ctx, target, Some(temp), window, text);
++}
++
++/// Native cast_ui_shadows argument: without it MEI writes directly to the
++/// existing target and does not allocate/read a shadow intermediate.
++pub fn mei_pass_with_shadows(
++    ctx: &mut DrawPassCtx<'_>,
++    target: &AttachmentTexture,
++    temp: Option<&AttachmentTexture>,
++    window: (u32, u32),
++    text: &MeiTextOutput,
++) {
+     let text_shader = ctx
+         .shader(MEI_TEXT_SHADER)
+         .expect("called `Option::expect()` on a `None` value");
+     let mut pass = ctx.raster_pass(
+         MEI_PASS_NAME,
+-        &[ColorSpec::tag2(*temp)],
++        &[temp.map_or_else(|| ColorSpec::tag0(*target), |temp| ColorSpec::tag1(*temp))],
+         DepthSpec::None,
+-        *target,
++        temp.copied().unwrap_or(*target),
+     );
+     let state = pass.host.default_raster_state();
+     let packet = DrawPacket::new(text_shader, [1, 0], state);
+@@ -361,6 +373,7 @@
+     b.draw_no_vao(6 * text.prim_count);
+     pass.render();
+ 
++    let Some(temp) = temp else { return; };
+     let shadow = ctx
+         .shader(MEI_SHADOW_SHADER)
+         .expect("called `Option::expect()` on a `None` value");
+--- a/tiny-glade/crates/tiny-glade/src/world_graph.rs
++++ b/tiny-glade/crates/tiny-glade/src/world_graph.rs
+@@ -34,6 +34,47 @@
+ 
+ fn missing(name: &str) -> rhapsody::Error {
+     rhapsody::Error::invalid_usage(format!("original render_world: missing {name}"))
++}
++
++/// Native compile_main before-render_world selection. These two bools have
++/// independent meanings: menu painting can reuse its captured target while
++/// the 54-pass world graph remains idle.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct MainWorldDecision {
++    pub render_world: bool,
++    pub painterly_enabled: bool,
++}
++
++pub fn select_main_world(world: &World) -> rhapsody::Result<MainWorldDecision> {
++    use country_core::{app_loading_state::AppLoadingState, resources::gui::EscMenuState,
++        systems::render_loop::painterly::PainterlyState,
++        render::frame_constants::FrameConstants, meta_commander::MetaCommander};
++    let menu = world.get_resource::<EscMenuState>().ok_or_else(|| missing("EscMenuState"))?;
++    let loading = world.get_resource::<bevy_state::state::State<AppLoadingState>>()
++        .ok_or_else(|| missing("AppLoadingState"))?;
++    let profiling = || world.get_resource::<MetaCommander>()
++        .map(MetaCommander::is_profiling).ok_or_else(|| missing("MetaCommander"));
++    if *loading.get() != AppLoadingState::Game || !menu.should_show_world() {
++        return Ok(MainWorldDecision { render_world: profiling()?, painterly_enabled: false });
++    }
++    let painterly_enabled = menu.is_open();
++    let render_world = if menu.is_closed() {
++        true
++    } else if painterly_enabled && !world.get_resource::<PainterlyState>()
++        .ok_or_else(|| missing("PainterlyState"))?.has_target() {
++        log::trace!(target: "tiny_glade::render_loop", "Forcing world rendering because painterly needs a target");
++        true
++    } else if world.get_resource::<FrameConstants>()
++        .ok_or_else(|| missing("FrameConstants"))?.should_reset_temporal() {
++        log::trace!(target: "tiny_glade::render_loop", "Forcing world rendering because temporal needs reset");
++        true
++    } else if menu.can_use_static_world_capture() {
++        profiling()?
++    } else {
++        log::trace!(target: "tiny_glade::render_loop", "Forcing world rendering because !can_use_static_world_capture()");
++        true
++    };
++    Ok(MainWorldDecision { render_world, painterly_enabled })
+ }
+ 
+ /// Must run inside the original main prelude and its one FrameSetup scope.
+@@ -107,3 +148,44 @@
+         SurfaceControls { glade, skip_refraction })?;
+     world_postprocess::build_world_postprocess(frame, world, lists, &lighting, controls.postprocess)
+ }
++
++#[cfg(test)]
++mod main_selection_tests {
++    use super::*;
++    use country_core::{app_loading_state::AppLoadingState, resources::gui::EscMenuState,
++        systems::render_loop::painterly::{PainterlyState, PainterlyPhase},
++        render::frame_constants::FrameConstants, meta_commander::MetaCommander};
++    fn game(menu: EscMenuState) -> World {
++        let mut world = World::new();
++        world.insert_resource(bevy_state::state::State::new(AppLoadingState::Game));
++        world.insert_resource(menu);
++        world
++    }
++    #[test]
++    fn closed_world_does_not_require_idle_only_producers() {
++        let world = game(EscMenuState::Closed);
++        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: true, painterly_enabled: false });
++    }
++    #[test]
++    fn static_menu_reuses_ready_painting_until_temporal_reset() {
++        let mut world = game(EscMenuState::Main);
++        world.insert_resource(PainterlyState { phase: PainterlyPhase::Ready, ..Default::default() });
++        world.insert_resource(MetaCommander::default());
++        world.insert_resource(FrameConstants { frame_counter: 9, ..Default::default() });
++        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: false, painterly_enabled: true });
++        world.resource_mut::<FrameConstants>().frame_counter = 0;
++        assert!(select_main_world(&world).unwrap().render_world);
++    }
++    #[test]
++    fn pending_target_forces_world_before_frame_constant_lookup() {
++        let mut world = game(EscMenuState::Main);
++        world.insert_resource(PainterlyState::default());
++        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: true, painterly_enabled: true });
++    }
++    #[test]
++    fn hidden_world_does_not_lookup_painterly_or_frame_constants() {
++        let mut world = game(EscMenuState::Load(Default::default()));
++        world.insert_resource(MetaCommander::default());
++        assert_eq!(select_main_world(&world).unwrap(), MainWorldDecision { render_world: false, painterly_enabled: false });
++    }
++}
+--- a/tiny-glade/crates/tiny-glade/src/gui/gui_debug.rs
++++ b/tiny-glade/crates/tiny-glade/src/gui/gui_debug.rs
+@@ -24,6 +24,20 @@
+ };
+ use egui::Ui;
+ use std::path::Path;
++
++/// Original process static 143634b90 (zero-initialized), toggled by
++/// do_gui_debug's closure7@1400b6157. This state survives App replacement.
++pub static RENDER_OVERRIDE_SHOW_DEBUG_RT_VIEW: std::sync::atomic::AtomicBool =
++    std::sync::atomic::AtomicBool::new(false);
++
++/// Exact rendering control retained from the original debug-panel body.
++/// The enclosing do_gui_debug UI remains a separately tracked unrecovered body.
++pub fn show_ray_tracing_view_control(ui: &mut Ui) {
++    use std::sync::atomic::Ordering;
++    let mut enabled = RENDER_OVERRIDE_SHOW_DEBUG_RT_VIEW.load(Ordering::Relaxed);
++    ui.checkbox(&mut enabled, "Show ray tracing view");
++    RENDER_OVERRIDE_SHOW_DEBUG_RT_VIEW.store(enabled, Ordering::Relaxed);
++}
+ 
+ /// B `date_spinner` (`0x140148b40`).
+ ///
