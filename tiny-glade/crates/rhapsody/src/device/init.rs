@@ -65,7 +65,8 @@ impl Default for DeviceConfig {
             validation: false,
             required_features: super::policy::bindless_features()
                 .with(Feature::TimelineSemaphore)
-                .with(Feature::DynamicRendering),
+                .with(Feature::DynamicRendering)
+                .with(Feature::ShaderDemoteToHelperInvocation),
             preferred_device: DevicePreference::default(),
             frames_in_flight: 2,
             recording: RecordingPolicy::default(),
@@ -343,6 +344,7 @@ pub(crate) fn create_candidate(
     let core13 = properties.api_version.min(instance.api_version) >= vk::API_VERSION_1_3;
     let has_sync2 = core13 || has(ash::khr::synchronization2::NAME);
     let has_dynamic = core13 || has(ash::khr::dynamic_rendering::NAME);
+    let has_demote = core13 || has(ash::ext::shader_demote_to_helper_invocation::NAME);
     let has_maintenance = has(ash::ext::swapchain_maintenance1::NAME)
         && instance
             .enabled_extensions
@@ -352,6 +354,7 @@ pub(crate) fn create_candidate(
     let mut v12 = vk::PhysicalDeviceVulkan12Features::default();
     let mut sync2 = vk::PhysicalDeviceSynchronization2Features::default();
     let mut dynamic = vk::PhysicalDeviceDynamicRenderingFeatures::default();
+    let mut demote = vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures::default();
     let mut descriptor_buffer = vk::PhysicalDeviceDescriptorBufferFeaturesEXT::default();
     let mut pipeline_library = vk::PhysicalDeviceGraphicsPipelineLibraryFeaturesEXT::default();
     let mut shader_object = vk::PhysicalDeviceShaderObjectFeaturesEXT::default();
@@ -367,6 +370,9 @@ pub(crate) fn create_candidate(
     }
     if has_dynamic {
         features = features.push_next(&mut dynamic);
+    }
+    if has_demote {
+        features = features.push_next(&mut demote);
     }
     if has(ash::ext::descriptor_buffer::NAME) {
         features = features.push_next(&mut descriptor_buffer);
@@ -399,6 +405,9 @@ pub(crate) fn create_candidate(
     if dynamic.dynamic_rendering != 0 {
         supported = supported.with(Feature::DynamicRendering);
     }
+    if demote.shader_demote_to_helper_invocation != 0 {
+        supported = supported.with(Feature::ShaderDemoteToHelperInvocation);
+    }
     if has(ash::ext::memory_budget::NAME) {
         supported = supported.with(Feature::MemoryBudget);
     }
@@ -426,7 +435,9 @@ pub(crate) fn create_candidate(
     let required = config
         .required_features
         .with(Feature::TimelineSemaphore)
-        .with(Feature::DynamicRendering);
+        .with(Feature::DynamicRendering)
+        // 原版 rhapsody 底层把该扩展列入必需设备扩展，缺失即拒绝适配器。
+        .with(Feature::ShaderDemoteToHelperInvocation);
     for feature in required.iter() {
         DeviceCaps::new(supported, FeatureSet::EMPTY).require_supported(feature)?;
     }
@@ -508,6 +519,9 @@ pub(crate) fn create_candidate(
     if !core13 && dynamic.dynamic_rendering != 0 {
         extensions.push(ash::khr::dynamic_rendering::NAME.as_ptr());
     }
+    if !core13 && demote.shader_demote_to_helper_invocation != 0 {
+        extensions.push(ash::ext::shader_demote_to_helper_invocation::NAME.as_ptr());
+    }
     if has(ash::khr::portability_subset::NAME) {
         extensions.push(ash::khr::portability_subset::NAME.as_ptr());
     }
@@ -577,6 +591,9 @@ pub(crate) fn create_candidate(
     if dynamic.dynamic_rendering != 0 {
         enabled = enabled.with(Feature::DynamicRendering);
     }
+    if demote.shader_demote_to_helper_invocation != 0 {
+        enabled = enabled.with(Feature::ShaderDemoteToHelperInvocation);
+    }
     if supported.contains(Feature::MemoryBudget) {
         enabled = enabled.with(Feature::MemoryBudget);
     }
@@ -587,6 +604,7 @@ pub(crate) fn create_candidate(
     maintenance.p_next = std::ptr::null_mut();
     sync2.p_next = std::ptr::null_mut();
     dynamic.p_next = std::ptr::null_mut();
+    demote.p_next = std::ptr::null_mut();
     extensions.sort_by(|a, b| unsafe { CStr::from_ptr(*a).cmp(CStr::from_ptr(*b)) });
     extensions.dedup_by(|a, b| unsafe { CStr::from_ptr(*a) == CStr::from_ptr(*b) });
     let mut info = vk::DeviceCreateInfo::default()
@@ -602,6 +620,9 @@ pub(crate) fn create_candidate(
     }
     if dynamic.dynamic_rendering != 0 {
         info = info.push_next(&mut dynamic);
+    }
+    if demote.shader_demote_to_helper_invocation != 0 {
+        info = info.push_next(&mut demote);
     }
     let caps = DeviceCaps::new(supported, enabled);
     let policy = super::plan_policy(
@@ -640,6 +661,17 @@ mod tests {
             crate::ErrorKind::InvalidUsage
         );
         config.submission_api = SubmissionApi::Auto;
+        assert!(config.validate(false).is_ok());
+    }
+
+    #[test]
+    fn default_config_requires_shader_demote_to_helper_invocation() {
+        let config = DeviceConfig::headless();
+        assert!(
+            config
+                .required_features
+                .contains(Feature::ShaderDemoteToHelperInvocation)
+        );
         assert!(config.validate(false).is_ok());
     }
 

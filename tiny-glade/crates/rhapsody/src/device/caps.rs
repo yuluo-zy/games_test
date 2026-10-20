@@ -81,6 +81,10 @@ pub enum Feature {
     /// of one image may be in different layouts (`DEPTH_ATTACHMENT_OPTIMAL`,
     /// `STENCIL_READ_ONLY_OPTIMAL`, ...) and are tracked independently.
     SeparateDepthStencilLayouts = 31,
+    /// Vulkan 1.3 `shaderDemoteToHelperInvocation`
+    /// (`VK_EXT_shader_demote_to_helper_invocation`)：着色器可声明
+    /// `DemoteToHelperInvocation` 能力（HLSL `discard` 经 DXC 产生 `OpDemoteToHelperInvocation`）。
+    ShaderDemoteToHelperInvocation = 32,
 }
 
 impl Feature {
@@ -90,7 +94,7 @@ impl Feature {
     }
 
     /// 全部已建模能力。位下标必须与 `repr(u8)` 判别值一一对应。
-    pub const ALL: [Feature; 32] = [
+    pub const ALL: [Feature; 33] = [
         Self::TimelineSemaphore,
         Self::Synchronization2,
         Self::DynamicRendering,
@@ -123,6 +127,7 @@ impl Feature {
         Self::DrawIndirectFirstInstance,
         Self::DrawIndirectCount,
         Self::SeparateDepthStencilLayouts,
+        Self::ShaderDemoteToHelperInvocation,
     ];
 }
 
