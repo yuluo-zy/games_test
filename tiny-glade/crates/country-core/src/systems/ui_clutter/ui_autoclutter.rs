@@ -128,6 +128,14 @@ impl InstaCreateStairPoint {
     }
 }
 
+/// `StartPlaceDecoClutterInteraction`（原版 `ClutterPlugin::build` 第 1 个 `register_event`，
+/// 0x140652828）。原版 `ui_convert_autoclutter_to_decoclutter`（0x14099ca60）在写完 `InstaCreateDeco`
+/// 之后以仅含调用点信息的 `EventWriter::write`（反编译末条 write，无载荷指针）发出它，按此判为 ZST 事件
+/// （推定，未逐字节核对 `Events<T>` 布局；载荷若存在则**未闭合**）。本 crate 的
+/// `ui_convert_autoclutter_to_decoclutter` 尚未走到发出它的尾部分支（见该函数登记）。
+#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StartPlaceDecoClutterInteraction;
+
 /// DisplayChildAutoClutterInfo（O：0x60 B；`grow_one<DisplayChildAutoClutterInfo>`）。
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -155,27 +163,12 @@ pub struct AutoClutterChild {
 #[derive(Resource, Clone, Debug, Default)]
 pub struct AutoClutterChildTable(pub HashMap<u64, Vec<AutoClutterChild>>);
 
-/// clutter→parent 映射（O：`HashMap<DecoratorId, Vec<DisplayChildAutoClutterInfo>>`；
-/// `maintain_autoclutter_parent_hashmap` 在函数内维护）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct AutoClutterParentMap(pub HashMap<u32, Vec<DisplayChildAutoClutterInfo>>);
-
-impl AutoClutterParentMap {
-    /// 维护一条记录（已有键 push，新键新建 Vec）。
-    pub fn maintain(&mut self, parent: u32, info: DisplayChildAutoClutterInfo) {
-        self.0.entry(parent).or_default().push(info);
-    }
-    pub fn parent_of(&self, parent: u32) -> Option<&Vec<DisplayChildAutoClutterInfo>> {
-        self.0.get(&parent)
-    }
-}
-
 /// `ui_convert_autoclutter_to_decoclutter` @0x14099ca60。
 pub fn ui_convert_autoclutter_to_decoclutter(
     mode: Res<AppMode>,
     mut right_clicks: EventReader<EvRightClickedAutoClutter>,
     children: Res<AutoClutterChildTable>,
-    mut parents: ResMut<AutoClutterParentMap>,
+    mut parents: ResMut<crate::resources::clutter_meshes::DecoratorAutoClutterChildren>,
     index: Res<super::AutoClutterEntityIndex>,
     mut hits: EventWriter<super::rmb_autoclutter::RmbAutoClutterHit>,
 ) {

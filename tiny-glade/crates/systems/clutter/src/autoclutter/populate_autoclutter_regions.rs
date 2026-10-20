@@ -30,7 +30,8 @@
 
 use bevy_ecs::prelude::*;
 use country_core::resources::terrain_rock_mask;
-use country_core::resources::world_raster::WorldRaster;
+use country_core::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
+use country_core::resources::world_raster_defs::{GardenRaster, PathRaster, WaterRaster};
 use country_core::systems::collision::world::RaycastWorld;
 use country_core::utils::dirty_tiles::DirtyTiles;
 use glam::{Vec2, Vec3};
@@ -44,9 +45,9 @@ use super::{
 /// 脏格订阅（build 里 insert_resource AutoClutterDirtySubscriptions）。
 /// Subscriber 含 Cell 非 Sync，故以 Mutex 包裹（资源要求 Send+Sync）。
 /// O（0x1422d6930）：13 个订阅句柄入 Vec——8× `RaycastWorld::subscribe_to_changes`、
-/// 2× `Publisher<DirtyTiles>::subscribe`、3× `WorldRaster::subscribe<512>`（经
-/// `TweakerView::as_inner_mut`）。本重建以 DirtyTiles 订阅者 Vec 承载；RaycastWorld/
-/// WorldRaster 订阅为宿主边界缝（U）。
+/// `BushGrid` 与 `TerrainHeightsData` 各 1× `Publisher<DirtyTiles>::subscribe`、`PathRaster`/
+/// `WaterRaster`/`GardenRaster` 各 1× `WorldRaster::subscribe`；填充见
+/// [`autoclutter_subscribe_to_tabloids`]。
 #[derive(Resource, Default)]
 pub struct AutoClutterDirtySubscriptions {
     pub subscriber: std::sync::Mutex<Vec<Subscriber<DirtyTiles>>>,
@@ -59,46 +60,35 @@ pub struct PopulateLocal {
     pub processed_names: std::collections::BTreeSet<String>,
 }
 
-/// 脏格发布者（宿主经世界栅格/地形发布链填充；O：RaycastWorld::subscribe_to_changes
-/// 的 tabloid Publisher 字段）。
-#[derive(Resource, Default)]
-pub struct DirtyTilesPublisher(pub tabloid::Publisher<DirtyTiles>);
-
-/// autoclutter_subscribe_to_tabloids（0x1422d6930）：
-/// 按 O 顺序订阅 13 个句柄：8× `RaycastWorld::subscribe_to_changes`（0x140b5d040）→
-/// 2× `Publisher<DirtyTiles>::subscribe` → 3× `WorldRaster::subscribe<512>`（经
-/// `TweakerView::as_inner_mut`），全部 push 进句柄 Vec。
-/// 本重建完成 DirtyTiles 发布者 2 次订阅（可用类型）；RaycastWorld×8 / WorldRaster×3
-/// 为宿主边界缝（U，登记）。
+/// `autoclutter_subscribe_to_tabloids`（Startup，0x1422d6930）。
+///
+/// 机器码证据：FunctionSystem 的 `validate_param_unsafe`（0x141ced3b0；错误串自 0x142f32706 起）依序给出
+/// 七个 `ResMut` 参数：`AutoClutterDirtySubscriptions`、`RaycastWorld`、`BushGrid`、`PathRaster`、
+/// `WaterRaster`、`GardenRaster`、`TerrainHeightsData<TerrainHeightSsbo>`。函数体按 O 顺序把 13 个
+/// `Subscriber<DirtyTiles>` 句柄 push 入第一个资源的 Vec：
+/// 8× `RaycastWorld::subscribe_to_changes(world, slot)`（0x1408cdc20，槽序 0,1,3,4,5,6,7,2）→
+/// `BushGrid` 内联发布者（`*grid + 0x18`）`Publisher<DirtyTiles>::subscribe` →
+/// `PathRaster`/`WaterRaster`/`GardenRaster` 各经 `TypedStorageBuffer::buffer()` 取内层
+/// `WorldRaster<512>` 再 `WorldRaster::subscribe`（0x140a158e0）→
+/// `TerrainHeightsData` 内联发布者（`*data + 0x18`）`Publisher<DirtyTiles>::subscribe`。
 pub fn autoclutter_subscribe_to_tabloids(
     mut sub: ResMut<AutoClutterDirtySubscriptions>,
-    mut publisher: ResMut<DirtyTilesPublisher>,
-    mut raycast: ResMut<RaycastWorldHandleClutter>,
-    mut raster: ResMut<WorldRaster<512>>,
+    mut raycast: ResMut<RaycastWorld>,
+    mut bush: ResMut<BushGrid>,
+    mut path: ResMut<PathRaster>,
+    mut water: ResMut<WaterRaster>,
+    mut garden: ResMut<GardenRaster>,
+    mut terrain: ResMut<TerrainHeightsData<TerrainHeightSsbo>>,
 ) {
     let mut guard = sub.subscriber.lock().unwrap();
-    // O（0x1422d6930）顺序：8× RaycastWorld::subscribe_to_changes（0x1408cdc20）→
-    // 1× Publisher<DirtyTiles>::subscribe → 3× WorldRaster::subscribe<512>
-    // （经 TweakerView::as_inner_mut）→ 1× Publisher<DirtyTiles>::subscribe。
-    // 槽号序列取自 0x1422d6930 的 `subscribe_to_changes(world, slot)` 实参：0,1,3,4,5,6,7,2。
     for slot in [0u8, 1, 3, 4, 5, 6, 7, 2] {
-        guard.push(raycast.0.subscribe_to_changes(slot));
+        guard.push(raycast.subscribe_to_changes(slot));
     }
-    guard.push(publisher.0.subscribe());
-    for _ in 0..3 {
-        guard.push(raster.subscribe());
-    }
-    guard.push(publisher.0.subscribe());
-}
-
-/// RaycastWorld 资源包装（core RaycastWorld 非 Resource；装配层构造）。
-#[derive(Resource, Default)]
-pub struct RaycastWorldHandleClutter(pub RaycastWorld);
-
-impl std::fmt::Debug for RaycastWorldHandleClutter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("RaycastWorldHandleClutter")
-    }
+    guard.push(bush.publisher.subscribe());
+    guard.push(path.subscribe());
+    guard.push(water.subscribe());
+    guard.push(garden.subscribe());
+    guard.push(terrain.subscribe());
 }
 
 /// populate_autoclutter_regions（0x1422d6ed0；9 参数 SystemParam 面）。
@@ -583,5 +573,75 @@ pub mod raycast_seam {
     /// legacy_raycast（O 0x1408cc870：掩码 0x30fb；结果 ==2 才走水面采样）。
     pub fn legacy_raycast_mask(_key: u64, _wx: f32, _wz: f32) -> bool {
         false
+    }
+}
+
+#[cfg(test)]
+mod subscribe_tests {
+    use super::*;
+    use country_core::resources::world_raster::DirtyTilePublisher;
+    use country_core::resources::terrain_height::GRID_SIDE;
+
+    fn world() -> World {
+        let mut world = World::new();
+        world.insert_resource(AutoClutterDirtySubscriptions::default());
+        world.insert_resource(RaycastWorld::new());
+        world.insert_resource(BushGrid::default());
+        world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+        world
+    }
+
+    fn pending(world: &World) -> Vec<bool> {
+        let subs = world.resource::<AutoClutterDirtySubscriptions>();
+        let mut guard = subs.subscriber.lock().unwrap();
+        guard.iter_mut().map(|subscriber| subscriber.take().is_some()).collect()
+    }
+
+    /// 真实 World 上：七个参数资源全部存在 → 参数校验通过，且按机器码顺序订阅 13 个句柄；
+    /// 之后向各源发布，只有对应序号的句柄收到（8 = BushGrid、9/10/11 = Path/Water/Garden 栅格、
+    /// 12 = TerrainHeightsData）。
+    #[test]
+    fn subscribes_thirteen_handles_in_machine_order_and_validates_on_a_real_world() {
+        let mut world = world();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(autoclutter_subscribe_to_tabloids);
+        schedule.run(&mut world);
+        assert_eq!(pending(&world).len(), 13);
+        assert!(pending(&world).iter().all(|got| !got));
+
+        let mut tiles = DirtyTiles::new_clear();
+        tiles.set_cell(1, 2);
+        world.resource_mut::<BushGrid>().publisher.publish(tiles).unwrap();
+        let got = pending(&world);
+        assert_eq!(got.iter().position(|g| *g), Some(8));
+        assert_eq!(got.iter().filter(|g| **g).count(), 1);
+
+        world.resource_mut::<PathRaster>().copy_to_staging(0, &mut []);
+        assert_eq!(pending(&world).iter().position(|g| *g), Some(9));
+        world.resource_mut::<WaterRaster>().copy_to_staging(0, &mut []);
+        assert_eq!(pending(&world).iter().position(|g| *g), Some(10));
+        world.resource_mut::<GardenRaster>().copy_to_staging(0, &mut []);
+        assert_eq!(pending(&world).iter().position(|g| *g), Some(11));
+
+        let mut gpu = vec![0u16; GRID_SIDE * GRID_SIDE];
+        gpu[0] = 7;
+        world.resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>().copy_from_gpu(&gpu);
+        let got = pending(&world);
+        assert_eq!(got.iter().position(|g| *g), Some(12));
+        assert_eq!(got.iter().filter(|g| **g).count(), 1);
+    }
+
+    /// 缺任一资源 → 系统参数校验失败，不产生任何订阅。
+    #[test]
+    fn missing_resource_fails_validation_without_subscribing() {
+        use bevy_ecs::system::{RunSystemError, RunSystemOnce};
+        let mut world = world();
+        world.remove_resource::<WaterRaster>();
+        let result = world.run_system_once(autoclutter_subscribe_to_tabloids);
+        assert!(matches!(result, Err(RunSystemError::InvalidParams { .. })), "{result:?}");
+        assert_eq!(pending(&world).len(), 0);
     }
 }

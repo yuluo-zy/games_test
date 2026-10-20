@@ -56,6 +56,28 @@ pub struct DecoClutterFocusUi {
     pub position: glam::Vec3,
 }
 
+/// `LastClonedClutter`（原版 `ui_focus_decoclutter::LastClonedClutter`；`ClutterPlugin::build`
+/// 在 0x140652754 `insert_resource`）。
+///
+/// 机器码证据（0x140652731…0x140652754）：初值 = 16 B 常量 `0x14293e0c0`
+/// （`00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 3f`，即 (0,0,0,1) = `Quat::IDENTITY`）
+/// + 1 B 取自被 ICF 折叠成 `return 0` 的 `UiNav::clone_behavior`（0x140002370）——一个默认值 0 的
+/// 单字节枚举/布尔。故它**不是**仅 1 字节：Rust 侧为 `{ Quat, u8 }`（16 B 对齐，共 32 B）。
+/// 该单字节的具体枚举类型与名字**未闭合**，以 `u8` 承载；读写者（clone-deco 流程）在其它 crate。
+#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+pub struct LastClonedClutter {
+    /// 上次克隆杂物的旋转（初值 `Quat::IDENTITY`）。
+    pub rotation: glam::Quat,
+    /// 初值 0 的单字节（枚举类型未定型）。
+    pub tag: u8,
+}
+
+impl Default for LastClonedClutter {
+    fn default() -> Self {
+        Self { rotation: glam::Quat::IDENTITY, tag: 0 }
+    }
+}
+
 /// 旋转请求事件（I：原生 `RequestRotateDecorator` 事件布局 U；载荷 = 聚焦 id + 角）。
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct RequestRotateDecorator {

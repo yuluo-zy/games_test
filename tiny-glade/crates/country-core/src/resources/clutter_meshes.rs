@@ -122,3 +122,27 @@ pub fn clutter_mesh_ty_data(ty: ClutterMeshTy, meshes: &ClutterMeshes) -> Clutte
 
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ClutterMarkedForDeletion;
+
+/// `DecoratorAutoClutterChildren`（原版 `country_core::resources::clutter_meshes`；
+/// `ClutterPlugin::build` 在 0x1406527c2 以空 `HashMap`+`RandomState`（0x30 B）插入）。
+///
+/// 机器码证据：`ui_convert_autoclutter_to_decoclutter`（0x14099ca60）的 FunctionSystem 参数面为
+/// `(ResMut<DeletedAutoClutter>, ResMut<DecoratorAutoClutterChildren>, Query<(Entity, &AutoClutter,
+/// &AutoClutterConvertableToDecoClutter, &Transform, ..)>)`，函数体对 `HashMap<DecoratorId,
+/// Vec<DisplayChildAutoClutterInfo>>` 做 `grow_one<DisplayChildAutoClutterInfo>`（步长 0x60）。
+/// 即此前本 crate 以 `AutoClutterParentMap` 近似的 parent→children 映射，现取原名与原模块。
+/// 其读者（`Res<DecoratorAutoClutterChildren>`：ui_focus/placement 等系统）在其它 crate，未在此接线。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct DecoratorAutoClutterChildren(
+    pub hashbrown::HashMap<u32, Vec<crate::systems::ui_clutter::ui_autoclutter::DisplayChildAutoClutterInfo>, std::hash::RandomState>,
+);
+
+impl DecoratorAutoClutterChildren {
+    /// 维护一条记录（已有键 push，新键新建 Vec）。
+    pub fn maintain(&mut self, parent: u32, info: crate::systems::ui_clutter::ui_autoclutter::DisplayChildAutoClutterInfo) {
+        self.0.entry(parent).or_default().push(info);
+    }
+    pub fn parent_of(&self, parent: u32) -> Option<&Vec<crate::systems::ui_clutter::ui_autoclutter::DisplayChildAutoClutterInfo>> {
+        self.0.get(&parent)
+    }
+}

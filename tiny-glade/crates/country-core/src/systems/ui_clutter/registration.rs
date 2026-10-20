@@ -15,7 +15,7 @@ use super::{
         EvRightClickedAutoClutter, RmbAutoClutterDirect, RmbAutoClutterHit,
         handle_rmb_autoclutter,
     },
-    ui_autoclutter::{AutoClutterChildTable, AutoClutterParentMap, ui_convert_autoclutter_to_decoclutter},
+    ui_autoclutter::{AutoClutterChildTable, StartPlaceDecoClutterInteraction, ui_convert_autoclutter_to_decoclutter},
     ui_focus_decoclutter::{
         DecoClutterFocusState, DecoClutterFocusUi, RequestMoveClutter, RequestRotateDecorator,
         ui_focus_decoclutter,
@@ -42,9 +42,10 @@ pub fn register_ui_clutter_resources(world: &mut World) {
     world.init_resource::<Events<PinVisibilityToggle>>();
     world.init_resource::<Events<RequestRotateDecorator>>();
     world.init_resource::<Events<RequestMoveClutter>>();
+    world.init_resource::<Events<StartPlaceDecoClutterInteraction>>();
     world.init_resource::<DebugClutterEntityCounter>();
-    // 转换维护的 parent 映射（HashMap<DecoratorId, Vec<DisplayChildAutoClutterInfo>>）。
-    world.init_resource::<AutoClutterParentMap>();
+    // 转换维护的 parent 映射（原名 DecoratorAutoClutterChildren）。
+    world.init_resource::<crate::resources::clutter_meshes::DecoratorAutoClutterChildren>();
     // 宿主记录表适配（0xa0B 子表/0x60 父表/0x30 变换表）。
     world.init_resource::<AutoClutterChildTable>();
     world.init_resource::<PinnedDecoClutter>();
@@ -52,7 +53,7 @@ pub fn register_ui_clutter_resources(world: &mut World) {
     world.init_resource::<PinAnimationTable>();
     world.init_resource::<PinnedDecoClutterBuffers>();
     world.init_resource::<PinHitDedup>();
-    world.init_resource::<ShowPinnedDecoClutter>();
+    world.init_resource::<Events<ShowPinnedDecoClutter>>();
     world.init_resource::<DecoClutterFocusState>();
     world.init_resource::<DecoClutterFocusUi>();
     // 右键 probe 目标表（rmb handler 消费）+ 入口直达路径记录。

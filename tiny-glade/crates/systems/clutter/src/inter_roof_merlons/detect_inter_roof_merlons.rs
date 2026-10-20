@@ -61,7 +61,7 @@ pub fn detect_inter_roof_merlons(
     mut changes: ResMut<WallAndRoofChanges>,
     walls: Res<PublicWalls>,
     mut wall_holes: ResMut<WallHoles>,
-    mut descriptions: ResMut<InterRoofMerlonsDescriptions>,
+    mut descriptions: ResMut<InterRoofMerlons>,
     mut holes: ResMut<ShapeIntersectionHoles>,
     mut roof_query: Query<&Roof>,
 ) {
@@ -105,9 +105,10 @@ pub fn detect_inter_roof_merlons(
     }
 }
 
-/// 城垛断口描述集合（资源）。
+/// `InterRoofMerlons`（原版同名资源，`ClutterPlugin::build` 0x1406525b6 以空 `Vec`（align 8）插入）：
+/// 城垛断口描述集合。此前以 `InterRoofMerlonsDescriptions` 近似。
 #[derive(Resource, Clone, Debug, Default)]
-pub struct InterRoofMerlonsDescriptions(pub Vec<InterRoofMerlonsDescription>);
+pub struct InterRoofMerlons(pub Vec<InterRoofMerlonsDescription>);
 
 /// 屋顶截面 tag（roof_shape_at_intersection_y 结果；!=2 时走 expand 路径，O）。
 fn section_tag(_section: &country_core::resources::roofs::roof_shape::RoofIntersectionSection) -> u32 {

@@ -23,10 +23,10 @@ use country_core::resources::walls::wall_holes::geometry::RawWallHole;
 use country_core::resources::roofs::roof_shape::Roof;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::wall_holes::WallHoles;
+use country_core::resources::shape_intersections::ShapeIntersections;
 use country_core::resources::walls::WallId;
 use country_core::systems::wall::valid_enclosure::ShapeParameters;
 use glam::{Vec2, Vec3};
-use hashbrown::HashMap;
 use utils::wall_space::{WallSpace, WallSpaceCoord};
 
 use crate::inter_roof_merlons::detect_inter_roof_merlons::WallAndRoofChanges;
@@ -51,13 +51,10 @@ pub struct ShapeIntersectionHole {
 #[derive(Resource, Clone, Debug, Default)]
 pub struct ShapeIntersectionHoles(pub Vec<ShapeIntersectionHole>);
 
-/// 脏墙对表（HashMap<[WallId;2], Vec<Vec2>>；retain L121）。
+/// `IntraShapeCorners`（原版同名资源，`ClutterPlugin::build` 0x140652500 以空 `Vec`（align 8）插入；
+/// `detect_intra_shape_corners` 以 `ResMut` 取用并 `Vec::retain`）。此前以 `Corners` 近似。
 #[derive(Resource, Clone, Debug, Default)]
-pub struct DirtyWallPairs(pub HashMap<[WallId; 2], Vec<[f32; 2]>>);
-
-/// 角点集合（资源）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct Corners(pub Vec<Corner>);
+pub struct IntraShapeCorners(pub Vec<Corner>);
 
 /// detect_intra_shape_corners（0x141cd1a90）。
 #[allow(clippy::too_many_arguments)]
@@ -65,8 +62,8 @@ pub fn detect_intra_shape_corners(
     mut changes: ResMut<WallAndRoofChanges>,
     walls: Res<PublicWalls>,
     mut wall_holes: ResMut<WallHoles>,
-    mut corners: ResMut<Corners>,
-    mut pairs: ResMut<DirtyWallPairs>,
+    mut corners: ResMut<IntraShapeCorners>,
+    mut pairs: ResMut<ShapeIntersections>,
     mut holes: ResMut<ShapeIntersectionHoles>,
     mut roof_query: Query<&Roof>,
 ) {

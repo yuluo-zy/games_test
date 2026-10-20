@@ -88,9 +88,9 @@ fn install_open_adapter_inputs(app: &mut App) {
     app.init_resource::<focus::TerrainFocusHover>();
     app.init_resource::<focus::TerrainFocusSelection>();
     app.init_resource::<hist::PendingTerrainHistory>();
-    // OPEN: ShowPinnedDecoClutter is an Event (56 B) in the original; country-core models
-    // it as a Resource, so ClutterPlugin's decoclutter_show_pins needs this idle value.
-    app.init_resource::<sys::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>();
+    // ShowPinnedDecoClutter is an Event (56 B) in the original (registered by ClutterPlugin as its
+    // 8th register_event); decoclutter_show_pins reads it through an EventReader.
+    app.add_event::<sys::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>();
     {
         use sys::ui_clutter::decoclutter_show_pins as pins;
         app.init_resource::<pins::PinnedDecoClutter>();

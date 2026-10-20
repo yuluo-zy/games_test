@@ -150,9 +150,11 @@ impl Plugin for CritterPlugin {
                 .in_set(GameSystemSet(0x2c)),
         );
 
-        // 0x14067d532：OnExit(AppLoadingState::Game)。原版 tuple2 = (`wren_boids::despawn_birds`,
-        // `fish::despawn_fish`)；`despawn_birds`（`ResMut<WrenBoids>`）本 crate 未还原——未闭合缺口，只注册 despawn_fish。
-        app.add_systems(OnExit(AppLoadingState::Game), fish::despawn_fish);
+        // 0x14067d532：OnExit(AppLoadingState::Game)，tuple2 `(wren_boids::despawn_birds, fish::despawn_fish)`，无序。
+        app.add_systems(
+            OnExit(AppLoadingState::Game),
+            (wren_boids::despawn_birds, fish::despawn_fish),
+        );
 
         // 0x14067d542…0x14067d693：8 个 insert_resource（顺序同机器码）。
         app.insert_resource(duck::CritterRng::default()); // CritterRng：PerchanceContext(0xc0df)，crate 落位 duck.rs
@@ -354,6 +356,11 @@ mod plugin_registration_tests {
         });
         world.schedule_scope(OnExit(AppLoadingState::Game).intern(), |world, schedule| {
             schedule.initialize(world).expect("critters OnExit graph must build");
+            // 0x14067d532：OnExit tuple2 = (despawn_birds, despawn_fish)。
+            let names: Vec<String> = schedule.systems().unwrap().map(|(_, s)| s.name().to_string()).collect();
+            for expected in ["despawn_birds", "despawn_fish"] {
+                assert_eq!(names.iter().filter(|n| n.ends_with(&format!("::{expected}"))).count(), 1, "{expected}");
+            }
         });
         let mut schedules = app.world_mut().resource_mut::<Schedules>();
         let names: Vec<String> = schedules

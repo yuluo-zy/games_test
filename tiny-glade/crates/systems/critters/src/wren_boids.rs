@@ -56,6 +56,22 @@ pub struct WrenBoids {
     pub entities: Vec<Entity>,
 }
 
+/// `despawn_birds`（`OnExit(AppLoadingState::Game)` tuple2 的第一个成员，与 `despawn_fish` 无序）。
+///
+/// 机器码证据：`CritterPlugin::build` 0x14067d532 的 tuple2 首成员，系统名串
+/// `system_critters::wren_boids::despawn_birds`（0x142f717fb；PDB 无独立符号，函数体被
+/// FunctionSystem 的 `run_without_applying_deferred` 0x141da3bc0 内联）。唯一参数
+/// `ResMut<WrenBoids>`：对资源三段存储依次释放（`Vec` 元素 0x18 B/align 4、`Vec` 元素 0x38 B/align 8、
+/// 8 B 元素的第三段，其 cap 字被置为 `0x8000000000000000` 的 `None` 哨兵），再把资源就地重写为
+/// 空表示——即 `*WrenBoids = default`。**不 despawn 任何实体**（与 `despawn_fish` 一致，实体由
+/// `sim_wren_boids` 在 `CritterControl` 门关闭时 despawn）。
+///
+/// 未闭合：原版第三段带 `None` 哨兵（`Option<Vec<_>>` 形），本 crate 的 `entities` 为裸 `Vec<Entity>`，
+/// 两者在“清空”语义上等价，但字段类型未定型。
+pub fn despawn_birds(mut flock: ResMut<WrenBoids>) {
+    *flock = WrenBoids::default();
+}
+
 /// `FreeSpot`（B wren_boids::FreeSpot）：停靠点位置。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct FreeSpot {
@@ -356,5 +372,27 @@ pub fn sim_wren_boids(
                 free_spots.push(spot.pos);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod despawn_birds_tests {
+    use super::*;
+    use bevy_ecs::system::RunSystemOnce;
+
+    /// `despawn_birds` 把 `WrenBoids` 就地重置为空（原版先释放三段存储再写空表示），且不 despawn 实体。
+    #[test]
+    fn despawn_birds_resets_wren_boids_without_despawning_entities() {
+        let mut world = World::new();
+        let bird = world.spawn_empty().id();
+        world.insert_resource(WrenBoids {
+            boids: vec![Boid { pos: Vec3::ONE, vel: Vec3::Y }],
+            states: vec![BoidState::default()],
+            entities: vec![bird],
+        });
+        world.run_system_once(despawn_birds).unwrap();
+        let flock = world.resource::<WrenBoids>();
+        assert!(flock.boids.is_empty() && flock.states.is_empty() && flock.entities.is_empty());
+        assert!(world.get_entity(bird).is_ok(), "despawn_birds 不清理实体");
     }
 }

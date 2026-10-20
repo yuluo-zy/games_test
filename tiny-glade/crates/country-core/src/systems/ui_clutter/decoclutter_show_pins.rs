@@ -90,14 +90,21 @@ impl Default for PinnedDecoGeometry {
 #[derive(Resource, Clone, Debug, Default)]
 pub struct PinnedDecoGeometryTable(pub hashbrown::HashMap<u64, PinnedDecoGeometry>);
 
-/// 是否显示图钉（O：`ShowPinnedDecoClutter` 状态资源；56 B union = 双 Vec<u64> + 载荷槽）。
-#[derive(Resource, Clone, Debug, Default)]
+/// `ShowPinnedDecoClutter`（原版是 **Event**，56 B：`Events<T>` 的 `EventInstance` 步长 0x40 =
+/// 8 B EventId + 56 B 载荷；`ClutterPlugin::build` 第 8 个 `register_event`，水/路/园的画笔预览
+/// 圈写入它，见 `WaterPinnedClutterCircle` / `PathPinnedClutterCircle` /
+/// `GardenPinnedClutterCircle` 三个特化替身）。
+///
+/// 56 B 载荷的完整 union（圈/高/0x100 标志等变体）**未闭合**；本类型只保留本 crate
+/// `decoclutter_show_pins` 现用的可见性判别 `show`（原版读取队列**最后一个**事件，0x1412357c0
+/// 内 `last_event + 4/+0x1c` 取值），其余字段为此前遗留的缓冲占位，非原版载荷。
+#[derive(Event, Clone, Debug, Default)]
 pub struct ShowPinnedDecoClutter {
-    /// O 双 Vec 缓冲之一：可见 pinned 实体列表。
+    /// 遗留占位（非原版载荷）。
     pub pinned: Vec<u64>,
-    /// O 双 Vec 缓冲之二：raycast 命中列表。
+    /// 遗留占位（非原版载荷）。
     pub hits: Vec<u64>,
-    /// 载荷槽（bool 判别；字段语义 U 待取证）。
+    /// 可见性判别：队列最后一个事件的值；无事件视为 false（与此前资源默认值一致）。
     pub show: bool,
 }
 
@@ -192,7 +199,7 @@ pub fn pinned_geometry_intersects(geo: &PinnedDecoGeometry, global_hit: bool) ->
 
 /// `decoclutter_show_pins` @0x1412357c0。
 pub fn decoclutter_show_pins(
-    show: Res<ShowPinnedDecoClutter>,
+    mut show_events: EventReader<ShowPinnedDecoClutter>,
     pinned: Res<PinnedDecoClutter>,
     geometry: Res<PinnedDecoGeometryTable>,
     mut buffers: ResMut<PinnedDecoClutterBuffers>,
@@ -200,6 +207,8 @@ pub fn decoclutter_show_pins(
     mut animations: ResMut<PinAnimationTable>,
     mut dedup: ResMut<PinHitDedup>,
 ) {
+    // O：读取事件队列并取最后一个事件（`EventReader` 全量消费）；无事件 → 不可见。
+    let show_visible = show_events.read().last().map_or(false, |event| event.show);
     buffers.pinned.clear();
     buffers.hits.clear();
     for &entity in pinned.0.iter() {
@@ -255,7 +264,7 @@ pub fn decoclutter_show_pins(
             buffers.pinned.push(entity);
             toggled.write(PinVisibilityToggle {
                 entity,
-                visible: show.show,
+                visible: show_visible,
             });
         }
     }

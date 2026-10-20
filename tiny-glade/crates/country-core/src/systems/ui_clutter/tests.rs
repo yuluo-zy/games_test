@@ -236,7 +236,7 @@ fn ui_convert_maintains_parent_hashmap_for_type_below_three() {
     use super::registration::register_ui_clutter_resources;
     use super::rmb_autoclutter::EvRightClickedAutoClutter;
     use super::ui_autoclutter::{
-        AutoClutterChild, AutoClutterChildTable, AutoClutterParentMap, DisplayChildAutoClutterInfo,
+        AutoClutterChild, AutoClutterChildTable, DisplayChildAutoClutterInfo,
         ui_convert_autoclutter_to_decoclutter,
     };
     use crate::systems::mode_manager::{AppMode, ClutterMeshTy, EraserLayer};
@@ -264,7 +264,7 @@ fn ui_convert_maintains_parent_hashmap_for_type_below_three() {
     let mut schedule = Schedule::default();
     schedule.add_systems(ui_convert_autoclutter_to_decoclutter);
     schedule.run(&mut world);
-    let parents = world.resource::<AutoClutterParentMap>();
+    let parents = world.resource::<crate::resources::clutter_meshes::DecoratorAutoClutterChildren>();
     assert_eq!(parents.parent_of(9).unwrap().len(), 1);
     assert_eq!(parents.parent_of(9).unwrap()[0].mesh, [1, 2, 3, 4]);
     assert!(parents.parent_of(11).is_none()); // parent_tag >= 3 跳过
@@ -353,7 +353,7 @@ fn show_pins_applies_type_gate_geometry_and_dedup() {
     geo.0.insert(11, PinnedDecoGeometry { type_byte: 0x38, ..base }); // 类型门跳过
     world.insert_resource(geo);
     world.insert_resource(PinnedDecoClutter([10, 11].into_iter().collect()));
-    world.insert_resource(ShowPinnedDecoClutter {
+    world.send_event(ShowPinnedDecoClutter {
         show: true,
         ..Default::default()
     });

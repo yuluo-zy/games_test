@@ -170,6 +170,12 @@ pub fn spawn_stitch_bricks(
 #[derive(Resource, Clone, Debug, Default)]
 pub struct StitchBrickInstances(pub Vec<(StairsFloatingBrickParams, u64)>);
 
+/// `StitchBrickAlloc(usize)`（原版 `stitch_bricks::StitchBrickAlloc`；`ClutterPlugin::build`
+/// 0x140652586 以 `XOR EDX,EDX` 即 0 插入）。原版读写者（缝合砖实例分配游标）在 `spawn_stitch_bricks`
+/// 一族内，其具体用法**未闭合**——本 crate 的 `spawn_stitch_bricks` 近似尚未使用它。
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StitchBrickAlloc(pub usize);
+
 /// `InterShapeBrickStitches`（stitch_bricks.rs PDB 命名实体；clear L148）。
 #[derive(Resource, Clone, Debug, Default)]
 pub struct InterShapeBrickStitches(pub Vec<StairsFloatingBrickParams>);

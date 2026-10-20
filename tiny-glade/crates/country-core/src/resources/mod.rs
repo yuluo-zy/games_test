@@ -77,3 +77,22 @@ pub mod drawing_input_smoother;
 
 /// Original Olden placement exclusion owner.
 pub mod preplaced_autoclutter;
+
+/// `country_core::resources::shape_intersections`（原版模块路径；原版 `ShapeIntersections`
+/// 由 `ClutterPlugin::build` 在 0x14065257c `insert_resource`，初值为空 hashbrown 表 + `RandomState`
+/// 共 0x30 B）。
+///
+/// 机器码证据：`detect_intra_shape_corners`（0x141cd1a90）把它作为 `ResMut` 取用并对其做
+/// `HashMap::retain`，桶步长 0x28 B；`HashMap<[WallId; 2], Vec<Vec2>>` 的桶恰为 16 + 24 = 40 B。
+/// 键/值的精确泛型实参未从符号取得（PDB 无该泛型实例名），此处按桶大小取上述形状，**键值类型
+/// 视为未闭合**。该模块本在原版 `country_core` 内，为遵守“不新增文件”以内联模块承载，路径不变。
+pub mod shape_intersections {
+    use crate::resources::walls::WallId;
+    use bevy_ecs::resource::Resource;
+    use glam::Vec2;
+    use hashbrown::HashMap;
+    use std::hash::RandomState;
+
+    #[derive(Resource, Clone, Debug, Default)]
+    pub struct ShapeIntersections(pub HashMap<[WallId; 2], Vec<Vec2>, RandomState>);
+}

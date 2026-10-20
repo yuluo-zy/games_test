@@ -14,27 +14,43 @@
 use bevy_ecs::prelude::*;
 use hashbrown::HashMap;
 
-use super::populate_autoclutter_regions::{
-    dirty_tiles_cells, AutoClutterDirtySubscriptions, DirtyTilesResource,
-};
+use country_core::systems::collision::world::RaycastWorld;
+use country_core::utils::dirty_tiles::DirtyTiles;
+use std::sync::Mutex;
+use tabloid::Subscriber;
+
+use super::populate_autoclutter_regions::{dirty_tiles_cells, DirtyTilesResource};
 use super::{AutoClutterSpawn, AutoClutterState, SpawnShared};
+
+/// `BirdNestLazySubscriber`（原版 `add_birdnests::BirdNestLazySubscriber`）：`add_birdnests` 的
+/// `ResMut` 参数（校验串 0x142f330c3），由 Startup 系统 [`birdnests_subscribe_to_tabloids`] 经
+/// `Commands::insert_resource` 在运行期插入（原版值 = 一个 8 B `Subscriber<DirtyTiles>` 句柄，
+/// `*param + 0` 处被 `Subscriber::take` 取用）。Subscriber 含 Cell 非 Sync，以 Mutex 包裹。
+#[derive(Resource)]
+pub struct BirdNestLazySubscriber(pub Mutex<Subscriber<DirtyTiles>>);
+
+/// `birdnests_subscribe_to_tabloids`（Startup 第三成员；PDB 无独立符号，系统名串 0x143040d48；
+/// FunctionSystem 的 `run_without_applying_deferred` 0x141cde5d0 内联了函数体）。
+///
+/// 机器码证据：参数 `(ResMut<RaycastWorld>, Commands)`（`validate_param_unsafe` 0x1422c2ea0 只校验
+/// `ResMut<RaycastWorld>` 串 0x142f3317d）；体为
+/// `commands.insert_resource(BirdNestLazySubscriber(raycast.subscribe_to_changes(1)))`——
+/// `RaycastWorld::subscribe_to_changes`（0x1408cdc20）实参 `DL = 1`（槽 1），随后
+/// `Commands::insert_resource`（类型元数据 0x143041ff8）。
+pub fn birdnests_subscribe_to_tabloids(mut raycast: ResMut<RaycastWorld>, mut commands: Commands) {
+    commands.insert_resource(BirdNestLazySubscriber(Mutex::new(raycast.subscribe_to_changes(1))));
+}
 
 /// add_birdnests（0x1422c9c70）：订阅脏格 → 每脏格 1 鸟巢候选（type 4）。
 pub fn add_birdnests(
     mut state: ResMut<AutoClutterState>,
     dirty: ResMut<DirtyTilesResource>,
-    mut sub: ResMut<AutoClutterDirtySubscriptions>,
+    sub: ResMut<BirdNestLazySubscriber>,
 ) {
     // O：Subscriber::take → 复制 0x200B 位集 → new_clear 合入；以合入位集为遍历源。
     // 原无资源位集回退：take 无结果即空位集（无脏格可处理）。
     let mut tiles = country_core::utils::dirty_tiles::DirtyTiles::new_clear();
-    if let Some(reader) = sub
-        .subscriber
-        .lock()
-        .unwrap()
-        .first_mut()
-        .and_then(|s| s.take())
-    {
+    if let Some(reader) = sub.0.lock().unwrap().take() {
         tiles.extend(&*reader);
     }
     // O：cell→已处理去重集（HashMap<u64,bool>）。
@@ -65,5 +81,30 @@ pub fn add_birdnests(
             f5c: 0,
             scale: 1.0,
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy_ecs::system::RunSystemOnce;
+
+    /// Startup 系统经 `Commands::insert_resource` 插入 `BirdNestLazySubscriber`（延迟到命令应用后才存在）。
+    #[test]
+    fn birdnests_subscribe_inserts_the_lazy_subscriber_resource() {
+        let mut world = World::new();
+        world.insert_resource(RaycastWorld::new());
+        assert!(!world.contains_resource::<BirdNestLazySubscriber>());
+        world.run_system_once(birdnests_subscribe_to_tabloids).unwrap();
+        let sub = world.resource::<BirdNestLazySubscriber>();
+        assert!(sub.0.lock().unwrap().take().is_none(), "订阅之前的发布不可见");
+    }
+
+    /// 缺 `RaycastWorld` 时参数校验失败，不插入资源。
+    #[test]
+    fn birdnests_subscribe_requires_the_host_raycast_world() {
+        let mut world = World::new();
+        assert!(world.run_system_once(birdnests_subscribe_to_tabloids).is_err());
+        assert!(!world.contains_resource::<BirdNestLazySubscriber>());
     }
 }

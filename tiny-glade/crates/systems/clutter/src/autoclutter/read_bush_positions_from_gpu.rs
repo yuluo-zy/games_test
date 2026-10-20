@@ -10,8 +10,6 @@ use glam::Vec2;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use super::populate_autoclutter_regions::DirtyTilesPublisher;
-
 /// 回读 SSBO 类型名（O，0x142f3b328，0x5c B）。
 pub const BUSH_CPU_SSBO_NAME: &str =
     "country_core::systems::render_loop::compute_passes::read_bush_positions_for_cpu::BushCpuSsbo";
@@ -33,16 +31,29 @@ pub struct BushGridCell {
     pub hash: u64,
 }
 
-/// 懒网格（64×64；记录下标 = `x*64 + y`，O 0x140aac630）。
-#[derive(Resource, Clone, Debug)]
+/// 懒网格（64×64；记录下标 = `x*64 + y`，O 0x140aac630）+ 脏格发布者。
+///
+/// 机器码证据：`read_bush_positions_from_gpu`（0x140eebaa0）最后对 `*BushGrid + 0x18` 调
+/// `Publisher<DirtyTiles>::publish`；`autoclutter_subscribe_to_tabloids`（0x1422d6930）对其第 3 个
+/// 参数 `ResMut<BushGrid>` 同样取 `*grid + 0x18` 调 `Publisher<DirtyTiles>::subscribe`。即发布者是
+/// `BushGrid` 的内联字段（Vec 头 0x18 B 之后），不是单独的资源。
+#[derive(Resource)]
 pub struct BushGrid {
     pub cells: Vec<BushGridCell>,
+    pub publisher: tabloid::Publisher<DirtyTiles>,
+}
+
+impl std::fmt::Debug for BushGrid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BushGrid").field("cells", &self.cells.len()).finish_non_exhaustive()
+    }
 }
 
 impl Default for BushGrid {
     fn default() -> Self {
         Self {
             cells: vec![BushGridCell::default(); BUSH_GRID_CELLS],
+            publisher: tabloid::Publisher::default(),
         }
     }
 }
@@ -71,7 +82,6 @@ pub fn hash_bush_positions(positions: &[Vec2]) -> u64 {
 pub fn read_bush_positions_from_gpu(
     ssbos: Res<AssetSsboLibrary>,
     mut grid: ResMut<BushGrid>,
-    mut publisher: ResMut<DirtyTilesPublisher>,
 ) {
     // The canonical library performs the native full-type check. Missing
     // registration returns before touching BushGrid or its change tick.
@@ -135,7 +145,7 @@ pub fn read_bush_positions_from_gpu(
     }
     // 5. changed → publish（O：memcpy 0x200 + Publisher::publish<DirtyTiles>）。
     if changed {
-        let _ = publisher.0.publish(dirty);
+        let _ = grid.publisher.publish(dirty);
     }
 }
 
@@ -168,11 +178,10 @@ mod tests {
                 },
             });
         }
-        let mut publisher = DirtyTilesPublisher::default();
-        let subscriber = publisher.0.subscribe();
+        let mut grid = BushGrid::default();
+        let subscriber = grid.publisher.subscribe();
         world.insert_resource(library);
-        world.init_resource::<BushGrid>();
-        world.insert_resource(publisher);
+        world.insert_resource(grid);
         let mut schedule = Schedule::default();
         schedule.add_systems(read_bush_positions_from_gpu);
         (world, schedule, subscriber)
@@ -201,7 +210,7 @@ mod tests {
         assert_eq!(world.resource::<BushGrid>().cells[0].positions, [Vec2::ONE]);
         assert_eq!(world.resource::<BushGrid>().cells[0].hash, 17);
         assert!(subscriber.take().is_none());
-        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 0);
+        assert_eq!(world.resource::<BushGrid>().publisher.sequence(), 0);
     }
     #[test]
     fn empty_mapped_header_is_valid_and_does_not_dirty_all_initial_cells() {
@@ -249,11 +258,11 @@ mod tests {
         mapped(&mut world, |rows| rows.swap(1, 2));
         schedule.run(&mut world);
         assert!(subscriber.take().is_none());
-        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 1);
+        assert_eq!(world.resource::<BushGrid>().publisher.sequence(), 1);
         mapped(&mut world, |rows| rows[1].0 = bits(Vec2::splat(-0.5)));
         schedule.run(&mut world);
         assert!(subscriber.take().is_some());
-        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 2);
+        assert_eq!(world.resource::<BushGrid>().publisher.sequence(), 2);
         mapped(&mut world, |rows| rows[0].0[0] = 0);
         schedule.run(&mut world);
         assert!(subscriber.take().is_some());
@@ -266,7 +275,7 @@ mod tests {
         );
         schedule.run(&mut world);
         assert!(subscriber.take().is_none());
-        assert_eq!(world.resource::<DirtyTilesPublisher>().0.sequence(), 3);
+        assert_eq!(world.resource::<BushGrid>().publisher.sequence(), 3);
     }
     #[test]
     fn raw_array_order_and_normalized_hash_preserve_nan_and_negative_zero_bits() {

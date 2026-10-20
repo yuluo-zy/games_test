@@ -44,6 +44,12 @@ pub struct MerlonBricks {
     pub bricks: Vec<MerlonBrick>,
 }
 
+/// `InterRoofMerlonBrickCount(usize)`（原版 `construct_inter_roof_merlons::InterRoofMerlonBrickCount`；
+/// `ClutterPlugin::build` 0x1406525c0 以 0 插入）。原版读写者（城垛砖计数）**未闭合**——本 crate 的
+/// `construct_inter_roof_merlons` 近似尚未使用它。
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct InterRoofMerlonBrickCount(pub usize);
+
 /// 城垛 RNG（fastrand；段抖动）。
 #[derive(Resource, Debug)]
 pub struct MerlonRng(pub std::sync::Mutex<fastrand::Rng>);

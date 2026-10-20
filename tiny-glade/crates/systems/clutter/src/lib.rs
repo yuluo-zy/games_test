@@ -25,6 +25,7 @@ use country_core::systems::GameSystemSet;
 
 use autoclutter::load_clutter_meshes::load_clutter_meshes;
 use autoclutter::manage_autoclutter_entities::manage_autoclutter_entities;
+use autoclutter::add_birdnests::birdnests_subscribe_to_tabloids;
 use autoclutter::populate_autoclutter_regions::{autoclutter_subscribe_to_tabloids, populate_autoclutter_regions};
 use autoclutter::read_bush_positions_from_gpu::read_bush_positions_from_gpu;
 use autoclutter::process_autoclutter_candidates::process_autoclutter_candidates;
@@ -64,20 +65,25 @@ pub struct ClutterPlugin;
 
 impl Plugin for ClutterPlugin {
     fn build(&self, app: &mut App) {
+        use country_core::resources::clutter_meshes::DecoratorAutoClutterChildren;
         use country_core::resources::preplaced_autoclutter::PreplacedAutoClutter;
+        use country_core::resources::shape_intersections::ShapeIntersections;
         use country_core::systems::collision::{BirdNestCandidateLocations, WindowAutoClutterCandidates};
         use country_core::systems::ui_clutter::DeletedAutoClutter;
         use country_core::systems::ui_clutter::debug_spawn_clutter::{DebugSpawnAllClutterCmd, DebugSpawnClutterCmd};
-        use country_core::systems::ui_clutter::decoclutter_show_pins::decoclutter_show_pins;
+        use country_core::systems::ui_clutter::decoclutter_show_pins::{ShowPinnedDecoClutter, decoclutter_show_pins};
         use country_core::systems::ui_clutter::defered_autoclutter_history::RecordAutoClutterHistory;
         use country_core::systems::ui_clutter::rmb_autoclutter::EvRightClickedAutoClutter;
-        use country_core::systems::ui_clutter::ui_autoclutter::{InstaCreateDeco, InstaCreateStairPoint};
-        use country_core::systems::ui_clutter::ui_focus_decoclutter::{RequestMoveClutter, RequestRotateDecorator};
+        use country_core::systems::ui_clutter::ui_autoclutter::{InstaCreateDeco, InstaCreateStairPoint, StartPlaceDecoClutterInteraction};
+        use country_core::systems::ui_clutter::ui_focus_decoclutter::{LastClonedClutter, RequestMoveClutter, RequestRotateDecorator};
 
-        // 0x1406520f9：Startup。原版第三成员 `birdnests_subscribe_to_tabloids` 本 crate 不存在（未闭合缺口，
-        // 不伪造）。`load_clutter_meshes` 本 crate 版额外读 `Res<GameConfig>`（宿主适配，原版仅
-        // `Res<AssetMeshLibrary>, Res<MeshWatch>, Commands`）。
-        app.add_systems(Startup, (load_clutter_meshes, autoclutter_subscribe_to_tabloids));
+        // 0x1406520f9：Startup，tuple3 `(load_clutter_meshes, autoclutter_subscribe_to_tabloids,
+        // birdnests_subscribe_to_tabloids)`，三者无序。`load_clutter_meshes` 本 crate 版额外读
+        // `Res<GameConfig>`（宿主适配，原版仅 `Res<AssetMeshLibrary>, Res<MeshWatch>, Commands`）。
+        app.add_systems(
+            Startup,
+            (load_clutter_meshes, autoclutter_subscribe_to_tabloids, birdnests_subscribe_to_tabloids),
+        );
 
         // 0x140652111 / 0x14065211c 与 0x14065212d / 0x140652138：两个独立 Update 注册，set 0x17。
         app.add_systems(Update, detect_intra_shape_corners.in_set(GameSystemSet(0x17)));
@@ -121,12 +127,18 @@ impl Plugin for ClutterPlugin {
         });
         // ② InterShapeBrickStitches（空 Vec）。
         app.insert_resource(inter_shape_stitches::stitch_bricks::InterShapeBrickStitches::default());
-        // ③ IntraShapeCorners（空 Vec，align 8）——本 crate 无此类型（见报告缺口；近似为 `Corners`，在适配组）。
-        // ④ ShapeIntersections（country_core::resources::shape_intersections，RandomState 哈希表）——不存在，缺口。
-        // ⑤ StitchBrickAlloc(0usize) ——不存在，缺口。
-        // ⑥ InterRoofMerlons（空 Vec，align 8）——不存在（近似 `InterRoofMerlonsDescriptions`，在适配组），缺口。
-        // ⑦ InterRoofMerlonBrickCount(0usize) ——不存在，缺口。
-        // ⑧ BushGrid：`vec![cell; 0x1000]`（0x140652611）+ 空表，取 read_bush 版（`Default` = 0x1000 空格）。
+        // ③ IntraShapeCorners（0x140652500，空 Vec，align 8）。
+        app.insert_resource(inter_shape_stitches::detect_intra_shape_corners::IntraShapeCorners::default());
+        // ④ ShapeIntersections（0x14065257c；country_core::resources::shape_intersections，空表 +
+        // `RandomState::new()` 共 0x30 B）。
+        app.insert_resource(ShapeIntersections::default());
+        // ⑤ StitchBrickAlloc(0usize)（0x140652586，`XOR EDX,EDX`）。
+        app.insert_resource(inter_shape_stitches::stitch_bricks::StitchBrickAlloc::default());
+        // ⑥ InterRoofMerlons（0x1406525b6，空 Vec，align 8）。
+        app.insert_resource(inter_roof_merlons::detect_inter_roof_merlons::InterRoofMerlons::default());
+        // ⑦ InterRoofMerlonBrickCount(0usize)（0x1406525c0）。
+        app.insert_resource(inter_roof_merlons::construct_inter_roof_merlons::InterRoofMerlonBrickCount::default());
+        // ⑧ BushGrid：`vec![cell; 0x1000]`（0x140652611）+ 内联 `Publisher<DirtyTiles>`（+0x18）。
         app.insert_resource(autoclutter::read_bush_positions_from_gpu::BushGrid::default());
         // ⑨ BirdNestCandidateLocations（空 Vec）。
         app.insert_resource(BirdNestCandidateLocations::default());
@@ -136,20 +148,21 @@ impl Plugin for ClutterPlugin {
         app.insert_resource(autoclutter::populate_autoclutter_regions::AutoClutterDirtySubscriptions::default());
         // ⑫ DeletedAutoClutter：`HashSet::default()`（`RandomState::new()` 取线程局部 KEYS，0x140652729）。
         app.insert_resource(DeletedAutoClutter::default());
-        // ⑬ LastClonedClutter（ui_focus_decoclutter，一字节 `UiNav::default()` 派生）——不存在，缺口。
-        // ⑭ DecoratorAutoClutterChildren（country_core::resources::clutter_meshes，HashMap+RandomState）——不存在，缺口。
+        // ⑬ LastClonedClutter（0x140652754；`{ Quat::IDENTITY, 0u8 }`，见类型文档）。
+        app.insert_resource(LastClonedClutter::default());
+        // ⑭ DecoratorAutoClutterChildren（0x1406527c2；空 HashMap + RandomState）。
+        app.insert_resource(DecoratorAutoClutterChildren::default());
 
         // 0x140652828…0x140652b08 + 尾跳 0x140eee380：10 个 register_event（`add_event` 等价：已存在则跳过）。
-        // ① StartPlaceDecoClutterInteraction（ui_autoclutter）——不存在，缺口。
+        app.add_event::<StartPlaceDecoClutterInteraction>(); // ①（0x140652828）
         app.add_event::<InstaCreateDeco>(); // ②
         app.add_event::<InstaCreateStairPoint>(); // ③
         app.add_event::<EvRightClickedAutoClutter>(); // ④
         app.add_event::<RequestRotateDecorator>(); // ⑤
         app.add_event::<RecordAutoClutterHistory>(); // ⑥
         app.add_event::<RequestMoveClutter>(); // ⑦
-        // ⑧ ShowPinnedDecoClutter：原版是 Event（56 B）；country_core 目前把它建模为 Resource，
-        // 无法 add_event——缺口（decoclutter_show_pins 的 `Res<ShowPinnedDecoClutter>` 由 core 的
-        // `register_ui_clutter_resources` 提供）。
+        // ⑧ ShowPinnedDecoClutter：原版是 Event（56 B）；core 已改为 Event，`decoclutter_show_pins` 经 EventReader 读取。
+        app.add_event::<ShowPinnedDecoClutter>();
         app.add_event::<DebugSpawnAllClutterCmd>(); // ⑨
         app.add_event::<DebugSpawnClutterCmd>(); // ⑩（尾跳 0x140eee380）
 
@@ -176,13 +189,11 @@ impl Plugin for ClutterPlugin {
 /// 由 core/宿主提供，此处不创建。
 pub fn init_adapter_resources(world: &mut World) {
     world.init_resource::<autoclutter::populate_autoclutter_regions::MeshGroupWeights>();
-    world.init_resource::<autoclutter::populate_autoclutter_regions::DirtyTilesPublisher>();
     world.init_resource::<autoclutter::add_lantern_water_setdresssing::LanternRng>();
     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreeRng>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonRng>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchRng>();
     world.init_resource::<autoclutter::LazyGridClutterCell>();
-    world.init_resource::<autoclutter::add_preplaced_autoclutter::PreplacedAutoClutter>();
     world.init_resource::<autoclutter::add_lantern_water_setdresssing::TerrainDecoratorPositions>();
     world.init_resource::<autoclutter::add_lantern_water_setdresssing::IsStarted>();
     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreePositions>();
@@ -192,13 +203,9 @@ pub fn init_adapter_resources(world: &mut World) {
     world.init_resource::<autoclutter::populate_autoclutter_regions::RockMaskData>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::SessionMeta>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::PopulateLocal>();
-    world.init_resource::<autoclutter::populate_autoclutter_regions::RaycastWorldHandleClutter>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonBricks>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonHostGeometryList>();
     world.init_resource::<inter_roof_merlons::detect_inter_roof_merlons::WallAndRoofChanges>();
-    world.init_resource::<inter_roof_merlons::detect_inter_roof_merlons::InterRoofMerlonsDescriptions>();
-    world.init_resource::<inter_shape_stitches::detect_intra_shape_corners::Corners>();
-    world.init_resource::<inter_shape_stitches::detect_intra_shape_corners::DirtyWallPairs>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchDescriptions>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::FloatingBrickParams>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchBrickInstances>();
@@ -217,7 +224,6 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
     world.init_resource::<Events<country_core::systems::audio::PlayClutterSoundCmd>>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::MeshGroupWeights>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::AutoClutterDirtySubscriptions>();
-    world.init_resource::<autoclutter::populate_autoclutter_regions::DirtyTilesPublisher>();
     world.init_resource::<autoclutter::add_lantern_water_setdresssing::LanternRng>();
     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreeRng>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonRng>();
@@ -228,7 +234,6 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
     // The SSBO library is the actual readback owner; init preserves host data.
     world.init_resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
     world.init_resource::<autoclutter::read_bush_positions_from_gpu::BushGrid>();
-    world.init_resource::<autoclutter::add_preplaced_autoclutter::PreplacedAutoClutter>();
     world.init_resource::<autoclutter::add_lantern_water_setdresssing::TerrainDecoratorPositions>();
     world.init_resource::<autoclutter::add_lantern_water_setdresssing::IsStarted>();
     world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreePositions>();
@@ -238,13 +243,9 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
     world.init_resource::<autoclutter::populate_autoclutter_regions::RockMaskData>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::SessionMeta>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::PopulateLocal>();
-    world.init_resource::<autoclutter::populate_autoclutter_regions::RaycastWorldHandleClutter>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonBricks>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonHostGeometryList>();
     world.init_resource::<inter_roof_merlons::detect_inter_roof_merlons::WallAndRoofChanges>();
-    world.init_resource::<inter_roof_merlons::detect_inter_roof_merlons::InterRoofMerlonsDescriptions>();
-    world.init_resource::<inter_shape_stitches::detect_intra_shape_corners::Corners>();
-    world.init_resource::<inter_shape_stitches::detect_intra_shape_corners::DirtyWallPairs>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchDescriptions>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::FloatingBrickParams>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchBrickInstances>();
@@ -362,3 +363,80 @@ mod plugin_registration_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod plugin_closure_tests {
+    use super::*;
+    use bevy_ecs::schedule::Schedules;
+    use bevy_ecs::system::RunSystemOnce;
+    use country_core::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
+    use country_core::resources::world_raster::DirtyTilePublisher;
+    use country_core::resources::world_raster_defs::{GardenRaster, PathRaster, WaterRaster};
+    use country_core::systems::collision::world::RaycastWorld;
+
+    /// 机器码顺序的 14 个 insert_resource 与 10 个 register_event 全部落地（含本轮补齐的类型）。
+    #[test]
+    fn plugin_inserts_all_original_resources_and_events() {
+        let mut app = App::new();
+        app.add_plugins(ClutterPlugin);
+        let world = app.world();
+        assert!(world.contains_resource::<autoclutter::AutoClutterState>());
+        assert!(world.contains_resource::<inter_shape_stitches::stitch_bricks::InterShapeBrickStitches>());
+        assert!(world.contains_resource::<inter_shape_stitches::detect_intra_shape_corners::IntraShapeCorners>());
+        assert!(world.contains_resource::<country_core::resources::shape_intersections::ShapeIntersections>());
+        assert_eq!(world.resource::<inter_shape_stitches::stitch_bricks::StitchBrickAlloc>().0, 0);
+        assert!(world.contains_resource::<inter_roof_merlons::detect_inter_roof_merlons::InterRoofMerlons>());
+        assert_eq!(world.resource::<inter_roof_merlons::construct_inter_roof_merlons::InterRoofMerlonBrickCount>().0, 0);
+        assert!(world.contains_resource::<autoclutter::read_bush_positions_from_gpu::BushGrid>());
+        assert!(world.contains_resource::<country_core::systems::collision::BirdNestCandidateLocations>());
+        assert!(world.contains_resource::<country_core::systems::collision::WindowAutoClutterCandidates>());
+        assert!(world.contains_resource::<autoclutter::populate_autoclutter_regions::AutoClutterDirtySubscriptions>());
+        assert!(world.contains_resource::<country_core::systems::ui_clutter::DeletedAutoClutter>());
+        let last = world.resource::<country_core::systems::ui_clutter::ui_focus_decoclutter::LastClonedClutter>();
+        assert_eq!((last.rotation, last.tag), (glam::Quat::IDENTITY, 0));
+        assert!(world.contains_resource::<country_core::resources::clutter_meshes::DecoratorAutoClutterChildren>());
+        assert!(world.contains_resource::<Events<country_core::systems::ui_clutter::ui_autoclutter::StartPlaceDecoClutterInteraction>>());
+        assert!(world.contains_resource::<Events<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>>());
+    }
+
+    /// Startup 三成员（load_clutter_meshes、autoclutter_subscribe_to_tabloids、birdnests_subscribe_to_tabloids）。
+    #[test]
+    fn startup_registers_the_three_original_members() {
+        let mut app = App::new();
+        app.add_plugins(ClutterPlugin);
+        let world = app.world_mut();
+        world.schedule_scope(Startup, |world, schedule| {
+            schedule.initialize(world).unwrap();
+            let names: Vec<String> = schedule.systems().unwrap().map(|(_, s)| s.name().to_string()).collect();
+            for expected in ["load_clutter_meshes", "autoclutter_subscribe_to_tabloids", "birdnests_subscribe_to_tabloids"] {
+                assert_eq!(names.iter().filter(|n| n.ends_with(&format!("::{expected}"))).count(), 1, "{expected}");
+            }
+        });
+        let _ = world.resource::<Schedules>();
+    }
+
+    /// 真实 App 的世界：宿主资源齐全时，两个订阅系统都通过参数校验并完成订阅；
+    /// clutter 不再持有私有 RaycastWorld 副本（订阅的是宿主 `RaycastWorld`）。
+    #[test]
+    fn subscription_systems_validate_and_subscribe_on_a_real_app_world() {
+        let mut app = App::new();
+        app.add_plugins(ClutterPlugin);
+        let world = app.world_mut();
+        world.insert_resource(RaycastWorld::new());
+        world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+        world.run_system_once(autoclutter_subscribe_to_tabloids).expect("params valid on real world");
+        world.run_system_once(birdnests_subscribe_to_tabloids).expect("params valid on real world");
+        let handles = world
+            .resource::<autoclutter::populate_autoclutter_regions::AutoClutterDirtySubscriptions>()
+            .subscriber
+            .lock()
+            .unwrap()
+            .len();
+        assert_eq!(handles, 13);
+        assert!(world.contains_resource::<autoclutter::add_birdnests::BirdNestLazySubscriber>());
+    }
+}
+
