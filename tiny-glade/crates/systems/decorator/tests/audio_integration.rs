@@ -187,9 +187,26 @@ fn preview_kind_table_matches_original_jump_table() {
     assert_eq!(preview_kind(DecoratorType(0x3c), 3), (0xc, 1));
     assert_eq!(preview_kind(DecoratorType(0x3d), 2), (0x1c, 1));
     assert_eq!(preview_kind(DecoratorType(0x3d), 3), (0x1d, 0));
-    assert_eq!(preview_kind(DecoratorType(0x3e), 9), (0xc, 0));
+    assert_eq!(preview_kind(DecoratorType(0x3e), 9), (0x24, 1));
     assert_eq!(preview_kind(DecoratorType(0x3e), 3), (0x24, 0));
-    assert_eq!(preview_kind(DecoratorType(0x40), 0), (0x16, 0));
+    assert_eq!(preview_kind(DecoratorType(0x40), 0), (0x24, 1));
+    assert_eq!(preview_kind(DecoratorType(9), 3), (0xc, 1));
+    assert_eq!(preview_kind(DecoratorType(9), 9), (0xc, 0));
+}
+
+#[test]
+fn preview_kind_matches_original_instructions_for_all_type_and_subtype_bytes() {
+    use country_core::resources::walls::decorator::DecoratorType;
+    // Produced by executing B1408233a9..1408235d0 with no function hooks.
+    // The evidence directory contains the original binary hash and reproducer.
+    let expected = include_bytes!("../../../../../reverse-engineering/tiny-glade/progress-20261020/central-audio-preview/native-preview-kind.bin");
+    for ty in 0..=255u8 {
+        for subtype in 0..=255u8 {
+            let offset = (usize::from(ty) * 256 + usize::from(subtype)) * 2;
+            let (kind, flag) = preview_kind(DecoratorType(ty), subtype);
+            assert_eq!([kind, flag], expected[offset..offset + 2], "type {ty:#x}, subtype {subtype}");
+        }
+    }
 }
 
 #[test]
@@ -259,7 +276,6 @@ fn stairs_disc4_emits_delete_with_stair_payload() {
             scale: Vec3::ONE,
         },
     );
-    transforms.swap_buffers_and_clear();
     world.insert_resource(storage);
     world.insert_resource(transforms);
     world.insert_resource(TerrainHeightsData::<country_core::resources::terrain_height::TerrainHeightSsbo>::new());
@@ -300,7 +316,6 @@ fn stairs_change_emits_place_or_ladder_from_graph_presence() {
                 scale: Vec3::ONE,
             },
         );
-        transforms.swap_buffers_and_clear();
         let mut stairs = StairsState::new();
         if with_edge {
             stairs.add_edge(id.0, 8);
@@ -356,10 +371,7 @@ fn stairs_requires_transform_cache_and_skips_roof_events() {
 #[test]
 fn new_frame_clears_dedup_tables_and_state() {
     let mut events = DecoratorAudioEvents::default();
-    let cmd = PlayDecoratorSoundCmd {
-        kind: 7,
-        position: Vec3::ONE,
-    };
+    let cmd = PlayDecoratorSoundCmd::at(7, Vec3::ONE);
     let key = system_decorator::audio::AudioEventKey {
         decorator_type: country_core::resources::walls::decorator::DecoratorType(0x38),
         flag: 0,

@@ -2,7 +2,8 @@
 //!
 //! 证据：fresh RE-MCP 反编译（18 业务 VA）+ 原字节手解（capdis）+ 骨架 callees（O）。
 //!
-//! **状态（2026-10-19 复核后修正）**：本文件没有“已全文恢复”的函数。
+//! **状态（2026-10-20）**：gen_stairs_structural_collider 955B 的八点凸包和
+//! tiny-sphere fallback 已按原字节及独立执行恢复；其余主流程仍部分恢复。
 //! `determine_ladder_support` 0x1407de800 只有原字节结构（a/b 高度选段 + 逐段
 //! 校验分支），段阈值/flag 语义仍 U，函数体返回显式未恢复值 0；订阅/碰撞
 //! 函数同样只有调用面结构。`playermade_stairs_assemble<true/false>`
@@ -20,7 +21,7 @@
 //! calculate_distortion_from_structural_graph /
 //! split_segment_into_supported_and_unsupported_subsegments /
 //! construct_stair_steps / gen_stair_floors / gen_stairs_collider_and_rt_geo /
-//! create_stairs_collider / gen_stairs_structural_collider。
+//! create_stairs_collider。
 
 use bevy_ecs::prelude::*;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
@@ -190,11 +191,100 @@ pub fn gen_stairs_collider_and_rt_geo(
     // U。
 }
 
-/// 0x1407dec90（O 结构，9 参面）：生成梯结构碰撞体。
+/// B 1407dec90/955B: construct the eight original structural hull vertices,
+/// then use the original tiny-sphere fallback only if convex construction fails.
+/// The caller's actual per-segment registry/graph handoff remains separate.
 pub fn gen_stairs_structural_collider(
-    _segments: &[(u32, Vec3)],
-) -> Vec<u8> {
-    Vec::new() // U。
+    start: Vec3,
+    end: Vec3,
+    start_direction: Vec2,
+    end_direction: Vec2,
+    start_width: f32,
+    end_width: f32,
+) -> country_core::systems::collision::world::RaycastMeshData {
+    use country_core::systems::collision::world::RaycastMeshData;
+    let (points, fallback_center) = structural_stair_collider_geometry(
+        start, end, start_direction, end_direction, start_width, end_width,
+    );
+    RaycastMeshData::new_convex(&points).unwrap_or_else(|| {
+        RaycastMeshData::new_sphere(
+            f32::from_bits(0x3727_c5ac),
+            glam::UVec3::new(
+                fallback_center.x.to_bits(),
+                fallback_center.y.to_bits(),
+                fallback_center.z.to_bits(),
+            ),
+        )
+    })
+}
+
+/// The native structural-leaf -> actual collider-registry handoff from
+/// 1407d2b79/1407d2ede. The full assembly-request traversal must supply its
+/// real source/segment geometry; this does not replace that unrecovered loop.
+#[allow(clippy::too_many_arguments)]
+pub fn upsert_structural_stair_segment(
+    world: &mut RaycastWorld,
+    registry: &mut country_core::resources::stairs::stairs_collider::StairColliderRegistry,
+    segment: (country_core::resources::stairs::stairs_state::StairGraphEdge, u32),
+    source: country_core::systems::collision::world::RaycastGeoSource,
+    start: Vec3,
+    end: Vec3,
+    start_direction: Vec2,
+    end_direction: Vec2,
+    start_width: f32,
+    end_width: f32,
+) -> country_core::systems::collision::world::ColliderUpsert {
+    let mesh = gen_stairs_structural_collider(
+        start, end, start_direction, end_direction, start_width, end_width,
+    );
+    country_core::systems::collision::world::upsert_collider(
+        world,
+        &mut registry.structural_colliders,
+        segment,
+        source,
+        std::sync::Arc::new(mesh),
+        Vec3::ZERO,
+        glam::Quat::IDENTITY,
+    )
+}
+
+/// Pure argument construction from the same native leaf. Kept public so the
+/// retained original SIMD oracle can independently check all float words.
+pub fn structural_stair_collider_geometry(
+    start: Vec3,
+    end: Vec3,
+    start_direction: Vec2,
+    end_direction: Vec2,
+    start_width: f32,
+    end_width: f32,
+) -> ([Vec3; 8], Vec3) {
+    let mut points = [Vec3::ZERO; 8];
+    let start_y = start.y + -0.5;
+    let end_y = end.y + -0.5;
+    for (index, (position, direction, width, shifted_y)) in [
+        (start, start_direction, start_width, start_y),
+        (end, end_direction, end_width, end_y),
+    ].into_iter().enumerate() {
+        // Native 140c9cdc0 expands (-direction.y, direction.x) to x0z;
+        // preserve its separate multiply and addition order, including signed 0.
+        let dx = (-direction.y * width) * 0.5;
+        let dy = (0.0 * width) * 0.5;
+        let dz = (direction.x * width) * 0.5;
+        let left = Vec3::new(position.x - dx, shifted_y - dy, position.z - dz);
+        let right = Vec3::new(position.x + dx, shifted_y + dy, position.z + dz);
+        points[index * 4] = Vec3::new(left.x, left.y + -0.25, left.z);
+        points[index * 4 + 1] = Vec3::new(right.x, right.y + -0.25, right.z);
+        points[index * 4 + 2] = Vec3::new(left.x + 0.0, left.y + 0.25, left.z + 0.0);
+        points[index * 4 + 3] = Vec3::new(right.x + 0.0, right.y + 0.25, right.z + 0.0);
+    }
+    // This unusual native fallback is an endpoint sum plus 0.5, not a midpoint.
+    // Preserve it and the shifted-y addition order rather than "correcting" it.
+    let fallback_center = Vec3::new(
+        (start.x + end.x) + 0.5,
+        (start_y + end_y) + 0.5,
+        (start.z + end.z) + 0.5,
+    );
+    (points, fallback_center)
 }
 
 /// 梯三角计数 → 图集索引（内联，O callee 面；U 映射）。

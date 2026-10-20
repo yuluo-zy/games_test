@@ -1076,6 +1076,18 @@ pub fn load_game_system(world: &mut bevy_ecs::world::World) -> bevy_ecs::error::
     try_load_game_system(world).map_err(|error| error.to_string().into())
 }
 
+fn require_complete_snapshot_application(
+    report: &crate::systems::save::snapshot::SnapshotApplyReport,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        report.gaps.is_empty(),
+        "history snapshot application incomplete ({} gap(s)): {}",
+        report.gaps.len(),
+        report.gaps.join("; ")
+    );
+    Ok(())
+}
+
 pub fn try_load_game_system(world: &mut bevy_ecs::world::World) -> anyhow::Result<()> {
     if world.resource::<AppMode>().native_tag() != 14 {
         return Ok(());
@@ -1083,16 +1095,18 @@ pub fn try_load_game_system(world: &mut bevy_ecs::world::World) -> anyhow::Resul
     let manager = world.resource::<LoadGameManager>();
     match manager.state {
         LoadGameState::Loading => {
-            // Original state0 creates the marker before parsing/applying the
-            // requested source. Failure to create the marker is nonfatal.
-            write_loading_tmp(
-                &world
-                    .resource::<crate::resources::session::ActiveSession>()
-                    .id,
-            );
             // M2/M3：只有全部域写回成功才推进到 ApplyCounter；任何 `?` 失败都转
             // Failed 终态（下一帧不再重试同一坏文件，也不进入 Loaded 完成路径）。
             let result = (|| -> anyhow::Result<()> {
+                // Original state0 creates the marker before parsing/applying
+                // the source. Missing required owner is an adapter error;
+                // an actual filesystem marker-creation failure is nonfatal.
+                write_loading_tmp(
+                    &world
+                        .get_resource::<crate::resources::session::ActiveSession>()
+                        .context("B active session producer missing")?
+                        .id,
+                );
                 let manager = world.resource::<LoadGameManager>();
                 let options = manager
                     .options
@@ -1173,6 +1187,10 @@ pub fn try_load_game_system(world: &mut bevy_ecs::world::World) -> anyhow::Resul
                     let report = crate::systems::save::snapshot::init_game_state_from_snapshot(
                         world, &resources,
                     )?;
+                    // Queued real domain commands are valid application. An
+                    // omitted write/missing owner is not: do not open this
+                    // partial world for saving or emit a completion afterward.
+                    require_complete_snapshot_application(&report)?;
                     // Original applies the selected snapshot's chain cursor,
                     // then replays only the signed delta to the target.
                     {
@@ -1200,8 +1218,7 @@ pub fn try_load_game_system(world: &mut bevy_ecs::world::World) -> anyhow::Resul
                             walls.set_max_id(history_max);
                         }
                     }
-                    if report.gaps.is_empty() {
-                        log::info!(
+                    log::info!(
                             "Applied history snapshot: walls={} roofs={} decorators={} trees={} strokes={} raster={}",
                             report.walls,
                             report.roofs,
@@ -1209,15 +1226,7 @@ pub fn try_load_game_system(world: &mut bevy_ecs::world::World) -> anyhow::Resul
                             report.trees,
                             report.terrain_strokes,
                             report.raster_slots
-                        );
-                    } else {
-                        // 部分域未闭合：明确记录，不宣告完整加载。
-                        log::warn!(
-                            "History snapshot applied with {} gap(s): {}",
-                            report.gaps.len(),
-                            report.gaps.join("; ")
-                        );
-                    }
+                    );
                 } else {
                     log::debug!("No history snapshot applied; starting from the saved edit chain");
                 }

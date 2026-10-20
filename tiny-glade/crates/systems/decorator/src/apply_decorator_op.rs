@@ -40,7 +40,7 @@
 //! [`archive_decorator_state`]）；预览标签桶（special）登记 U。
 
 use country_core::resources::walls::decorator::{
-    DecoratorExtraInfo, DecoratorId, DecoratorInfo, DecoratorLocator, DeferredDecoratorOpEvents,
+    DecoratorDst, DecoratorExtraInfo, DecoratorId, DecoratorInfo, DecoratorLocator, DecoratorType, DeferredDecoratorOpEvents,
     StairExtra,
 };
 use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
@@ -68,9 +68,63 @@ pub struct DecoratorOp {
     pub extra: [u8; 0x20],
     /// 原生 `+0x10` 第二定位器；`None` = 哨兵 3（原地更新，不迁移存储）。
     pub dst: Option<DecoratorStorageAddr>,
+    /// Typed change request. Place/remove still carry a complete Info, whereas
+    /// change is a patch over an existing Info. These have different native
+    /// unions and must never share the old guessed `Info @+8` interpretation.
+    pub change: Option<DecoratorChangePatch>,
+}
+
+/// Semantic change fields from the original 112-byte union. `id` is the map
+/// key at native +68, separate from the mutable Info word at +2c.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DecoratorChangePatch {
+    pub id: DecoratorId,
+    pub destination: Option<(DecoratorStorageAddr, DecoratorDst)>,
+    pub rank: Option<u8>,
+    pub ty: Option<DecoratorType>,
+    pub word_2c_delta: Option<i8>,
+    pub extra_low: Option<u32>,
+    pub extra_high: Option<u32>,
+    pub extra_byte: Option<u8>,
+    pub event_position: glam::Vec3,
+}
+
+impl DecoratorChangePatch {
+    pub fn rotation(id: DecoratorId, addr: DecoratorStorageAddr, destination: DecoratorDst, position: glam::Vec3) -> Self {
+        Self { id, destination: Some((addr, destination)), rank: None, ty: None,
+            word_2c_delta: None, extra_low: None, extra_high: None, extra_byte: None,
+            event_position: position }
+    }
+
+    fn apply_fields(self, entry: &mut DecoratorInfo) {
+        if let Some((_, destination)) = self.destination { entry.set_destination(destination); }
+        if let Some(rank) = self.rank { entry.rank = rank; }
+        if let Some(ty) = self.ty { entry.ty = ty.0; }
+        if let Some(delta) = self.word_2c_delta {
+            entry.decorator_id = entry.decorator_id.wrapping_add(delta as i32 as u32);
+            entry.u45 = 5;
+        }
+        if let Some(value) = self.extra_low {
+            let disc = (((entry.u40 >> 8) & 0xff) as u8).wrapping_sub(2).min(6) | 4;
+            assert_eq!(disc, 6, "invalid DecoratorExtraInfo rank");
+            entry.u30 = (entry.u30 & 0xffff_ffff_0000_0000) | u64::from(value);
+        }
+        if let Some(value) = self.extra_high {
+            assert!((((entry.u40 >> 8) & 0xff) as u8 | 0xf8) < 0xfa, "invalid DecoratorExtraInfo type");
+            entry.u30 = (entry.u30 & 0xffff_ffff) | (u64::from(value) << 32);
+        }
+        if let Some(value) = self.extra_byte {
+            assert_eq!((entry.u40 >> 8) & 0xff, 5, "invalid DecoratorExtraInfo rank");
+            entry.u30 = (entry.u30 & !0xff) | u64::from(value);
+        }
+    }
 }
 
 impl DecoratorOp {
+    pub fn from_change(addr: DecoratorStorageAddr, patch: DecoratorChangePatch) -> Self {
+        Self { kind: address_words(addr).0, info: DecoratorInfo { decorator_id: patch.id.0, ..Default::default() },
+            extra: [0; 32], dst: patch.destination.map(|(addr, _)| addr), change: Some(patch) }
+    }
     /// kind 常量（O：dispatch `(kind-3)<2` → place/remove）。
     pub const KIND_PLACE: u64 = 3;
     pub const KIND_REMOVE: u64 = 4;
@@ -332,6 +386,10 @@ pub fn apply_decorator_op<C: Send + Sync + 'static>(
     history: Option<&mut DeferredDecoratorEditHistory>,
     events: &DeferredDecoratorOpEvents,
 ) {
+    if let Some(patch) = op.change {
+        apply_typed_change(patch, kind_byte, dst, storage, decorator_archivist, history, events);
+        return;
+    }
     // O：panic_str 0x142c23510 行 50 —— `assert!(decorator_archivist.is_some())`
     // 在 kind_byte != 0 门控下（非 change 类必须带归档）。消息串与文件/行已
     // read_memory 核验；本仓源码路径/行不同，消息文本保持一致。
@@ -410,6 +468,74 @@ pub fn apply_decorator_op<C: Send + Sync + 'static>(
 
     // 0x88B 事件（O：FUN_1408336b0 send；kind 映射 3/4）。
     events.send(build_op_event(kind, op, dst, kind_byte));
+}
+
+fn address_words(addr: DecoratorStorageAddr) -> (u64, u64) {
+    match addr { DecoratorStorageAddr::Wall(wall) => (0, wall.0), DecoratorStorageAddr::Terrain => (1, 0), DecoratorStorageAddr::Stair => (2, 0) }
+}
+
+/// Modern owned patch path. Original remove/reinsert retains the removed Info
+/// and applies the new destination/rank; patch bytes are never inserted as Info.
+fn apply_typed_change<C: Send + Sync + 'static>(
+    patch: DecoratorChangePatch, kind_byte: u8, source: DecoratorStorageAddr,
+    storage: &mut DecoratorStorage, archivist: Option<&mut DecoratorArchivist<C>>,
+    history: Option<&mut DeferredDecoratorEditHistory>, events: &DeferredDecoratorOpEvents,
+) {
+    assert!(!storage.immutable, "assertion failed: !self.immutable");
+    if kind_byte != 0 { assert!(archivist.is_some()); }
+    let archivist = archivist.unwrap();
+    let before = *storage.get(source).and_then(|bucket| bucket.get(patch.id)).expect("apply_decorator_change: missing decorator entry");
+    archive_decorator_state(archivist, storage, source, LABEL_MOVE_SRC);
+    let target = patch.destination.map_or(source, |(target, _)| target);
+    if patch.destination.is_some() { archive_decorator_state(archivist, storage, target, LABEL_MOVE_DST); }
+    if let Some(history) = history {
+        // Native add writes only the record discriminant; the other three
+        // qwords are inactive padding. Commit is armed by the UI release path.
+        history.add(DeferredDecoratorRecord { kind: DeferredDecoratorRecord::KIND_CHANGE, f1: 0, f2: 0, f3: 0 });
+        history.add_potentially_surviving_affected_decorator(DecoratorLocator::new(target));
+    }
+    let mut after = before;
+    patch.apply_fields(&mut after);
+    if patch.destination.is_some() {
+        storage.apply_decorator_remove(source, patch.id);
+        storage.get_or_insert_default(target).insert(patch.id, after);
+        storage.decorator_to_storage.update(patch.id, target);
+    } else {
+        let bucket = storage.get_mut(source).expect("apply_decorator_change: target bucket missing");
+        *bucket.decorators.get_mut(&patch.id.0).expect("apply_decorator_change: missing decorator entry") = after;
+        bucket.modified_ids.insert(patch.id.0);
+    }
+    events.send(typed_change_event(patch, before, source, kind_byte));
+}
+
+/// Canonical raw DeferredDecoratorOpEvents uses native +0..87. Only active
+/// union fields are serialized; padding is normalized to zero.
+pub(crate) fn typed_change_event(patch: DecoratorChangePatch, before: DecoratorInfo, source: DecoratorStorageAddr, kind_byte: u8) -> [u8; 0x88] {
+    let mut event = [0u8; 0x88];
+    let mut destination = before;
+    let target = if let Some((target, value)) = patch.destination { destination.set_destination(value); target } else { source };
+    let (source_tag, source_payload) = address_words(source);
+    event[0..8].copy_from_slice(&source_tag.to_le_bytes());
+    event[8..16].copy_from_slice(&source_payload.to_le_bytes());
+    let (target_tag, target_payload) = if patch.destination.is_some() { address_words(target) } else { (3, 0) };
+    event[0x10..0x18].copy_from_slice(&target_tag.to_le_bytes());
+    event[0x18..0x20].copy_from_slice(&target_payload.to_le_bytes());
+    if patch.destination.is_some() {
+        let bytes = info_to_bytes(destination);
+        event[0x20..0x44].copy_from_slice(&bytes[0..0x24]);
+        event[0x48] = before.rank;
+    }
+    if let Some(value) = patch.extra_low { event[0x50..0x54].copy_from_slice(&1u32.to_le_bytes()); event[0x54..0x58].copy_from_slice(&value.to_le_bytes()); }
+    if let Some(value) = patch.extra_high { event[0x58] = 1; event[0x5c..0x60].copy_from_slice(&value.to_le_bytes()); }
+    if let Some(value) = patch.rank { event[0x60] = 1; event[0x61] = value; }
+    if let Some(value) = patch.word_2c_delta { event[0x62] = 1; event[0x63] = value as u8; }
+    event[0x64] = patch.extra_byte.unwrap_or(2);
+    event[0x65] = patch.ty.map_or(0x40, |ty| ty.0);
+    event[0x68..0x6c].copy_from_slice(&patch.id.0.to_le_bytes());
+    event[0x70..0x7c].copy_from_slice(&patch.event_position.to_array().map(f32::to_bits).map(u32::to_le_bytes).concat());
+    event[0x80] = kind_byte;
+    event[0x81] = before.ty;
+    event
 }
 
 /// `apply_decorator_change` 哨兵路径（fresh 0x140a20890，O）：目标 == 源时
@@ -545,6 +671,7 @@ mod tests {
                 ..DecoratorInfo::default()
             },
             extra: [0; 0x20],
+                change: None,
             dst,
         }
     }
@@ -556,9 +683,9 @@ mod tests {
             id,
             DecoratorInfo {
                 decorator_id: id,
-                // 楼梯 extra_style 判别：低 3 位 0/1（8/9）才通过 as_stair 与
-                // u30 rank 判别（`(b-2).min(6)|4 == 6`）。
-                u40: 0x0000_0800,
+                // The real Stair extra niche at Info+41 is exactly0/1.
+                // Tag0 also passes native wrapping `(b-2).min(6)|4 ==6`.
+                u40: 0,
                 state: 2,
                 ..DecoratorInfo::default()
             },

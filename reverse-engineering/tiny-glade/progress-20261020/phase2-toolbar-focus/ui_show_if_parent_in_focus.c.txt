@@ -1,0 +1,294 @@
+0x14233ce00 ui_show_if_parent_in_focus
+
+void __cdecl toolbar::ui_interaction::ui_show_if_parent_in_focus(void)
+
+{
+  byte *pbVar1;
+  uint *puVar2;
+  longlong lVar3;
+  byte bVar4;
+  byte bVar5;
+  byte bVar6;
+  char cVar7;
+  char cVar8;
+  undefined4 uVar9;
+  longlong lVar10;
+  longlong lVar11;
+  longlong lVar12;
+  longlong lVar13;
+  longlong lVar14;
+  char extraout_AL;
+  uint uVar15;
+  longlong extraout_RAX;
+  longlong extraout_RAX_00;
+  longlong *extraout_RAX_01;
+  ulonglong uVar16;
+  longlong *extraout_RAX_02;
+  longlong *extraout_RAX_03;
+  longlong *extraout_RAX_04;
+  longlong *in_RCX;
+  longlong *plVar17;
+  longlong *in_RDX;
+  ulonglong uVar18;
+  uint *puVar19;
+  longlong lVar20;
+  longlong *in_R8;
+  char *pcVar21;
+  ulonglong *puVar22;
+  longlong lVar23;
+  ulonglong uVar24;
+  ulonglong uVar25;
+  bool bVar26;
+  bool bVar27;
+  longlong local_90;
+  longlong local_88;
+  longlong local_58;
+  
+  puffin::are_scopes_on();
+  if (extraout_AL != '\0') {
+    uVar18 = 0x33;
+    core::str::impl$0::rfind<ref_<str_>_>();
+    if (extraout_RAX == 1) {
+      if (uVar18 != 0) {
+        if (uVar18 < 0x33) {
+          if ((char)(&DAT_14304d9d1)[uVar18] < -0x40) {
+LAB_14233ce77:
+                    // WARNING: Subroutine does not return
+            core::str::slice_error_fail();
+          }
+        }
+        else if (uVar18 != 0x33) goto LAB_14233ce77;
+      }
+      core::str::impl$0::rfind<ref_<str_>_>();
+      if ((extraout_RAX_00 == 1) && (uVar18 != 0xfffffffffffffffe)) {
+        if (uVar18 + 2 < 0x33) {
+          if ((char)(&UNK_14304d9d3)[uVar18] < -0x40) {
+LAB_14233ced5:
+                    // WARNING: Subroutine does not return
+            core::str::slice_error_fail();
+          }
+        }
+        else if (uVar18 + 2 != 0x33) goto LAB_14233ced5;
+      }
+    }
+    pcVar21 = "toolbar_button_";
+    do {
+      bVar4 = pcVar21[-1];
+      uVar15 = (uint)(char)bVar4;
+      if ((char)bVar4 < '\0') {
+        bVar5 = pcVar21[-2];
+        if ((char)bVar5 < -0x40) {
+          bVar6 = pcVar21[-3];
+          if ((char)bVar6 < -0x40) {
+            pbVar1 = (byte *)(pcVar21 + -4);
+            pcVar21 = pcVar21 + -4;
+            uVar15 = bVar6 & 0x3f | (*pbVar1 & 7) << 6;
+          }
+          else {
+            pcVar21 = pcVar21 + -3;
+            uVar15 = bVar6 & 0xf;
+          }
+          uVar15 = bVar5 & 0x3f | uVar15 << 6;
+        }
+        else {
+          pcVar21 = pcVar21 + -2;
+          uVar15 = bVar5 & 0x1f;
+        }
+        uVar15 = (uint)(bVar4 & 0x3f) | uVar15 << 6;
+        if (uVar15 != 0x5c) goto LAB_14233cf94;
+LAB_14233cfa6:
+        if (pcVar21 == "") break;
+        if (pcVar21 + -0x14304dcd7 < (char *)0x2c) {
+          if (-0x41 < pcVar21[1]) break;
+        }
+        else if (pcVar21 + -0x14304dcd7 == (char *)0x2c) break;
+                    // WARNING: Subroutine does not return
+        core::str::slice_error_fail();
+      }
+      pcVar21 = pcVar21 + -1;
+      if (uVar15 == 0x5c) goto LAB_14233cfa6;
+LAB_14233cf94:
+      if (uVar15 == 0x2f) goto LAB_14233cfa6;
+    } while (pcVar21 != "crates/systems/toolbar/src/ui_interaction.rstoolbar_button_");
+    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+    if (*extraout_RAX_01 == 1) {
+      plVar17 = extraout_RAX_01 + 1;
+    }
+    else if ((*extraout_RAX_01 != 0) ||
+            (std::sys::thread_local::native::lazy::Storage::
+             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                       (), plVar17 = extraout_RAX_03, extraout_RAX_03 == (longlong *)0x0)) {
+LAB_14233d4e4:
+                    // WARNING: Subroutine does not return
+      std::thread::local::panic_access_error();
+    }
+    if (*plVar17 != 0) {
+LAB_14233d4f0:
+                    // WARNING: Subroutine does not return
+      core::cell::panic_already_borrowed();
+    }
+    *plVar17 = -1;
+    puffin::ThreadProfiler::begin_scope();
+    *plVar17 = *plVar17 + 1;
+  }
+  lVar10 = *in_RCX;
+  lVar11 = in_RCX[1];
+  puVar19 = *(uint **)(lVar10 + 0xf8);
+  puVar2 = puVar19 + *(longlong *)(lVar10 + 0x100);
+  cVar7 = *(char *)(lVar10 + 0x108);
+  lVar12 = *in_RDX;
+  lVar13 = in_RDX[1];
+  uVar9 = *(undefined4 *)((longlong)in_RDX + 0x14);
+  lVar14 = *in_R8;
+  local_90 = 8;
+  uVar18 = 0;
+  local_88 = 8;
+  uVar25 = 0;
+  local_58 = 0;
+  bVar27 = false;
+  do {
+    if (cVar7 == '\0') {
+      if (uVar25 == uVar18) {
+        do {
+          if (puVar19 == puVar2) goto LAB_14233d462;
+          uVar15 = *puVar19;
+          puVar19 = puVar19 + 1;
+          uVar18 = *(ulonglong *)(*(longlong *)(lVar11 + 0x100) + 0x58 + (ulonglong)uVar15 * 0xa0);
+        } while (uVar18 == 0);
+        lVar23 = *(longlong *)(lVar11 + 0x100) + (ulonglong)uVar15 * 0xa0;
+        if (*(ulonglong *)(lVar10 + 0x110) <
+            *(ulonglong *)
+             (*(longlong *)(lVar11 + 0x1a8) + 0x40 + (ulonglong)*(uint *)(lVar23 + 0x94) * 0x48)) {
+          lVar3 = *(longlong *)(lVar11 + 0x1a8) + (ulonglong)*(uint *)(lVar23 + 0x94) * 0x48;
+          uVar25 = *(ulonglong *)(*(longlong *)(lVar3 + 0x38) + *(ulonglong *)(lVar10 + 0x110) * 8);
+          if (uVar25 == 0) goto LAB_14233d257;
+          local_58 = *(longlong *)(*(longlong *)(lVar3 + 0x18) + 0x10 + ~uVar25 * 0x30);
+          uVar25 = *(ulonglong *)(lVar10 + 0x118);
+          if (uVar25 < *(ulonglong *)(lVar23 + 0x88)) goto LAB_14233d273;
+LAB_14233d288:
+          bVar27 = false;
+        }
+        else {
+LAB_14233d257:
+          local_58 = 0;
+          uVar25 = *(ulonglong *)(lVar10 + 0x118);
+          if (*(ulonglong *)(lVar23 + 0x88) <= uVar25) goto LAB_14233d288;
+LAB_14233d273:
+          if (*(longlong *)(*(longlong *)(lVar23 + 0x80) + uVar25 * 8) == 0) goto LAB_14233d288;
+          bVar27 = true;
+        }
+        local_88 = *(longlong *)(lVar23 + 0x50);
+        uVar25 = 0;
+      }
+      puVar22 = (ulonglong *)(local_88 + uVar25 * 0x10);
+      uVar16 = (ulonglong)*(uint *)(local_88 + 8 + uVar25 * 0x10);
+    }
+    else {
+      if (uVar25 == uVar18) {
+        do {
+          if (puVar19 == puVar2) goto LAB_14233d462;
+          uVar15 = *puVar19;
+          puVar19 = puVar19 + 1;
+          uVar18 = *(ulonglong *)(*(longlong *)(lVar11 + 0x1a8) + 0x10 + (ulonglong)uVar15 * 0x48);
+        } while (uVar18 == 0);
+        lVar23 = *(longlong *)(lVar11 + 0x1a8) + (ulonglong)uVar15 * 0x48;
+        uVar25 = *(ulonglong *)(lVar23 + 0x40);
+        if ((*(ulonglong *)(lVar10 + 0x110) < uVar25) &&
+           (uVar16 = *(ulonglong *)
+                      (*(longlong *)(lVar23 + 0x38) + *(ulonglong *)(lVar10 + 0x110) * 8),
+           uVar16 != 0)) {
+          local_58 = *(longlong *)(*(longlong *)(lVar23 + 0x18) + 0x10 + ~uVar16 * 0x30);
+          uVar16 = *(ulonglong *)(lVar10 + 0x118);
+          if (uVar16 < uVar25) goto LAB_14233d22e;
+LAB_14233d15e:
+          bVar27 = false;
+        }
+        else {
+          local_58 = 0;
+          uVar16 = *(ulonglong *)(lVar10 + 0x118);
+          if (uVar25 <= uVar16) goto LAB_14233d15e;
+LAB_14233d22e:
+          bVar27 = *(longlong *)(*(longlong *)(lVar23 + 0x38) + uVar16 * 8) != 0;
+        }
+        local_90 = *(longlong *)(lVar23 + 8);
+        uVar25 = 0;
+      }
+      puVar22 = (ulonglong *)(local_90 + uVar25 * 8);
+      uVar16 = uVar25 & 0xffffffff;
+    }
+    uVar16 = *(ulonglong *)(local_58 + uVar16 * 8);
+    uVar24 = uVar16 & 0xffffffff;
+    if ((*(ulonglong *)(lVar13 + 0x10) <= uVar24) ||
+       (lVar23 = *(longlong *)(lVar13 + 8),
+       *(int *)(lVar23 + uVar24 * 0x14) != (int)(uVar16 >> 0x20))) {
+LAB_14233d55f:
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    lVar3 = lVar23 + uVar24 * 0x14;
+    uVar16 = (ulonglong)*(uint *)(lVar3 + 4);
+    if ((uVar16 == 0xffffffff) ||
+       ((*(ulonglong *)(lVar12 + 0x38) <= uVar16 ||
+        ((*(ulonglong *)(*(longlong *)(lVar12 + 0x28) + (ulonglong)(*(uint *)(lVar3 + 4) >> 6) * 8)
+          >> (uVar16 & 0x3f) & 1) == 0)))) goto LAB_14233d55f;
+    uVar16 = *puVar22 & 0xffffffff;
+    if ((*(ulonglong *)(lVar13 + 0x10) <= uVar16) ||
+       (*(int *)(lVar23 + uVar16 * 0x14) != (int)(*puVar22 >> 0x20))) {
+LAB_14233d516:
+                    // WARNING: Subroutine does not return
+      core::result::unwrap_failed();
+    }
+    lVar23 = lVar23 + uVar16 * 0x14;
+    uVar16 = (ulonglong)*(uint *)(lVar23 + 4);
+    if ((uVar16 == 0xffffffff) ||
+       ((*(ulonglong *)(lVar12 + 0x38) <= uVar16 ||
+        ((*(ulonglong *)(*(longlong *)(lVar12 + 0x28) + (ulonglong)(*(uint *)(lVar23 + 4) >> 6) * 8)
+          >> (uVar16 & 0x3f) & 1) == 0)))) goto LAB_14233d516;
+    uVar25 = uVar25 + 1;
+    lVar20 = *(longlong *)(lVar13 + 0x1a8);
+    cVar8 = *(char *)(*(longlong *)
+                       (*(longlong *)(lVar20 + 0x18 + (ulonglong)*(uint *)(lVar3 + 0xc) * 0x48) +
+                        0x10 + ~*(ulonglong *)
+                                 (*(longlong *)
+                                   (lVar20 + 0x38 + (ulonglong)*(uint *)(lVar3 + 0xc) * 0x48) +
+                                 *(longlong *)(lVar12 + 0x110) * 8) * 0x30) + 1 +
+                     (ulonglong)*(uint *)(lVar3 + 0x10) * 3);
+    uVar16 = (ulonglong)*(uint *)(lVar23 + 0x10);
+    lVar3 = *(longlong *)(lVar20 + 0x18 + (ulonglong)*(uint *)(lVar23 + 0xc) * 0x48);
+    lVar20 = ~*(ulonglong *)
+               (*(longlong *)(lVar20 + 0x38 + (ulonglong)*(uint *)(lVar23 + 0xc) * 0x48) +
+               *(longlong *)(lVar12 + 0x110) * 8) * 0x30;
+    lVar23 = *(longlong *)(lVar3 + 0x10 + lVar20);
+    lVar3 = *(longlong *)(lVar3 + 0x28 + lVar20);
+    *(undefined4 *)(lVar3 + uVar16 * 4) = uVar9;
+    *(char *)(lVar23 + uVar16 * 3) = cVar8;
+    if (bVar27) {
+      if (cVar8 == '\0') {
+        bVar26 = false;
+      }
+      else {
+        bVar26 = (byte)(*(char *)(lVar14 + 9) - 1U) < 2;
+      }
+      *(undefined4 *)(lVar3 + uVar16 * 4) = uVar9;
+      *(bool *)(lVar23 + uVar16 * 3) = bVar26;
+    }
+  } while( true );
+LAB_14233d462:
+  if (extraout_AL != '\0') {
+    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+    if (*extraout_RAX_02 == 1) {
+      plVar17 = extraout_RAX_02 + 1;
+    }
+    else if ((*extraout_RAX_02 != 0) ||
+            (std::sys::thread_local::native::lazy::Storage::
+             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+                       (), plVar17 = extraout_RAX_04, extraout_RAX_04 == (longlong *)0x0))
+    goto LAB_14233d4e4;
+    if (*plVar17 != 0) goto LAB_14233d4f0;
+    *plVar17 = -1;
+    puffin::ThreadProfiler::end_scope();
+    *plVar17 = *plVar17 + 1;
+  }
+  return;
+}
+

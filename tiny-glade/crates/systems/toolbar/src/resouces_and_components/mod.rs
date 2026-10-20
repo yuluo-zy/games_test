@@ -16,6 +16,7 @@
 
 pub mod toolbar_layout;
 pub mod taffy_layout;
+pub mod undo_redo_layout;
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Component;
@@ -219,13 +220,12 @@ pub struct DebugToolbarActivationZone;
 
 /// 自定义尺寸（O：`toolbar::resouces_and_components::UiCustomSize`）。
 ///
-/// **B 布局（8B，fresh impl$16 0x142386ef0 size 0x8 / align 1）**：`{size: Vec2}`
-/// （名称与 8B 尺寸推定；字段名 I）。
+/// B add_toolbar_item @141e4e935 writes {tag=1, value=1.0}.
 #[derive(Component, Clone, Copy, Debug, Default)]
 #[repr(C)]
 pub struct UiCustomSize {
-    /// +0 两 f32（I）。
-    pub size: glam::Vec2,
+    pub kind: u32,
+    pub value: f32,
 }
 
 const _UI_CUSTOM_SIZE_SIZE: () = assert!(std::mem::size_of::<UiCustomSize>() == 0x8);
@@ -292,6 +292,28 @@ pub struct UiSlider {
 const _UI_SLIDER_SIZE: () = assert!(std::mem::size_of::<UiSlider>() == 0x18);
 
 impl UiSlider {
+    /// B 142348a9b..142348ae7: Option<Entity> generation-zero niche.
+    pub fn knob_entity(&self) -> Option<bevy_ecs::entity::Entity> {
+        let bits = u64::from_le_bytes(self._gap[..8].try_into().unwrap());
+        (bits >> 32 != 0).then(|| bevy_ecs::entity::Entity::from_bits(bits))
+    }
+    pub fn set_knob_entity(&mut self, entity: Option<bevy_ecs::entity::Entity>) {
+        self._gap[..8].copy_from_slice(&entity.map_or(0, |entity| entity.to_bits()).to_le_bytes());
+    }
+    /// B hover animation scalar at +8, updated using GameTime.delta/.2.
+    pub fn hover_progress(&self) -> f32 {
+        f32::from_le_bytes(self._gap[8..12].try_into().unwrap())
+    }
+    pub fn set_hover_progress(&mut self, value: f32) {
+        self._gap[8..12].copy_from_slice(&value.to_le_bytes());
+    }
+    /// B last applied normalized value at +c; compares 14 sound buckets.
+    pub fn previous_value_01(&self) -> f32 {
+        f32::from_le_bytes(self._gap[12..16].try_into().unwrap())
+    }
+    pub fn set_previous_value_01(&mut self, value: f32) {
+        self._gap[12..16].copy_from_slice(&value.to_le_bytes());
+    }
     /// O: native `ui_slider` reads the widget kind as `*(u8*)(entry+0x10)`.
     /// The recovered 24-byte component keeps that slot in the typed gap; this
     /// accessor is the only reader and does not name the remaining fields.
@@ -618,9 +640,10 @@ impl LogSlider {
     }
     /// O `LogSlider::value_to_param` (inline, 2 instances; host
     /// ui_slider_reset case 7): inverse of `param_to_value`, i.e.
-    /// `log2(value)` clamped to `[min, max]`.
+    /// `log2(value) - log2_base` clamped to `[min, max]`.
+    /// B slider_val_01 @142349eea..142349f11 adds 3 for base -3.
     pub fn value_to_param(&self, value: f32) -> f32 {
-        value.log2().clamp(self.min, self.max)
+        (value.log2() - self.log2_base).clamp(self.min, self.max)
     }
 }
 

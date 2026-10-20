@@ -220,6 +220,7 @@ fn cull_one<C: Send + Sync + 'static>(
         kind: DecoratorOp::KIND_REMOVE,
         info: *info,
         extra: [0; 0x20],
+                change: None,
         dst: None,
     };
     let dst = storage
@@ -272,6 +273,7 @@ pub fn cull_stair_attached_decorators_impl<C: Send + Sync + 'static>(
             kind: DecoratorOp::KIND_REMOVE,
             info,
             extra: [0; 0x20],
+                change: None,
             dst: None,
         };
         let dst = storage
@@ -389,8 +391,6 @@ mod tests {
                 scale: Vec3::ONE,
             },
         );
-        // insert 写当前册；读取册是另一册 → 交换后才可查询。
-        cache.swap_buffers_and_clear();
         cache
     }
 

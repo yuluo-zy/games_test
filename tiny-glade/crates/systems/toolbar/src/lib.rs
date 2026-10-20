@@ -58,6 +58,9 @@ pub mod resouces_and_components;
 pub mod toolbar_button;
 pub mod toolbar_systems;
 pub mod toolbar_update;
+pub mod toolbar_startup;
+pub mod undo_redo_systems;
+pub mod ui_presentation;
 pub mod taffy_update;
 pub mod ui_interaction;
 
@@ -128,6 +131,7 @@ pub fn configure_app(app: &mut bevy_app::App) {
     app.init_resource::<Events<ui_interaction::UiClickEvent>>();
     app.init_resource::<Events<ui_interaction::UiDragEvent>>();
     app.init_resource::<Events<ui_interaction::UiJustBecameInFocusEvent>>();
+    app.add_event::<country_core::resources::toolbar::ToolbarUiIsInFocus>();
     app.init_resource::<Events<toolbar_button::UiToolbarButtonResetAllCooldowns>>();
     app.init_resource::<Events<country_core::resources::events::ModeJustChanged>>();
     app.init_resource::<Events<country_core::systems::ui::resources::widget_params::PlayUiSound>>();

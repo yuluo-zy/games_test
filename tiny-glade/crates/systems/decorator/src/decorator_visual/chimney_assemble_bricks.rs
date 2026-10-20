@@ -254,13 +254,13 @@ pub fn chimney_assemble_bricks(
             if let Some(params) = diff.current() {
                 _failed |= write_chimney_instance(params, wall, id, &terrain, &mut writer);
                 if let Some(kind) = current_sound_kind(diff) {
-                    sounds.write(PlayDecoratorSoundCmd { kind, position: sound_position(params) });
+                    sounds.write(PlayDecoratorSoundCmd::at(kind, sound_position(params)));
                 }
             }
         });
         let completed = removed.with_removed(|id, previous| {
             if derived.try_get_subtype(id).is_some_and(|subtype| subtype.0 == 0x14) {
-                sounds.write(PlayDecoratorSoundCmd { kind: 0x15, position: sound_position(previous) });
+                sounds.write(PlayDecoratorSoundCmd::at(0x15, sound_position(previous)));
             }
         });
         // Native af077 removals/normalization precedes af087..af09f unlock.
@@ -503,7 +503,7 @@ mod actual_host_tests {
         world.resource_mut::<WallAttachedDecoTracker<ChimneyAssemblyParams>>().remove(DecoratorStorageAddr::Wall(wall), id);
         schedule.run(&mut world);
         let sounds: Vec<_> = world.resource_mut::<Events<PlayDecoratorSoundCmd>>().drain().collect();
-        assert_eq!(sounds, [PlayDecoratorSoundCmd { kind: 0x15, position: Vec3::new(3.,2.,4.) }]);
+        assert_eq!(sounds, [PlayDecoratorSoundCmd::at(0x15, Vec3::new(3.,2.,4.))]);
         let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
         assert!(world.resource::<AssetSsboLibrary>().get::<BrickTransformSsbo>().unwrap().allocation_to_draw_multi_instanced(owner.chimney_allocation().unwrap()).is_empty());
     }
@@ -522,3 +522,4 @@ mod actual_host_tests {
         tracker.with_diffs(|_,log| log.with_each_deco_diff(|_,diff| assert!(matches!(diff, DecoDiff::Added(_)))).with_removed(|_,_|panic!("Added cannot be Removed")));
     }
 }
+

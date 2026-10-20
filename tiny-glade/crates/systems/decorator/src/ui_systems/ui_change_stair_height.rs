@@ -157,7 +157,8 @@ pub fn ui_change_stair_height<C: Send + Sync + 'static>(
             let projected = slider.project(cursor.0, &window, &camera);
             let new_height = (projected.y - slider.offset)
                 .clamp(STAIR_HEIGHT_RANGE[0], STAIR_HEIGHT_RANGE[1]);
-            let op = build_stair_height_op(addr, decorator_id, new_height);
+            let mut op = build_stair_height_op(addr, decorator_id, new_height);
+            op.change.as_mut().unwrap().event_position = world_pos;
             apply_decorator_op(
                 &op,
                 u8::from(dragged >= 2),
@@ -231,27 +232,11 @@ pub fn build_stair_height_op(
     id: DecoratorId,
     height: f32,
 ) -> DecoratorOp {
-    let (disc, payload) = addr_disc_payload(addr);
-    DecoratorOp {
-        kind: disc,
-        info: DecoratorInfo {
-            // 原生 op.info.dst_wall = 存储地址载荷；地形装饰的位置另由
-            // 既有记录承载（op.info 未填字段在原版为未定义读面）。
-            dst_wall: payload,
-            // O：原生第二定位器判别 = 3（目标即源，哨兵）。
-            dst_secondary: 3,
-            // core 载荷编码：StairExtra 首 f32 = 新高度（disc 字节为 0）。
-            dst_payload: u64::from(height.to_bits()),
-            decorator_id: id.0,
-            u30: STAIR_HEIGHT_UPDATE_TAG | (u64::from(height.to_bits()) << 32),
-            rank: 2,
-            u45: 0x40,
-            ..DecoratorInfo::default()
-        },
-        extra: [0; 0x20],
-        // 原生 `+0x10 == 3` → 原地更新。
-        dst: None,
-    }
+    DecoratorOp::from_change(addr, crate::apply_decorator_op::DecoratorChangePatch {
+        id, destination: None, rank: None, ty: None, word_2c_delta: None,
+        extra_low: Some(height.to_bits()), extra_high: None, extra_byte: None,
+        event_position: glam::Vec3::ZERO,
+    })
 }
 
 /// 存储地址 → 原生 `(判别, 载荷)`。
@@ -295,18 +280,14 @@ mod tests {
     }
 
     #[test]
-    fn height_op_is_in_place_change_with_height_in_u30_high_word() {
+    fn height_op_is_an_owned_in_place_patch() {
         let op = build_stair_height_op(DecoratorStorageAddr::Wall(WallId(42)), DecoratorId(7), 3.5);
-        assert_eq!(op.kind, 0, "wall storage change kind = disc 0");
-        assert_eq!(op.dst, None, "native +0x10 sentinel 3");
-        assert_eq!(op.info.dst_secondary, 3);
-        assert_eq!(op.info.decorator_id, 7);
-        assert_eq!(op.info.u30 as u32, 1);
-        assert_eq!((op.info.u30 >> 32) as u32, 3.5f32.to_bits());
-        assert_eq!(op.info.rank, 2);
-        assert_eq!(op.info.u45, 0x40);
-        // core 载荷编码同步：首 f32 可被 extra().as_stair() 读回。
-        assert_eq!(stair_height_of(&op.info), 3.5);
+        assert_eq!(op.kind, 0);
+        assert_eq!(op.dst, None);
+        let patch = op.change.unwrap();
+        assert_eq!(patch.id, DecoratorId(7));
+        assert_eq!(patch.destination, None);
+        assert_eq!(patch.extra_low, Some(3.5f32.to_bits()));
     }
 
     #[test]

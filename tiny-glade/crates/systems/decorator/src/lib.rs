@@ -52,6 +52,7 @@ pub mod derive_decorator_subtype;
 pub mod dormer_holes;
 pub mod handle_external_decorator_cmds;
 pub mod load_decorators;
+pub mod lifecycle;
 pub mod merge_proposal_roof_decorators;
 pub mod merge_proposal_wall_decorators;
 pub mod move_decorators_following_anchors;

@@ -16,7 +16,7 @@
 //! WindowFocusEvent>>` 写面目标类型已具备，13 参接线仍待落库（见模块尾）。
 
 use bevy_ecs::entity::Entity;
-use bevy_ecs::event::{Event, EventWriter};
+use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Commands, Query, Res, ResMut};
 use bevy_time::prelude::Time;
 
@@ -25,7 +25,7 @@ use country_core::systems::ui::resources::widget_params::{
 };
 
 use crate::resouces_and_components::{
-    HistoryButton, TaffyNode, UiAnimationState, UiInteractionState, UiMouseInteractable, UiNav,
+    HistoryButton, TaffyNode, UiAnimationState, UiInteractionState, UiLocked, UiMouseInteractable, UiNav,
     UiPlayLockedAnimation, UiPlaySelectAnimation,
 };
 
@@ -122,10 +122,11 @@ mod native_debug_hide_tests {
         assert!(world.get::<UiPlaySelectAnimation>(entity).is_none());
     }
 
-    /// O: sinc is sin(x)/x with sinc(0) = 1.
+    /// O: the original sinf/divss sequence preserves the zero singularity.
     #[test]
-    fn sinc_has_removable_singularity() {
-        assert_eq!(sinc(0.0), 1.0);
+    fn sinc_preserves_original_zero_singularity() {
+        assert!(sinc(0.0).is_nan());
+        assert!(sinc(-0.0).is_nan());
         assert!((sinc(1.0) - 1.0f32.sin()).abs() < 1e-6);
     }
 }
@@ -197,14 +198,11 @@ pub fn ui_animation_state_update(
     }
 }
 
-/// O `sinc` (inline, 2 instances; host ui_locked_animation): `sin(x) / x`,
-/// with the removable singularity at 0 returning 1.
+/// O `sinc` (inline, 2 instances; host ui_locked_animation): `sin(x) / x`.
+/// The original 0x14233cd34..0x14233cd39 has no zero branch: preserve its
+/// NaN at the removable singularity instead of changing the game algorithm.
 pub fn sinc(x: f32) -> f32 {
-    if x == 0.0 {
-        1.0
-    } else {
-        x.sin() / x
-    }
+    x.sin() / x
 }
 
 /// O 0x14233c300 `ui_select_animation` (fresh decompile
@@ -234,47 +232,48 @@ pub fn ui_select_animation(
     }
 }
 
-/// O 0x14233c8b0 `ui_locked_animation`:
-/// - `p = clamp01(p + dt / b)` stored at component +8;
-/// - `x = (p * 5 - 1) * PI`, `amp = sinc(x)`;
-/// - `scale *= amp * a + 1`; `p == 1` removes the component.
+/// O 0x14233c8b0 `ui_locked_animation`.
 ///
-/// The native "hit interaction inserts a select animation" tail is not
-/// recovered (U; see ANALYSIS-B §11.9), so no extra insert is fabricated.
+/// Exact five-parameter PDB caller spelling is retained in skeleton/B
+/// ui_interaction.rs, function information da21103e06ec109a0ec604e3.
+/// First drain clicks and queue `UiPlayLockedAnimation { a: 0.1, b: 0.3,
+/// progress: 0.0 }` only for live entities carrying UiLocked. Then animate
+/// components already in the query: deferred click inserts become visible
+/// at the original command-application boundary, not during this loop.
+/// Original 0x14233cd34..0x14233cd39 performs sinf(x)/x with no zero guard.
 pub fn ui_locked_animation(
-    time: Res<Time>,
-    mut query: Query<(Entity, &mut TaffyNode, &mut UiPlayLockedAnimation)>,
+    mut clicks: EventReader<UiClickEvent>,
+    locked: Query<&UiLocked>,
+    mut query: Query<(Entity, &mut UiPlayLockedAnimation, &mut TaffyNode)>,
     mut commands: Commands,
+    time: Res<Time>,
 ) {
+    for click in clicks.read() {
+        if locked.get(click.entity).is_ok() {
+            commands.entity(click.entity).insert(UiPlayLockedAnimation {
+                a: 0.1,
+                b: 0.3,
+                progress: 0.0,
+            });
+        }
+    }
     let dt = time.delta_secs();
-    for (entity, mut taffy, mut animation) in &mut query {
-        let progress = (animation.progress + dt / animation.b).clamp(0.0, 1.0);
+    for (entity, mut animation, mut taffy) in &mut query {
+        let progress = (dt / animation.b + animation.progress).clamp(0.0, 1.0);
         animation.progress = progress;
-        let x = (progress * 5.0 - 1.0) * std::f32::consts::PI;
+        let x = (progress * 5.0 + -1.0) * std::f32::consts::PI;
         let amplitude = sinc(x);
         let scale = (amplitude * animation.a + 1.0) * taffy.scale();
         taffy.set_scale(scale);
         if progress == 1.0 {
+            // Native removal command uses the warning handler (insertion uses panic).
             commands.entity(entity).remove::<UiPlayLockedAnimation>();
         }
     }
 }
 
-/// O 0x14233a7f0 `toolbar::ui_interaction::ui_sounds`：UI 交互音频事件。
-///
-/// **签名（caller mangled 名，wave3 fresh）**：`EventReader<UiJustBecameInFocusEvent>,
-/// EventReader<UiClickEvent>, EventReader<UiDragEvent>, EventWriter<PlayUiSound>,
-/// Query<&UiLocked>, Query<&SwitchAppModeButton>, Query<&SwitchToolbarCategoryButton>,
-/// Query<&UiSlider>, Query<&PhotomodeButton>` —— 9 SystemParam 逐一落位。
-///
-/// **已解码结构**：`switch` ~18 case（0..0x14）按交互状态分派播放声音；case 体多处
-/// 截断（"Bad instruction data"/"Sanity check requires truncation"）需 radare2 定点
-/// 反汇编；`PlayUiSound` 载荷面（country-core 已落 `{kind,payload,id}`）未接线。
-///
-/// **未实现（重建阻塞）**：截断 case 体未取证；音频事件→声音槽映射 U。不落近似体。
-pub fn ui_sounds() {
-    // 未实现（分歧见 RESTORE.md §ui_sounds）。
-}
+/// Complete native sound consumer, sharing the canonical event/component owners.
+pub use crate::ui_presentation::ui_sounds;
 
 /// O 0x142338990 `toolbar::ui_interaction::render_taffy_ui_to_widgets`。
 ///
@@ -504,3 +503,10 @@ pub fn render_taffy_ui_to_widgets(
         }
     }
 }
+
+
+mod focus;
+mod ordering;
+pub use ordering::sort_contextual_buttons_draw_order;
+pub use focus::{ui_focus_parent_if_self_in_focus, ui_show_if_parent_in_focus,
+    ui_send_focus_begin_events, ui_notify_hints_if_toolbar_in_focus};

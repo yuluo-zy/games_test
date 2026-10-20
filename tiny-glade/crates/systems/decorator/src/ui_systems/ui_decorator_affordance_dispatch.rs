@@ -18,18 +18,12 @@ use bevy_ecs::prelude::*;
 use country_core::resources::gui::EscMenuState;
 use country_core::systems::ui::resources::ui_state::{UiState, WidgetId};
 use country_core::systems::ui::resources::widget_params::{UiSounds, WidgetParams, WidgetVolumeShape};
+use country_core::systems::ui_clutter::ui_focus_decoclutter::{
+    RequestMoveClutter, RequestRotateDecorator,
+};
 
-/// 装饰手柄名（I：`UiState::add<DecoratorHandleName>` 0x14125d180 单态键；
-/// 按句柄名哈希注册 widget；原布局 U）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct DecoratorHandleName(pub &'static str);
-
-impl DecoratorHandleName {
-    /// 手柄名 → WidgetId（I：WidgetId::from_name 0x14092df30 语义）。
-    pub fn to_widget_id(self) -> WidgetId {
-        WidgetId::from_name(self.0)
-    }
-}
+// One canonical identity: the original key is a u64 and a u8, not a string.
+pub use crate::decorator_resources::DecoratorHandleName;
 
 /// B DecoratorAffordanceDispatcher（O：clear 写 {6, 0}；门控 state 值域）。
 ///
@@ -45,6 +39,17 @@ pub struct DecoratorAffordanceDispatcher {
     pub payload: u64,
     /// @+0x5c：装饰类型字节（'?'=0x3f 特殊标记；I）。
     pub ty: u8,
+    /// Owned active-variant payload. The second word of the native enum header
+    /// is zero for Move/Rotate; it is neither a widget nor a DecoratorId.
+    pub interaction: Option<DecoratorAffordanceInteraction>,
+}
+
+/// Real canonical requests, retained without dropping the widget identity or
+/// any hit fields. Native payload starts at +0x10, after the 128-bit header.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DecoratorAffordanceInteraction {
+    Move(RequestMoveClutter),
+    Rotate(RequestRotateDecorator),
 }
 
 impl DecoratorAffordanceDispatcher {
@@ -52,6 +57,28 @@ impl DecoratorAffordanceDispatcher {
     pub fn clear(&mut self) {
         self.state = 6;
         self.payload = 0;
+        self.interaction = None;
+    }
+
+    pub fn set_move(&mut self, request: RequestMoveClutter) {
+        self.state = 2;
+        self.payload = 0;
+        self.ty = request.ty.0;
+        self.interaction = Some(DecoratorAffordanceInteraction::Move(request));
+    }
+
+    pub fn set_rotate(&mut self, request: RequestRotateDecorator) {
+        self.state = 3;
+        self.payload = 0;
+        self.ty = request.ty.0;
+        self.interaction = Some(DecoratorAffordanceInteraction::Rotate(request));
+    }
+
+    pub fn rotation(&self) -> Option<&RequestRotateDecorator> {
+        match &self.interaction {
+            Some(DecoratorAffordanceInteraction::Rotate(request)) if self.gated(3) => Some(request),
+            _ => None,
+        }
     }
 
     /// 门控（I：state==n && payload==0；机器码 128 位检查等价）。
@@ -99,52 +126,113 @@ pub fn ui_dispatch_decorator_affordance(
     // O 后续：光标网格步长 0x70B 记录选取写输出（I：精确网格 U）。
 }
 
-/// `create_decorator_widget<&str>` 0x1412823c0（O）：字符串名 widget 注册。
-/// volume {tag=5, layer}；flags = bit1 | (name=='?' → bit3)。
+/// Recovered focused-decorator branch of1407af340. This is intentionally a
+/// separately registered scope: tool hover/place/stair-focus discovery has a
+/// different collision scan and is still being recovered. Request consumption
+/// itself uses the real canonical event cursors and original last/priority rule.
 #[allow(clippy::too_many_arguments)]
+pub fn ui_dispatch_focused_decorator_requests(
+    mode: Res<country_core::systems::mode_manager::AppMode>, ui: Res<UiState>,
+    esc: Res<EscMenuState>,
+    ray: Res<country_core::resources::mouse_terrain_raycast::CameraCursorRay>,
+    cursor: Res<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,
+    raycasting: Res<country_core::systems::collision::world::RaycastWorld>,
+    terrain: Res<country_core::resources::terrain_height::TerrainHeightsData<country_core::resources::terrain_height::TerrainHeightSsbo>>,
+    mut moves: EventReader<RequestMoveClutter>, mut rotations: EventReader<RequestRotateDecorator>,
+    mut dispatcher: ResMut<DecoratorAffordanceDispatcher>,
+) {
+    use country_core::systems::collision::world::RaycastWorldResult;
+    if esc.is_open() || mode.native_tag()!=3 {return;}
+    let global=WidgetParams::new(WidgetVolumeShape {tag:5,size:glam::Vec2::new(f32::MAX,0.0),..Default::default()},[0;2])
+        .sounds(UiSounds::empty()).occlude_by_world(false);
+    ui.add(DECIDE_DECORATOR_INTERACTION_WIDGET,global);
+    if let Some(active)=&mut dispatcher.interaction {
+        let (widget,hit,ty)=match active {
+            DecoratorAffordanceInteraction::Move(request)=>(request.widget,&mut request.hit,request.ty),
+            DecoratorAffordanceInteraction::Rotate(request)=>(request.widget,&mut request.hit,request.ty),
+        };
+        if ui.widget_context(widget).dragged()!=2 {
+            let mask=if ty.0==b'?' {0x23} else {0x30ab};
+            let found=raycasting.raycast_w_terrain(&terrain,ray.origin,ray.dir,mask);
+            *hit=if found.is_miss() {
+                RaycastWorldResult{handle:[11,0,0],position:cursor.position(),normal:glam::Vec3::Y,toi:0.0,discriminant:0,extra:[0.0;2]}
+            } else {found};
+            if ty.0==b'?' && hit.handle[0] as u8==2 && (hit.handle[0]>>8)&1==0 {
+                hit.handle[0]=(hit.handle[0]&!0xff)|11;
+            }
+            let dx=ray.origin.x-hit.position.x;
+            let dy=ray.origin.y-hit.position.y;
+            let dz=ray.origin.z-hit.position.z;
+            let distance=((dz*dz+dy*dy)+dx*dx).sqrt()-0.05;
+            ui.add_with_id(widget,decorator_widget_params(distance,false,UiSounds::empty()));
+            return;
+        }
+    }
+    if let Some(request)=moves.read().last() {dispatcher.set_move(*request);}
+    else if let Some(request)=rotations.read().last() {dispatcher.set_rotate(*request);}
+    else {dispatcher.clear();}
+}
+
+/// B1412823c0/187B. The fourth argument is XMM3 f32, stored at
+/// volume+4. It is not a canvas layer. Preserve the constructor's occlusion
+/// byte and flag bit0; add bit1 and, for type '?', bit3.
 pub fn create_decorator_widget(
     ui: &UiState,
     name: &str,
-    layer: u32,
+    distance: f32,
     is_question_mark: bool,
     sounds: UiSounds,
 ) {
-    let mut flags = 2u8; // O：bit1 恒置。
-    if is_question_mark {
-        flags |= 1 << 3; // O：`param_5 == '?'` → bit3。
-    }
-    let params = WidgetParams::new(WidgetVolumeShape::default(), [0; 2])
-        .volume(WidgetVolumeShape {
-            tag: 5,
-            layer: layer as u8,
-            size: Default::default(),
-            ..Default::default()
-        })
-        .sounds(sounds)
-        .occlude_by_world(false);
-    let _ = flags;
-    ui.add(name, params);
+    ui.add(name, decorator_widget_params(distance, is_question_mark, sounds));
 }
 
-/// `create_decorator_widget<DecoratorHandleName>` 0x141282300（O）：
-/// 手柄名注册单态（UiState::add<DecoratorHandleName> 0x14125d180）。
-#[allow(clippy::too_many_arguments)]
+/// B141282300/187B, with the same parameter builder and the canonical typed
+/// name hash used by UiState::add<DecoratorHandleName>.
 pub fn create_decorator_widget_handle(
     ui: &UiState,
     name: DecoratorHandleName,
-    layer: u32,
+    distance: f32,
     is_question_mark: bool,
     sounds: UiSounds,
 ) {
-    let params = WidgetParams::new(WidgetVolumeShape::default(), [0; 2])
-        .volume(WidgetVolumeShape {
-            tag: 5,
-            layer: layer as u8,
-            size: Default::default(),
-            ..Default::default()
-        })
-        .sounds(sounds)
-        .occlude_by_world(false);
-    let _ = is_question_mark;
-    ui.add_with_id(name.to_widget_id(), params);
+    ui.add_with_id(name.to_widget_id(), decorator_widget_params(distance, is_question_mark, sounds));
+}
+
+fn decorator_widget_params(distance: f32, is_question_mark: bool, sounds: UiSounds) -> WidgetParams {
+    let mut params = WidgetParams::new(WidgetVolumeShape {
+        tag: 5,
+        size: glam::Vec2::new(distance, 0.0),
+        ..Default::default()
+    }, [0; 2]).sounds(sounds);
+    params.flags.0 |= 2 | (u8::from(is_question_mark) << 3);
+    params
+}
+
+#[cfg(test)]
+mod widget_tests {
+    use super::*;
+
+    #[test]
+    fn both_real_registry_entries_keep_native_distance_flags_and_sounds() {
+        for distance in [0.0f32, -0.0, 1.0, -4.5, 125.0, f32::INFINITY] {
+            for question in [false, true] {
+                let ui = UiState::at_startup();
+                let mut sounds = UiSounds::empty();
+                for (i, byte) in sounds.slots.iter_mut().flatten().enumerate() {
+                    *byte = (i as u8).wrapping_mul(7).wrapping_add(3);
+                }
+                let name = DecoratorHandleName(0x123456789abcdef0, 7);
+                create_decorator_widget(&ui, "decorator", distance, question, sounds);
+                create_decorator_widget_handle(&ui, name, distance, question, sounds);
+                for id in [WidgetId::from_name("decorator"), name.to_widget_id()] {
+                    let params = ui.widget(id).unwrap();
+                    assert_eq!(params.volume.tag, 5);
+                    assert_eq!(params.volume.size.x.to_bits(), distance.to_bits());
+                    assert_eq!(params.flags.0, if question { 11 } else { 3 });
+                    assert!(params.occlude_by_world);
+                    assert_eq!(params.sounds, sounds);
+                }
+            }
+        }
+    }
 }

@@ -158,10 +158,23 @@ pub struct PlayWallUiSound {
 
 /// `PlayDecoratorSoundCmd` (decorator_audio). Kind dispatch into the 16-loop
 /// state plus one-shot instantiate path.
-#[derive(Event, Clone, Copy, Debug, PartialEq)]
+#[derive(Event, Clone, Copy, Debug, Default, PartialEq)]
 pub struct PlayDecoratorSoundCmd {
     pub kind: u8,
+    /// Original event value +4; rotation uses abs(old-new)/GameTime.delta.
+    pub ratio: f32,
+    /// Original +8 position-context word. Rotation preserves source storage
+    /// context; its nominal enum identity remains unresolved.
+    pub position_context: u64,
     pub position: Vec3,
+    /// Original event value +1c.
+    pub flag: bool,
+}
+impl PlayDecoratorSoundCmd {
+    /// One-shot payload; the loop intensity/context fields are inactive.
+    pub fn at(kind: u8, position: Vec3) -> Self {
+        Self { kind, position, ratio: 0.0, position_context: 0, flag: false }
+    }
 }
 
 /// `PlayTimberframeSound` (timberframe_audio). Native payload (no bevy

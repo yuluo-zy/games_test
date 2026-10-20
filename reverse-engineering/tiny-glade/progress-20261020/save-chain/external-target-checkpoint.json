@@ -1,0 +1,63 @@
+{
+  "status": "three-external-targets-passed-source-unchanged",
+  "files": [
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/save/snapshot.rs",
+      "bytes": 151979,
+      "sha256": "cd58b28e8d1ceb03df3e8c966f3db26b0bf9c87d0febf46350a0a22f636cd511"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/tests/snapshot_native_restoration.rs",
+      "bytes": 10338,
+      "sha256": "5f5a57e081c4837c84346de94896dcb9fe9d7076b2349825f2cac7ace1648d6d"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/tests/fixtures/save-snapshot-native-producers-b.json",
+      "bytes": 28793,
+      "sha256": "e6234bcab638cdaf37bc53dcdf252a3877bc9055120436b4c45ce401b434ffa7"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/save/load_game.rs",
+      "bytes": 62848,
+      "sha256": "a070cdb15fdd294d81016e76fd223d9cac95f6d0e3a0de5f6a33f7223b72af9f"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/tests/save_load_gap_state.rs",
+      "bytes": 5284,
+      "sha256": "3e5c03092cd9602285024a4e6d1d589781ca1caab5413d3696e843af46dacbc3"
+    }
+  ],
+  "external_tests": 9,
+  "native_cases": {
+    "roofs": 24,
+    "roof_records": 32,
+    "colors": 24,
+    "color_records": 96
+  },
+  "fixture_change": "native oracle rerun over valid finite Roof fields + canonical enums/padding so external test exercises actual Serialize/Deserialize/World apply, no private helper",
+  "central_fixture_correction": "save_load_gap_state MainCamera::new(1.0), default zero aspect was invalid",
+  "cargo_ran_by_agent": false,
+  "central_validation": {
+    "log": "tmp/progress-20261020-save-integration-v2.log",
+    "log_sha256": "f5b610220710250b2562517f20e13e922d3e388d2d751ef45082e428b9fc48d9",
+    "targets": {
+      "snapshot_native_restoration": {
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0
+      },
+      "save_load_gap_state": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "snapshot_worker_reload": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    "scope": "actual CPU World, file codec/worker, native producer golden fields and load-state errors; not full game/GPU",
+    "lib_test_suite": "blocked by six removed old fixture inputs; not disabled and not claimed passing"
+  }
+}

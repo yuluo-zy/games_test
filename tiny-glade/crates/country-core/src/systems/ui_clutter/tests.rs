@@ -371,49 +371,32 @@ fn show_pins_applies_type_gate_geometry_and_dedup() {
 }
 
 #[test]
-fn focus_decoclutter_gates_disc_three_and_decorator_type() {
-    use super::registration::register_ui_clutter_resources;
-    use super::ui_focus_decoclutter::{
-        DecoClutterFocusState, DecoClutterFocusUi, RequestMoveClutter, RequestRotateDecorator,
-        ui_focus_decoclutter,
-    };
-    use crate::resources::walls::decorator::{DecoratorId, DecoratorInfo};
-    use crate::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
-    use crate::systems::audio::PlayDecoratorSoundCmd;
-    use crate::systems::mode_manager::RequestAppModeChange;
-    use crate::systems::ui::signifiers::signifier_create::UiSignifierStream;
-
-    let mut world = World::new();
-    register_ui_clutter_resources(&mut world);
-    world.init_resource::<Events<PlayDecoratorSoundCmd>>();
-    world.init_resource::<Events<RequestAppModeChange>>();
-    world.init_resource::<UiSignifierStream>();
-    let mut storage = DecoratorStorage::default();
-    let addr = DecoratorStorageAddr::Terrain;
-    storage
-        .get_or_insert_default(addr)
-        .insert(DecoratorId(7), DecoratorInfo { ty: 0x40, ..Default::default() });
-    storage.decorator_to_storage.insert(DecoratorId(7), addr);
-    world.insert_resource(storage);
-    world.insert_resource(DecoClutterFocusState { tag: 3, decorator_id: 7 });
-    world.insert_resource(DecoClutterFocusUi {
-        click_phase: 3,
-        rotate_active: true,
-        move_active: false,
-        position: glam::Vec3::new(1.0, 2.0, 3.0),
-    });
-    let mut schedule = Schedule::default();
-    schedule.add_systems(ui_focus_decoclutter);
-    schedule.run(&mut world);
-    assert_eq!(world.resource::<Events<PlayDecoratorSoundCmd>>().len(), 1);
-    assert_eq!(world.resource::<Events<RequestAppModeChange>>().len(), 1);
-    assert_eq!(world.resource::<Events<RequestRotateDecorator>>().len(), 1);
-    assert!(world.resource::<Events<RequestMoveClutter>>().is_empty());
-    // 类型门：ty=0x38 → d=0 (<8, !=6) → 全部早退。先清空上一帧事件。
-    world.resource_mut::<Events<PlayDecoratorSoundCmd>>().clear();
-    world.resource_mut::<Events<RequestAppModeChange>>().clear();
-    world.resource_mut::<Events<RequestRotateDecorator>>().clear();
-    world.resource_mut::<DecoratorStorage>().decorator_info_mut(DecoratorId(7)).unwrap().ty = 0x38;
-    schedule.run(&mut world);
-    assert_eq!(world.resource::<Events<PlayDecoratorSoundCmd>>().len(), 0);
+fn focused_requests_preserve_original_native_producer_fields() {
+    use super::ui_focus_decoclutter::{request_focused_decorator_move, request_focused_decorator_rotation};
+    use crate::resources::walls::{decorator::{DecoratorId, DecoratorInfo}, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}, WallId};
+    use crate::systems::ui::resources::ui_state::{UiInteraction, UiState, WidgetId};
+    let id = DecoratorId(0x87654321);
+    let widget = WidgetId(0x1122334455667788);
+    for (addr, expected) in [(DecoratorStorageAddr::Wall(WallId(0xabcdef)), [0,0xabcdef]), (DecoratorStorageAddr::Terrain, [1,0]), (DecoratorStorageAddr::Stair, [2,0])] {
+        let mut storage = DecoratorStorage::default();
+        storage.get_or_insert_default(addr).insert(id, DecoratorInfo { ty: 0x3e, ..Default::default() });
+        storage.decorator_to_storage.insert(id, addr);
+        let mut ui = UiState::new(UiInteraction { native_tag: 2, native_phase: 3, widget });
+        ui.set_intersection_tag(0);
+        ui.set_intersection_point(glam::Vec3::new(11.25,7.5,-2.75));
+        let rotate = request_focused_decorator_rotation(&ui,widget,id,&storage,1.25,4.75).unwrap();
+        let moving = request_focused_decorator_move(&ui,widget,id,&storage).unwrap();
+        assert_eq!(rotate.widget,widget);
+        assert_eq!(rotate.decorator_id,id);
+        assert_eq!(rotate.amount.to_bits(),4.0f32.to_bits());
+        assert_eq!(rotate.ty.0,0x3e);
+        assert_eq!(rotate.hit.handle,[0x8765432100000004,expected[0],expected[1]]);
+        assert_eq!(rotate.hit.position,glam::Vec3::new(11.25,7.5,-2.75));
+        assert_eq!(rotate.hit.normal,glam::Vec3::Y);
+        assert_eq!(rotate.hit.toi.to_bits(),0);
+        assert_eq!(moving.hit,rotate.hit);
+        assert!(request_focused_decorator_move(&ui,WidgetId(123),id,&storage).is_none());
+        ui.set_intersection_tag(2);
+        assert!(request_focused_decorator_rotation(&ui,widget,id,&storage,1.25,4.75).is_none());
+    }
 }

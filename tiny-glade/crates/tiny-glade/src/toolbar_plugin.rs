@@ -1,53 +1,68 @@
-//! B `ToolbarPlugin` host entry (`impl$1::build` region 0x14068d610).
+//! Recovered toolbar registration. Original constructors assign interaction to
+//! Update/set7, gameplay toolbar logic to set8, demo policy to set36, and text /
+//! Taffy finalization to set44. Exact native members and tuple boundaries are in
+//! phase2-toolbar-layout/native-schedule-config-names.json.
 //!
-//! The toolbar crate owns the real resources/events/components and the system
-//! functions; this host module supplies the `GameSystemSet` ordering that lives
-//! in `tiny-glade` (original set numbers 8..43 are U, see TB contract §1.1).
-//!
-//! Central integration is one line in `run_game.rs` (not modified here):
-//! `app.add_plugins(tiny_glade::toolbar_plugin::ToolbarPlugin);`
-//!
-//! Ordering: `render_taffy_ui_to_widgets` is the UiState producer consumed by
-//! the *next* frame's `mei_pre_update` (set 6). It runs at set 43, after the
-//! previous frame's taffy finalize/layout (set 44). The animation/button
-//! systems directly follow it; the native `render_taffy -> animation/button`
-//! dependency is therefore explicit.
-
+//! Text/Taffy set44 and renderer-scale set7 are already installed by mei_host.
+//! This entry installs recovered members once. Missing hide_ui, ui_nav_update,
+//! toolbar_steal_mouse_input and demo policy remain explicit gaps.
 use bevy_app::{App, Plugin, Update};
 use bevy_ecs::schedule::IntoScheduleConfigs;
-
 use crate::run_game::GameSystemSet;
 
-/// B `toolbar::impl$1::build` plugin wrapper.
 pub struct ToolbarPlugin;
-
 impl Plugin for ToolbarPlugin {
-    fn build(&self, app: &mut App) {
-        build(app);
-    }
+    fn build(&self, app: &mut App) { build(app); }
 }
 
-/// Install the toolbar resources/components and the recovered interaction
-/// system group.
 pub fn build(app: &mut App) {
+    use toolbar::{ui_interaction as ui, ui_presentation as presentation,
+        toolbar_button as button, toolbar_systems as systems,
+        toolbar_update as sizing, photomode as photo, undo_redo_systems as undo};
     toolbar::configure_app(app);
+    app.add_event::<ui::UiClickEvent>();
+    app.add_event::<ui::UiDragEvent>();
+    app.add_event::<ui::UiJustBecameInFocusEvent>();
+    app.add_event::<button::UiToolbarButtonResetAllCooldowns>();
+    app.add_systems(bevy_state::state::OnEnter(
+        country_core::app_loading_state::AppLoadingState::Game),
+        toolbar::toolbar_startup::toolbar_setup);
 
-    // The producer and its consumers share a set and an explicit order:
-    // render_taffy publishes UiState/widget bytes used next frame; the
-    // animation and button systems consume the events it writes this frame.
-    app.add_systems(
-        Update,
-        (
-            toolbar::ui_interaction::render_taffy_ui_to_widgets,
-            toolbar::ui_interaction::ui_animation_state_update,
-            toolbar::ui_interaction::ui_select_animation,
-            toolbar::ui_interaction::ui_locked_animation,
-            toolbar::toolbar_button::toolbar_button_keep_focus,
-            toolbar::toolbar_button::switch_toolbar_category_button,
-            toolbar::toolbar_button::switch_app_mode_button,
-            toolbar::toolbar_button::tod_v2_button,
-        )
-            .chain()
-            .in_set(GameSystemSet(43)),
-    );
+    // Preserve native nested tuples: these members are not internally chained.
+    app.add_systems(Update, (
+        ui::render_taffy_ui_to_widgets,
+        ui::ui_focus_parent_if_self_in_focus,
+        button::toolbar_button_keep_focus,
+        ui::ui_send_focus_begin_events,
+        ui::ui_notify_hints_if_toolbar_in_focus,
+        (ui::ui_show_if_parent_in_focus, ui::ui_animation_state_update,
+            presentation::ui_sounds),
+        (presentation::ui_focus_animation, presentation::ui_appear_animation,
+            ui::ui_select_animation, ui::ui_locked_animation),
+    ).chain_ignore_deferred().in_set(GameSystemSet(7))
+        .after(crate::mei_host::update_text_renderer_scale));
+
+    let game = || bevy_state::condition::in_state(
+        country_core::app_loading_state::AppLoadingState::Game);
+    app.add_systems(Update, (
+        sizing::toolbar_size_mult_update,
+        (button::switch_app_mode_button, button::switch_toolbar_category_button,
+            button::tod_v2_button),
+    ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(game())
+        .before(country_core::systems::backend::photomode::update_photomode_visibility));
+    // do_photomode's existing host implementation is split into ordered
+    // systems. Preserve that implementation and place its recovered button /
+    // slider companions before the final previous-state copy.
+    app.add_systems(Update, (photo::photomode_buttons, photo::ui_slider_reset)
+        .in_set(GameSystemSet(8)).run_if(game())
+        .after(photo::timelapse::restore_after_timelapse)
+        .before(country_core::systems::backend::photomode::finish_photomode_frame));
+    app.add_systems(Update, (
+        (systems::toolbar_auto_hide, undo::undo_redo_auto_hide),
+        (systems::toolbar_alignment, undo::undo_redo_alignment),
+        ui::sort_contextual_buttons_draw_order,
+        sizing::toolbar_button_size_and_padding_update,
+        photo::ui_slider,
+    ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(game())
+        .after(country_core::systems::backend::photomode::finish_photomode_frame));
 }

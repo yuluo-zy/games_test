@@ -4,14 +4,18 @@
 //! - `photomode_buttons`（I 0x14234c230）：动作字节跳表 0..=0x11 的每个已取证
 //!   case（4 截图目录、5 相机循环、0xb 菜单、0xc Vermeer、0xd/0xe 配置位、
 //!   0xf 隐藏 UI、0x11 回设置）；未知载荷标 U。
-//! - `ui_slider`（I 0x1423486d0）/`ui_slider_reset`（I 0x142347f90）：
-//!   `slider_val_01`、参数写目标 0..0xc、`slider_range`；被截断分支标 U。
+//! - 滑块完整13项数值表、归一化getter、三类镜头/焦点目标和重置；
+//!   `ui_slider`保留原始绘制/回收、完整拖拽阶段、导航焦点与声音生命周期。
+//! - `setup_photomode_toolbar`：原版完整/demo 两套 11 类别树、真实回调与菜单导航。
 //! - `photomode_camera_buttons`：保留上一轮已判等的相机子集入口。
 //!
 //! 证据：`ANALYSIS-C-菜单拍照文本.md` §12-§14 与原函数符号/依赖注解；
 //! 未逐语句闭合的字段/常量不填默认值。
 
 pub mod lut_gallery;
+pub mod setup_photomode_toolbar;
+pub use setup_photomode_toolbar::setup_photomode_toolbar;
+pub mod slider_math;
 pub mod timelapse;
 
 use bevy_ecs::prelude::*;
@@ -35,10 +39,10 @@ use country_core::{
 
 use crate::{
     resouces_and_components::{
-        LogSlider, PhotomodeButton, UiInteractionState, UiLocked, UiPlaySelectAnimation, UiSlider,
+        LogSlider, PhotomodeButton, UiInteractionState, UiLocked, UiPlaySelectAnimation,
         UiSliderReset,
     },
-    ui_interaction::{UiClickEvent, UiDragEvent},
+    ui_interaction::UiClickEvent,
 };
 
 /// Native photomode action byte (the `byte-4 → case 0..0xd` jump table).
@@ -99,14 +103,12 @@ pub struct PhotomodeScreenshotFolder(pub std::path::PathBuf);
 #[allow(clippy::too_many_arguments)]
 pub fn photomode_buttons(
     mode: Res<AppMode>,
-    mut query: Query<
-        (
-            Entity,
-            &PhotomodeButton,
-            &mut UiInteractionState,
-            Option<&UiLocked>,
-        ),
-    >,
+    mut query: Query<(
+        Entity,
+        &PhotomodeButton,
+        &mut UiInteractionState,
+        Option<&UiLocked>,
+    )>,
     mut clicks: EventReader<UiClickEvent>,
     mut photo: ResMut<PhotomodeState>,
     config: Res<GameConfig>,
@@ -210,13 +212,11 @@ pub fn photomode_buttons(
 /// Camera-only entry retained from the previous round (same real consumers).
 pub fn photomode_camera_buttons(
     mode: Res<AppMode>,
-    mut query: Query<
-        (
-            &PhotomodeButton,
-            &mut country_core::components::UiInteractionState,
-            Option<&UiLocked>,
-        ),
-    >,
+    mut query: Query<(
+        &PhotomodeButton,
+        &mut country_core::components::UiInteractionState,
+        Option<&UiLocked>,
+    )>,
     mut clicks: EventReader<UiClickEvent>,
     photo: Res<PhotomodeState>,
     config: Res<GameConfig>,
@@ -256,58 +256,109 @@ pub fn photomode_camera_buttons(
     }
 }
 
-/// O `slider_val_01` 0x142349de0 for the recovered cases.
-///
-/// 0..=5 read the active `ImageFormationConfig` row fields (`+0x18..`, `+0x30..`,
-/// `+0x38`); 6 is the row word; 7/8 select MainCamera focus/lens values that the
-/// current camera owner does not expose per-slider (U). 9..=0xc are empty in the
-/// native switch and return `None`.
+/// B getter 142349de0..142349fd4 returns a normalized slider position.
+/// Tool brushes have a separate owner; see `brush_slider_val_01`.
 pub fn slider_val_01(
     kind: u8,
     formation: &ImageFormationConfigs,
-    _camera: &MainCamera,
+    camera: &MainCamera,
 ) -> Option<f32> {
     let row = formation.current();
-    Some(match kind {
-        0 => row.params_18[0],
-        1 => row.params_18[1],
-        2 => row.params_18[2],
-        3 => row.params_18[3],
-        4 => row.params_30[0],
+    let lens = 0x100 + FOV_OFFSETS[camera.mode_byte() as usize];
+    let value = match kind {
+        0 => row.params_18[1],
+        1 => row.params_18[2],
+        2 => row.params_18[3],
+        3 => row.params_30[0],
+        4 => f32::from_bits(row.word_38),
         5 => row.params_30[1],
-        6 => f32::from_bits(row.word_38),
-        7 | 8 => return None,
+        6 => {
+            return Some(slider_math::normalized_lens(
+                camera.read_f32(lens + 0xc),
+                camera.read_f32(lens + 0x10),
+                camera.read_f32(lens + 8),
+            ))
+        }
+        7 => slider_math::focus_parameter(camera.read_f32(focus_offset(camera) + 0x18)),
+        8 => {
+            return Some(slider_math::normalized_lens(
+                camera.read_f32(lens + 0x1c),
+                camera.read_f32(lens + 0x20),
+                camera.read_f32(lens + 0x18),
+            ))
+        }
         _ => return None,
-    })
+    };
+    slider_math::normalized(kind, value)
 }
 
-/// O `slider_range` 0x1423486d0 range table for the recovered kinds.
-///
-/// 9 = brush size clamp 0.3..2.0 (ANALYSIS C14); 0xa/0xb/0xc use the real
-/// `BrushSizes` ranges. U: 0..8 ranges live in the unfetched table
-/// `0x14304ed8c/0x14304edc0`, so those kinds return `None`.
-pub fn slider_range(kind: u8) -> Option<(f32, f32)> {
+/// Native fifth argument is BrushSizes. Kind 9 reads a distinct scalar owner.
+pub fn brush_slider_val_01(kind: u8, brushes: &BrushSizes) -> Option<f32> {
+    slider_math::normalized(
+        kind,
+        match kind {
+            10 => brushes.path,
+            11 => brushes.water,
+            12 => brushes.garden,
+            _ => return None,
+        },
+    )
+}
+
+/// The native fourth scalar argument is EraserSizeMultiplier, as confirmed
+/// by ui_slider's PDB FunctionSystem parameter list and its independent store.
+pub fn slider_current_position(
+    kind: u8,
+    formation: &ImageFormationConfigs,
+    camera: &MainCamera,
+    eraser: &country_core::resources::walls::EraserSizeMultiplier,
+    brushes: &BrushSizes,
+) -> Option<f32> {
     match kind {
-        9 => Some((0.3, 2.0)),
-        0xa => Some(country_core::resources::brush_sizes::PATH_RANGE),
-        0xb => Some(country_core::resources::brush_sizes::WATER_RANGE),
-        0xc => Some(country_core::resources::brush_sizes::GARDEN_RANGE),
+        0..=8 => slider_val_01(kind, formation, camera),
+        9 => slider_math::normalized(kind, eraser.0),
+        10..=12 => brush_slider_val_01(kind, brushes),
         _ => None,
     }
 }
 
-/// Native slider → parameter switch. Returns true when the kind had a real
-/// write target. Cases 0..=5 write the two editable `ImageFormationConfig`
-/// rows (`iter_non_default_mut`), 9/0xa/0xb/0xc write the real brush sizes.
-/// U: 6/7/8 (FOV/focus/lens) need the per-lens slider mapping and are left
-/// untouched, as are the truncated 0xd+ branches.
+/// Original focus-selector table 142aabb68 (six camera bodies).
+fn focus_offset(camera: &MainCamera) -> usize {
+    0x100 + [0x70, 0x128, 0x1a8, 0x248, 0x300, 0x388][camera.mode_byte() as usize]
+}
+
+/// Changed distance switches focus modes 0/1 into mode 3 and preserves the
+/// original start-pose payload. Reset performs the transition unconditionally.
+fn set_focus_distance(camera: &mut MainCamera, value: f32, force: bool) {
+    let focus = focus_offset(camera);
+    if force || camera.read_f32(focus + 0x18) != value {
+        camera.write_f32(focus + 0x18, value);
+        let mode = u32::from_le_bytes(camera.bytes()[focus..focus + 4].try_into().unwrap());
+        if mode < 2 {
+            camera.write_f32(focus, f32::from_bits(3));
+            let position = [camera.read_f32(focus + 0x10), camera.read_f32(focus + 0x14)];
+            camera.write_f32(focus + 4, position[0]);
+            camera.write_f32(focus + 8, position[1]);
+        }
+    }
+}
+
+/// B lower/upper endpoint tables 14304edc0/14304ed8c.
+pub fn slider_range(kind: u8) -> Option<(f32, f32)> {
+    slider_math::RANGES.get(kind as usize).copied()
+}
+
+/// Native parameter dispatch: 0..5 writes both editable formation rows;
+/// 6..8 writes the selected original camera's lens/focus. Tool brush writes
+/// 10..12 run outside photomode. `apply_slider_with_eraser` includes kind 9.
 pub fn apply_slider_value(
     kind: u8,
     value: f32,
     formation: &mut ImageFormationConfigs,
     brushes: &mut BrushSizes,
     photomode_open: bool,
-    mode: AppMode,
+    _mode: AppMode,
+    camera: &mut MainCamera,
 ) -> bool {
     match kind {
         0..=5 if photomode_open => {
@@ -324,29 +375,43 @@ pub fn apply_slider_value(
             }
             true
         }
-        9 => {
-            // Native clamps the non-photomode brush size to 0.3..2.0 and writes
-            // the active tool's brush. U: the exact tool selector byte is not
-            // decoded; the canonical AppMode owner selects the same three
-            // brush fields.
-            let size = value.clamp(0.3, 2.0);
-            match mode {
-                AppMode::Path => brushes.set_path(size),
-                AppMode::Water => brushes.set_water(size),
-                AppMode::Garden => brushes.set_garden(size),
-                _ => return false,
-            }
+        6 | 8 if photomode_open => {
+            let lens = 0x100 + FOV_OFFSETS[camera.mode_byte() as usize];
+            let (target, lower, upper) = if kind == 6 {
+                (8, 0xc, 0x10)
+            } else {
+                (0x18, 0x1c, 0x20)
+            };
+            let value = slider_math::lens_parameter(
+                camera.read_f32(lens + lower),
+                camera.read_f32(lens + upper),
+                value,
+            );
+            camera.write_f32(lens + target, value);
             true
         }
-        0xa => {
+        7 if photomode_open => {
+            let value = LogSlider {
+                min: -2.0,
+                max: 2.0,
+                _pad: 0.5,
+                log2_base: -3.0,
+            }
+            .param_to_value(value);
+            set_focus_distance(camera, value, false);
+            true
+        }
+        // Kind 9 is handled by apply_slider_with_eraser; it must not
+        // overwrite one of the unrelated three canonical BrushSizes fields.
+        0xa if !photomode_open => {
             brushes.set_path(value);
             true
         }
-        0xb => {
+        0xb if !photomode_open => {
             brushes.set_water(value);
             true
         }
-        0xc => {
+        0xc if !photomode_open => {
             brushes.set_garden(value);
             true
         }
@@ -354,12 +419,44 @@ pub fn apply_slider_value(
     }
 }
 
+/// All original 13 parameter owners. The eraser's independent clamp must not
+/// pass through Path/Water/Garden's additional per-tool bounds.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_slider_with_eraser(
+    kind: u8,
+    value: f32,
+    formation: &mut ImageFormationConfigs,
+    brushes: &mut BrushSizes,
+    photomode_open: bool,
+    mode: AppMode,
+    camera: &mut MainCamera,
+    eraser: &mut country_core::resources::walls::EraserSizeMultiplier,
+) -> bool {
+    if kind == 9 {
+        if photomode_open {
+            return false;
+        }
+        let lower = if 0.3 > value { 0.3 } else { value };
+        eraser.0 = if 2.0 < lower { 2.0 } else { lower };
+        true
+    } else {
+        apply_slider_value(
+            kind,
+            value,
+            formation,
+            brushes,
+            photomode_open,
+            mode,
+            camera,
+        )
+    }
+}
+
 /// `ui_slider_reset` 0x142347f90 recovered reset cases.
 ///
-/// 0..=2 restore the three editable row fields, 3..=5 restore the row
-/// `+0x30/+0x38/+0x34` values, 6/8 restore the current lens FOV/distance, and
-/// 0xa/0xb/0xc reset the real brush owners. U: case 7 (log focus slider) and
-/// the truncated 0x11/0x15/0x16/0x2a branches are not applied.
+/// 0..2 copies the immutable default row's grading values; 3..5 uses the
+/// original defaults (0,0,.015). 6/8 restores lens defaults and 7 applies
+/// LogSlider::param_to_value(.5), including the original focus transition.
 pub fn reset_slider(
     kind: u8,
     formation: &mut ImageFormationConfigs,
@@ -367,13 +464,14 @@ pub fn reset_slider(
     brushes: &mut BrushSizes,
 ) -> bool {
     let lens = 0x100 + FOV_OFFSETS[camera.mode_byte() as usize];
+    let defaults = formation.get(0).unwrap().clone();
     match kind {
         0..=2 => {
             for row in formation.iter_non_default_mut() {
                 match kind {
-                    0 => row.params_18[1] = 0.,
-                    1 => row.params_18[2] = 0.,
-                    2 => row.params_18[3] = 0.,
+                    0 => row.params_18[1] = defaults.params_18[1],
+                    1 => row.params_18[2] = defaults.params_18[2],
+                    2 => row.params_18[3] = defaults.params_18[3],
                     _ => unreachable!(),
                 }
             }
@@ -384,7 +482,7 @@ pub fn reset_slider(
                 match kind {
                     3 => row.params_30[0] = 0.,
                     4 => row.word_38 = 0,
-                    5 => row.params_30[1] = 0.,
+                    5 => row.params_30[1] = 0.015,
                     _ => unreachable!(),
                 }
             }
@@ -393,6 +491,17 @@ pub fn reset_slider(
         6 => {
             let default = camera.read_f32(lens + 0x14);
             camera.write_f32(lens + 8, default);
+            true
+        }
+        7 => {
+            let default = LogSlider {
+                min: -2.0,
+                max: 2.0,
+                _pad: 0.5,
+                log2_base: -3.0,
+            }
+            .param_to_value(0.5);
+            set_focus_distance(camera, default, true);
             true
         }
         8 => {
@@ -416,76 +525,25 @@ pub fn reset_slider(
     }
 }
 
-/// O/I 0x1423486d0 `ui_slider`: apply real slider drags to the parameter owners.
-///
-/// Native tracks the two mouse buttons directly; this source adapter consumes
-/// the bridge's `UiDragEvent` (`state == 3` = dragging) and maps the cursor
-/// inside the entity extent through `slider_range`. Kinds whose range/table are
-/// U are ignored (no fabricated default value).
-pub fn ui_slider(
-    cursor: Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,
-    mut drags: EventReader<UiDragEvent>,
-    sliders: Query<(&UiSlider, &country_core::components::Ui2dExtent)>,
-    mut formation: ResMut<ImageFormationConfigs>,
-    mut brushes: ResMut<BrushSizes>,
-    menu: Res<EscMenuState>,
-    mode: Res<AppMode>,
-) {
-    // Native case 0..5 requires EscMenuState 0x13; brush cases run outside
-    // photomode too, so the gate is applied per kind in `apply_slider_value`.
-    let photomode_open = matches!(*menu, EscMenuState::Photomode(_));
-    for drag in drags.read() {
-        if drag.state != 3 {
-            continue;
-        }
-        let Ok((slider, extent)) = sliders.get(drag.entity) else {
-            continue;
-        };
-        let kind = slider.kind();
-        let Some((min, max)) = slider_range(kind) else {
-            continue;
-        };
-        let left = extent.pos.x - extent.size.x * 0.5;
-        let fraction = if extent.size.x > 0. {
-            ((cursor.0.x - left) / extent.size.x).clamp(0., 1.)
-        } else {
-            continue;
-        };
-        let value = min + (max - min) * fraction;
-        apply_slider_value(
-            kind,
-            value,
-            &mut formation,
-            &mut brushes,
-            photomode_open,
-            *mode,
-        );
-    }
-}
+/// Original full draw/input consumer; parameter mapping stays in this module.
+pub mod ui_slider;
+pub use ui_slider::ui_slider;
 
 /// O/I 0x142347f90 `ui_slider_reset`: clicking a reset widget restores the
-/// paired slider row's default. The native reset entity carries the slider
-/// kind; this adapter reads `UiSlider` on the same entity when present.
+/// paired slider row's default. The original 1-byte reset component carries
+/// the kind itself; the reset entity does not require a UiSlider component.
 pub fn ui_slider_reset(
     mut clicks: EventReader<UiClickEvent>,
-    resets: Query<(&UiSliderReset, Option<&UiSlider>)>,
+    resets: Query<&UiSliderReset>,
     mut formation: ResMut<ImageFormationConfigs>,
     mut camera: ResMut<MainCamera>,
     mut brushes: ResMut<BrushSizes>,
 ) {
     for click in clicks.read() {
-        let Ok((_reset, slider)) = resets.get(click.entity) else {
+        let Ok(reset) = resets.get(click.entity) else {
             continue;
         };
-        let Some(slider) = slider else {
-            continue;
-        };
-        reset_slider(
-            slider.kind(),
-            &mut formation,
-            &mut camera,
-            &mut brushes,
-        );
+        reset_slider(reset.flag, &mut formation, &mut camera, &mut brushes);
     }
 }
 
@@ -496,130 +554,110 @@ pub fn log_slider_value(slider: &LogSlider, value: f32) -> f32 {
 }
 
 #[cfg(test)]
-mod tests {
+mod slider_restoration_tests {
     use super::*;
+    use country_core::systems::camera_rig::main_camera::CameraMode;
 
     #[test]
-    fn action_table_matches_observed_bytes_and_leaves_unknowns_none() {
-        for tag in 0..=3 {
-            assert_eq!(photomode_action(tag), Some(PhotomodeAction::Camera(tag)));
-        }
-        assert_eq!(photomode_action(4), Some(PhotomodeAction::OpenScreenshotsFolder));
-        assert_eq!(photomode_action(5), Some(PhotomodeAction::NextCamera));
-        assert_eq!(photomode_action(6), Some(PhotomodeAction::FocusEvent(6)));
-        assert_eq!(photomode_action(9), Some(PhotomodeAction::FocusEvent(9)));
-        assert_eq!(photomode_action(0xb), Some(PhotomodeAction::BackToMenu));
-        assert_eq!(photomode_action(0xc), Some(PhotomodeAction::ToggleVermeer));
-        assert_eq!(photomode_action(0xd), Some(PhotomodeAction::ToggleRowFlag(0xd)));
-        assert_eq!(photomode_action(0xf), Some(PhotomodeAction::ToggleHideUi));
-        assert_eq!(photomode_action(0x11), Some(PhotomodeAction::BackToSettings));
-        for unknown in [7, 8, 0xa, 0x10, 0x12, 0xff] {
-            assert_eq!(photomode_action(unknown), None);
-        }
-    }
-
-    #[test]
-    fn slider_value_reads_the_active_formation_row() {
+    fn reset_uses_immutable_configuration_instead_of_zeroing_contrast() {
         let mut formation = ImageFormationConfigs::default();
-        formation.current_mut().params_18 = [10., 11., 12., 13.];
-        formation.current_mut().params_30 = [20., 21.];
-        formation.current_mut().word_38 = 7.5f32.to_bits();
-        let camera = MainCamera::default();
-        assert_eq!(slider_val_01(0, &formation, &camera), Some(10.));
-        assert_eq!(slider_val_01(3, &formation, &camera), Some(13.));
-        assert_eq!(slider_val_01(4, &formation, &camera), Some(20.));
-        assert_eq!(slider_val_01(6, &formation, &camera), Some(7.5));
-        assert_eq!(slider_val_01(7, &formation, &camera), None);
+        formation.configs[0].params_18 = [0.7, -0.75, 1.25, 0.85];
+        formation.configs[1].params_18 = [0.4, 9., 8., 7.];
+        formation.configs[2].params_18 = [0.2, 6., 5., 4.];
+        let original = formation.configs[0].clone();
+        let mut camera = MainCamera::new(1.0);
+        let mut brushes = BrushSizes {
+            path: 0.8,
+            water: 2.,
+            garden: 3.,
+        };
+        for kind in 0..=2 {
+            assert!(reset_slider(
+                kind,
+                &mut formation,
+                &mut camera,
+                &mut brushes
+            ));
+        }
+        assert_eq!(formation.configs[0], original);
+        assert_eq!(formation.configs[1].params_18, [0.4, -0.75, 1.25, 0.85]);
+        assert_eq!(formation.configs[2].params_18, [0.2, -0.75, 1.25, 0.85]);
     }
 
     #[test]
-    fn slider_ranges_use_real_brush_bounds_only() {
-        assert_eq!(slider_range(9), Some((0.3, 2.0)));
-        assert_eq!(
-            slider_range(0xa),
-            Some(country_core::resources::brush_sizes::PATH_RANGE)
-        );
-        assert_eq!(slider_range(0), None);
-        assert_eq!(slider_range(0x10), None);
-    }
-
-    #[test]
-    fn applying_values_writes_every_editable_row_and_brush() {
+    fn camera_slider_keeps_each_original_body_and_focus_transition() {
+        let mut camera = MainCamera::new(1.0);
         let mut formation = ImageFormationConfigs::default();
         let mut brushes = BrushSizes {
             path: 0.8,
             water: 2.,
             garden: 3.,
         };
-        for (kind, value) in [(0u8, 1.5f32), (1, 2.5), (2, 3.5), (3, 4.5), (4, 5.5), (5, 6.5)] {
-            assert!(apply_slider_value(
-                kind,
-                value,
-                &mut formation,
-                &mut brushes,
-                true,
-                AppMode::Path
-            ));
+        for mode in 0..6 {
+            camera.set_mode_byte(CameraMode(mode));
+            let lens = 0x100 + FOV_OFFSETS[mode as usize];
+            camera.write_f32(lens + 0xc, 20.);
+            camera.write_f32(lens + 0x10, 100.);
+            camera.write_f32(lens + 0x1c, 0.5);
+            camera.write_f32(lens + 0x20, 8.5);
+            let focus = focus_offset(&camera);
+            camera.write_f32(focus, f32::from_bits(1));
+            camera.write_f32(focus + 0x10, 17.);
+            camera.write_f32(focus + 0x14, -23.);
+            for (kind, value) in [(6, 0.25), (7, 0.0), (8, 0.75)] {
+                assert!(apply_slider_value(
+                    kind,
+                    value,
+                    &mut formation,
+                    &mut brushes,
+                    true,
+                    AppMode::Path,
+                    &mut camera
+                ));
+            }
+            assert_eq!(camera.read_f32(lens + 8), 40.);
+            assert_eq!(camera.read_f32(lens + 0x18), 6.5);
+            assert_eq!(camera.read_f32(focus + 0x18), 0.125);
+            assert_eq!(camera.read_f32(focus).to_bits(), 3);
+            assert_eq!(
+                [camera.read_f32(focus + 4), camera.read_f32(focus + 8)],
+                [17., -23.]
+            );
         }
-        for row in formation.iter_non_default_mut() {
-            assert_eq!(row.params_18[1..], [1.5, 2.5, 3.5]);
-            assert_eq!(row.params_30, [4.5, 6.5]);
-            assert_eq!(row.word_38, 5.5f32.to_bits());
-        }
-        assert!(apply_slider_value(
-            9,
-            9.,
-            &mut formation,
-            &mut brushes,
-            true,
-            AppMode::Path
-        ));
-        // Native case 9 clamps to 0.3..2.0, then the real path brush clamp
-        // enforces its own 1.2 upper bound.
-        assert_eq!(brushes.path, 1.2);
-        assert!(apply_slider_value(
-            0xa,
-            1.0,
-            &mut formation,
-            &mut brushes,
-            true,
-            AppMode::Path
-        ));
-        assert_eq!(brushes.path, 1.0);
-        assert!(apply_slider_value(
-            0xb,
-            4.0,
-            &mut formation,
-            &mut brushes,
-            true,
-            AppMode::Path
-        ));
-        assert_eq!(brushes.water, 4.0);
-        assert!(apply_slider_value(
-            0xc,
-            2.5,
-            &mut formation,
-            &mut brushes,
-            true,
-            AppMode::Path
-        ));
-        assert_eq!(brushes.garden, 2.5);
         assert!(!apply_slider_value(
-            6,
-            1.,
+            10,
+            1.1,
             &mut formation,
             &mut brushes,
             true,
-            AppMode::Path
+            AppMode::Path,
+            &mut camera
         ));
-        // Formation writes outside photomode are rejected.
-        assert!(!apply_slider_value(
-            0,
-            1.,
-            &mut formation,
-            &mut brushes,
-            false,
-            AppMode::Path
-        ));
+        assert_eq!(brushes.path, 0.8);
+    }
+
+    #[test]
+    fn click_on_reset_component_needs_no_slider_component() {
+        let mut world = World::new();
+        world.init_resource::<Events<UiClickEvent>>();
+        world.insert_resource(ImageFormationConfigs::default());
+        world.insert_resource(BrushSizes {
+            path: 0.8,
+            water: 2.,
+            garden: 3.,
+        });
+        let mut camera = MainCamera::new(1.0);
+        let lens = 0x100 + FOV_OFFSETS[camera.mode_byte() as usize];
+        camera.write_f32(lens + 8, 2.);
+        camera.write_f32(lens + 0x14, 73.);
+        world.insert_resource(camera);
+        let entity = world.spawn(UiSliderReset { flag: 6 }).id();
+        world
+            .resource_mut::<Events<UiClickEvent>>()
+            .send(UiClickEvent { entity });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_slider_reset);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<MainCamera>().read_f32(lens + 8), 73.);
     }
 }

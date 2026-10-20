@@ -1,59 +1,28 @@
-//! `decorator_resources.rs` — 装饰域共享小资源/手柄名。
-//!
-//! PDB 模块 1499 / 3068（B 版）实际内容只有两部分：
-//! 1. 命名实体 `system_decorator::decorator_resources::DecoratorHandleName`
-//!    （IPI 引用 3；`UiState::add<DecoratorHandleName>` 泛型关系，见骨架
-//!    `decorator_resources.rs.structures.json.gz`）；
-//! 2. 唯一函数符号 `impl$0::to_widget_name_hash`（inline，源码行 36；宿主
-//!    `UiState::add<DecoratorHandleName>` / `create_decorator_widget<DecoratorHandleName>`）。
-//!
-//! # 归属（SOURCE_MAP 分歧登记）
-//!
-//! systems SOURCE_MAP 曾把 `entities/add_decorator_visual_entity/seal_persistent_entities`
-//! 归入本文件；骨架 PDB 模块 1499/3068 将视觉实体状态归属
-//! `decorator_visual_state.rs`（行号一致）。本批次按 PDB 归属，视觉状态留在
-//! `decorator_visual_state.rs`；本文件只承载 PDB 明确命名的手柄名类型与其哈希。
-//!
-//! # `DecoratorHandleName` 的类型身份
-//!
-//! 该类型当前定义在 `ui_systems/ui_decorator_affordance_dispatch.rs`（UI 族恢复时
-//! 落地）。PDB 的权威定义模块是本文件，因此这里以 **re-export** 暴露同一类型
-//! 身份（`crate::decorator_resources::DecoratorHandleName` == UI 模块同一类型），
-//! 不复制定义、不产生两个不兼容的句柄名。
-//!
-//! # `to_widget_name_hash` 算法（O）
-//!
-//! 宿主为 `UiState::add<DecoratorHandleName>` / `create_decorator_widget<
-//! DecoratorHandleName>`（反编译 0x14125d180 / 0x141282300）。widget 名 → id 的
-//! 哈希在 core 已有权威实现：`WidgetId::from_name`（B 0x1405bdda0，零键
-//! SipHasher13 + str Hash 终止符，见 `country-core/src/systems/ui/resources/ui_state.rs`）。
-//! 旧实现使用 `utils::name_hash::NameHash`（无种子 xxh3）与宿主不符，现按
-//! O 证据改为 `WidgetId::from_name`。
-//!
-//! 方法面：`impl$0` = `impl DecoratorHandleName`，故提供同名方法；
-//! 自由函数保留为既有调用面（无跨文件消费者，登记于交付）。
-
-pub use crate::ui_systems::ui_decorator_affordance_dispatch::DecoratorHandleName;
+//! Canonical decorator handle name and its widget hash.
+//! B14125d180 copies a u64 and a u8 into the name before calling B14128c8e0.
+//! That hash helper writes exactly 8 bytes followed by 1 byte into zero-key
+//! std SipHasher13. A string or its 0xff Hash terminator changes the key.
+use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 use country_core::systems::ui::resources::ui_state::WidgetId;
 
-/// `impl$0::to_widget_name_hash`（inline，行 36）：手柄名 → widget id 哈希。
-///
-/// O：与 `WidgetId::from_name` 0x1405bdda0 同源（零键 SipHash13）；返回裸 u64。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct DecoratorHandleName(pub u64, pub u8);
+
 impl DecoratorHandleName {
-    /// 手柄名哈希（= `WidgetId::from_name(name).0`）。
-    #[inline]
     pub fn to_widget_name_hash(self) -> u64 {
-        to_widget_name_hash(self.0)
+        let mut hash = DefaultHasher::new();
+        hash.write_u64(self.0);
+        hash.write_u8(self.1);
+        hash.finish()
+    }
+
+    pub fn to_widget_id(self) -> WidgetId {
+        WidgetId(self.to_widget_name_hash())
     }
 }
 
-/// `to_widget_name_hash`（行 36 内联的自由函数面）：widget 名 → u64。
-///
-/// O：宿主 `UiState::add<DecoratorHandleName>` 使用与 `WidgetId::from_name`
-/// 相同的零键 SipHasher13。
-#[inline]
-pub fn to_widget_name_hash(name: &str) -> u64 {
-    WidgetId::from_name(name).0
+pub fn to_widget_name_hash(name: DecoratorHandleName) -> u64 {
+    name.to_widget_name_hash()
 }
 
 #[cfg(test)]
@@ -61,28 +30,41 @@ mod tests {
     use super::*;
 
     #[test]
-    fn widget_name_hash_matches_core_widget_id() {
-        for name in ["ui_decide_decorator_interaction", "", "decorator-handle"] {
-            assert_eq!(
-                to_widget_name_hash(name),
-                WidgetId::from_name(name).0,
-                "name={name}"
-            );
+    fn original_b_handle_hash_goldens() {
+        // Filled from execution of the complete original helper, including
+        // its actual std SipHasher writes; no hash implementation is copied.
+        for (key, kind, expected) in GOLDENS {
+            let name = DecoratorHandleName(key, kind);
+            assert_eq!(name.to_widget_name_hash(), expected);
+            assert_eq!(name.to_widget_id().0, expected);
         }
     }
 
-    #[test]
-    fn handle_name_method_matches_free_function() {
-        let handle = DecoratorHandleName("ui_decide_decorator_interaction");
-        assert_eq!(handle.to_widget_name_hash(), to_widget_name_hash(handle.0));
-        assert_eq!(handle.to_widget_id().0, handle.to_widget_name_hash());
-    }
-
-    #[test]
-    fn hash_is_stable_across_calls_and_distinct_across_names() {
-        let a = to_widget_name_hash("decorator_a");
-        let b = to_widget_name_hash("decorator_b");
-        assert_eq!(a, to_widget_name_hash("decorator_a"));
-        assert_ne!(a, b);
-    }
+    const GOLDENS: [(u64, u8, u64); 25] = [
+        (0, 0, 7399894860367327684),
+        (0, 1, 14472648492582661910),
+        (0, 2, 16546596690377609769),
+        (0, 63, 9564325984038645752),
+        (0, 255, 9445931171247383011),
+        (1, 0, 15877719499815107262),
+        (1, 1, 14494360753792957044),
+        (1, 2, 16482863132411079682),
+        (1, 63, 10049648382212962092),
+        (1, 255, 9399151345360787321),
+        (18446744073709551615, 0, 9701638580726904287),
+        (18446744073709551615, 1, 14471024608294704178),
+        (18446744073709551615, 2, 2777855660918435627),
+        (18446744073709551615, 63, 13773832207269365677),
+        (18446744073709551615, 255, 16317043856278656660),
+        (1311768467463790320, 0, 17163709260663748781),
+        (1311768467463790320, 1, 7347520083513708897),
+        (1311768467463790320, 2, 2130212972957674303),
+        (1311768467463790320, 63, 291103655440355526),
+        (1311768467463790320, 255, 8401560671301275032),
+        (4294967298, 0, 22325340119255437),
+        (4294967298, 1, 4981777454904418166),
+        (4294967298, 2, 12864333453634692062),
+        (4294967298, 63, 9921202787296750855),
+        (4294967298, 255, 10841342037072990669),
+    ];
 }

@@ -11,8 +11,8 @@
 //!   - 0x3b → kind 0x16，flag=(subtype==2)；
 //!   - 0x3c → kind 0xc，flag=(subtype==3)；
 //!   - 0x3d → subtype-2 ∈ {0,2} → 0x1c/flag 1；==1 → 0x1d；其余 0x1c/flag 0；
-//!   - 0x3e → subtype==9 ? 0xc/flag(subtype==3) : 0x24/flag(subtype!=3)；
-//!   - 其它 → 0x16。
+//!   - slot 6 (0x3e and every out-of-range type) tests the original TYPE
+//!     byte against 9, then uses subtype for the flag; it does not test subtype==9.
 //! - 屋顶木地板（O）：记录 `+0x42 == 2`（目的是屋顶）→
 //!   `PublicWalls::roof_component`（0x140a923a0）→ `Roof::is_flat`
 //!   （0x1408e3380）→ `FlatRoofStyle::is_wooden`（0x1408e31a0）→
@@ -54,15 +54,16 @@ pub fn preview_kind(decorator_type: DecoratorType, subtype: u8) -> (u8, u8) {
             1 => (0x1d, 0),
             _ => (0x1c, 0),
         },
-        // O：0x3e（烟囱）。
+        // B1408234b2 tests DL (the original decorator type), not CL (subtype).
+        // Out-of-range tags deliberately select this same slot at 1408233be.
         6 => {
-            if subtype == 9 {
+            if decorator_type.0 == 9 {
                 (0xc, u8::from(subtype == 3))
             } else {
                 (0x24, u8::from(subtype != 3))
             }
         }
-        // O：其它（含 0x3f+ 夹取）→ 0x16。
+        // Slot 7 only; tags outside 0x38..=0x3f already selected slot 6.
         _ => (0x16, 0),
     }
 }
@@ -97,7 +98,7 @@ pub fn op_preview_audio(
                         decorator_type,
                         flag: 6,
                     };
-                    let cmd = PlayDecoratorSoundCmd { kind: 6, position };
+                    let cmd = PlayDecoratorSoundCmd::at(6, position);
                     if seen.insert(key, ()).is_none() {
                         sounds.write(cmd);
                     }
@@ -114,7 +115,7 @@ pub fn op_preview_audio(
                     decorator_type,
                     flag: 3,
                 };
-                let cmd = PlayDecoratorSoundCmd { kind: 3, position };
+                let cmd = PlayDecoratorSoundCmd::at(3, position);
                 if seen.insert(key, ()).is_none() {
                     sounds.write(cmd);
                 }
@@ -128,7 +129,7 @@ pub fn op_preview_audio(
             decorator_type,
             flag,
         };
-        let cmd = PlayDecoratorSoundCmd { kind, position };
+        let cmd = PlayDecoratorSoundCmd::at(kind, position);
         if seen.insert(key, ()).is_none() {
             sounds.write(cmd);
         }

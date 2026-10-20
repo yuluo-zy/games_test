@@ -1,52 +1,49 @@
-//! `cache_decorator_transforms.rs` — 装饰变换缓存（0x1408153d0，O 结构）。
-//!
-//! 机器码证据（fresh RE-MCP `groupD/decomp/decomp-0x1408153d0-*.txt`，
-//! 61KB；puffin 剖面）：
-//! 1. `CachedDecoratorTransforms::swap_buffers_and_clear`（0x140a1aeb0）；
-//! 2. 全存储迭代（`DecoratorStorage` + `Decorators::iter_maybe_mut` +
-//!    `DecoratorMaybeMut::get_mut` 0x140a1b1e0）；
-//! 3. 逐装饰按目的分派：
-//!    - 墙（`PublicWalls::get` + `corner_pos_and_normal_xz` +
-//!      `WallCornerAttachment::to_rectangle_corner_id` +
-//!      `ShapeParameters::as_rectangle` + Rectangle2d/3d +
-//!      `WallSpaceCoord` 曲线坐标 + `DecoratorRotationXZ::
-//!      from_xz_forward_vector/offset/to_quat` + 阶梯调整
-//!      `calculate_adjusted_ladder_positions`）；
-//!    - 屋顶（`PublicWalls::roof_entity` + `Roof::is_flat` +
-//!      `rotation_yaw_radians` + `RoofTriggerVolume::
-//!      get_position_from_mesh_uv` + `roof_decorator_normal` 行 451 内联）；
-//!    - 地形（`TerrainHeightsData::sample_at_world_xz`）；
-//! 4. `CachedDecoratorTransforms::insert`（0x140a1ada0，有限性断言）。
-//!
-//! 精确位置/旋转公式尾段 U（证据：decomp 全文本）；本实现按机器码调用面
-//! 结构落地（墙曲线 + 屋顶触发体 + 地形采样）。
+//! B cache_decorator_transforms @1408153d0. Current-map ownership and the
+//! wall/corner, non-stair roof, and terrain clutter branches are recovered.
+//! Adjusted stair producer schemas remain incomplete and are not fabricated.
+//! Native support oracle: progress-20261020/phase2-decorator-visual.
+
+#[path = "cache_roof_orientation.rs"]
+mod roof_orientation;
+#[path = "cache_terrain_support.rs"]
+mod terrain_support;
 
 use bevy_ecs::prelude::*;
 
+use country_core::resources::clutter_meshes::{clutter_mesh_ty_data, ClutterMeshTy, ClutterMeshes};
 use country_core::resources::roofs::roof_shape::Roof;
 use country_core::resources::roofs::roof_trigger_volume::RoofTriggerVolume;
+use country_core::resources::stairs::{
+    stairs_assembly_params::PlayermadeStairsAssemblyRequests, stairs_state::StairsState,
+};
 use country_core::resources::terrain_height::TerrainHeightsData;
 use country_core::resources::walls::cached_decorator_transforms::{
-    CachedDecoratorTransform, CachedDecoratorTransforms,
+    CachedDecoratorTransform, CachedDecoratorTransformStorage, CachedDecoratorTransforms,
 };
+use country_core::resources::walls::decorator::DecoratorRotationXZ;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
+use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
 use country_core::resources::walls::public_wall_state::PublicWallState;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
-use glam::{Quat, Vec3};
+use glam::{Vec2, Vec3};
 
-/// `cache_decorator_transforms` @0x1408153d0（O 结构；公式尾段 U）。
+/// The nine original SystemParams, including private previous-frame scratch.
 pub fn cache_decorator_transforms(
+    mut storage: ResMut<DecoratorStorage>,
     mut cache: ResMut<CachedDecoratorTransforms>,
-    storage: Res<DecoratorStorage>,
+    mut previous: Local<CachedDecoratorTransformStorage>,
     walls: Res<PublicWalls>,
-    roof_trigger_volumes: Query<&RoofTriggerVolume>,
     terrain: Res<TerrainHeightsData>,
+    roof_trigger_volumes: Query<(&Roof, &RoofTriggerVolume)>,
+    _stairs_requests: Res<PlayermadeStairsAssemblyRequests>,
+    meshes: Res<ClutterMeshes>,
+    _stairs: Res<StairsState>,
 ) {
-    cache.swap_buffers_and_clear();
+    cache.swap_buffers_and_clear(&mut previous);
     for (wall, bucket) in storage.iter_walls() {
         let wall_state = walls.get(wall);
-        for (_id, info) in bucket.iter_maybe_mut() {
+        for (id, info) in bucket.iter_maybe_mut() {
             let transform = compute_decorator_transform(
                 info,
                 Some(wall),
@@ -54,15 +51,23 @@ pub fn cache_decorator_transforms(
                 &walls,
                 &roof_trigger_volumes,
                 &terrain,
+                &meshes,
+                previous.get(id),
             );
             let Some(transform) = transform else { continue };
-            cache.insert(info.decorator_id, transform);
+            cache.insert(id, transform);
         }
     }
     // O：原生迭代 `DecoratorStorage` 全存储（墙 + 地形 + 楼梯）；旧实现只
     // 遍历墙桶，地形/楼梯装饰永远不会进入缓存（已修）。
-    for bucket in storage.iter_terrain_decorators() {
-        for info in bucket.iter_maybe_mut().map(|(_, info)| info) {
+    if let Some(bucket) = storage.get_mut(DecoratorStorageAddr::Terrain) {
+        let mut changed = Vec::new();
+        for (id, info) in bucket.iter_maybe_mut() {
+            assert_eq!(
+                info.dst_tag(),
+                3,
+                "terrain storage contains a non-terrain decorator"
+            );
             let Some(transform) = compute_decorator_transform(
                 info,
                 None,
@@ -70,14 +75,31 @@ pub fn cache_decorator_transforms(
                 &walls,
                 &roof_trigger_volumes,
                 &terrain,
+                &meshes,
+                previous.get(id),
             ) else {
                 continue;
             };
-            cache.insert(info.decorator_id, transform);
+            let transform = if let Some(old) = previous.get(id).filter(|old| {
+                let to_transform =
+                    |t: &CachedDecoratorTransform| utils::components::transform::Transform {
+                        r: t.rotation,
+                        t: t.translation,
+                        s: t.scale,
+                    };
+                to_transform(old).abs_diff_eq(&to_transform(&transform), f32::from_bits(0x3a83126f))
+            }) {
+                *old
+            } else {
+                changed.push(id);
+                transform
+            };
+            cache.insert(id, transform);
         }
+        bucket.modified_ids.extend(changed);
     }
     for bucket in storage.iter_stair_decorators() {
-        for info in bucket.iter_maybe_mut().map(|(_, info)| info) {
+        for (id, info) in bucket.iter_maybe_mut() {
             let Some(transform) = compute_decorator_transform(
                 info,
                 None,
@@ -85,49 +107,151 @@ pub fn cache_decorator_transforms(
                 &walls,
                 &roof_trigger_volumes,
                 &terrain,
+                &meshes,
+                previous.get(id),
             ) else {
                 continue;
             };
-            cache.insert(info.decorator_id, transform);
+            cache.insert(id, transform);
         }
     }
 }
 
-/// 逐装饰世界变换（O 调用面；公式尾段 U——精确公式见 decomp 全文本）。
+/// Reuse canonical geometry helpers; no fallback world pose for missing owners.
 #[allow(clippy::too_many_arguments)]
 fn compute_decorator_transform(
     info: &country_core::resources::walls::decorator::DecoratorInfo,
     wall: Option<WallId>,
     wall_state: Option<&PublicWallState>,
     walls: &PublicWalls,
-    roof_trigger_volumes: &Query<&RoofTriggerVolume>,
+    roof_trigger_volumes: &Query<(&Roof, &RoofTriggerVolume)>,
     terrain: &TerrainHeightsData,
+    meshes: &ClutterMeshes,
+    previous_transform: Option<&CachedDecoratorTransform>,
 ) -> Option<CachedDecoratorTransform> {
     match info.dst_tag() {
-        0 | 1 => {
-            // 墙目的（O）：墙曲线坐标 + XZ 旋转（from_xz_forward_vector/
-            // offset/to_quat 调用面）。**公式尾段仍是 U**（decomp 0x1408153d0
-            // 61KB 内联；u/v→曲线坐标与附着高未逐字节闭合）。显式返回 None，
-            // 不再以 `Vec3::ZERO`/恒等旋转冒充变换（W6）。
-            let _ = (wall, wall_state, walls);
-            None
+        // B140815875..894 normalizes every raw tag outside 2..=4 to the
+        // wall branch. Keep the original parity below, even at the raw boundary.
+        tag if tag.wrapping_sub(2) >= 3 => {
+            let wall_state = wall_state.expect("wall decorator refers to a missing public wall");
+            let corner = crate::decorator_on_rectangle_edited::rectangle_corner_id(info.u20 as u8)
+                .and_then(|corner| wall_state.corner_pos_and_normal_xz(corner as usize));
+            let coord = info.wall_space_coord();
+            let (translation, normal) = if let Some((position, normal)) = corner {
+                (Vec3::new(position.x, coord.y, position.y), normal)
+            } else {
+                let curve = wall_state.simplified_curve_2d();
+                let tangent = coord.get_tangent(curve);
+                let normal = if info.dst_tag() & 1 == 0 {
+                    Vec2::new(tangent.y, -tangent.x)
+                } else {
+                    Vec2::new(-tangent.y, tangent.x)
+                };
+                (coord.to_world_space(curve), normal)
+            };
+            Some(CachedDecoratorTransform {
+                rotation: utils::xz_rotation_bad(normal),
+                translation,
+                scale: Vec3::ONE,
+            })
         }
         2 => {
-            // 屋顶目的（O）：roof_entity + Roof + RoofTriggerVolume::
-            // get_position_from_mesh_uv + roof_decorator_normal。uv 计算 U；
-            // `Vec2::ZERO` 是伪造值 → 显式未恢复（W7）。
-            let _ = (wall, roof_trigger_volumes);
-            None
+            // B140815b22..c00. A missing roof association/UV uses the last
+            // transform, or the original -100 sentinel on its first frame.
+            // A stale/mismatched ECS roof entity is an unwrap failure instead.
+            let fallback = || {
+                previous_transform
+                    .copied()
+                    .unwrap_or(CachedDecoratorTransform {
+                        rotation: glam::Quat::IDENTITY,
+                        translation: Vec3::splat(-100.0),
+                        scale: Vec3::ONE,
+                    })
+            };
+            let Some(entity) = walls.roof_entity(wall.expect("roof storage must be a wall")) else {
+                return Some(fallback());
+            };
+            let (roof, volume) = roof_trigger_volumes
+                .get(entity)
+                .expect("roof association does not resolve to Roof and RoofTriggerVolume");
+            let coord = info.wall_space_coord();
+            let Some(translation) =
+                volume.get_position_from_mesh_uv(Vec2::new(coord.u, coord.y), roof.floor_y())
+            else {
+                return Some(fallback());
+            };
+            let tag = info.decorator_type().0;
+            let mut rotation = if roof_orientation::roof_uses_yaw(tag) {
+                DecoratorRotationXZ(
+                    f32::from_bits(info.dst_secondary as u32) + roof.rotation_yaw_radians(),
+                )
+                .to_quat()
+            } else {
+                glam::Quat::IDENTITY
+            };
+            if !roof.is_flat() || (tag.wrapping_sub(0x38) < 8 && tag != 62) {
+                if tag == 63 {
+                    // Original adjusted outgoing stair orientation is owned by
+                    // the still-missing assembly producer, not the public graph.
+                    return None;
+                }
+                let pivot = roof.pivot_3d();
+                let normal = roof_orientation::roof_decorator_normal(
+                    info.rank,
+                    translation,
+                    roof.observed()[8] & 1 != 0,
+                    Vec2::new(pivot.x, pivot.z),
+                    |query, position| {
+                        let section = roof.get_roof_shape_from_pos_ws_clamped(query);
+                        let country_core::resources::roofs::geometry::surface::RoofSection::Rectangle { frame, dimensions } = section else {
+                            panic!("rectangular roof produced a non-rectangle section");
+                        };
+                        utils::geometry::Rectangle2d {
+                            axis: Vec2::new(frame[0], frame[1]),
+                            center: Vec2::new(frame[2], frame[3]),
+                            size: Vec2::from_array(dimensions),
+                        }
+                        .closest_edge_normal(position)
+                    },
+                );
+                rotation = roof_orientation::compose_roof_orientation(
+                    rotation,
+                    utils::xz_rotation_bad(normal),
+                );
+            }
+            Some(CachedDecoratorTransform {
+                rotation,
+                translation,
+                scale: Vec3::ONE,
+            })
         }
         3 => {
-            // 地形目的（O）：`DecoratorInfo+0x00` 前 8B = Vec2(x,z)（与
-            // ui_change_stair_height 地形处理器 0x1407ae060 同源读面），
-            // `TerrainHeightsData::sample_at_world_xz` 得 y。
+            // Type63 needs AdjustedStairEdge (outgoing graph orientation), whose
+            // actual producer is not yet present in the canonical stair owner.
+            if info.decorator_type().0 == 63 {
+                return None;
+            }
             let (x, z) = decorator_terrain_xz(info);
-            let y = terrain.sample_at_world_xz(x, z);
+            let rotation = DecoratorRotationXZ(f32::from_bits(info.dst_secondary as u32)).to_quat();
+            let mut translation = Vec3::new(x, terrain.sample_at_world_xz(x, z), z);
+            if info.decorator_type().0.wrapping_sub(0x38) >= 8 || info.decorator_type().0 == 62 {
+                let ty = ClutterMeshTy::from_native_tag(info.decorator_type().0)
+                    .expect("terrain clutter type is outside the recovered native enum");
+                let mut bounds = clutter_mesh_ty_data(ty, meshes).mesh.bounds;
+                bounds.set_orientation_xz(terrain_support::terrain_clutter_axis(rotation));
+                bounds.translate(translation);
+                translation.y = terrain_support::terrain_clutter_support_height(
+                    bounds.footprint.axis,
+                    bounds.footprint.center,
+                    bounds.footprint.size,
+                    bounds.bottom,
+                    bounds.top,
+                    |point| terrain.sample_at_world_xz(point.x, point.y),
+                );
+            }
             Some(CachedDecoratorTransform {
-                rotation: Quat::IDENTITY,
-                translation: Vec3::new(x, y, z),
+                rotation,
+                translation,
                 scale: Vec3::ONE,
             })
         }
@@ -160,10 +284,4 @@ mod tests {
         };
         assert_eq!(decorator_terrain_xz(&info), (1.5, -2.25));
     }
-}
-
-/// 屋顶法线辅助（行 451 内联；U 公式——decomp 内联面）。
-#[allow(dead_code)]
-fn roof_decorator_normal(_position: Vec3, _roof: &Roof) -> Vec3 {
-    Vec3::Y
 }

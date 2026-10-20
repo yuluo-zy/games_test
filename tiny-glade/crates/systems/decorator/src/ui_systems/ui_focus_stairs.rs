@@ -30,10 +30,8 @@ use country_core::systems::ui::signifiers::UiAppendSignifier;
 /// 楼梯焦点 widget 名（O：0x142a81fb0，32 字符）。
 pub const ROTATE_SINGLE_NODE_STAIRS_WIDGET: &str = "rotate_single_node_stairs_widget";
 
-/// 旋转请求（ui_clutter `ui_focus_decoclutter::RequestRotateDecorator` 域；
-/// core 未落——本 crate 登记待 core 接线）。
-#[derive(Event, Clone, Copy, Debug, Default)]
-pub struct RequestRotateDecorator;
+// Shared canonical identity; no shadow zero-sized event.
+pub use country_core::systems::ui_clutter::ui_focus_decoclutter::RequestRotateDecorator;
 
 /// B 0x14079c6d0（O 结构）：楼梯焦点主系统。
 #[allow(clippy::too_many_arguments)]

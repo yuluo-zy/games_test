@@ -28,7 +28,7 @@ use super::signifier_create::SignifierId;
 #[repr(C)]
 #[derive(Component, Clone, Copy, Debug, PartialEq)]
 pub struct SignifierAnimation {
-    /// +0x00..+0x08：未取证（保持 0）。
+    /// +0x00..+0x08: canonical EasingFunction tag and optional f32 payload.
     pub head: [u8; 8],
     /// +0x08：写入门（==0 时 `signifier_animation` 更新 scale）。
     pub flag_8: u8,
@@ -44,9 +44,7 @@ pub struct SignifierAnimation {
     pub t: f32,
     /// +0x18：缓动派生值（`EasingFunction::apply(t)`）。
     pub eased: f32,
-    /// crate 附加：原版把 tick 累加到查询上的另一个可选组件；保留字段承载 t-tick
-    /// 判等实现（`signifier_animation_t`），不参与本组件 0x1c 布局。
-    pub tick_acc: f32,
+
 }
 
 impl Default for SignifierAnimation {
@@ -60,7 +58,6 @@ impl Default for SignifierAnimation {
             duration: 1.0,
             t: 0.0,
             eased: 0.0,
-            tick_acc: 0.0,
         }
     }
 }
@@ -76,16 +73,51 @@ pub struct SignifierParentToVolumeOrigin;
 /// `t' = clamp(t + (1/duration)·tick, 0, 1)`；否则 `t' = 反向?0:1`，
 /// 再 `eased = EasingFunction::apply(t')`，tick 累加到可选组件。
 /// （该函数此前已判等[结构]；本轮只按 fresh 修正组件布局，不改其控制流。）
+impl SignifierAnimation {
+    pub fn easing(&self) -> ::utils::easing_functions::EasingFunction {
+        use ::utils::easing_functions::EasingFunction as E;
+        let tag = u32::from_le_bytes(self.head[..4].try_into().unwrap());
+        let value = f32::from_le_bytes(self.head[4..].try_into().unwrap());
+        match tag {
+            0 => E::CircularInOut,
+            1 => E::CubicInOut,
+            2 => E::SineInOut,
+            3 => E::Bias(value),
+            4 => E::ElasticInOut,
+            5 => E::BackOut,
+            6 => E::CubicOut,
+            _ => panic!("invalid SignifierAnimation easing tag {tag}"),
+        }
+    }
+    /// Original140a69998..140a69a1a, independently checked against RNE.
+    pub fn advance(&mut self, delta: f32, marked: bool) {
+        self.t = if self.duration != 0.0 {
+            let signed_delta = if marked { -delta } else { delta };
+            let raw = (1.0 / self.duration) * signed_delta + self.t;
+            let lower = if 0.0 > raw { 0.0 } else { raw };
+            if 1.0 < lower { 1.0 } else { lower }
+        } else if marked {
+            0.0
+        } else {
+            1.0
+        };
+        self.eased = self.easing().apply(self.t);
+    }
+}
+
 pub fn signifier_animation_t(
     time: Res<crate::resources::time::GameTime>,
-    mut query: Query<&mut SignifierAnimation>,
+    mut query: Query<(
+        &mut SignifierAnimation,
+        Option<&super::signifier_mark_for_delete::SignifierMarkedForDeletion>,
+        Option<&mut super::signifier_mark_for_delete::SignifierMinimumLifespan>,
+    )>,
 ) {
-    let tick = time.delta;
-    for mut anim in &mut query {
-        if anim.duration != 0.0 && !anim.duration.is_nan() {
-            anim.t = (anim.t + tick / anim.duration).clamp(0.0, 1.0);
+    for (mut anim, marked, lifespan) in &mut query {
+        anim.advance(time.delta, marked.is_some());
+        if let Some(mut lifespan) = lifespan {
+            lifespan.t += time.delta;
         }
-        anim.tick_acc += tick;
     }
 }
 
@@ -125,7 +157,7 @@ mod tests {
 
     #[test]
     fn component_layout_matches_native_offsets() {
-        assert_eq!(std::mem::size_of::<SignifierAnimation>() - std::mem::size_of::<f32>(), 0x1c);
+        assert_eq!(std::mem::size_of::<SignifierAnimation>(), 0x1c);
         let a = SignifierAnimation {
             flag_8: 1,
             flag_9: 2,

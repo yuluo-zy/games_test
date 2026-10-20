@@ -1,0 +1,61 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "phase2-decorator-interaction",
+  "pid": 6364,
+  "project": "D:\\game\\tools\\reverse-runtime\\phase2-decorator-interaction\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "timeoutSeconds": 240,
+        "code": "import json,hashlib\nfrom ghidra.program.flatapi import FlatProgramAPI\nfrom ghidra.program.disassemble import Disassembler\nfrom ghidra.program.model.address import AddressSet\nfrom ghidra.program.model.symbol import SourceType,RefType\nfrom ghidra.program.model.pcode import JumpTable\nfrom ghidra.app.decompiler import DecompInterface\nfrom java.util import ArrayList\np=currentProgram\napi=FlatProgramAPI(p,monitor)\nfm=p.getFunctionManager()\ndef a(s):return p.getAddressFactory().getAddress(s.removeprefix('0x'))\nspec=[{'address': '0x1407a8580', 'size': 3596, 'sha256': '6cdb66166e8c7626165e3320601c067336a1ac614e3290292c1cee586520f55e'}, {'address': '0x1407af340', 'size': 9340, 'sha256': '337efc52bc73e3bb5a20946aba6a39cc658c434637f67ca4e653f9fd9e729c08'}]\nswitches=[{'site': '0x1407a8764', 'table': '0x142a82be8', 'destinations': ['0x1407a91bb', '0x1407a8766', '0x1407a87a6', '0x1407a8814']}, {'site': '0x1407af699', 'table': '0x142a83790', 'destinations': ['0x1407af7aa', '0x1407af69b', '0x1407af7bd', '0x1407af69b', '0x1407af69b', '0x1407af8ee']}, {'site': '0x1407afd6e', 'table': '0x142a837a8', 'destinations': ['0x1407afe2a', '0x1407afd70', '0x1407afe31', '0x1407afd70', '0x1407afd70', '0x1407b1255']}]\ntx=p.startTransaction('Original PDB bounded function and explicit switch destinations')\ncommit=False\ntry:\n    for row in spec:\n        start=a(row['address']);body=AddressSet(start,start.add(row['size']-1))\n        raw=bytes(x&255 for x in api.getBytes(start,row['size']))\n        assert hashlib.sha256(raw).hexdigest()==row['sha256']\n        Disassembler.getDisassembler(p,monitor,None).disassemble(start,body,True)\n        for other in list(fm.getFunctionsOverlapping(body)):\n            if other.getEntryPoint()!=start:fm.removeFunction(other.getEntryPoint())\n        f=fm.getFunctionAt(start)\n        if f is None:f=api.createFunction(start,None)\n        f.setBody(body)\n    for row in switches:\n        site=a(row['site']);f=fm.getFunctionContaining(site)\n        destinations=ArrayList()\n        ins=p.getListing().getInstructionAt(site)\n        for destination in row['destinations']:\n            target=a(destination);destinations.add(target)\n            ins.addOperandReference(0,target,RefType.COMPUTED_JUMP,SourceType.USER_DEFINED)\n        JumpTable(site,destinations,True,0).writeOverride(f)\n    commit=True\nfinally:p.endTransaction(tx,commit)\ndi=DecompInterface();di.openProgram(p)\ntry:\n    for row in spec:\n        f=fm.getFunctionAt(a(row['address']))\n        result=di.decompileFunction(f,90,monitor)\n        print(json.dumps({'address':row['address'],'bytes':row['size'],'completed':result.decompileCompleted(),'error':str(result.getErrorMessage()),'c':result.getDecompiledFunction().getC() if result.decompileCompleted() else None}))\nfinally:di.dispose()\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\progress-20261020\\phase2-decorator-interaction\\decompile-result-v2.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"\",\"success\":false,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"Traceback (most recent call last):\\n  File \\\"C:\\\\Users\\\\liyu\\\\AppData\\\\Local\\\\Temp\\\\reva_4956966972684745341.py\\\", line 9, in <module>\\n    exec(compile(\\\"import json,hashlib\\\\nfrom ghidra.program.flatapi import FlatProgramAPI\\\\nfrom ghidra.program.disassemble import Disassembler\\\\nfrom ghidra.program.model.address import AddressSet\\\\nfrom ghidra.program.model.symbol import SourceType,RefType\\\\nfrom ghidra.program.model.pcode import JumpTable\\\\nfrom ghidra.app.decompiler import DecompInterface\\\\nfrom java.util import ArrayList\\\\np=currentProgram\\\\napi=FlatProgramAPI(p,monitor)\\\\nfm=p.getFunctionManager()\\\\ndef a(s):return p.getAddressFactory().getAddress(s.removeprefix('0x'))\\\\nspec=[{'address': '0x1407a8580', 'size': 3596, 'sha256': '6cdb66166e8c7626165e3320601c067336a1ac614e3290292c1cee586520f55e'}, {'address': '0x1407af340', 'size': 9340, 'sha256': '337efc52bc73e3bb5a20946aba6a39cc658c434637f67ca4e653f9fd9e729c08'}]\\\\nswitches=[{'site': '0x1407a8764', 'table': '0x142a82be8', 'destinations': ['0x1407a91bb', '0x1407a8766', '0x1407a87a6', '0x1407a8814']}, {'site': '0x1407af699', 'table': '0x142a83790', 'destinations': ['0x1407af7aa', '0x1407af69b', '0x1407af7bd', '0x1407af69b', '0x1407af69b', '0x1407af8ee']}, {'site': '0x1407afd6e', 'table': '0x142a837a8', 'destinations': ['0x1407afe2a', '0x1407afd70', '0x1407afe31', '0x1407afd70', '0x1407afd70', '0x1407b1255']}]\\\\ntx=p.startTransaction('Original PDB bounded function and explicit switch destinations')\\\\ncommit=False\\\\ntry:\\\\n    for row in spec:\\\\n        start=a(row['address']);body=AddressSet(start,start.add(row['size']-1))\\\\n        raw=bytes(x&255 for x in api.getBytes(start,row['size']))\\\\n        assert hashlib.sha256(raw).hexdigest()==row['sha256']\\\\n        Disassembler.getDisassembler(p,monitor,None).disassemble(start,body,True)\\\\n        for other in list(fm.getFunctionsOverlapping(body)):\\\\n            if other.getEntryPoint()!=start:fm.removeFunction(other.getEntryPoint())\\\\n        f=fm.getFunctionAt(start)\\\\n        if f is None:f=api.createFunction(start,None)\\\\n        f.setBody(body)\\\\n    for row in switches:\\\\n        site=a(row['site']);f=fm.getFunctionContaining(site)\\\\n        destinations=ArrayList()\\\\n        ins=p.getListing().getInstructionAt(site)\\\\n        for destination in row['destinations']:\\\\n            target=a(destination);destinations.add(target)\\\\n            ins.addOperandReference(0,target,RefType.COMPUTED_JUMP,SourceType.USER_DEFINED)\\\\n        JumpTable(site,destinations,True,0).writeOverride(f)\\\\n    commit=True\\\\nfinally:p.endTransaction(tx,commit)\\\\ndi=DecompInterface();di.openProgram(p)\\\\ntry:\\\\n    for row in spec:\\\\n        f=fm.getFunctionAt(a(row['address']))\\\\n        result=di.decompileFunction(f,90,monitor)\\\\n        print(json.dumps({'address':row['address'],'bytes':row['size'],'completed':result.decompileCompleted(),'error':str(result.getErrorMessage()),'c':result.getDecompiledFunction().getC() if result.decompileCompleted() else None}))\\\\nfinally:di.dispose()\\\\n\\\", \\\"<retained-job>\\\", \\\"exec\\\"), globals())\\n  File \\\"<retained-job>\\\", line 34, in <module>\\nAttributeError: 'NoneType' object has no attribute 'addOperandReference'\\n\\r\\n\",\"durationMs\":109}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.11,
+      "stdout": "",
+      "passed": false,
+      "error": "run-script: failed, timed out or truncated; inspect the retained result"
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.578,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116264}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":11}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116264
+  },
+  "error": "unhandled errors in a TaskGroup (1 sub-exception)",
+  "exception_trace": "  + Exception Group Traceback (most recent call last):\n  |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 116, in run\n  |     limits=httpx.Limits(max_keepalive_connections=0)) as http_client, streamable_http_client(\n  |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"C:\\Users\\liyu\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\contextlib.py\", line 231, in __aexit__\n  |     await self.gen.athrow(value)\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 672, in streamable_http_client\n  |     async with anyio.create_task_group() as tg:\n  |                ^^^^^^^^^^^^^^^^^^^^^^^^^\n  |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n  |     raise BaseExceptionGroup(\n  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n  +-+---------------- 1 ----------------\n    | Exception Group Traceback (most recent call last):\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\client\\streamable_http.py\", line 695, in streamable_http_client\n    |     yield (\n    |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 118, in run\n    |     async with ClientSession(read, write) as session:\n    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\mcp\\shared\\session.py\", line 238, in __aexit__\n    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)\n    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    |   File \"D:\\tools\\reverse-engineering\\venvs\\reverse-engineering-assistant\\Lib\\site-packages\\anyio\\_backends\\_asyncio.py\", line 847, in __aexit__\n    |     raise BaseExceptionGroup(\n    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n    +-+---------------- 1 ----------------\n      | Traceback (most recent call last):\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 201, in run\n      |     validate_result(result, name)\n      |   File \"D:\\game\\reverse-engineering\\tiny-glade\\scripts\\reverse_tools\\reverse_operator.py\", line 34, in validate_result\n      |     raise RuntimeError(name + ': failed, timed out or truncated; inspect the retained result')\n      | RuntimeError: run-script: failed, timed out or truncated; inspect the retained result\n      +------------------------------------\n"
+}

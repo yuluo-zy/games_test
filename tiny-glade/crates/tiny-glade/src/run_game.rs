@@ -397,7 +397,7 @@ pub fn run_game_thread(
     startup_construction_runtime::install(&mut app);
     // Preserve actual domain owner constructors without mounting incomplete
     // edit/UI helpers merely to initialize their resources.
-    toolbar::configure_app(&mut app);
+    crate::toolbar_plugin::build(&mut app);
     crate::decorator_plugin::build_startup_resources(&mut app);
     crate::wall_constructor_plugin::build(&mut app);
     // Original plugin tuple members WaterPlugin 0x1406501d0 / GladeBorderPlugin 0x140650ab0.
@@ -478,7 +478,6 @@ pub fn run_game_thread(
         country_core::systems::backend::photomode::update_photomode_visibility,
         country_core::systems::backend::photomode::process_photomode_transitions,
         toolbar::photomode::timelapse::restore_after_timelapse,
-        toolbar::photomode::photomode_camera_buttons,
         country_core::systems::backend::photomode::finish_photomode_frame,
     ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(
         bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));

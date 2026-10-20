@@ -244,3 +244,7 @@ mod tests {
         assert!(demo.categories[0].contains(&AppMode::Wall(WallShape::Rectangle)));
     }
 }
+/// Original toolbar focus publication: a frame emits one event when any
+/// toolbar item has a nonzero keep byte (B ui_notify_hints_if_toolbar_in_focus).
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default)]
+pub struct ToolbarUiIsInFocus;

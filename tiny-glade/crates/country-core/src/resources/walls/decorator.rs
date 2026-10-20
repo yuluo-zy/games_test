@@ -284,7 +284,7 @@ impl DecoratorExtraInfo {
     /// 窗=6、灯=7、楼梯=0/1）。
     pub fn disc(self) -> u8 {
         match self {
-            DecoratorExtraInfo::Stair(_) => 0,
+            DecoratorExtraInfo::Stair(value) => value.0[17],
             DecoratorExtraInfo::Window(_) => 6,
             DecoratorExtraInfo::Flag(_) => 5,
             DecoratorExtraInfo::Lantern(_) => 7,
@@ -778,95 +778,71 @@ impl DecoratorInfo {
         *self == DecoratorInfo::default()
     }
 
-    /// +0x11：DecoratorExtraInfo 判别字节。
-    ///
-    /// 原二进制判别位于 DecoratorInfo+0x11（= dst_payload 字节 1），与 f32/u32
-    /// 载荷字节 1 重叠（From 变体先写载荷后写判别，存储即破坏载荷字节 1）。
-    /// ExtraInfo 完整字节布局 U（RE §6.1）；Rust 侧将判别存于 dst_payload
-    /// 高位字节，使载荷无损往返。偏离已登记。
+    /// Native ExtraInfo is the twenty-byte region Info+0x30..0x44.
+    /// Its enum niche is Extra+0x11 = Info+0x41 (u40 byte 1).
+    /// The destination's +0x10 payload is a different, independent union.
     #[inline]
     pub fn extra_disc(self) -> u8 {
-        ((self.dst_payload >> 56) & 0xff) as u8
+        ((self.u40 >> 8) & 0xff) as u8
     }
 
-    /// 解码 DecoratorExtraInfo（判别存于 dst_payload 高位字节；载荷 +0x10..）。
-    /// 楼梯 20B 载荷跨 dst_payload(+0x10..0x18) 与 u18(+0x18..0x20)、u20(+0x20..0x24)。
-    /// 判别值按 fresh 0x1408392d0/340/3b0/420/4b0：烟囱=4、旗=5、窗=6、灯=7。
+    fn extra_bytes(self) -> [u8; 20] {
+        let mut raw = [0u8; 20];
+        raw[..8].copy_from_slice(&self.u30.to_le_bytes());
+        raw[8..12].copy_from_slice(&self.u38.to_le_bytes());
+        raw[12..16].copy_from_slice(&self.u3c.to_le_bytes());
+        raw[16..20].copy_from_slice(&self.u40.to_le_bytes());
+        raw
+    }
+
     pub fn extra(self) -> DecoratorExtraInfo {
+        let raw = self.extra_bytes();
         match self.extra_disc() {
-            0 | 1 => {
-                let mut raw = [0u8; 20];
-                raw[0..8].copy_from_slice(&self.dst_payload.to_le_bytes());
-                raw[8..16].copy_from_slice(&self.u18.to_le_bytes());
-                raw[16..20].copy_from_slice(&self.u20.to_le_bytes()[..4]);
-                DecoratorExtraInfo::Stair(StairExtra(raw))
-            }
-            4 => {
-                let bytes = self.dst_payload.to_le_bytes();
-                DecoratorExtraInfo::Chimney(ChimneyExtra {
-                    f: f32::from_le_bytes(bytes[0..4].try_into().unwrap()),
-                    smoke: bytes[4],
-                })
-            }
-            5 => {
-                let bytes = self.dst_payload.to_le_bytes();
-                DecoratorExtraInfo::Flag(FlagExtra(bytes[0]))
-            }
-            6 => {
-                let bytes = self.dst_payload.to_le_bytes();
-                DecoratorExtraInfo::Window(WindowExtra(u32::from_le_bytes(
-                    bytes[0..4].try_into().unwrap(),
-                )))
-            }
-            7 => {
-                let bytes = self.dst_payload.to_le_bytes();
-                DecoratorExtraInfo::Lantern(LanternExtra(f32::from_le_bytes(
-                    bytes[0..4].try_into().unwrap(),
-                )))
-            }
-            d => {
-                // U：未知判别（含 2/3）保持不识别。
-                debug_assert!(false, "unknown DecoratorExtraInfo discriminator {:#x}", d);
-                DecoratorExtraInfo::Stair(StairExtra([0; 20]))
-            }
+            0 | 1 => DecoratorExtraInfo::Stair(StairExtra(raw)),
+            4 => DecoratorExtraInfo::Chimney(ChimneyExtra {
+                f: f32::from_le_bytes(raw[..4].try_into().unwrap()),
+                smoke: raw[4],
+            }),
+            5 => DecoratorExtraInfo::Flag(FlagExtra(raw[0])),
+            6 => DecoratorExtraInfo::Window(WindowExtra(u32::from_le_bytes(
+                raw[..4].try_into().unwrap(),
+            ))),
+            7 => DecoratorExtraInfo::Lantern(LanternExtra(f32::from_le_bytes(
+                raw[..4].try_into().unwrap(),
+            ))),
+            d => panic!("unknown DecoratorExtraInfo discriminator {d:#x}"),
         }
     }
 
-    /// 写 DecoratorExtraInfo（判别存于 dst_payload 高位字节；载荷 @+0x10..）。
-    /// 楼梯 20B 载荷跨 dst_payload(+0x10..0x18)、u18(+0x18..0x20)、u20(+0x20..0x24)；
-    /// 判别字节 7（+0x17）与楼梯载荷字节 7 重叠（原二进制判别 @+0x11 同样嵌入
-    /// 载荷，属忠实行为，偏离仅移位）。
+    /// B From leaves 140839520/530/540/550 only write their payload and
+    /// enum niche; preserve every other byte. Stair From 140839560 copies all
+    /// twenty bytes, including its own niche, without inventing a tag.
     pub fn set_extra(&mut self, extra: DecoratorExtraInfo) {
-        let disc = match extra {
-            DecoratorExtraInfo::Stair(_) => 0u8,
-            DecoratorExtraInfo::Window(_) => 6,
-            DecoratorExtraInfo::Flag(_) => 5,
-            DecoratorExtraInfo::Lantern(_) => 7,
-            DecoratorExtraInfo::Chimney(_) => 4,
-        };
-        let mut payload = [0u8; 8];
+        let mut raw = self.extra_bytes();
         match extra {
-            DecoratorExtraInfo::Stair(v) => {
-                // 20B 载荷：dst_payload[0..8]、u18[0..8]、u20[0..4]。
-                payload.copy_from_slice(&v.0[0..8]);
-                let mut u18 = [0u8; 8];
-                u18.copy_from_slice(&v.0[8..16]);
-                let mut u20 = [0u8; 4];
-                u20.copy_from_slice(&v.0[16..20]);
-                self.u18 = u64::from_le_bytes(u18);
-                self.u20 = u32::from_le_bytes(u20);
+            DecoratorExtraInfo::Stair(v) => raw = v.0,
+            DecoratorExtraInfo::Window(v) => {
+                raw[..4].copy_from_slice(&v.0.to_le_bytes());
+                raw[17] = 6;
             }
-            DecoratorExtraInfo::Window(v) => payload[0..4].copy_from_slice(&v.0.to_le_bytes()),
-            DecoratorExtraInfo::Flag(v) => payload[0] = v.0,
-            DecoratorExtraInfo::Lantern(v) => payload[0..4].copy_from_slice(&v.0.to_le_bytes()),
+            DecoratorExtraInfo::Flag(v) => {
+                raw[0] = v.0;
+                raw[17] = 5;
+            }
+            DecoratorExtraInfo::Lantern(v) => {
+                raw[..4].copy_from_slice(&v.0.to_le_bytes());
+                raw[17] = 7;
+            }
             DecoratorExtraInfo::Chimney(v) => {
-                payload[0..4].copy_from_slice(&v.f.to_le_bytes());
-                payload[4] = v.smoke;
+                raw[..4].copy_from_slice(&v.f.to_le_bytes());
+                raw[4] = v.smoke;
+                raw[17] = 4;
             }
         }
-        // 判别存于高位字节（见 extra_disc 注释：偏离原 +0x11 以避免载荷字节 1
-        // 被判别覆盖）。
-        self.dst_payload = u64::from_le_bytes(payload) | ((disc as u64) << 56);
+        self.u30 = u64::from_le_bytes(raw[..8].try_into().unwrap());
+        self.u38 = u32::from_le_bytes(raw[8..12].try_into().unwrap());
+        self.u3c = u32::from_le_bytes(raw[12..16].try_into().unwrap());
+        self.u40 = u32::from_le_bytes(raw[16..20].try_into().unwrap());
     }
 
     /// 目的墙 id（tag<=1 时 +0x00）。

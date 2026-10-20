@@ -498,7 +498,12 @@ mod tests {
             device: &dyn GraphicsDevice,
             initial: Option<&[u8]>,
         ) -> Self::Storage {
-            InstanceBuffer::new_storage_buffer(device, initial)
+            // Keep the canonical dormer storage policy; this fixture changes
+            // only nominal type identity to exercise the library collision.
+            InstanceBuffer {
+                instance_count: initial.map_or(0, |bytes| bytes.len() / core::mem::size_of::<Self>()),
+                buffer: country_core::render::ssbo::TypedStorageBuffer::new_storage_buffer(device, initial),
+            }
         }
     }
 

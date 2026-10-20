@@ -6,6 +6,9 @@ use bevy_app::App;
 use country_core::{resources as res, systems as sys};
 
 pub(super) fn install(app: &mut App) {
+    // Snapshot apply must publish to the maintained channel before raster
+    // resources are constructed, so the real staging consumer sees the load.
+    app.add_event::<res::world_raster::UploadWorldRasterBuffersToStagingCmd>();
     // res::walls::public_walls
     app.add_event::<res::walls::public_walls::OnWallChanged>();
     app.add_event::<res::walls::public_walls::OnWallDeleted>();

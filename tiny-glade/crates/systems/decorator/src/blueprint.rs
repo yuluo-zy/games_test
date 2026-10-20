@@ -14,11 +14,14 @@ use bevy_ecs::{
     system::{Commands, Res, ResMut},
 };
 use country_core::asset_libraries::{
-    mesh_library::AssetMeshLibrary, shader_library::AssetShaderLibrary,
+    mesh_library::AssetMeshLibrary,
+    shader_library::SharedAssetShaderLibrary,
     texture_library::AssetTextureLibrary,
 };
 use country_core::geometry::instanced_wall::BrickSourceId;
 use country_core::resources::walls::decorator_subtype::DecoratorCollision;
+#[cfg(test)]
+use country_core::asset_libraries::shader_library::AssetShaderLibrary;
 use country_core::resources::walls::dormers::DormerHoleSsbo;
 use country_core::resources::walls::public_walls::OnWallDeleted;
 use country_core::resources::walls::wall_holes::{RawWallHole, WallHoles};
@@ -488,7 +491,7 @@ pub fn instantiate_blueprints(
     blueprints: Res<DecoratorBlueprints>,
     previous: Res<PrevDecoratorBlueprints>,
     meshes: Res<AssetMeshLibrary>,
-    shaders: Res<AssetShaderLibrary>,
+    shaders: Res<SharedAssetShaderLibrary>,
     _textures: Res<AssetTextureLibrary>,
     on_wall_deleted: EventReader<OnWallDeleted>,
 ) {
@@ -525,7 +528,7 @@ fn instantiate_blueprint_visual_state(
     blueprints: Res<DecoratorBlueprints>,
     previous: Res<PrevDecoratorBlueprints>,
     meshes: Res<AssetMeshLibrary>,
-    shaders: Res<AssetShaderLibrary>,
+    shaders: Res<SharedAssetShaderLibrary>,
     mut on_wall_deleted: EventReader<OnWallDeleted>,
 ) {
     visual_state.cloth_infos.clear();
@@ -567,7 +570,7 @@ fn instantiate_blueprint_visual_state(
                 &mut commands,
                 id,
                 &meshes,
-                &shaders,
+                &shaders.0,
                 &mut visual_state.persistent,
             );
         }
@@ -1124,7 +1127,7 @@ mod tests {
             ecs.insert_resource(WallAttachedDecoTracker::<ChimneyAssemblyParams>::default());
             ecs.insert_resource(WallAttachedDecoTracker::<DoorStairsAssemblyParams>::default());
             ecs.insert_resource(AssetMeshLibrary::new());
-            ecs.insert_resource(AssetShaderLibrary::new());
+            ecs.insert_resource(SharedAssetShaderLibrary(Arc::new(AssetShaderLibrary::new())));
             ecs.insert_resource(bevy_ecs::event::Events::<OnWallDeleted>::default());
             Self { ecs }
         }

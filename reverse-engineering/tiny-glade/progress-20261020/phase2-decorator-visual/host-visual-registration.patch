@@ -1,0 +1,44 @@
+--- a/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs
++++ b/tiny-glade/crates/tiny-glade/src/decorator_plugin.rs
+@@ -58,3 +58,31 @@
+     app.init_resource::<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>();
+     app.add_event::<system_decorator::handle_external_decorator_cmds::ExternalDecoratorCmd>();
+ }
++
++/// Recovered subset of original Update/GameSystemSet25. This installs the
++/// actual terrain clutter pipeline; the other native generator/assembly members
++/// remain separate gaps. The resource condition waits for the real asset owner.
++pub fn build_recovered_visual_systems(app: &mut bevy_app::App) {
++    use bevy_ecs::schedule::IntoScheduleConfigs;
++    use bevy_ecs::schedule::common_conditions::resource_exists;
++    use country_core::{systems::GameSystemSet, resources::clutter_meshes::ClutterMeshes};
++    use system_decorator::{blueprint::{clear_blueprints, instantiate_blueprint_colliders,
++        instantiate_blueprints, copy_blueprints_to_prev},
++        cache_decorator_transforms::cache_decorator_transforms,
++        decorator_visual::decorator_clutter::generate_decorator_clutter};
++    // Original parent 1403451af/1b4/253: Update set25. Constructor
++    // 1400d52f0 writes cache, clear, generators, collider-only in this order;
++    // its later 1403d6ce0 chain_ignore_deferred installs fullvisual then copy.
++    app.add_systems(bevy_app::Update, (
++        cache_decorator_transforms,
++        clear_blueprints,
++        generate_decorator_clutter,
++        instantiate_blueprint_colliders,
++        instantiate_blueprints,
++        copy_blueprints_to_prev,
++    ).chain_ignore_deferred()
++        .in_set(GameSystemSet(25))
++        .after(country_core::resources::walls::decorator::unleash_decorator_op_events)
++        .after(system_decorator::ui_systems::ui_decorator_affordance_dispatch::ui_dispatch_decorator_affordance)
++        .run_if(resource_exists::<ClutterMeshes>));
++}
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -399,6 +399,7 @@
+     // edit/UI helpers merely to initialize their resources.
+     toolbar::configure_app(&mut app);
+     crate::decorator_plugin::build_startup_resources(&mut app);
++    crate::decorator_plugin::build_recovered_visual_systems(&mut app);
+     crate::wall_constructor_plugin::build(&mut app);
+     // Original plugin tuple members WaterPlugin 0x1406501d0 / GladeBorderPlugin 0x140650ab0.
+     crate::app_systems::WallSystems::add_wall_events(&mut app);

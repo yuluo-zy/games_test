@@ -42,6 +42,19 @@ pub(super) fn install(app: &mut App) {
         ));
     }
     app.init_resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    // B run_game_thread @14059fc85 selects GameSystemSet14 (HistoryStart)
+    // for the real raster staging consumer via converter1405c0400. Snapshot
+    // loading runs in set12; rendering reads these same staging owners later.
+    // A CPU-only host has no mapped buffers. Gameplay's original PreStartup
+    // creates all six; the consumer retains its own missing-buffer failures.
+    app.add_systems(
+        Update,
+        sys::world_raster::upload_world_raster_buffers_to_staging
+            .in_set(GameSystemSet(14))
+            .run_if(|device: Option<Res<country_core::render::device::GraphicsDeviceResource>>| {
+                device.is_some()
+            }),
+    );
     // App registration supplies frame maintenance as well as the resource.
     // No second color replay/CPU apply is installed alongside this domain path.
     app.add_event::<res::color_id::SetWallColorIdCmd>();

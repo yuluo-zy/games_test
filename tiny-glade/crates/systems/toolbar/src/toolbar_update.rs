@@ -25,13 +25,11 @@
 //!      written to each direct taffy child (`TaffyLayout::children` +
 //!      `taffy::style`/`set_style`).
 //!
-//! `toolbar_size_mult_update` (inline, source line 28) is **U**: PDB gives
-//! five inline instances with signature `fn(Res<GameConfig>, Res<WindowSize>,
-//! ResMut<ToolbarSizeMult>)` and records two `f32::min` + `set_changed`
-//! inlines, but the inlined body lives inside Bevy's generic
-//! `FunctionSystem::run_unsafe` monomorph and has no physical procedure with a
-//! recoverable operand list.  The exact `min` operands are therefore not
-//! fabricated here; see the round-11 TB-D delivery U-list.
+//! `toolbar_size_mult_update`: original inline body recovered from the exact
+//! PDB run_unsafe host 0x140feff70 (673 B), arithmetic 0x140ff0052..0x140ff00b9.
+//! The long axis is width for Bottom/Top, height for Left/Right; Left alone
+//! includes its original additional reserved-width term. Native MINSS caps
+//! the result at 1 and returns 1 for an unordered (NaN) ratio.
 
 use bevy_ecs::prelude::*;
 use country_core::game_config::GameConfig;
@@ -54,6 +52,34 @@ use crate::resouces_and_components::{
 pub struct ToolbarSizeMult {
     /// 尺寸倍率（f32@+0）。
     pub multiplier: f32,
+}
+
+/// Actual resolution/user-scale formula, in original f32 evaluation order.
+/// B constants: 142bc395c=1282.5, 1429cd034=30,
+/// 142bc3960=-192.5, 142bc3964=22. No lower clamp exists in the original.
+pub fn toolbar_size_multiplier(alignment: u8, window: [u32; 2], icon_size_mult: f32) -> f32 {
+    let axis = window[usize::from(alignment == 1 || alignment == 2)] as f32;
+    let mut required = 1282.5 * icon_size_mult + 30.0;
+    if alignment == 1 {
+        required += icon_size_mult * -192.5;
+        required += 22.0;
+    }
+    let ratio = axis / required;
+    if ratio < 1.0 { ratio } else { 1.0 }
+}
+
+/// B original inline system. Always write the canonical owner/change tick;
+/// the zero startup value is replaced by this system before sizing consumers.
+pub fn toolbar_size_mult_update(
+    config: Res<GameConfig>,
+    window: Res<country_core::resources::window::WindowSize>,
+    mut mult: ResMut<ToolbarSizeMult>,
+) {
+    mult.multiplier = toolbar_size_multiplier(
+        config.ui.toolbar_alignment as u8,
+        [window.width, window.height],
+        config.ui.icon_size_mult,
+    );
 }
 
 /// Native `toolbar_button_size_and_padding_update` 0x141eaec50.

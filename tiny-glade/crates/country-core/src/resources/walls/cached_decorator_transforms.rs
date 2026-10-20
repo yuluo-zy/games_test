@@ -7,7 +7,8 @@
 //! `insert` 0x140a1ada0 按 3 批做有限性（NaN/Inf）校验并 panic。
 //! **纯数据缓存，非实体存储**（卡5 实体机制一致：实体由消费系统读后生成）。
 //!
-//! 记号：O=机器码证实 / I=推断 / U=未恢复。双缓冲读/写册归属 I（见 swap 注释）。
+//! Original cache owner is the current map; previous-frame scratch belongs to
+//! cache_decorator_transforms's Local<CachedDecoratorTransformStorage>.
 
 use std::collections::HashMap;
 
@@ -68,24 +69,17 @@ impl CachedDecoratorTransformStorage {
     }
 }
 
-/// B CachedDecoratorTransforms：装饰变换缓存资源（双缓冲：上一帧/当前帧）。
-///
-/// `swap_buffers_and_clear` 0x140a1aeb0：两缓冲 6 qword（0x30B）逐字段互换，随后清
-/// 一册（0xff 填充 +0x11 偏移 memmove，len 归 0 重算 cap）供本帧重写。
-/// 读/写册归属 I（U：章节仅述双缓冲互换）；本实现以 `current_write` 标记写入册，
-/// 读取册 = current_write ^ 1，swap 后清新写入册。
+/// Current authoritative transform map. Original cache_decorator_transforms
+/// borrows its previous-frame scratch as a Local<CachedDecoratorTransformStorage>;
+/// reads after insert observe this current map in the same frame.
 #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct CachedDecoratorTransforms {
-    /// 双缓冲。
-    pub buffers: [CachedDecoratorTransformStorage; 2],
-    /// 当前写入册索引（I）。
-    current_write: usize,
+    pub storage: CachedDecoratorTransformStorage,
 }
 
 impl CachedDecoratorTransforms {
-    /// 读取册（上一帧完成册）。
     fn read(&self) -> &CachedDecoratorTransformStorage {
-        &self.buffers[self.current_write ^ 1]
+        &self.storage
     }
 
     /// 0x140a1aa20（O）：查缓存取变换（未命中 panic，`try_transform` 为 Option 版）。
@@ -132,13 +126,14 @@ impl CachedDecoratorTransforms {
             transform.scale.is_finite(),
             "assertion failed: transform.scale.is_finite()"
         );
-        self.buffers[self.current_write].insert(id, transform);
+        self.storage.insert(id, transform);
     }
 
-    /// 0x140a1aeb0（O）：双缓冲互换 + 清一册供本帧重写。
-    pub fn swap_buffers_and_clear(&mut self) {
-        self.current_write ^= 1;
-        self.buffers[self.current_write].clear();
+    /// B140a1aeb0: swap with the actual system-local previous map, then clear
+    /// this current destination. The caller can read previous during rebuilding.
+    pub fn swap_buffers_and_clear(&mut self, previous: &mut CachedDecoratorTransformStorage) {
+        std::mem::swap(&mut self.storage, previous);
+        self.storage.clear();
     }
 }
 
@@ -158,13 +153,17 @@ mod tests {
     fn insert_then_try_read_and_read() {
         let mut cache = CachedDecoratorTransforms::default();
         cache.insert(7, transform(1.0, 2.0, 3.0));
-        // 读取册 = 上一帧完成册；本帧写入册尚未 swap，读取册为空 → try 版 None。
-        assert!(cache.try_position(7).is_none());
-        cache.swap_buffers_and_clear();
-        // swap 后写入册成为读取册，可读到。
+        // The authoritative current map is readable immediately after insert.
         assert_eq!(cache.try_position(7), Some(Vec3::new(1.0, 2.0, 3.0)));
         assert_eq!(cache.position(7), Vec3::new(1.0, 2.0, 3.0));
         assert_eq!(cache.transform(7), transform(1.0, 2.0, 3.0));
+        let mut previous = CachedDecoratorTransformStorage::default();
+        cache.swap_buffers_and_clear(&mut previous);
+        assert!(cache.try_position(7).is_none());
+        assert_eq!(previous.get(7).copied(), Some(transform(1.0, 2.0, 3.0)));
+        cache.insert(7, transform(4.0, 5.0, 6.0));
+        assert_eq!(cache.position(7), Vec3::new(4.0, 5.0, 6.0));
+        assert_eq!(previous.get(7).copied(), Some(transform(1.0, 2.0, 3.0)));
     }
 
     #[test]

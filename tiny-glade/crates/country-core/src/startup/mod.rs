@@ -445,6 +445,10 @@ fn add_startup_mesh_systems(session_schedule: &mut bevy_ecs::schedule::Schedule)
     // directly (tiny-glade/src/gameplay_startup.rs); it is not a core-only ECS system.
     // Sheep requires the typed animation library and its full ECS birth. The
     // device host registers it; a bare mesh here would poison its cache gate.
+    // Brush previews likewise belong to the device host's one-time Startup:
+    // its full producer creates 22 meshes and 17 typed entities using the
+    // actual shader backend. This CPU mesh-only compatibility table cannot
+    // preload them or replace that producer.
 }
 
 /// 装配启动、会话、更新三个阶段；网格初始化只进入启动表。

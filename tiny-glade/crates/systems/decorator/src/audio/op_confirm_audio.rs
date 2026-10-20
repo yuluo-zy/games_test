@@ -154,10 +154,7 @@ pub fn op_confirm_audio(
             },
             _ => (kind_for_record_type(decorator_type), (flag & 0xff) as u8),
         };
-        let cmd = PlayDecoratorSoundCmd {
-            kind,
-            position: view.position(),
-        };
+        let cmd = PlayDecoratorSoundCmd::at(kind, view.position());
         let key = AudioEventKey {
             decorator_type,
             flag: sound_flag,
@@ -239,10 +236,7 @@ pub fn command_for(event: &DecoratorOpEventKind) -> Option<PlayDecoratorSoundCmd
         4 => confirm_remove(&view)?.kind,
         _ => kind_for_record_type(view.decorator_type()),
     };
-    Some(PlayDecoratorSoundCmd {
-        kind,
-        position: view.position(),
-    })
+    Some(PlayDecoratorSoundCmd::at(kind, view.position()))
 }
 
 /// 位置助手（供测试断言事件位置解码）。

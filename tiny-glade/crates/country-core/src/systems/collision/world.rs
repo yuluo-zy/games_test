@@ -479,12 +479,16 @@ impl RaycastMeshData {
     /// None 写判别 0（O：`*out = 0`）。输出：tag=4@+0x00、kind=4@+0x10、shape@+0x20/+0x28、
     /// scale@+0x68=1.0、hash@+0x70（其余写 0，disasm 0x1408cec10 核对）。
     #[cfg(feature = "native-physics")]
-    pub fn new_convex(points: &[glam::UVec3]) -> Option<Self> {
-        // O：`utils::calculate_hash<ref$<slice$<UVec3>>>` → 存 @+0x70。
-        let hash = crate::render::utils::calculate_hash(&points);
+    pub fn new_convex(points: &[glam::Vec3]) -> Option<Self> {
+        // B 1408cec10 hashes the float words through its UVec3 bit view;
+        // 1407dec90 passes eight contiguous Vec3 values directly. Numeric
+        // u32->f32 conversion would turn negative/fractional world coordinates
+        // into huge positive values and corrupt the convex hull.
+        let point_bits: &[glam::UVec3] = bytemuck::cast_slice(points);
+        let hash = crate::render::utils::calculate_hash(&point_bits);
         let points_f: Vec<Point<f32>> = points
             .iter()
-            .map(|p| Point::new(p.x as f32, p.y as f32, p.z as f32))
+            .map(|p| Point::new(p.x, p.y, p.z))
             .collect();
         // O：`parry3d::transformation::convex_hull3::convex_hull::try_convex_hull`。
         let (hull_points, indices) =

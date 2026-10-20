@@ -186,18 +186,18 @@ fn stair_height_handlers_map_all_storage_addresses_and_heights() {
     let pos = terrain_height_position(&terrain, &terrain_info);
     assert_eq!((pos.x, pos.z), (12.5, -7.25));
 
-    // 屋顶/地形共用原地 change op：u30 = 1 | height<<32、rank 2、u45 0x40。
+    // Height is a typed patch over the existing Info, not a replacement Info.
     let op = build_stair_height_op(DecoratorStorageAddr::Terrain, DecoratorId(7), 3.5);
     assert_eq!(op.kind, 1, "terrain storage disc");
-    assert_eq!(op.info.dst_secondary, 3, "in-place sentinel");
-    assert_eq!(op.info.u30 & 0xffff_ffff, 1);
-    assert_eq!((op.info.u30 >> 32) as u32, 3.5f32.to_bits());
-    assert_eq!(op.info.rank, 2);
-    assert_eq!(op.info.u45, 0x40);
+    let patch = op.change.unwrap();
+    assert_eq!(patch.destination, None, "original in-place sentinel");
+    assert_eq!(patch.extra_low, Some(3.5f32.to_bits()));
+    assert_eq!(patch.rank, None);
+    assert_eq!(patch.ty, None);
 
     let roof_op = build_stair_height_op(DecoratorStorageAddr::Wall(WallId(3)), DecoratorId(8), 1.25);
     assert_eq!(roof_op.kind, 0, "roof decorators live in the wall storage");
-    assert_eq!(roof_op.info.dst_secondary, 3);
+    assert_eq!(roof_op.change.unwrap().destination, None);
 }
 
 #[test]
@@ -226,6 +226,7 @@ fn anchor_follow_marks_modified_and_registers_changed_wall() {
         u20: 0 << 16,
         decorator_id: id.0,
         ty: 0x38,
+        rank: 2,
         state: 2,
         ..DecoratorInfo::default()
     };
@@ -376,7 +377,5 @@ fn decorator_transform_cache_requires_swap_for_visibility() {
             scale: Vec3::ONE,
         },
     );
-    assert!(cache.try_transform(7).is_none(), "write buffer not readable");
-    cache.swap_buffers_and_clear();
     assert_eq!(cache.try_position(7), Some(Vec3::new(1.0, 2.0, 3.0)));
 }

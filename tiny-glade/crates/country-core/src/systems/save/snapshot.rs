@@ -8,15 +8,15 @@
 //!   各节载荷由所属域序列化器提供（StairsSnapshot{edges,checksum}、
 //!   TerrainEditingData{strokes,next_stroke_id,next_stroke_index}、
 //!   DecoratorStorageSnapshot{states} 等）；本层不伪造域载荷。
-//! - `capture_game_snapshot` 0x1417a1d00：巨型系统（全 Query 串化）。域 Query 消费留待
-//!   各域恢复后接入。
+//! - The production `SaveSnapshotWorld` gathers actual Query/resource owners;
+//!   the async worker encodes that owned capture using the single chunk codec.
 //! - `validate_and_load_closest_snapshot_data` 0x1417a6e50：解析器，节序 + Version 校验
 //!   （"Version mismatch; expected , got "）+ Terrain 解压 + Raster 键白名单外忽略
 //!   （"Ignoring unknown raster data in snapshot: "）。
 //! - `load_snapshot_file`：文件入口，装配 motomoto chunks（Snapshot JSON + 命名栅格 +
 //!   Terrain）为 [`LoadedSnapshotData`]。
 //! - `init_game_state_from_snapshot` 0x1417a9c50：World 级域写回（Walls/Roofs/
-//!   Decorators/三色表/Terrain/高度/Trees/Raster/Stairs），未闭合项记入
+//!   Decorators/Terrain/高度/AutoClutter/Raster/Stairs），并发送原Roof/三色/Tree命令；未闭合项记入
 //!   [`SnapshotApplyReport::gaps`]。
 use crate::resources::{
     color_id::ColorId,
@@ -1117,6 +1117,12 @@ pub fn validate_and_load_closest_snapshot_data(json: &[u8]) -> anyhow::Result<Lo
                 // 缺省 prefab_name/is_preplaced 由 parse_trees_section 补齐（G1① §3.2）。
                 parse_trees_section(section)?;
             }
+            "AutoClutter" => {
+                // B loads the actual deleted-ID HashSet, rather than ignoring
+                // this captured section or treating an invalid record as empty.
+                serde_json::from_value::<std::collections::HashSet<u64>>(section.clone())
+                    .map_err(|error| anyhow::anyhow!("AutoClutter: {error}"))?;
+            }
             "Stairs" => {
                 serde_json::from_value::<StairsSectionJson>(section.clone())
                     .map_err(|error| anyhow::anyhow!("Stairs: {error}"))?;
@@ -1340,17 +1346,11 @@ impl SnapshotPrefix {
     }
 }
 
-/// `init_game_state_from_snapshot` 0x1417a9c50：域写回主链（World 级入口）。
-///
-/// fresh 反编译：`memcpy(header, in_R8, 0xc0)` + 14 个 0x20B 描述符读取，随后按序
-/// 写回（callees）：`InnerWalls::load_state` 0x14085ad80 → `DecoratorStorage::restore_snapshot`
-/// 0x140a20d70 → … → `AllWorldRasterWrite::write` 0x14083ebe0 → `StairsState::restore_snapshot`
-/// 0x1408ff590（另有 WindowFocusEvent/AvailableMonitor/SettingsMenuState grow 面由宿主）。
-///
-/// 文件快照不走 0xc0 内存描述符：`load_snapshot_file` 已把 motomoto chunks 装配为
-/// [`LoadedSnapshotData`]，本入口把它应用到真实 ECS 资源/实体。原生描述符里的内存指针
-/// 无法在 Rust 侧解引用，域目标按 crate 权威运行时 owner 接线（见
-/// [`apply_loaded_snapshot_to_world`] 的逐域说明与 `gaps` 登记）。
+/// B init_game_state_from_snapshot's World adapter. The original R8 contains
+/// actual SystemParam resource/event borrows; its first0xc0 bytes are six raster
+/// borrows, not a file header or fourteen serialized domain descriptors.
+/// Motomoto parsing yields the owned data consumed by this function; domain
+/// requests go to the same maintained events as editing/history replay.
 pub fn init_game_state_from_snapshot(
     world: &mut bevy_ecs::world::World,
     resources: &SnapshotLoadResources,
@@ -1493,19 +1493,24 @@ pub fn apply_loaded_snapshot(
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SnapshotApplyReport {
     pub walls: usize,
+    /// Actual CreateRoofCmd requests queued for the canonical roof consumer.
     pub roofs: usize,
-    /// Roofs apply 后经 `RoofAssociations::rebuild` 建立的墙-屋顶关联数。
+    /// Legacy direct-application report field; command-based loading leaves0.
     pub roof_associations: usize,
     pub decorators: usize,
+    /// Actual color requests queued, with full IDs and custom=false.
     pub wall_colors: usize,
     pub gate_colors: usize,
     pub halftimber_colors: usize,
+    /// Actual InsertTreeCmd requests queued for the canonical tree consumer.
     pub trees: usize,
     pub terrain_strokes: usize,
     pub terrain_heights: bool,
     pub raster_slots: usize,
     pub stairs: bool,
     pub removed_supports: usize,
+    /// Number of unique deleted auto-clutter IDs restored to the canonical set.
+    pub auto_clutter: usize,
     /// 已解析但未完整应用的项（缺资源/缺消费者/未接线域等）。
     pub gaps: Vec<String>,
 }
@@ -1524,21 +1529,6 @@ pub struct PendingRoofAssociationRebuild {
 pub struct PendingRoofAssociationRow {
     pub entity: u64,
     pub wall: u64,
-}
-
-fn queue_pending_roof_associations(
-    world: &mut bevy_ecs::world::World,
-    spawned: &[(bevy_ecs::entity::Entity, WallId)],
-) {
-    world.insert_resource(PendingRoofAssociationRebuild {
-        rows: spawned
-            .iter()
-            .map(|(entity, wall)| PendingRoofAssociationRow {
-                entity: entity.to_bits(),
-                wall: wall.0,
-            })
-            .collect(),
-    });
 }
 
 /// 读取待重建行，等 `PublicWalls` 拥有全部墙行后调用
@@ -1622,33 +1612,29 @@ pub fn rebuild_pending_roof_associations(
     }
 }
 
-/// `init_game_state_from_snapshot` 0x1417a9c50 的 World 级写回入口。
-///
-/// 接线序按原版 apply 序：Version 门 → Walls → Roofs → Decorators → WallColors →
-/// GateColors → HalftimberColors → Terrain → TerrainHeightRange → Trees → Raster →
-/// Stairs → StairsRemovedSupports。
-///
-/// 域目标（O 面定案，其余按 crate 权威运行时 owner 接线并登记 U）：
-/// - Walls → [`load_snapshot_walls`]（语义 `Vec<(WallId, WallState)>` 直接插入，
-///   复刻 `InnerWalls::load_state` 0x14085ad80 的三断言/created/HashMap/max_id 语义；
-///   G1① §4：点列在堆上，无 0x70 内联打包）。
-/// - Decorators → `DecoratorStorage::restore_snapshot_with_id_gen` 0x140a20d70（O；
-///   内层 0x58B = 明文 DecoratorId + DecoratorHistoryState 0x50）。
-/// - Raster → `AllWorldRasterWrite::write_named` 0x14083ebe0（O）。
-/// - Terrain strokes → `TerrainEditingData`（O）；Terrain chunk → `TerrainHeightsData`
-///   （0x80000B 高度缓冲，`TerrainHeightRange` 同步写 min/max）。
-/// - Roofs → ECS `Roof` 组件实体（原版 init 的 0x40B 中间条目逐槽 U；
-///   apply 后以 `PublicWalls` 的 `PublicWallBuildingState` 行调用
-///   `RoofAssociations::rebuild`，缺墙行时记 gap 而不伪造关联）。
-/// - WallColors/GateColors/HalftimberColors → `WallColorIds`/`GateColorIds`/
-///   `HalftimberColorIds` 的 CPU 表（原版三段同构循环 → 0x18B 条目 Vec；稀疏写入等价 I）。
-/// - Trees → ECS 树实体（TreeComponent/TreeAnimation/TreeMoveBend）+ `TreeStorage`
-///   + `SpawnPrefabCmd`（索引/变体/位置/缩放/旋转/prefab 映射，G1① §3.2）。
-/// - Stairs → `StairsState::restore_snapshot` 0x1408ff590；StairsRemovedSupports →
-///   该资源边集。
-///
-/// 缺失的核心 owner（InnerWalls/DecoratorStorage/TerrainEditingData）→ Err；
-/// 可选宿主面缺失 → 记入 `gaps`，不伪造成功。
+/// Project the original snapshot Roof fields into its actual create request.
+fn snapshot_roof_request(roof: &Roof) -> crate::resources::roofs::commands::CreateRoofCmd {
+    use crate::resources::roofs::{commands::CreateRoofCmd, creation::RoofCreateRequestObserved};
+    let source = roof.observed();
+    // EventInstance metadata is owned by Bevy. Only the actual business fields
+    // below are projected from Roof, matching1417aa090..1417aa0de.
+    let mut record = [0; 64];
+    record[8..16].copy_from_slice(&source[..8]);
+    record[16..20].copy_from_slice(&source[0x50..0x54]);
+    record[20..32].copy_from_slice(&source[0x40..0x4c]);
+    record[32..60].copy_from_slice(&source[0x24..0x40]);
+    record[60] = 1;
+    CreateRoofCmd(RoofCreateRequestObserved::from_observed(record))
+}
+
+/// Apply to the canonical owners, preserving the original producer/consumer boundary.
+/// B order: walls; roof requests; decorator state/ID owner; three color requests;
+/// incoming terrain-stroke invalidations and owner replacement; removed supports;
+/// raster write/upload; terrain heights; tree requests; deleted-clutter set; stairs.
+/// Roof/tree entity construction and color/plaster effects belong to their real
+/// event consumers. Report counts for those domains mean queued requests, never
+/// proof that the downstream entities, geometry or GPU resources are ready.
+/// Missing mandatory owners/channels fail; other unresolved targets remain gaps.
 pub fn apply_loaded_snapshot_to_world(
     world: &mut bevy_ecs::world::World,
     resources: &SnapshotLoadResources,
@@ -1680,110 +1666,28 @@ pub fn apply_loaded_snapshot_to_world(
         )?;
     }
 
-    // ---- Roofs（capture: Query<&Roof, Without<RoofMarkedForDeletion>>）----
-    // G1① §2.3：原版把屋顶投影成 0x40B 中间条目 push 到目标 Vec（逐槽 U）；
-    // crate 侧等价 = spawn 带 `Roof` 组件的实体。shape tag≥2 由 `Roof` 的
-    // Deserialize 拒绝（validate 阶段即 fatal），不伪造。
+    // ---- Roofs ----
+    // B @1417aa042..1417aa17b emits CreateRoofCmd. The real roof consumer
+    // supplies animation, tile simulation, trigger, Nani, sounds and geometry;
+    // spawning a bare Roof here bypasses those owners and their lifecycle.
     if let Some(value) = section("Roofs") {
+        use crate::resources::roofs::commands::CreateRoofCmd;
         let roofs: Vec<Roof> = serde_json::from_value(value.clone())
             .map_err(|error| anyhow::anyhow!("Roofs section: {error}"))?;
-        let existing = {
-            let mut query = world.query::<&Roof>();
-            query.iter(world).count()
-        };
-        if existing != 0 {
-            report.gaps.push(format!(
-                "Roofs: {existing} pre-existing roof entities were not cleared (snapshot load expects the fresh session world)"
-            ));
-        }
-        let mut spawned = Vec::with_capacity(roofs.len());
-        for roof in &roofs {
-            let entity = world.spawn(roof.clone()).id();
-            spawned.push((entity, roof.wall_id()));
-        }
-        report.roofs = roofs.len();
-        if !spawned.is_empty() {
-            // 原版 init 在 Roofs 写回后重建 `RoofAssociations`（输入
-            // `PublicWallBuildingState` 行 + PublicWalls 顺序）。关联表的输入
-            // 是墙发布状态：没有对应 PublicWalls 行时不能伪造关联，显式记缺口。
-            if !world.contains_resource::<PublicWalls>() {
-                queue_pending_roof_associations(world, &spawned);
-                report.gaps.push(
-                    "Roofs: RoofAssociations deferred until PublicWalls publication (rebuild_pending_roof_associations)"
-                        .to_string(),
-                );
-            } else {
-                let changes = world.resource_scope(
-                    |world, public: bevy_ecs::prelude::Mut<PublicWalls>| {
-                        let mut projections: std::collections::HashMap<
-                            u64,
-                            PublicWallBuildingState,
-                        > = std::collections::HashMap::new();
-                        for (_, wall) in &spawned {
-                            if let Some(state) = public.get(*wall) {
-                                projections.insert(wall.0, state.building_projection());
-                            }
-                        }
-                        let missing = spawned
-                            .iter()
-                            .filter(|(_, wall)| !projections.contains_key(&wall.0))
-                            .count();
-                        if missing != 0 {
-                            queue_pending_roof_associations(world, &spawned);
-                            report.gaps.push(format!(
-                                "Roofs: RoofAssociations deferred until PublicWalls publication ({missing} roofs have no row yet)"
-                            ));
-                            return None;
-                        }
-                        let order: Vec<PublicWallId> =
-                            public.wall_ids().map(|wall| PublicWallId(wall.0)).collect();
-                        let rows: Vec<ResolvedRoofAssociation<'_>> = spawned
-                            .iter()
-                            .map(|(entity, wall)| ResolvedRoofAssociation {
-                                wall_id: PublicWallId(wall.0),
-                                entity: entity.to_bits(),
-                                marked: false,
-                                public_wall: projections.get(&wall.0),
-                            })
-                            .collect();
-                        if !world.contains_resource::<RoofAssociations>() {
-                            world.insert_resource(RoofAssociations::default());
-                        }
-                        let mut associations = world.resource_mut::<RoofAssociations>();
-                        match associations.rebuild(rows, &order, 0) {
-                            Ok(changes) => {
-                                report.roof_associations = spawned.len();
-                                Some(changes)
-                            }
-                            Err(error) => {
-                                queue_pending_roof_associations(world, &spawned);
-                                report.gaps.push(format!(
-                                    "Roofs: RoofAssociations rebuild failed ({error:?}); left pending"
-                                ));
-                                None
-                            }
-                        }
-                    },
-                );
-                if let Some(changes) = changes {
-                    // `AssociationChanges` 的真实消费者：无效屋顶请求 → 屋顶
-                    // 删除命令；墙存在性变化 → `WallRoofPresenceChanged`。
-                    use crate::resources::roofs::commands::{
-                        DeleteRoofCmd, WallRoofPresenceChanged,
-                    };
-                    world.init_resource::<bevy_ecs::event::Events<DeleteRoofCmd>>();
-                    world.init_resource::<bevy_ecs::event::Events<WallRoofPresenceChanged>>();
-                    for wall in &changes.invalid_roof_requests {
-                        world
-                            .resource_mut::<bevy_ecs::event::Events<DeleteRoofCmd>>()
-                            .send(DeleteRoofCmd(WallId(wall.0)));
-                    }
-                    for wall in &changes.wall_presence_changes {
-                        world
-                            .resource_mut::<bevy_ecs::event::Events<WallRoofPresenceChanged>>()
-                            .send(WallRoofPresenceChanged(WallId(wall.0)));
-                    }
+        if !roofs.is_empty() {
+            anyhow::ensure!(
+                world.contains_resource::<bevy_ecs::event::Events<CreateRoofCmd>>(),
+                "B Events<CreateRoofCmd> producer missing"
+            );
+            let mut requests = world.resource_mut::<bevy_ecs::event::Events<CreateRoofCmd>>();
+            for roof in roofs {
+                let source = roof.observed();
+                // Native iterator sentinel; validated file Roofs only have tags0/1.
+                if u32::from_le_bytes(source[8..12].try_into().unwrap()) == 2 {
+                    break;
                 }
+                requests.send(snapshot_roof_request(&roof));
+                report.roofs += 1;
             }
         }
     }
@@ -1833,22 +1737,32 @@ pub fn apply_loaded_snapshot_to_world(
         );
     }
 
-    // ---- 三色表 ----
-    for (key, applied) in [
-        ("WallColors", 0u8),
-        ("GateColors", 1),
-        ("HalftimberColors", 2),
-    ] {
-        let Some(value) = section(key) else {
-            continue;
-        };
+    // ---- Three color tables ----
+    // Original loops @1417aa1ee..1417aa498 preserve the full u64 wall ID
+    // and custom=false. Real consumers own table writes/plaster side effects.
+    for (key, family) in [("WallColors", 0u8), ("GateColors", 1), ("HalftimberColors", 2)] {
+        let Some(value) = section(key) else { continue; };
         let rows: Vec<(u64, u32)> = serde_json::from_value(value.clone())
             .map_err(|error| anyhow::anyhow!("{key}: {error}"))?;
-        let count = write_color_table(world, applied, &rows, key, &mut report)?;
-        match applied {
-            0 => report.wall_colors = count,
-            1 => report.gate_colors = count,
-            _ => report.halftimber_colors = count,
+        if rows.is_empty() { continue; }
+        use crate::resources::color_id::{SetWallColorIdCmd, SetGateColorIdCmd, SetHalftimberColorIdCmd};
+        macro_rules! queue_colors {
+            ($event:ty, $count:ident) => {{
+                anyhow::ensure!(
+                    world.contains_resource::<bevy_ecs::event::Events<$event>>(),
+                    "B Events<{}> producer missing", stringify!($event)
+                );
+                let mut events = world.resource_mut::<bevy_ecs::event::Events<$event>>();
+                for (id, color) in &rows {
+                    events.send(<$event>::new(WallId(*id), *color, 0));
+                }
+                report.$count = rows.len();
+            }};
+        }
+        match family {
+            0 => queue_colors!(SetWallColorIdCmd, wall_colors),
+            1 => queue_colors!(SetGateColorIdCmd, gate_colors),
+            _ => queue_colors!(SetHalftimberColorIdCmd, halftimber_colors),
         }
     }
 
@@ -1862,176 +1776,43 @@ pub fn apply_loaded_snapshot_to_world(
             .map_err(|error| anyhow::anyhow!("Terrain section: {error}"))?;
         let editing = section.into_editing_data();
         report.terrain_strokes = editing.0.strokes.len();
+        // B @1417aa4ba..1417aa60b iterates the incoming snapshot's map
+        // (+100), publishing its stroke IDs before moving that map into the
+        // existing TerrainEditingData owner. Invalidation schedules the real
+        // height recalculation/readback; assigning the resource alone loses it.
+        let stroke_ids: Vec<_> = editing.0.strokes.keys().copied().collect();
+        if !stroke_ids.is_empty() {
+            use crate::systems::terrain::draw_terrain_stroke::EvTerrainStrokeChanged;
+            anyhow::ensure!(
+                world.contains_resource::<bevy_ecs::event::Events<EvTerrainStrokeChanged>>(),
+                "B Events<EvTerrainStrokeChanged> producer missing"
+            );
+            world
+                .resource_mut::<bevy_ecs::event::Events<EvTerrainStrokeChanged>>()
+                .send_batch(stroke_ids.into_iter().map(EvTerrainStrokeChanged));
+        }
         *world.resource_mut::<TerrainEditingData>() = editing;
     }
 
-    // ---- Terrain 高度缓冲 + 范围 ----
-    let height_range = section("TerrainHeightRange")
-        .map(|value| serde_json::from_value::<Range<f32>>(value.clone()))
-        .transpose()
-        .map_err(|error| anyhow::anyhow!("TerrainHeightRange: {error}"))?;
-    if !loaded.terrain.is_empty() || height_range.is_some() {
-        use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
-        if !world.contains_resource::<TerrainHeightsData<TerrainHeightSsbo>>() {
+    // ---- StairsRemovedSupports (native order before raster restoration) ----
+    if let Some(value) = section("StairsRemovedSupports") {
+        let section: StairsRemovedSupportsJson = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("StairsRemovedSupports: {error}"))?;
+        if world.contains_resource::<StairsRemovedSupports>() {
+            let mut supports = world.resource_mut::<StairsRemovedSupports>();
+            supports.edges.clear();
+            for (a, b) in section.edges {
+                supports.record(crate::resources::stairs::stairs_state::StairGraphEdge::new(
+                    a, b,
+                ));
+            }
+            report.removed_supports = supports.edges.len();
+        } else {
             report.gaps.push(
-                "Terrain: TerrainHeightsData<TerrainHeightSsbo> resource missing; heights not written"
+                "StairsRemovedSupports: resource missing; removed-support set not restored"
                     .to_string(),
             );
-        } else {
-            if !loaded.terrain.is_empty() {
-                let heights: Vec<u16> = loaded
-                    .terrain
-                    .chunks_exact(2)
-                    .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
-                    .collect();
-                anyhow::ensure!(
-                    loaded.terrain.len() % 2 == 0,
-                    "Terrain: odd height buffer length {}",
-                    loaded.terrain.len()
-                );
-                let mut heights_data =
-                    world.resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>();
-                anyhow::ensure!(
-                    heights.len() == heights_data.heights().len(),
-                    "Terrain: expected {} u16 heights, got {}",
-                    heights_data.heights().len(),
-                    heights.len()
-                );
-                heights_data.heights_mut().copy_from_slice(&heights);
-                report.terrain_heights = true;
-            }
-            if let Some(range) = height_range.clone() {
-                world
-                    .resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>()
-                    .set_height_range(range.start, range.end);
-            }
         }
-    }
-
-    // ---- Trees ----
-    if let Some(value) = section("Trees") {
-        let trees = parse_trees_section(value)?;
-        let mut spawned = 0;
-        let mut empty_prefabs = 0usize;
-        let storage_present =
-            world.contains_resource::<crate::resources::tree_storage::TreeStorage>();
-        let events_present = world
-            .contains_resource::<bevy_ecs::event::Events<crate::systems::prefab::SpawnPrefabCmd>>();
-        let inserts_present = world.contains_resource::<
-            bevy_ecs::event::Events<crate::resources::history::tree_edit::InsertTreeCmd>,
-        >();
-        let mut insert_dispatched = 0usize;
-        for entry in &trees {
-            let position = entry.tree.position;
-            // 空 prefab：原版唯一解析点是 tree-tool `process_tree_cmds` 的
-            // InsertTreeCmd 分支（prefab == MISSING_TREE_PREFAB_NAME →
-            // `random_tree_prefab(id&1, deny_load, is_halloween, is_corrupted,
-            // false)`）。core 不能反向依赖 tree-tool，因此发真实
-            // `InsertTreeCmd`（实体/TreeStorage 由该 consumer 建立），而不是
-            // 自带一个无法解析的 SpawnPrefabCmd。consumer 未装配时退回手工
-            // spawn + sentinel + gap。
-            if entry.tree.prefab_name.is_empty() {
-                empty_prefabs += 1;
-                if inserts_present {
-                    world
-                        .resource_mut::<
-                            bevy_ecs::event::Events<
-                                crate::resources::history::tree_edit::InsertTreeCmd,
-                            >,
-                        >()
-                        .send(crate::resources::history::tree_edit::InsertTreeCmd {
-                            id: entry.index.0,
-                            rotation_degrees: entry.tree.rotation_degrees,
-                            variant: entry.tree.id,
-                            is_preplaced: entry.tree.is_preplaced,
-                            position,
-                            scale: entry.tree.scale,
-                            prefab_name: crate::resources::history::tree_edit::missing_prefab(),
-                        });
-                    insert_dispatched += 1;
-                    spawned += 1;
-                    continue;
-                }
-            }
-            let entity = world.spawn_empty().id();
-            world
-                .entity_mut(entity)
-                .insert(crate::components::trees::TreeComponent {
-                    id: entry.index.0,
-                    is_preplaced: entry.tree.is_preplaced,
-                });
-            // 快照不含生长进度；加载的树按已完成生长（preplaced 初值 1.0/1.0）恢复。
-            world
-                .entity_mut(entity)
-                .insert(crate::components::trees::TreeAnimation::preplaced());
-            world
-                .entity_mut(entity)
-                .insert(crate::components::trees::TreeMoveBend {
-                    position: glam::Vec2::new(position.x, position.z),
-                });
-            // 空 prefab 写 `MISSING_TREE_PREFAB_NAME` sentinel（原版 O：
-            // `resources/history/tree_edit.rs::missing_prefab`）：解析由 tree-tool
-            // `ui_place_tree::random_tree_prefab(id&1, deny_load, is_halloween,
-            // is_corrupted, false)` 在 spawn 前完成（core 不得反向依赖）。
-            let prefab_name = if entry.tree.prefab_name.is_empty() {
-                // 已在循环头计数；consumer 缺失时的回退路径仍写 sentinel。
-                crate::resources::history::tree_edit::missing_prefab()
-            } else {
-                entry.tree.prefab_name.clone()
-            };
-            if events_present {
-                world
-                    .resource_mut::<bevy_ecs::event::Events<crate::systems::prefab::SpawnPrefabCmd>>()
-                    .send(crate::systems::prefab::SpawnPrefabCmd {
-                        prefab_name: Some(
-                            crate::resources::render::mesh_atlas_library::PrefabName::new(
-                                &prefab_name,
-                            ),
-                        ),
-                        entity: Some(entity),
-                        position,
-                        scale: entry.tree.scale,
-                        rotation: entry.tree.rotation_degrees,
-                        variant: entry.tree.id as u32,
-                        one: 1.0,
-                        flags: [0; 0x10],
-                        mode: 1,
-                    });
-            } else {
-                report.gaps.push(
-                    "Trees: Events<SpawnPrefabCmd> missing; prefab instances not requested"
-                        .to_string(),
-                );
-            }
-            if storage_present {
-                world
-                    .resource_mut::<crate::resources::tree_storage::TreeStorage>()
-                    .insert(
-                        entry.index,
-                        crate::resources::tree_storage::TreeStorageEntry { entity, position },
-                    );
-            }
-            spawned += 1;
-        }
-        if empty_prefabs != 0 {
-            if insert_dispatched != 0 {
-                report.gaps.push(format!(
-                    "Trees: {insert_dispatched}/{empty_prefabs} empty-prefab entries dispatched as InsertTreeCmd(MISSING_TREE_PREFAB_NAME); tree-tool process_tree_cmds random_tree_prefab resolution must be registered"
-                ));
-            }
-            if insert_dispatched != empty_prefabs {
-                let fallback = empty_prefabs - insert_dispatched;
-                report.gaps.push(format!(
-                    "Trees: {fallback} empty-prefab entries fell back to SpawnPrefabCmd sentinel (Events<InsertTreeCmd> missing); resolution owned by tree-tool"
-                ));
-            }
-        }
-        if !storage_present && !trees.is_empty() {
-            report
-                .gaps
-                .push("Trees: TreeStorage resource missing; index table not rebuilt".to_string());
-        }
-        report.trees = spawned;
     }
 
     // ---- Raster（O：AllWorldRasterWrite::write 0x14083ebe0）----
@@ -2082,7 +1863,113 @@ pub fn apply_loaded_snapshot_to_world(
         }
     }
 
-    // ---- Stairs / StairsRemovedSupports ----
+    // B @1417aa796 calls AllWorldRasterWrite::write and then sends the unit
+    // upload request @1417aa815..1417aa82c, including an empty raster list.
+    // The upload consumer owns transfer to the actual mapped staging buffers.
+    if section("Raster").is_some() || !loaded.rasters.is_empty() {
+        use crate::resources::world_raster::UploadWorldRasterBuffersToStagingCmd;
+        anyhow::ensure!(
+            world.contains_resource::<bevy_ecs::event::Events<UploadWorldRasterBuffersToStagingCmd>>(),
+            "B Events<UploadWorldRasterBuffersToStagingCmd> producer missing"
+        );
+        world
+            .resource_mut::<bevy_ecs::event::Events<UploadWorldRasterBuffersToStagingCmd>>()
+            .send(UploadWorldRasterBuffersToStagingCmd);
+    }
+
+    // ---- Terrain 高度缓冲 + 范围 ----
+    let height_range = section("TerrainHeightRange")
+        .map(|value| serde_json::from_value::<Range<f32>>(value.clone()))
+        .transpose()
+        .map_err(|error| anyhow::anyhow!("TerrainHeightRange: {error}"))?;
+    if !loaded.terrain.is_empty() || height_range.is_some() {
+        use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
+        if !world.contains_resource::<TerrainHeightsData<TerrainHeightSsbo>>() {
+            report.gaps.push(
+                "Terrain: TerrainHeightsData<TerrainHeightSsbo> resource missing; heights not written"
+                    .to_string(),
+            );
+        } else {
+            if !loaded.terrain.is_empty() {
+                let heights: Vec<u16> = loaded
+                    .terrain
+                    .chunks_exact(2)
+                    .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+                    .collect();
+                anyhow::ensure!(
+                    loaded.terrain.len() % 2 == 0,
+                    "Terrain: odd height buffer length {}",
+                    loaded.terrain.len()
+                );
+                let mut heights_data =
+                    world.resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>();
+                anyhow::ensure!(
+                    heights.len() == heights_data.heights().len(),
+                    "Terrain: expected {} u16 heights, got {}",
+                    heights_data.heights().len(),
+                    heights.len()
+                );
+                heights_data.heights_mut().copy_from_slice(&heights);
+                report.terrain_heights = true;
+            }
+            if let Some(range) = height_range.clone() {
+                world
+                    .resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>()
+                    .set_height_range(range.start, range.end);
+            }
+        }
+    }
+
+    // ---- Trees ----
+    // B @1417aa881..1417aa9f5 sends every captured TreeData through the
+    // actual InsertTreeCmd consumer. It owns missing-name resolution, complete
+    // entity components, ambience, water sounds and replacement/despawn policy.
+    if let Some(value) = section("Trees") {
+        use crate::resources::history::tree_edit::InsertTreeCmd;
+        let trees = parse_trees_section(value)?;
+        if !trees.is_empty() {
+            anyhow::ensure!(
+                world.contains_resource::<bevy_ecs::event::Events<InsertTreeCmd>>(),
+                "B Events<InsertTreeCmd> producer missing"
+            );
+            let mut requests = world.resource_mut::<bevy_ecs::event::Events<InsertTreeCmd>>();
+            for entry in trees {
+                requests.send(InsertTreeCmd {
+                    id: entry.index.0,
+                    position: entry.tree.position,
+                    scale: entry.tree.scale,
+                    rotation_degrees: entry.tree.rotation_degrees,
+                    variant: entry.tree.id,
+                    is_preplaced: entry.tree.is_preplaced,
+                    prefab_name: if entry.tree.prefab_name.is_empty() {
+                        crate::resources::history::tree_edit::missing_prefab()
+                    } else {
+                        entry.tree.prefab_name
+                    },
+                });
+                report.trees += 1;
+            }
+        }
+    }
+
+    // ---- AutoClutter ----
+    // B init_game_state_from_snapshot @1417aaa5e..1417aaaea moves the
+    // captured deleted-ID owner (+148..178) over the existing resource. This
+    // is replacement, including an empty set, not a union with another session.
+    if let Some(value) = section("AutoClutter") {
+        let deleted: std::collections::HashSet<u64> = serde_json::from_value(value.clone())
+            .map_err(|error| anyhow::anyhow!("AutoClutter: {error}"))?;
+        anyhow::ensure!(
+            world.contains_resource::<crate::systems::ui_clutter::DeletedAutoClutter>(),
+            "B DeletedAutoClutter constructor missing"
+        );
+        report.auto_clutter = deleted.len();
+        world
+            .resource_mut::<crate::systems::ui_clutter::DeletedAutoClutter>()
+            .0 = deleted;
+    }
+
+    // ---- Stairs ----
     // B init_game_state_from_snapshot 0x1417a9c50 calls StairsState::restore_snapshot
     // (0x1417aab6b) unconditionally; restore_snapshot ends with make_backup, which
     // capture_game_snapshot_save_data later asserts via `res.stairs.backup_accurate()`.
@@ -2113,90 +2000,7 @@ pub fn apply_loaded_snapshot_to_world(
                 .push("Stairs: StairsState resource missing; graph not restored".to_string());
         }
     }
-    if let Some(value) = section("StairsRemovedSupports") {
-        let section: StairsRemovedSupportsJson = serde_json::from_value(value.clone())
-            .map_err(|error| anyhow::anyhow!("StairsRemovedSupports: {error}"))?;
-        if world.contains_resource::<StairsRemovedSupports>() {
-            let mut supports = world.resource_mut::<StairsRemovedSupports>();
-            supports.edges.clear();
-            for (a, b) in section.edges {
-                supports.record(crate::resources::stairs::stairs_state::StairGraphEdge::new(
-                    a, b,
-                ));
-            }
-            report.removed_supports = supports.edges.len();
-        } else {
-            report.gaps.push(
-                "StairsRemovedSupports: resource missing; removed-support set not restored"
-                    .to_string(),
-            );
-        }
-    }
-
     Ok(report)
-}
-
-/// 写一张颜色表（`iter_nondefault` 的逆）：`[[index, ColorId], …]` → `Vec<u32>`。
-/// `table` 选择 0=Wall/1=Gate/2=Halftimber（capture 侧同为 CPU Vec<u32>）。
-fn write_color_table(
-    world: &mut bevy_ecs::world::World,
-    table: u8,
-    rows: &[(u64, u32)],
-    key: &str,
-    report: &mut SnapshotApplyReport,
-) -> anyhow::Result<usize> {
-    use crate::resources::color_id::{GateColorIds, HalftimberColorIds, WallColorIds};
-    let resource_missing = match table {
-        0 => !world.contains_resource::<WallColorIds>(),
-        1 => !world.contains_resource::<GateColorIds>(),
-        _ => !world.contains_resource::<HalftimberColorIds>(),
-    };
-    if resource_missing {
-        report.gaps.push(format!(
-            "{key}: color table resource missing; entries not written"
-        ));
-        return Ok(0);
-    }
-    let mut applied = 0;
-    match table {
-        0 => apply_color_rows(
-            &mut world.resource_mut::<WallColorIds>().0,
-            rows,
-            key,
-            &mut applied,
-        )?,
-        1 => apply_color_rows(
-            &mut world.resource_mut::<GateColorIds>().0,
-            rows,
-            key,
-            &mut applied,
-        )?,
-        _ => apply_color_rows(
-            &mut world.resource_mut::<HalftimberColorIds>().0,
-            rows,
-            key,
-            &mut applied,
-        )?,
-    }
-    Ok(applied)
-}
-
-fn apply_color_rows(
-    table: &mut Vec<u32>,
-    rows: &[(u64, u32)],
-    key: &str,
-    applied: &mut usize,
-) -> anyhow::Result<()> {
-    for (index, color) in rows {
-        let index = usize::try_from(*index)
-            .map_err(|_| anyhow::anyhow!("{key}: negative index {index}"))?;
-        let Some(slot) = table.get_mut(index) else {
-            anyhow::bail!("{key}: index {index} out of range ({})", table.len());
-        };
-        *slot = *color;
-        *applied += 1;
-    }
-    Ok(())
 }
 
 /// init 写回：Stairs 快照应用（O：`StairsState::restore_snapshot` 0x1408ff590）。
@@ -3310,11 +3114,11 @@ mod tests {
     }
 
     #[test]
-    fn world_apply_restores_walls_roofs_colors_trees_and_raster() {
-        use crate::components::trees::{TreeAnimation, TreeComponent, TreeMoveBend};
+    fn world_apply_restores_authority_and_queues_real_domain_consumers() {
+        use crate::components::trees::TreeComponent;
         use crate::resources::color_id::{GateColorIds, WallColorIds};
         use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
-        use crate::resources::tree_storage::{TreeStorage, TreeStorageIndex};
+        use crate::resources::tree_storage::TreeStorage;
         use crate::resources::walls::InnerWalls;
         use crate::resources::world_raster::DirtyTilePublisher;
         use crate::resources::world_raster_defs::{
@@ -3373,7 +3177,18 @@ mod tests {
         world.init_resource::<GateColorIds>();
         world.init_resource::<crate::resources::color_id::HalftimberColorIds>();
         world.init_resource::<TreeStorage>();
+        world.init_resource::<bevy_ecs::event::Events<crate::resources::roofs::commands::CreateRoofCmd>>();
+        world.init_resource::<bevy_ecs::event::Events<crate::resources::history::tree_edit::InsertTreeCmd>>();
+        world.init_resource::<bevy_ecs::event::Events<crate::resources::color_id::SetWallColorIdCmd>>();
+        world.init_resource::<bevy_ecs::event::Events<crate::resources::color_id::SetGateColorIdCmd>>();
+        world.init_resource::<bevy_ecs::event::Events<crate::resources::color_id::SetHalftimberColorIdCmd>>();
         world.init_resource::<bevy_ecs::event::Events<crate::systems::prefab::SpawnPrefabCmd>>();
+        world.init_resource::<bevy_ecs::event::Events<
+            crate::systems::terrain::draw_terrain_stroke::EvTerrainStrokeChanged,
+        >>();
+        world.init_resource::<bevy_ecs::event::Events<
+            crate::resources::world_raster::UploadWorldRasterBuffersToStagingCmd,
+        >>();
         world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
         world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
         world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
@@ -3396,30 +3211,34 @@ mod tests {
                 .resource::<InnerWalls>()
                 .contains(crate::resources::walls::WallId(7))
         );
-        {
-            let mut query = world.query::<&Roof>();
-            assert_eq!(query.iter(&world).count(), 1);
-        }
-        assert_eq!(world.resource::<WallColorIds>().0[5], 9);
-        assert_eq!(world.resource::<GateColorIds>().0[6], 11);
-        assert_eq!(
-            world
-                .resource::<crate::resources::color_id::HalftimberColorIds>()
-                .0[4],
-            3
-        );
-        let entity = {
-            let storage = world.resource::<TreeStorage>();
-            let entry = storage
-                .get(TreeStorageIndex(3))
-                .expect("tree index restored");
-            assert_eq!(entry.position, glam::Vec3::new(1.0, 2.0, 3.0));
-            entry.entity
-        };
-        assert!(world.get::<TreeComponent>(entity).is_some());
-        assert_eq!(world.get::<TreeComponent>(entity).unwrap().id, 3);
-        assert!(world.get::<TreeAnimation>(entity).is_some());
-        assert!(world.get::<TreeMoveBend>(entity).is_some());
+        // The producer never constructs bare entities or bypasses the color
+        // consumers. Those systems own their real components and side effects.
+        use bevy_ecs::event::Events;
+        use crate::resources::color_id::{SetWallColorIdCmd, SetGateColorIdCmd, SetHalftimberColorIdCmd};
+        let mut roofs = world.resource_mut::<Events<crate::resources::roofs::commands::CreateRoofCmd>>()
+            .drain().collect::<Vec<_>>();
+        assert_eq!(roofs.len(), 1);
+        let request = roofs.pop().unwrap();
+        assert_eq!(request.0.wall_id().0, 7);
+        assert_eq!(u32::from_le_bytes(request.0.record()[16..20].try_into().unwrap()), 13);
+        assert_eq!(request.0.record()[60], 1, "snapshot restore flag");
+        let walls: Vec<_> = world.resource_mut::<Events<SetWallColorIdCmd>>().drain().collect();
+        let gates: Vec<_> = world.resource_mut::<Events<SetGateColorIdCmd>>().drain().collect();
+        let half: Vec<_> = world.resource_mut::<Events<SetHalftimberColorIdCmd>>().drain().collect();
+        assert_eq!((walls[0].wall_id().0, walls[0].color, walls[0].custom), (5, 9, 0));
+        assert_eq!((gates[0].wall_id().0, gates[0].color, gates[0].custom), (6, 11, 0));
+        assert_eq!((half[0].wall_id().0, half[0].color, half[0].custom), (4, 3, 0));
+        assert_eq!(world.resource::<WallColorIds>().0[5], 0);
+        assert_eq!(world.resource::<GateColorIds>().0[6], 0);
+        let trees: Vec<_> = world.resource_mut::<Events<crate::resources::history::tree_edit::InsertTreeCmd>>()
+            .drain().collect();
+        assert_eq!(trees.len(), 1);
+        assert_eq!(trees[0].id, 3);
+        assert_eq!(trees[0].position, glam::Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(trees[0].variant, 4);
+        assert_eq!(trees[0].prefab_name, "tree_a");
+        assert_eq!(world.query::<&Roof>().iter(&world).count(), 0);
+        assert_eq!(world.query::<&TreeComponent>().iter(&world).count(), 0);
         assert_eq!(
             world.resource::<TerrainEditingData>().0.next_index,
             2,

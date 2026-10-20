@@ -57,4 +57,37 @@ pub fn build_startup_resources(app: &mut bevy_app::App) {
     system_decorator::ui_systems::register_ui_resources(app);
     app.init_resource::<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>();
     app.add_event::<system_decorator::handle_external_decorator_cmds::ExternalDecoratorCmd>();
+    app.init_resource::<system_decorator::blueprint::PrevDecoratorBlueprints>();
+    app.init_resource::<country_core::systems::collision::WindowAutoClutterCandidates>();
+}
+
+/// Recovered subset of original Update/GameSystemSet25. This installs the
+/// actual terrain clutter pipeline; the other native generator/assembly members
+/// remain separate gaps. The resource condition waits for the real asset owner.
+/// The main host must not install this subset before the real stair-attached
+/// cache producer is recovered: the generic clutter generator also accepts dst4.
+pub fn build_recovered_visual_systems(app: &mut bevy_app::App) {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use bevy_ecs::schedule::common_conditions::resource_exists;
+    use country_core::{systems::GameSystemSet, resources::clutter_meshes::ClutterMeshes};
+    use system_decorator::{blueprint::{clear_blueprints, instantiate_blueprint_colliders,
+        instantiate_blueprints, copy_blueprints_to_prev},
+        cache_decorator_transforms::cache_decorator_transforms,
+        decorator_visual::decorator_clutter::generate_decorator_clutter};
+    // Original parent 1403451af/1b4/253: Update set25. Constructor
+    // 1400d52f0 writes cache, clear, generators, collider-only in this order;
+    // its later 1403d6ce0 chain_ignore_deferred installs fullvisual then copy.
+    app.add_systems(bevy_app::Update, (
+        cache_decorator_transforms,
+        clear_blueprints,
+        system_decorator::decorator_visual::maintain_visual_entities::clear_out_visual_entities,
+        generate_decorator_clutter,
+        instantiate_blueprint_colliders,
+        instantiate_blueprints,
+        copy_blueprints_to_prev,
+    ).chain_ignore_deferred()
+        .in_set(GameSystemSet(25))
+        .after(country_core::resources::walls::decorator::unleash_decorator_op_events)
+        .after(system_decorator::ui_systems::ui_decorator_affordance_dispatch::ui_dispatch_decorator_affordance)
+        .run_if(resource_exists::<ClutterMeshes>));
 }

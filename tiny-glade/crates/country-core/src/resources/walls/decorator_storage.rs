@@ -721,17 +721,22 @@ impl DecoratorStorage {
         out
     }
 
-    /// 0x140a1e720（I）：清除所有桶的修改追踪。
+    /// B 0x140a1e720 (791 B): end-of-frame tracking reset. Authoritative
+    /// records, bucket owners and the decorator-to-storage index survive.
+    /// The bucket's similarly named method is the separate destructive
+    /// `Decorators::clear` adapter and must not be called from this consumer.
     pub fn clear_modification_tracking(&mut self) {
-        for d in self.per_wall.values_mut() {
-            d.clear_modification_tracking();
+        assert!(!self.immutable, "assertion failed: !self.immutable");
+        for bucket in self
+            .per_wall
+            .values_mut()
+            .chain(self.terrain.iter_mut())
+            .chain(self.stairs.iter_mut())
+        {
+            bucket.modified_ids.clear();
+            bucket.removed_ids.clear();
         }
-        if let Some(d) = &mut self.terrain {
-            d.clear_modification_tracking();
-        }
-        if let Some(d) = &mut self.stairs {
-            d.clear_modification_tracking();
-        }
+        self.removed.clear();
     }
 
     /// 0x140a1ea40（O，21KB）：墙合并迁移。fresh（2026-10-17）：双源 `remove_entry`

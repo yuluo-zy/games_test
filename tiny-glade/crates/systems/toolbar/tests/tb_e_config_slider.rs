@@ -4,7 +4,7 @@
 //! - `deserialize_optional` is the transparent `Option<T>` field seed used by
 //!   `LabelConfig` (all six optional fields) and read through
 //!   `read_node_config_from_file`/template instantiation.
-//! - `LogSlider::value_to_param` is `log2(value).clamp(min, max)` and the inverse
+//! - `LogSlider::value_to_param` is `(log2(value)-base).clamp(min, max)` and the inverse
 //!   of `param_to_value` (`exp2(clamp(param) + log2_base)`).
 use serde::Deserialize;
 use toolbar::mei::config::{LabelConfig, TextAlign, deserialize_optional};
@@ -85,8 +85,8 @@ fn value_to_param_is_log2_clamped_to_the_slider_range() {
     for param in [-1.0, 0.0, 1.5, 2.0] {
         assert!((slider.value_to_param(slider.param_to_value(param)) - param).abs() < 1e-5);
     }
-    // log2_base shifts param_to_value's exponent, so value_to_param recovers
-    // `param + log2_base` (clamped to the range), not the bare parameter.
+    // A nonzero base must be removed by the inverse. The native focus slider
+    // uses base -3; omitting this step shifts both display and reset position.
     let shifted = LogSlider {
         min: -4.0,
         max: 4.0,
@@ -95,9 +95,14 @@ fn value_to_param_is_log2_clamped_to_the_slider_range() {
     };
     for param in [-1.0, 0.0, 0.5] {
         let value = shifted.param_to_value(param);
-        assert!((shifted.value_to_param(value) - (param + 3.0)).abs() < 1e-5);
+        assert!((shifted.value_to_param(value) - param).abs() < 1e-5);
     }
     assert_eq!(shifted.param_to_value(2.0), 32.0);
+    let focus = LogSlider { min: -2.0, max: 2.0, _pad: 0.5, log2_base: -3.0 };
+    for (value, parameter) in [(0.03125, -2.0), (0.0625, -1.0), (0.125, 0.0), (0.25, 1.0), (0.5, 2.0)] {
+        assert_eq!(focus.value_to_param(value), parameter);
+        assert_eq!(focus.param_to_value(parameter), value);
+    }
 }
 
 #[test]

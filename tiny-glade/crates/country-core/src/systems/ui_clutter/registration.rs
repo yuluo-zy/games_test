@@ -17,8 +17,7 @@ use super::{
     },
     ui_autoclutter::{AutoClutterChildTable, StartPlaceDecoClutterInteraction, ui_convert_autoclutter_to_decoclutter},
     ui_focus_decoclutter::{
-        DecoClutterFocusState, DecoClutterFocusUi, RequestMoveClutter, RequestRotateDecorator,
-        ui_focus_decoclutter,
+        RequestMoveClutter, RequestRotateDecorator,
     },
 };
 use crate::resources::walls::decorator_storage::DecoratorStorage;
@@ -54,8 +53,6 @@ pub fn register_ui_clutter_resources(world: &mut World) {
     world.init_resource::<PinnedDecoClutterBuffers>();
     world.init_resource::<PinHitDedup>();
     world.init_resource::<Events<ShowPinnedDecoClutter>>();
-    world.init_resource::<DecoClutterFocusState>();
-    world.init_resource::<DecoClutterFocusUi>();
     // 右键 probe 目标表（rmb handler 消费）+ 入口直达路径记录。
     world.init_resource::<AutoClutterEntityIndex>();
     world.init_resource::<RmbAutoClutterDirect>();
@@ -78,6 +75,5 @@ pub fn add_ui_clutter_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Sched
     schedule.add_systems((
         debug_spawn_all_clutter::<S>,
         decoclutter_show_pins,
-        ui_focus_decoclutter,
     ));
 }

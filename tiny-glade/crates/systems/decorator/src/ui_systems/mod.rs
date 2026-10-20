@@ -41,6 +41,11 @@ pub mod ui_rotate_lantern;
 pub mod ui_stairs_misc;
 pub mod ui_stairs_viz;
 
+#[cfg(test)]
+mod native_interaction_goldens;
+#[cfg(test)]
+mod native_rotation_goldens;
+
 use bevy_ecs::prelude::*;
 use country_core::resources::walls::decorator::DecoratorId;
 
@@ -120,7 +125,7 @@ pub fn register_ui_systems<C: Send + Sync + 'static>(app: &mut bevy_app::App) {
         ui_decorator_affordance_dispatch::ui_dispatch_decorator_affordance,
         ui_move_decorator::ui_move_decorator,
         ui_place_decorator::ui_place_decorator,
-        ui_rotate_lantern::ui_rotate_decorator,
+        ui_rotate_lantern::ui_rotate_decorator::<C>,
         ui_change_stair_height::ui_change_stair_height::<C>,
         ui_change_chimney_height::ui_change_chimney_height::<C>,
     ));

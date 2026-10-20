@@ -95,6 +95,7 @@ pub fn ui_change_chimney_height<C: Send + Sync + 'static>(
                 },
                 info,
                 extra: [0; 0x20],
+                change: None,
                 dst: None,
             };
             apply_decorator_op(
