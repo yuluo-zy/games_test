@@ -199,6 +199,12 @@ pub fn write_access_buffer_concurrent<T: LibrarySsbo>(
 pub trait SsboType {
     /// 该 SSBO 的 RG 缓冲名字哈希。
     fn rg_buffer_hash() -> u64;
+    /// `get_rg_buffer<T>` 对库里登记名的断言类型名（O：`type_name::<T>()`，`T` 是真实元素类型）。
+    /// 只作为载体的类型（本仓库里按 PDB 名建的标签/载体）必须返回它所代表的真实元素类型的名字，
+    /// 否则库里登记的名字与断言对不上。
+    fn rg_type_name() -> &'static str {
+        core::any::type_name::<Self>()
+    }
 }
 
 /// `ssbo_to_rg_handle`（内联）：`&T` → RG 句柄 hash（兼容旧 trait）。

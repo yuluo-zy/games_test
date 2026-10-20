@@ -116,6 +116,9 @@ impl SsboType for ShadowMaskMeanBuffer {
     fn rg_buffer_hash() -> u64 {
         0x480e_afc7_a5a8_a812
     }
+    fn rg_type_name() -> &'static str {
+        core::any::type_name::<crate::systems::render_loop::compute_passes::apply_screen_shadows::ShadowMaskMeanSsbo>()
+    }
 }
 
 /// 当前档的三个 f32（`cfg + 0x30/0x34/0x38`，语义 U）。

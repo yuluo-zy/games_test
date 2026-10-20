@@ -407,7 +407,9 @@ impl SsboType for GateColorIdSsbo {
 }
 
 impl StorageElement for HalftimberColorIdSsbo {
-    const NAME: &'static str = "HalftimberColorIds";
+    /// O：`get_rg_buffer<HalftimberColorIdSsbo>`（0x141630190）的 SsboId 立即数 0x0cf3b7d1045fdc98 =
+    /// xxh3_64("HalftimberColorIdSsbo")；原版这一个的槽名带 `Ssbo` 后缀（与 Wall/Gate/Roof 不同）。
+    const NAME: &'static str = "HalftimberColorIdSsbo";
     const BUFFER_LEN: usize = MAX_NUMBER_OF_WALLS;
 }
 
@@ -428,6 +430,14 @@ impl SsboType for HalftimberColorIdSsbo {
 mod tests {
     use super::*;
     use crate::asset_libraries::ssbo_library::SsboId;
+
+    #[test]
+    fn halftimber_slot_hash_is_the_observed_exe_immediate() {
+        assert_eq!(
+            <HalftimberColorIdSsbo as SsboType>::rg_buffer_hash(),
+            0x0cf3_b7d1_045f_dc98
+        );
+    }
 
     #[test]
     fn color_ssbo_full_names_match_the_memcmp_assert_lengths() {

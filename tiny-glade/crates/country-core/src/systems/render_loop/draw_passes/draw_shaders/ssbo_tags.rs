@@ -32,7 +32,12 @@ pub trait ReadSsboExt<'p>: Sized {
 
 impl<'p> ReadSsboExt<'p> for DrawBuilder<'p> {
     fn read_ssbo<T: DrawSsbo>(self, binding_name_hash: u64) -> Self {
-        self.read_storage_buffer::<T>(T::SLOT_NAME, binding_name_hash)
+        self.read_storage_buffer_typed(
+            T::SLOT_NAME,
+            T::rg_buffer_hash(),
+            T::TYPE_NAME,
+            binding_name_hash,
+        )
     }
 }
 
@@ -215,14 +220,14 @@ ssbo_tag!(
 ssbo_tag!(
     /// `resources::rocky_terrain::RockyTerrainTriangleSSBO`（0x14162e990）。
     RockyTerrainTriangleTag,
-    "country_core::resources::rocky_terrain::RockyTerrainTriangleSSBO",
+    "country_core::resources::rocky_terrain::RockyTerrainTriangleSsbo",
     "Rocky Terrain Triangles",
     0x2a397285cdc5c9db
 );
 ssbo_tag!(
     /// `resources::rocky_terrain::RockyTerrainVertexSSBO`（0x14162f290）。
     RockyTerrainVertexTag,
-    "country_core::resources::rocky_terrain::RockyTerrainVertexSSBO",
+    "country_core::resources::rocky_terrain::RockyTerrainVertexSsbo",
     "Rocky Terrain Vertices",
     0x1c5c4204bf6436bb
 );

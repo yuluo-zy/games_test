@@ -1605,6 +1605,26 @@ use country_core::render::pass_builder::{
 // Compute PassEnv requests must use the same session that owns pass imports,
 // uploads, named history and final submission. A second GraphRgResources with a
 // separate session would make otherwise valid resource ids refer to another frame.
+/// 原版渲染图里资源名只是调试标签，同一帧内同名资源可以多次创建（例如每个 Nani 外部子集各建一个
+/// "Dispatch args"）；rhapsody 的 rg 要求名字唯一，所以这里在重名时追加 `#n` 后缀重试。
+/// `declare` 在发现重名时尚未修改任何状态，重试是安全的。
+fn declare_label_unique(
+    backend: &mut rhapsody::rg::VulkanGraphBackend,
+    graph: &mut rhapsody::rg::RenderGraph,
+    name: &str,
+    spec: rhapsody::rg::ResourceSpec,
+) -> Result<rhapsody::rg::ResourceHandle, rhapsody::rg::BuildError> {
+    use rhapsody::rg::BuildError;
+    let mut attempt = 1u32;
+    loop {
+        let label = if attempt == 1 { name.to_owned() } else { format!("{name}#{attempt}") };
+        match backend.declare(graph, &label, spec.clone()) {
+            Err(BuildError::DuplicateResourceName(_)) => attempt += 1,
+            other => return other,
+        }
+    }
+}
+
 impl RgResources for GraphPasses<'_> {
     fn create_raw_texture(&mut self, name: &str, desc: &TextureDesc) -> RgTexture {
         let tables = self
@@ -1621,14 +1641,13 @@ impl RgResources for GraphPasses<'_> {
             .expect("frame resources require the frame driver's session")
             .borrow_mut()
             .expect("frame session already borrowed during declaration");
-        let handle = session
-            .backend
-            .declare(
-                &mut self.graph.borrow_mut(),
-                name,
-                ResourceSpec::Image(native),
-            )
-            .unwrap_or_else(|error| panic!("create_raw_texture({name}): {error:?}"));
+        let handle = declare_label_unique(
+            &mut session.backend,
+            &mut self.graph.borrow_mut(),
+            name,
+            ResourceSpec::Image(native),
+        )
+        .unwrap_or_else(|error| panic!("create_raw_texture({name}): {error:?}"));
         RgTexture {
             resource: handle.raw(),
             desc: *desc,
@@ -1644,14 +1663,13 @@ impl RgResources for GraphPasses<'_> {
             .expect("frame resources require the frame driver's session")
             .borrow_mut()
             .expect("frame session already borrowed during declaration");
-        let handle = session
-            .backend
-            .declare(
-                &mut self.graph.borrow_mut(),
-                name,
-                ResourceSpec::Buffer(native),
-            )
-            .unwrap_or_else(|error| panic!("create_raw_buffer({name}): {error:?}"));
+        let handle = declare_label_unique(
+            &mut session.backend,
+            &mut self.graph.borrow_mut(),
+            name,
+            ResourceSpec::Buffer(native),
+        )
+        .unwrap_or_else(|error| panic!("create_raw_buffer({name}): {error:?}"));
         RgBuffer {
             resource: handle.raw(),
         }

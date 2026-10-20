@@ -666,9 +666,21 @@ impl<'p> DrawBuilder<'p> {
         self.read_storage_buffer_hash(
             slot_name,
             T::rg_buffer_hash(),
-            core::any::type_name::<T>(),
+            T::rg_type_name(),
             binding_name_hash,
         )
+    }
+
+    /// 与 [`Self::read_storage_buffer`] 相同，但 `type_name` 由调用方给出：标签类型没有自己的
+    /// `type_name::<T>()` 语义，库里登记的是真实 SSBO 元素类型的名字（O：`get_rg_buffer<T>` 的断言）。
+    pub fn read_storage_buffer_typed(
+        self,
+        slot_name: &'static str,
+        rg_hash: u64,
+        type_name: &'static str,
+        binding_name_hash: u64,
+    ) -> Self {
+        self.read_storage_buffer_hash(slot_name, rg_hash, type_name, binding_name_hash)
     }
 
     fn read_storage_buffer_hash(

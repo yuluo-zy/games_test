@@ -249,6 +249,32 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
         bridge.shader_backend(),
         &mut final_post,
     );
+    // Same shader set as ProductionRenderer::new: the world tail (ui_2d, text, vermeer,
+    // painterly, blit) is part of the compiled production graph.
+    country_core::startup::load_shaders::load_ui_shaders(&shaders, bridge.shader_backend());
+    country_core::startup::startup_blit::startup_blit(&shaders, bridge.shader_backend());
+    struct TailShaders<'a> {
+        library: &'a country_core::asset_libraries::shader_library::AssetShaderLibrary,
+        backend: &'a dyn country_core::render::shader::boundary::ShaderBackend,
+    }
+    impl country_core::systems::render_loop::painterly::ShaderLoader for TailShaders<'_> {
+        fn load_shader_into_library(&mut self, path: &'static str, name: &'static str) {
+            country_core::startup::load_shaders::load_shader_into_library(
+                self.library,
+                self.backend,
+                path,
+                name,
+            );
+        }
+    }
+    country_core::systems::render_loop::painterly::startup_painterly(&mut TailShaders {
+        library: &shaders,
+        backend: bridge.shader_backend(),
+    });
+    country_core::systems::render_loop::vermeer::startup_vermeer(&mut TailShaders {
+        library: &shaders,
+        backend: bridge.shader_backend(),
+    });
     bridge.install_asset_libraries(app.world_mut())?;
     tiny_glade::gameplay_startup::install_gameplay_device_runtime(
         &mut app,

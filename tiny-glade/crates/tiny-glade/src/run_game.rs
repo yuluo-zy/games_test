@@ -649,6 +649,12 @@ pub fn run_game_thread(
         country_core::startup::load_glade_grading::load_glade_grading
             .after(country_core::startup::startup_session::load_game_session),
     );
+    // 原版 OnEnter(Game) 会话链（add_game_startup_systems 0x140941150，tuple 0x140839b80）第 7 成员。
+    app.add_systems(
+        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+        country_core::startup::load_textures::load_glade_texture_mappings
+            .after(country_core::startup::startup_session::load_game_session),
+    );
     // Device-owned per-session scene producers are installed together by
     // gameplay_startup, in the original seven-item order. Do not preload bare
     // meshes here: cached names would bypass their full animation/drawable work.

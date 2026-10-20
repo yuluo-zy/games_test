@@ -173,11 +173,7 @@ pub use crate::resources::gui::DebugGui as DebugGuiView;
 /// `systems::wall::eraser::EraserSizeMultiplier`（TypeId 0x0ae77a86a2c6cefc/0xf5509a56b32e81d0）：首个 `f32`。crate 里不存在。
 pub use crate::resources::walls::EraserSizeMultiplier;
 /// `resources::roofs::roof_highlight::RoofHighlight`（TypeId 0x9311cf2688353878/0xfd54118f9a9ee3d4）：`u32 @+0`、`tag @+8`。
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct RoofHighlight {
-    pub value: u32,
-    pub tag: u8,
-}
+pub use super::draw_callbacks_a::RoofHighlight;
 /// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c，真实类型 `glade: Gap`）：`byte @+0x58`（变体）与
 /// 字节序列（`ptr @+8`、`len @+0x10`）。
 #[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
