@@ -5,7 +5,8 @@
 //! `DrawPacket::new` / `DrawBuilder::new(variant 0)` → `optional_uniform<[u32;2]>(0x531bb9318eea4971 = 视口名, extent_2d(target))` →
 //! `bind_texture_to_draw_builder(TextureFromDisk(0x75b4be0d27cfedd3), 绑定名 0x11ba5697cc40b3dd, 访问 0x1d, 无 view)` →
 //! 状态 `byte0 &= 0x7f`、`byte3 = (byte3 & 0x9f) | 0x40` → `draw_no_vao(6)` → `render`。
-//! `build`：函数体仅 `ret`（8 B 的占位，ICF 合并），不注册任何东西。
+//! `build`：8 B 尾调用 `SubApp::add_systems`（Startup）注册 `logo_overlay::startup` 0x1414b4b10，它内联
+//! `"/logo_overlay.raster.hlsl"` + `"logo_overlay"` 的着色器注册；宿主侧由 `load_shaders::COMMON_SHADERS` 承担。
 
 use crate::render::pass_builder::draw_builder::{ACCESS_SAMPLED_IMAGE, BindTexture, DrawBuilder};
 use crate::render::pass_builder::draw_stream::DrawPacket;
@@ -26,7 +27,8 @@ pub const LOGO_VERTEX_COUNT: u32 = 6;
 pub struct LogoOverlayPlugin;
 
 impl LogoOverlayPlugin {
-    /// O 0x1408a5f40：8 字节，只有 `ret`。
+    /// O 0x1408a5f40：`MOV RCX,RDX; JMP 0x140b65940`（`add_systems<Startup, logo_overlay::startup>`）。
+    /// 着色器注册见 `startup::load_shaders::COMMON_SHADERS`，此处不再重复。
     pub fn build(&self) {}
 }
 

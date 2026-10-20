@@ -39,7 +39,7 @@ pub fn load_ui_shaders(library: &AssetShaderLibrary, backend: &dyn ShaderBackend
     }
 }
 
-pub const COMMON_SHADERS: [(&str, &str); 13] = [
+pub const COMMON_SHADERS: [(&str, &str); 14] = [
     ("/clearing/meadow_flower.raster.hlsl", "meadow_flower"),
     ("/vertex_color.raster.hlsl", "vertex_color_shader"),
     ("/dashed_line.raster.hlsl", "dashed_line"),
@@ -62,6 +62,10 @@ pub const COMMON_SHADERS: [(&str, &str); 13] = [
         "/stairs_foliage_exclusion.raster.hlsl",
         "stairs_foliage_exclusion",
     ),
+    // O `logo_overlay::startup` 0x1414b4b10（`LogoOverlayPlugin::build` 0x1408a5f40 尾调用 add_systems，
+    // Startup）：内联 new_vertex_fragment("/logo_overlay.raster.hlsl") + new_draw("logo_overlay") + add_raster。
+    // 与本表其它项等价，追加在末尾以保持 final_post 的槽位下标 4。
+    ("/logo_overlay.raster.hlsl", "logo_overlay"),
 ];
 
 /// 第五项 final_post 的句柄立即交给宿主槽位，后续注册不改变其身份。
