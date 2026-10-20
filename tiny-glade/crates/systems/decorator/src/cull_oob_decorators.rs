@@ -130,15 +130,8 @@ pub fn auto_allow_decorator_culling<C: Send + Sync + 'static>(
     if !history.is_recording() {
         return;
     }
-    // 先收集再写（O：allowed_ids 集扩展；避免借用冲突）。
-    let ids: Vec<u32> = archivist
-        .walls
-        .values()
-        .flat_map(|d| d.items.keys().copied())
-        .chain(archivist.special1.iter().flat_map(|d| d.items.keys().copied()))
-        .chain(archivist.special2.iter().flat_map(|d| d.items.keys().copied()))
-        .collect();
-    archivist.culling.allowed_ids.extend(ids);
+    // 0x14080d3d0 尾跳 0x140b2bd30 decorator_cull_allow。
+    archivist.decorator_cull_allow();
 }
 
 /// `cull_oob_decorators`（0x14080d540，O 结构）：越界装饰剔除主系统。

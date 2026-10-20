@@ -143,33 +143,28 @@ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
             )
     }
 
-    /// 0x140b2bc00（fresh 反编译 2026-10-17）：walls 探针（GlobalId 键，stride
-    /// 0x98 = 8 键 + 0x90 桶）命中后 `fold` 该墙 decorators 集；任一 id 通过
-    /// `is_decorator_cull_allowed` 即 true。未命中 false。
-    pub fn decorator_cull_allow_wall(&self, wall: WallId) -> bool {
-        self.walls
-            .get(&RecoveredWallId(wall.0))
-            .map(|decorators| {
-                decorators
-                    .items
-                    .keys()
-                    .any(|id| self.is_decorator_cull_allowed(*id))
-            })
-            .unwrap_or(false)
+    /// 0x140b2bc00（重新核对 2026-10-20，`&mut self`，无返回值）：参数为
+    /// `(archivist, &wall, &DecoratorStorage.walls)`。在**存储**的墙表里探针该墙（miss 则什么都
+    /// 不做），命中则 `Map::fold`（`fold_impl` 0x140b76260 → `HashMap::insert` 0x1402c9200）
+    /// 把该墙桶里的全部装饰 id 插入 `archivist+0x30`（`culling.allowed_ids`）。
+    /// 调用者：decorator_on_rectangle_edited / merge_walls ×2 / ui_adjust_wall_height_mode /
+    /// ui_edit_roof_ridge_dir。此前误写成读 archivist 自身 `walls` 的谓词，调用方各自
+    /// 复刻了真实语义，现统一回这里。
+    pub fn decorator_cull_allow_wall(&mut self, wall: WallId, storage: &LiveDecoratorStorage) {
+        if let Some(decorators) = storage.get(DecoratorStorageAddr::Wall(wall)) {
+            self.culling
+                .allowed_ids
+                .extend(decorators.decorators().keys().copied());
+        }
     }
 
-    /// 0x140b2bd30（fresh 反编译 2026-10-17）：`Map::fold` 单态，对 stairs 桶
-    /// （special2）逐 id 做 cull 判定。桶缺失 false。
-    pub fn decorator_cull_allow_stairs(&self) -> bool {
-        self.special2
-            .as_ref()
-            .map(|decorators| {
-                decorators
-                    .items
-                    .keys()
-                    .any(|id| self.is_decorator_cull_allowed(*id))
-            })
-            .unwrap_or(false)
+    /// 0x140b2bd30（重新核对 2026-10-20，`&mut self`，无返回值；仅被
+    /// `auto_allow_decorator_culling` 0x14080d3d0 尾跳调用）：`Map::fold` 单态
+    /// 0x141293280 含三处 `HashMap::insert`，即 walls + special1 + special2 三条链的
+    /// 全部归档装饰 id 插入 `culling.allowed_ids`。此前误写成“stairs 桶谓词”。
+    pub fn decorator_cull_allow(&mut self) {
+        let ids: Vec<u32> = self.all_decorators().map(|(id, _)| *id).collect();
+        self.culling.allowed_ids.extend(ids);
     }
 }
 
@@ -597,19 +592,26 @@ mod tests {
     }
 
     #[test]
-    fn decorator_cull_allow_wall_and_stairs_fold_buckets() {
+    fn decorator_cull_allow_wall_inserts_storage_bucket_ids_and_allow_all_inserts_archived() {
         let mut archivist = empty_archivist();
+        // 原版放行读的是存储里的墙桶，不是 archivist 自己的 walls。
+        let mut storage = LiveDecoratorStorage::default();
+        storage
+            .per_wall
+            .insert(WallId(1), live_bucket(10, 0));
+        archivist.decorator_cull_allow_wall(WallId(2), &storage);
+        assert!(archivist.culling.allowed_ids.is_empty());
+        archivist.decorator_cull_allow_wall(WallId(1), &storage);
+        assert!(archivist.culling.allowed_ids.contains(&10));
+        assert!(!archivist.is_decorator_cull_allowed(11));
         archivist
             .walls
-            .insert(RecoveredWallId(1), tracked_bucket(10));
+            .insert(RecoveredWallId(1), tracked_bucket(11));
         archivist.special2 = Some(tracked_bucket(20));
-        assert!(!archivist.decorator_cull_allow_wall(WallId(1)));
-        assert!(!archivist.decorator_cull_allow_stairs());
-        archivist.culling.allowed_ids.insert(10);
-        archivist.culling.allowed_ids.insert(20);
-        assert!(archivist.decorator_cull_allow_wall(WallId(1)));
-        assert!(archivist.decorator_cull_allow_stairs());
-        assert!(!archivist.decorator_cull_allow_wall(WallId(2)));
+        archivist.decorator_cull_allow();
+        for id in [10, 11, 20] {
+            assert!(archivist.is_decorator_cull_allowed(id));
+        }
     }
 
     #[test]

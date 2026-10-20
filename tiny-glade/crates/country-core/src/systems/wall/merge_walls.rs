@@ -84,18 +84,6 @@ fn archive_wall(archivist: &mut LiveDecoratorArchivist, storage: &DecoratorStora
     }
 }
 
-/// 0x140b2bc00 `decorator_cull_allow_wall(archivist, wall, storage)`: folds the
-/// wall bucket's decorator ids into the archivist's allowed-cull set (+0x30).
-/// A missing bucket does nothing.
-fn cull_allow_wall(archivist: &mut LiveDecoratorArchivist, storage: &DecoratorStorage, wall: WallId) {
-    if let Some(decorators) = storage.per_wall.get(&wall) {
-        archivist
-            .culling
-            .allowed_ids
-            .extend(decorators.decorators().keys().copied());
-    }
-}
-
 /// Points of `state` as input vectors, reversed when `reverse`.
 fn oriented_points(state: &WallState, reverse: bool) -> Vec<Vec2> {
     let mut points: Vec<Vec2> = state
@@ -216,9 +204,9 @@ pub fn merge_walls(
         }
 
         archive_wall(&mut archivist, &storage, ev.wall_a);
-        cull_allow_wall(&mut archivist, &storage, ev.wall_a);
+        archivist.decorator_cull_allow_wall(ev.wall_a, &storage);
         archive_wall(&mut archivist, &storage, ev.wall_b);
-        cull_allow_wall(&mut archivist, &storage, ev.wall_b);
+        archivist.decorator_cull_allow_wall(ev.wall_b, &storage);
         archive_wall(&mut archivist, &storage, merged_id);
         storage.on_walls_merged(ev.wall_a, ev.wall_b, merged_id);
 

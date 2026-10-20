@@ -302,17 +302,6 @@ fn archive_wall(archivist: &mut LiveDecoratorArchivist, storage: &DecoratorStora
     }
 }
 
-/// 0x140b2bc00 `decorator_cull_allow_wall(archivist, wall, storage)`: folds the
-/// wall bucket's decorator ids into the archivist's allowed-cull set (+0x30).
-fn cull_allow_wall(archivist: &mut LiveDecoratorArchivist, storage: &DecoratorStorage, wall: WallId) {
-    if let Some(decorators) = storage.per_wall.get(&wall) {
-        archivist
-            .culling
-            .allowed_ids
-            .extend(decorators.decorators().keys().copied());
-    }
-}
-
 /// State of one half of a split wall (0x140a76210..0x140a762d4): the sliced
 /// curve, shape tag 2, `height`, and everything else from the removed wall
 /// except style (collapses to `style == 1`), source +0x65 (the public row's
@@ -439,7 +428,7 @@ pub fn wall_splitter<S: Send + Sync + 'static>(
         SplitAction::Start => {
             *eraser = WallEraserArchivist::new();
             archive_wall(&mut archivist, &storage, wall);
-            cull_allow_wall(&mut archivist, &storage, wall);
+            archivist.decorator_cull_allow_wall(wall, &storage);
             let snapshot = inner_walls.get_unwrapped(wall).snapshot().clone();
             eraser.cache_if_original_wall(wall, &snapshot, ErasedRange { low: 0.0, high: 1.0 });
             Ok(())
@@ -518,7 +507,7 @@ pub fn wall_splitter<S: Send + Sync + 'static>(
 
             eraser.add_split_event_pieces(wall, &pieces);
             archive_wall(&mut archivist, &storage, wall);
-            cull_allow_wall(&mut archivist, &storage, wall);
+            archivist.decorator_cull_allow_wall(wall, &storage);
             let children: Vec<(WallId, f32, f32)> = pieces
                 .iter()
                 .map(|&(id, low, high)| (WallId(id), low, high))

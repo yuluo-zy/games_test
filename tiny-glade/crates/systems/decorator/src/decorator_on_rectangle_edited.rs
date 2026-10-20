@@ -120,12 +120,8 @@ pub fn decorator_on_rectangle_edited<C: Send + Sync + 'static>(
     for event in events.read() {
         // O：归档当前装饰（标签 "rectangle edit"）。
         archivist.archive_current_decorators_in_storages(std::slice::from_ref(&*storage));
-        // O：cull 放行查询（原返回值未参与后续写入；保留调用）。
-        let cull_allowed = archivist.decorator_cull_allow_wall(event.wall);
-        log::trace!(
-            "decorator_on_rectangle_edited: wall {:?} cull_allowed={cull_allowed}",
-            event.wall
-        );
+        // O 0x140819ddb：把该墙存储里的装饰 id 放行进 culling.allowed_ids（&mut，无返回值）。
+        archivist.decorator_cull_allow_wall(event.wall, &storage);
         let Some(state) = walls.get(event.wall) else {
             log::warn!(
                 "decorator_on_rectangle_edited: wall {:?} missing from PublicWalls",

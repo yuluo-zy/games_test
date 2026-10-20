@@ -149,19 +149,6 @@ fn archive_wall_and_terrain(
     archivist.archive_storage_decorators(1, terrain_source, None);
 }
 
-/// B `DecoratorArchivist::decorator_cull_allow_wall`（0x140b2bc00，签名
-/// `(&mut self, wall, &storage.walls)`）：该墙在存储里的全部装饰 id 插入
-/// `culling.allowed_ids`（`archivist+0x30`）。墙不在存储里则什么都不做。
-/// 注意：`DecoratorArchivist::decorator_cull_allow_wall(&self, wall) -> bool` 是另一语义
-/// （谓词），与该原版函数不同，所以这里直接写 `allowed_ids`。
-fn cull_allow_wall(archivist: &mut LiveDecoratorArchivist, wall: WallId, storage: &DecoratorStorage) {
-    if let Some(decorators) = storage.get(DecoratorStorageAddr::Wall(wall)) {
-        for id in decorators.decorators().keys() {
-            archivist.culling.allowed_ids.insert(*id);
-        }
-    }
-}
-
 /// 0x140ac7180 的 `Map::fold`：存储 `+0x90` 的地形桶（若存在）里的装饰 id 全部放行。
 fn cull_allow_terrain(archivist: &mut LiveDecoratorArchivist, storage: &DecoratorStorage) {
     if let Some(decorators) = storage.get(DecoratorStorageAddr::Terrain) {
@@ -240,7 +227,7 @@ pub fn ui_adjust_wall_height_mode(
         cache.current_height = Some(constrained_extra);
         cache.wall = Some(wall);
         archive_wall_and_terrain(&mut archivist, &storage, wall);
-        cull_allow_wall(&mut archivist, wall, &storage);
+        archivist.decorator_cull_allow_wall(wall, &storage);
         cull_allow_terrain(&mut archivist, &storage);
     }
 
