@@ -1541,7 +1541,18 @@ impl PassHost for RasterPassHost {
                 } else {
                     rhapsody::rg::DepthAccess::ReadOnly
                 });
-                a.view = match rh_view_desc(&texture, &attachment_accesses[colors.len()].view) {
+                a.view = match rh_view_desc(&texture, &attachment_accesses[colors.len()].view)
+                    .and_then(|mut view| {
+                        // A depth/stencil attachment keeps every aspect of its format: the
+                        // DEPTH-only default of `rh_view_desc` is the sampled-view default
+                        // (original 0x140bdcba0) and would drop the stencil writes that the
+                        // deferred material pass tests.
+                        if attachment_accesses[colors.len()].view.aspect_mask.is_none() {
+                            view.aspect =
+                                rhapsody::resource::TextureViewDesc::new(&texture.desc)?.aspect;
+                        }
+                        Ok(view)
+                    }) {
                     Ok(view) => view,
                     Err(error) => {
                         ctx.report_error(error);
