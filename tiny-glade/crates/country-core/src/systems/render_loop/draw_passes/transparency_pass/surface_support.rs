@@ -488,6 +488,10 @@ impl Cp {
         if inactive { self.pass = self.pass.inactive_texture_contents(hash); }
         self
     }
+    pub fn inactive_buffer_when(mut self, hash: u64, inactive: bool) -> Self {
+        if inactive { self.pass = self.pass.inactive_storage_buffer_contents(hash); }
+        self
+    }
     pub fn original_undefined_texture_when(mut self, hash: u64, undefined: bool) -> Self {
         if undefined { self.pass = self.pass.allow_undefined_texture_contents(hash); }
         self

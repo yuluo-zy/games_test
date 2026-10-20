@@ -731,11 +731,20 @@ impl ComputePass {
             .rev()
             .find(|range| range.resource_index == binding)
             .expect("inactive storage contents requires an existing graph binding");
+        // `read_storage_buffer` 产生 BufferRead；`read_rg_storage_buffer` 产生 Buffer，
+        // 此时要求该资源在本 pass 里没有任何写访问。
+        let non_writing = match self.bindings.get(range.access_index as usize) {
+            Some(PassBinding::BufferRead { .. }) => true,
+            Some(PassBinding::Buffer { resource }) => self
+                .builder
+                .accesses
+                .iter()
+                .filter(|access| access.resource == *resource)
+                .all(|access| !pass_resource_access::access_is_write(access.access)),
+            _ => false,
+        };
         assert!(
-            matches!(
-                self.bindings.get(range.access_index as usize),
-                Some(PassBinding::BufferRead { .. })
-            ),
+            non_writing,
             "inactive storage contents requires a non-writing buffer binding"
         );
         if !self.inactive_texture_bindings.contains(&range.access_index) {

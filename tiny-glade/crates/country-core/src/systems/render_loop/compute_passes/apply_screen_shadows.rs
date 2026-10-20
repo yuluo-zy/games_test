@@ -128,8 +128,16 @@ pub fn apply_screen_shadows(env: &mut PassEnv<'_>, inputs: &ScreenShadowInputs<'
         .uniform(KEY_BOOL, true)
         .bind_texture(HASH_PRESET_11, &TexturePreset(0x11), TEX_READ)
         .bind_texture(HASH_CURRENT, &&cur, TEX_WRITE)
-        .write_storage_buffer::<ShadowMaskHistogramSsbo>(HASH_HISTOGRAM)
-        .dispatch_2d(cur.desc.extent[0], cur.desc.extent[1]);
+        .write_storage_buffer::<ShadowMaskHistogramSsbo>(HASH_HISTOGRAM);
+    // 原版 apply_screen_shadows SPV：history_tex 唯一的 SampleLevel 位于
+    // `use_history`（需 history_valid != 0 && frame_index != 0）分支内；
+    // history_valid==0 时不可达。保留原绑定与同步，仅声明该读不要求内容。
+    let recorded = if !pair.fresh {
+        recorded.inactive_texture_contents(HASH_PREVIOUS)
+    } else {
+        recorded
+    };
+    let recorded = recorded.dispatch_2d(cur.desc.extent[0], cur.desc.extent[1]);
     env.record(recorded);
     cur
 }

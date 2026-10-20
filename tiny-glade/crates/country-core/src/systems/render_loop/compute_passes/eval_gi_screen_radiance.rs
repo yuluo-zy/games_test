@@ -108,8 +108,18 @@ pub fn eval_gi_screen_radiance(
             &WriteTextureUnchecked(stats_pair.current),
             0x32,
         )
-        .bind_texture(binding::OUTPUT_TEX, &WriteTextureUnchecked(radiance), 0x37)
-        .dispatch_2d(half.width, half.height);
+        .bind_texture(binding::OUTPUT_TEX, &WriteTextureUnchecked(radiance), 0x37);
+    // 原版 reproject_screen_radiance SPV：`history_valid != 0 && frame_index != 0`
+    // 不成立时只写统计并提前返回，history_tex / temporal_stats_tex 的全部采样
+    // 都在该分支之后；保留原绑定与同步，仅声明无效历史下这两个读不要求内容。
+    let reproject = if history_valid == 0 {
+        reproject
+            .inactive_texture_contents(binding::HISTORY_TEX)
+            .inactive_texture_contents(TEMPORAL_STATS_TEX)
+    } else {
+        reproject
+    };
+    let reproject = reproject.dispatch_2d(half.width, half.height);
 
     let filter = env
         .pass(FILTER.0, FILTER.1)

@@ -852,6 +852,20 @@ pub struct ShaderBindings {
     frame_globals: Arc<Mutex<Option<Arc<crate::frame_setup::FrameGlobals>>>>,
 }
 impl ShaderBindings {
+    /// Owner and range of the FrameConstants block behind set 1/b1.
+    pub fn frame_storage_view(
+        &self,
+    ) -> rhapsody::Result<(Arc<rhapsody::resource::Buffer>, u64, u64)> {
+        self.frame_globals
+            .lock()
+            .as_ref()
+            .map(|globals| globals.storage_view())
+            .ok_or_else(|| {
+                rhapsody::Error::invalid_usage(
+                    "frame constants storage binding requires the frame globals",
+                )
+            })
+    }
     pub fn parameters(&self, push: &[u8]) -> rhapsody::Result<BindlessParameters> {
         let mut parameters = BindlessParameters::new(self.heap.clone(), self.abi.clone(), push)?;
         for (location, element, lease) in &self.samplers {
@@ -2603,6 +2617,34 @@ impl GraphPasses<'_> {
             external_accesses.push((handle, range, code));
             upsert_shader_resource(&mut external_resources, external.binding, resource)?;
         }
+        // Original global set 1/b1 is a storage view of the per-frame FrameConstants
+        // block (wall/roof chain). Unlike the uniform b0 view, a storage lease must be
+        // covered by a declared graph access of its owner, so import the exact frame
+        // constants range as a shader read of this pass.
+        if entry
+            .bindings
+            .abi
+            .slot(BindingLocation { set: 1, binding: 1 })
+            .is_some()
+        {
+            let (buffer, offset, size) = entry.bindings.frame_storage_view()?;
+            let mut session = self
+                .cache_session
+                .as_mut()
+                .map(GraphSession::borrow_mut)
+                .transpose()?
+                .ok_or_else(|| {
+                    rhapsody::Error::unsupported(
+                        "frame constants storage view requires the frame driver's session",
+                    )
+                })?;
+            let handle = session.import_frame_buffer(&mut graph, buffer, 0x1a)?;
+            external_accesses.push((
+                handle,
+                rhapsody::rg::AccessRange::Buffer { offset, size },
+                0x1a,
+            ));
+        }
         // BDA pointers are not descriptor bindings, but their physical reads
         // still participate in this graph's synchronization and owner program.
         // The same import/session owns cancellation and completion retirement.
@@ -2681,6 +2723,26 @@ impl GraphPasses<'_> {
                 }
                 preserves_texture = preserving_texture_bindings.contains(&(index as u8));
                 let resource = graph.resource_handle(access.resource)?;
+                // A storage-image (write) view that is not `bind_individual_mips` and
+                // names no level count is a single `RWTexture2D[Array]` operand: the
+                // shader can only address the view's base mip, so the pass touches
+                // exactly one level even though the native view spans the remaining
+                // chain. Declaring the whole chain would demand (preserving RMW) or
+                // claim (plain write) contents of levels the pass can never reach.
+                let storage_single_level = if let CorePassBinding::ImageView { write: true, .. } =
+                    &bindings[index]
+                {
+                    view.level_count.is_none() && !view.bind_individual_mips
+                } else {
+                    false
+                };
+                let view_for_range;
+                let view = if storage_single_level {
+                    view_for_range = view.level_count(Some(1));
+                    &view_for_range
+                } else {
+                    view
+                };
                 compute_view_range(
                     graph.declaration().resources[resource.raw() as usize].descriptor,
                     view,
@@ -2695,6 +2757,7 @@ impl GraphPasses<'_> {
                         .enumerate()
                         .find_map(|(index, binding)| match binding {
                             CorePassBinding::BufferRead { resource }
+                            | CorePassBinding::Buffer { resource }
                                 if !used_image_views[index]
                                     && *resource == access.resource
                                     && !rhapsody::command::is_write(access.access) =>

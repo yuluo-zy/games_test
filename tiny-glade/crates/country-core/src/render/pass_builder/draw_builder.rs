@@ -630,6 +630,48 @@ impl<'p> DrawBuilder<'p> {
         self
     }
 
+    /// A confirmed shader branch performs no fetch from this storage buffer
+    /// (current-host metadata, mirrors `ComputePass::inactive_storage_buffer_contents`).
+    /// Reuses the per-binding inactive-content list; the binding, native access,
+    /// synchronization and owner stay present, and an active alias of the same
+    /// pass slot still tightens the graph requirement back to a content read.
+    pub fn inactive_storage_buffer_contents(mut self, hash: u64) -> Self {
+        let Some(binding) = self.lookup_binding(hash) else {
+            return self;
+        };
+        assert!(
+            !self
+                .packet
+                .get()
+                .undefined_texture_bindings
+                .contains(&binding),
+            "inactive binding is distinct from an undefined content read"
+        );
+        let access = self
+            .packet
+            .get()
+            .accesses
+            .iter()
+            .rev()
+            .find(|access| access.binding_index == binding)
+            .expect("inactive raster buffer requires its actual graph binding");
+        let actual = &self.pass.bindings[access.slot as usize];
+        assert!(
+            !self
+                .pass
+                .texture_slots
+                .values()
+                .any(|slot| *slot == access.slot)
+                && !access_is_write(actual.access_type),
+            "inactive raster buffer requires a non-writing buffer binding"
+        );
+        let packet = self.packet.get_mut();
+        if !packet.inactive_texture_bindings.contains(&binding) {
+            packet.inactive_texture_bindings.push(binding);
+        }
+        self
+    }
+
     /// `bind_external_storage_buffer`（0x140906400）：名字命中后取 `get_vk_buffer`（`None` → `Option::unwrap`
     /// panic，draw_builder.rs:189:89），把 `{buffer, 0, u64::MAX}` + 句柄克隆 `insert` 进 `packet.bindings`。
     pub fn bind_external_storage_buffer(mut self, name_hash: u64, buffer: &ManagedHandle) -> Self {

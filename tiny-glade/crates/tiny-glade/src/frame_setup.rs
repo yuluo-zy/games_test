@@ -34,6 +34,16 @@ pub struct FrameGlobals {
     sampled: Vec<(u32, Arc<TextureView>)>,
 }
 impl FrameGlobals {
+    /// Physical owner and range of the FrameConstants block bound through the
+    /// storage view at original set 1/b1 (see `write_to`).
+    pub fn storage_view(&self) -> (Arc<rhapsody::resource::Buffer>, u64, u64) {
+        (
+            self.constants.buffer.clone(),
+            self.constants.offset,
+            self.constants.size,
+        )
+    }
+
     pub fn write_to(
         &self,
         parameters: &mut BindlessParameters,
@@ -53,6 +63,27 @@ impl FrameGlobals {
             }
             parameters.write(
                 frame,
+                0,
+                BindlessResource::Buffer {
+                    buffer: self.constants.buffer.clone(),
+                    offset: self.constants.offset,
+                    size: self.constants.size,
+                },
+            )?;
+        }
+        // Original global set 1/b1: the wall/roof chain reads the very same FrameConstants
+        // bytes through a storage view (`frame_constants_storage_buffer`,
+        // `StructuredBuffer`/`ByteAddressBuffer` register(t1, space1) in
+        // wall/generate_draw_lists, nani_instanced_roof, roof_tiles_gravity).
+        let frame_storage = BindingLocation { set: 1, binding: 1 };
+        if let Some(slot) = abi.slot(frame_storage) {
+            if slot.kind != BindingKind::StorageBuffer {
+                return Err(rhapsody::Error::invalid_usage(
+                    "original frame constants storage binding has the wrong kind",
+                ));
+            }
+            parameters.write(
+                frame_storage,
                 0,
                 BindlessResource::Buffer {
                     buffer: self.constants.buffer.clone(),

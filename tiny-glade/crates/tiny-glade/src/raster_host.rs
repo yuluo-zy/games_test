@@ -2247,9 +2247,12 @@ fn raster_content_intents<'a>(
                     preserving.push(actual.resource_index);
                 }
             }
-            if unused && (!texture || access_is_write(actual.access_type)) {
+            // Inactive intent covers non-writing texture reads and non-writing
+            // storage-buffer reads (the buffer variant mirrors compute's shared
+            // per-binding inactive list).
+            if unused && access_is_write(actual.access_type) {
                 return Err(rhapsody::Error::invalid_usage(
-                    "raster inactive metadata requires an actual texture read",
+                    "raster inactive metadata requires an actual non-writing read",
                 ));
             }
             if !access_is_write(actual.access_type) {

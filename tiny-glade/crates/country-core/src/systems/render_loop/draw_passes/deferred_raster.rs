@@ -189,8 +189,22 @@ pub fn bind_all<'p, Tri: SsboType, Meta: SsboType, Bvh: SsboType, Wall: SsboType
     b = b.read_storage_buffer::<SpatialResolveOffsetsBuffer>("SpatialResolveOffsets", S_SPATIAL);
     b = b.read_storage_buffer::<LanternBuffer>("LanternSsbo", S_LANTERN);
     b = sampled(b, &i.arg12, B_ARG12);
+    // 原版 *_light_sun_sky SPV：rdi_reservoir_tex 的所有 Load 都在 `lantern_count > 0`
+    // 分支内；`restir_sample_direct_lights` 恰在 lantern_count == 0 时只创建从不写入的
+    // 1x1 占位纹理（同一实例数来源）。保留绑定与同步，仅声明该读不要求内容。
+    if lantern_instance_count == 0 {
+        b = b.inactive_texture_contents(B_ARG12);
+    }
     b = b.read_rg_storage_buffer(R_RT_BUFFER_0, i.rt_buffers[0]);
     b = b.read_rg_storage_buffer(R_RT_BUFFER_1, i.rt_buffers[1]);
+    // 原版 *_light_sun_sky SPV：light_indirection_grid / grid_light_indices 的全部 Load
+    // 都在 `lantern_count > 0` 分支内；`bin_lights` 在同一实例数为 0 时只建从不写入的
+    // 4 字节占位缓冲。保留绑定与同步，仅声明该读不要求内容。
+    if lantern_instance_count == 0 {
+        b = b
+            .inactive_storage_buffer_contents(R_RT_BUFFER_0)
+            .inactive_storage_buffer_contents(R_RT_BUFFER_1);
+    }
     b = b.bind_color_library::<ColorLibrarySsbo>();
     b = b.bind_ray_tracing::<Tri, Meta, Bvh, Wall>();
     b = preset(b, 9, B_PRESET_9);

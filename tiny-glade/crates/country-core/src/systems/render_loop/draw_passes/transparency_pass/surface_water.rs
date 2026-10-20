@@ -100,6 +100,10 @@ pub fn finish_water_surface(env: &mut SurfaceEnv<'_>, prepared: WaterSurfacePrep
         .compute_pass(WATER_RT_PASS_NAME, WATER_RT_SHADER_URI)
         .read_rg(names::WATER_RT_COUNT_BUFFER, &count)
         .read_rg(names::WATER_RT_RAY_BUFFER, &ray)
+        // 原版 deferred_rt SPV：`gtid.x >= water_rt_count_buffer[12]` 先返回，射线缓冲只读
+        // `gtid.x < count` 的元素；count 缓冲已清零，只有 "Water plane" 栅格的绘制项
+        // 才会增加它并写射线。水面列表为空时没有任何写者，count 恒为 0，射线读不可达。
+        .inactive_buffer_when(names::WATER_RT_RAY_BUFFER, i.lists.list(SURFACE_LIST).is_empty())
         .tex(names::HALF_DEPTH_TEX, i.half_depth)
         .tex(names::TAA_HISTORY_TEX, i.taa_history)
         .uniform_u32(names::HISTORY_VALID, history_valid)

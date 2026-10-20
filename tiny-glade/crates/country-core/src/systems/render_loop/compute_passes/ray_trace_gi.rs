@@ -107,6 +107,14 @@ pub fn ray_trace_gi(
         .bind_texture(binding::SSGI_TEX, &ssgi, 0x19)
         .bind_texture(binding::HALF_DEPTH_TEX, &half_depth, 0x19)
         .bind_texture(binding::HALF_VIEW_NORMAL_TEX, &half_normal, 0x19);
+    // 原版 trace_gi_candidates SPV：taa_history_tex 唯一的 SampleLevel 位于
+    // `history_valid != 0 && frame_index != 0 && result_hit` 分支内；history_valid==0
+    // 时不可达。保留原绑定与同步，仅在历史无效时声明该读不要求内容。
+    let trace = if history_valid == 0 {
+        trace.inactive_texture_contents(binding::TAA_HISTORY_TEX)
+    } else {
+        trace
+    };
     let trace = bind_world_inputs(trace)
         .bind_texture(
             CANDIDATE_RADIANCE_TEX,
