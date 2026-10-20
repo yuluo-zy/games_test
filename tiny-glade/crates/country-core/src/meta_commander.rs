@@ -97,6 +97,11 @@ pub struct MetaCommander {
     // connected. This is retained for the existing is_profiling API only.
     profiler_sinks: HashMap<String, (), RandomState>,
     session_fences: HashMap<u64, MetaCommandFence, RandomState>,
+    /// Owned `Screenshot{path}` payloads. The seven-word carrier cannot own a
+    /// PathBuf (original variant 9 stores Vec{cap,ptr,len}+is_known_utf8), so
+    /// payloads[0] is an identity into this table, never a pointer.
+    screenshot_paths: HashMap<u64, std::path::PathBuf, RandomState>,
+    next_screenshot_id: u64,
 }
 impl Default for MetaCommander {
     fn default() -> Self {
@@ -109,7 +114,28 @@ impl MetaCommander {
             commands: VecDeque::new(),
             profiler_sinks: HashMap::with_hasher(RandomState::new()),
             session_fences: HashMap::with_hasher(RandomState::new()),
+            screenshot_paths: HashMap::with_hasher(RandomState::new()),
+            next_screenshot_id: 1,
         }
+    }
+    /// Queue original `MetaCommand::Screenshot{path}` (variant 9).
+    pub fn push_screenshot(&mut self, path: std::path::PathBuf) {
+        let id = self.next_screenshot_id;
+        self.next_screenshot_id += 1;
+        self.screenshot_paths.insert(id, path);
+        self.commands.push_back(MetaCommand::scalar(9, id));
+    }
+    /// gather_screenshot_requests @14031c293..c32a: if the front command is
+    /// `Screenshot{path}`, copy its path and consume the command. Any other
+    /// front command (or a scalar 9 carrying no owned path) is left untouched.
+    pub fn consume_screenshot(&mut self) -> Option<std::path::PathBuf> {
+        let front = self.commands.front()?;
+        if front.decoded() != 9 {
+            return None;
+        }
+        let path = self.screenshot_paths.remove(&front.payloads[0])?;
+        self.commands.pop_front();
+        Some(path)
     }
     pub fn peek(&self) -> Option<MetaCommand> {
         self.commands.front().copied()
@@ -145,6 +171,19 @@ impl MetaCommander {
         // These cases require owned paths/recordings/profiler sinks, screenshot
         // rendering or critter controls. Retain the command and report the exact
         // unsupported operation; do not synthesize a PathBuf or swallow it.
+        // Original commander_update case 9 (@0x14091f180): create the path's parent
+        // directory (`Path::parent().expect`, recursive DirBuilder, `unwrap`),
+        // push the command back to the front and return. The queue stays blocked
+        // on it until gather_screenshot_requests (PostUpdate) consumes it.
+        if kind == 9 && command.tag != MetaCommand::EMPTY_SENTINEL {
+            if let Some(path) = self.screenshot_paths.get(&command.payloads[0]) {
+                let parent = path
+                    .parent()
+                    .ok_or_else(|| anyhow::anyhow!("Screenshot path {path:?} has no parent"))?;
+                std::fs::create_dir_all(parent)?;
+                return Ok(None);
+            }
+        }
         if matches!(kind, 8 | 9 | 12 | 13 | 14 | 15 | 16) || kind >= 20 {
             anyhow::bail!(
                 "MetaCommand {} ({}) has no connected canonical consumer",
@@ -417,6 +456,35 @@ mod tests {
         q.extend_script([cmd, MetaCommand::scalar(17, 0)]);
         assert!(q.update().unwrap_err().to_string().contains("Screenshot"));
         assert_eq!(q.peek(), Some(cmd));
+    }
+    #[test]
+    fn owned_screenshot_creates_parent_then_stays_queued_until_gather_consumes_it() {
+        let dir = std::env::temp_dir().join(format!("tg-meta-shot-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("nested").join("a.jpg");
+        let mut q = MetaCommander::new();
+        q.push_screenshot(path.clone());
+        q.extend_script([MetaCommand::scalar(17, 0)]);
+        // commander_update case 9: parent created, command pushed back, loop ends.
+        assert!(q.update().unwrap().is_none());
+        assert!(dir.join("nested").is_dir());
+        assert!(!path.exists());
+        assert_eq!(q.peek().unwrap().decoded(), 9);
+        // gather consumes the front Screenshot only; the next command is untouched.
+        assert_eq!(q.consume_screenshot(), Some(path));
+        assert_eq!(q.consume_screenshot(), None);
+        assert_eq!(q.peek().unwrap().decoded(), 17);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn screenshot_path_without_parent_is_an_error_and_scalar_nine_is_not_consumed() {
+        let mut q = MetaCommander::new();
+        q.push_screenshot(std::path::PathBuf::from("/"));
+        assert!(q.update().is_err());
+        let mut q = MetaCommander::new();
+        q.extend_script([MetaCommand::scalar(9, 0)]);
+        assert_eq!(q.consume_screenshot(), None);
+        assert_eq!(q.peek().unwrap().decoded(), 9);
     }
     #[test]
     fn original_scalar_dispatch_distinguishes_fix_timestep_and_save_quit() {
