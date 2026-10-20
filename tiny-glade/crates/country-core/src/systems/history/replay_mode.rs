@@ -7,8 +7,9 @@ use crate::{
     input::action_set::MainActionSet,
     resources::time::GameTime,
     systems::mode_manager::{
-        AppMode, AppModeChanged, ClearCanvasCmd, EditSubject, HistoryCommand, RestoreAppTo,
+        AppMode, AppModeChanged, EditSubject, HistoryCommand, RestoreAppTo,
     },
+    systems::ui::resources::ui_state::UiState,
 };
 use bevy_ecs::prelude::*;
 
@@ -27,6 +28,10 @@ pub fn replay_mode_transition(previous: AppMode, current: AppMode) -> Option<boo
 
 /// HoldToFastReplay 长按快进阈值（0x140a7c550：`fVar24 <= 0.2` 保持、
 /// `0.2 < fVar24` 触发；秒制）。
+/// 0x140a7c7f6..7ff：R9B = 0x0d（Replay 的 AppMode 原生 tag），栈上 layer 字节 = 3。
+const REPLAY_CANVAS_ARGUMENT: u8 = 0x0d;
+const REPLAY_CANVAS_LAYER: u8 = 3;
+
 pub const FAST_REPLAY_HOLD_SECONDS: f32 = 0.2;
 /// fast 斜坡目标速度（0x142934690）。
 pub const FAST_REPLAY_TARGET_SPEED: f32 = 6.0;
@@ -106,7 +111,9 @@ pub fn restoration_mode(previous: AppMode, existing: AppMode) -> AppMode {
     }
 }
 
-/// 一个世界内模拟 `clearing_canvas_w_layer_and_sound` 的 history 事件面。
+/// 0x140a7c550。Replay 模式每帧登记名为 "replay" 的 UI 画布控件，参数取自机器码：
+/// `UiState::clearing_canvas_w_layer(ui, "replay", len 6, argument 0x0d, layer 3, empty sounds)`。
+/// 这是 UI 控件登记，不是清世界画布，不产生 `ClearCanvasCmd`。
 pub fn replay_mode(
     mode: Res<AppMode>,
     time: Res<GameTime>,
@@ -121,7 +128,7 @@ pub fn replay_mode(
     mut was_replay: Local<bool>,
     mut hold: ResMut<HoldToFastReplay>,
     mut replay_buffer: ResMut<ReplayBuffer>,
-    mut clear: EventWriter<ClearCanvasCmd>,
+    ui: Res<UiState>,
     mut commands: EventWriter<HistoryCommand>,
 ) {
     if let Some(change) = modes.read().last().copied() {
@@ -147,8 +154,7 @@ pub fn replay_mode(
         log::info!("Replay mode started");
         *was_replay = true;
     }
-    // 原版在 AppMode==Replay 的每帧都调用 clearing_canvas_w_layer_and_sound。
-    clear.write(ClearCanvasCmd(true));
+    ui.clearing_canvas_w_layer_and_sound("replay", REPLAY_CANVAS_ARGUMENT, REPLAY_CANVAS_LAYER);
 
     if let Some(speed) = speed_override.0 {
         replay_buffer.speed = speed;
@@ -221,7 +227,7 @@ mod tests {
         world.init_resource::<Events<HistoryCommand>>();
         world.insert_resource(ReplayBuffer::new(1.0));
         world.init_resource::<PendingHistoryCommands>();
-        world.init_resource::<Events<ClearCanvasCmd>>();
+        world.insert_resource(UiState::at_startup());
         world.init_resource::<Events<ReplayFocusEvent>>();
         let mut schedule = Schedule::default();
         schedule.add_systems(replay_mode);
@@ -289,13 +295,18 @@ mod tests {
     }
 
     #[test]
-    fn system_clears_canvas_every_replay_frame_and_keeps_override_speed() {
+    fn system_registers_replay_canvas_every_frame_without_clearing_world() {
         let (mut world, mut schedule) = fixture();
         *world.resource_mut::<AppMode>() = AppMode::Replay;
         schedule.run(&mut world);
         schedule.run(&mut world);
-        // 每帧一次 clear（不是仅进入帧）。
-        assert_eq!(world.resource::<Events<ClearCanvasCmd>>().len(), 2);
+        // 机器码：每帧登记 "replay" 画布控件，且不发清画布命令。
+        let id = crate::systems::ui::resources::ui_state::WidgetId::clearing_canvas("replay");
+        let canvas = world
+            .resource::<UiState>()
+            .clearing_canvas_params(id)
+            .expect("replay canvas widget registered");
+        assert_eq!((canvas.argument_79, canvas.layer), (0x0d, 3));
         // 覆盖速度。
         world
             .resource_mut::<crate::systems::timelapse_replay::ReplaySpeedMultiplierOverride>()
