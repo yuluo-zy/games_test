@@ -235,8 +235,12 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
     tiny_glade::game_loop::register_platform_events(&mut app);
     tiny_glade::game_loop::register_settings_application_system(&mut app);
     let device =
-        rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())
-            .context("strict gameplay physical device")?;
+        rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig {
+            // Same budget as the production window path (the original allocator has no cap).
+            memory_budget_bytes: tiny_glade::production_renderer::UNBOUNDED_DEVICE_BUDGET_BYTES,
+            ..rhapsody::device::DeviceConfig::headless()
+        })
+        .context("strict gameplay physical device")?;
     let shaders = app.world().resource::<ApplicationShaderLibrary>().0.clone();
     let bridge = CoreRenderBridge::new(device.clone(), installed.clone(), shaders.clone())?;
     let mut final_post = None;
