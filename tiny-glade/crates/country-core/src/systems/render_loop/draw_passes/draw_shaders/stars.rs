@@ -3,7 +3,7 @@
 //! PDB `systems/render_loop/draw_passes/draw_shaders/stars.rs`（编译单元 502/1598）。机器码（O）：
 //! - `StarsPlugin::build` 0x140903c90（8 B）：`SubApp::add_systems<Startup, startup_stars>`（一次尾调用）；
 //! - `startup_stars` 0x140903ca0（662 B）：共用骨架见 `startup_quad`。本文件常量：
-//!   网格名 / 库名 "star"（长 4）；32 B 常量 `(85.283447f32, 1u32, 0, …)`（0x142aa9130）；
+//!   网格名 / 库名 "star"（长 4）；
 //!   shader 路径 "/star.raster.hlsl"（长 0x11）、名 "star_shader"（长 0xb）；`DesignatedRenderPass = 0x10`。
 //! - `Plugin::{name,ready,finish,is_unique}` / `as_any*` / `type_id`：bevy `Plugin` 的 trait 胶水（0x1400c7cc0 起），
 //!   无业务逻辑。
@@ -16,8 +16,6 @@ use crate::systems::render_loop::draw_passes::draw_shaders::startup_quad::{
 
 /// 网格名 = 库名（O：同一个指针）。
 pub const STAR_MESH_NAME: &str = "star";
-/// 32 B 常量的 f32（O：0x142aa9130 = 0x42aa9120 → 85.283447）。
-pub const STAR_FAR_PARAM: f32 = 85.283447;
 pub const STAR_SHADER_PATH: &str = "/star.raster.hlsl";
 pub const STAR_SHADER_NAME: &str = "star_shader";
 /// `DesignatedRenderPass` 的载荷（O：`mov dword ptr [rax+r14+0x48], 0x10`）。
@@ -28,10 +26,10 @@ pub const STARTUP_SYSTEM_NAME: &str = "startup_stars";
 pub const SPEC: QuadSpec = QuadSpec {
     mesh_name: STAR_MESH_NAME,
     library_name: STAR_MESH_NAME,
-    far_param: STAR_FAR_PARAM,
     shader_path: STAR_SHADER_PATH,
     shader_name: STAR_SHADER_NAME,
     designated_pass: Some(STAR_DESIGNATED_PASS),
+    keep_on_level_unload: true,
 };
 
 /// `StarsPlugin`（impl$0）。
@@ -72,7 +70,6 @@ mod tests {
         assert_eq!(lib_name, "star");
         assert_eq!(mesh.name, "star");
         assert_eq!(mesh.indices, vec![0, 1, 2, 2, 1, 3]);
-        assert_eq!(mesh.far_param.to_bits(), 0x42aa9120, "0x142aa9130 处的 f32");
         assert_eq!(
             h.shaders,
             vec![("/star.raster.hlsl".to_string(), "star_shader".to_string())]

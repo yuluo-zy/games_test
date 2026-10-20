@@ -2,8 +2,7 @@
 //!
 //! PDB `systems/render_loop/draw_passes/draw_shaders/clouds.rs`（编译单元 479/542/1585）。机器码（O）：
 //! - `CloudPlugin::build` 0x14085b8a0（8 B）：`SubApp::add_systems<Startup, startup_clouds>`；
-//! - `startup_clouds` 0x14085b8b0（662 B）：骨架见 `startup_quad`。常量：网格名 / 库名 "cloud"（长 5）；32 B 常量
-//!   `(84.642944f32, 1u32, …)`（0x142a94940）；shader 路径 "/cloud.raster.hlsl"（长 0x12）、名 "cloud_shader"（长 0xc）；
+//! - `startup_clouds` 0x14085b8b0（662 B）：骨架见 `startup_quad`。常量：网格名 / 库名 "cloud"（长 5）；shader 路径 "/cloud.raster.hlsl"（长 0x12）、名 "cloud_shader"（长 0xc）；
 //!   `DesignatedRenderPass = 0x10`。
 //! - 注：PDB 里 `from_iter` 单态化实例的闭包名属于 `clouds::startup_clouds::closure_env$0`（ICF 后三个 startup 共用）。
 
@@ -12,8 +11,6 @@ use crate::systems::render_loop::draw_passes::draw_shaders::startup_quad::{
 };
 
 pub const CLOUD_MESH_NAME: &str = "cloud";
-/// 0x142a94940 = 0x42a94930 → 84.642944。
-pub const CLOUD_FAR_PARAM: f32 = 84.642944;
 pub const CLOUD_SHADER_PATH: &str = "/cloud.raster.hlsl";
 pub const CLOUD_SHADER_NAME: &str = "cloud_shader";
 pub const CLOUD_DESIGNATED_PASS: u32 = 0x10;
@@ -22,10 +19,10 @@ pub const STARTUP_SYSTEM_NAME: &str = "startup_clouds";
 pub const SPEC: QuadSpec = QuadSpec {
     mesh_name: CLOUD_MESH_NAME,
     library_name: CLOUD_MESH_NAME,
-    far_param: CLOUD_FAR_PARAM,
     shader_path: CLOUD_SHADER_PATH,
     shader_name: CLOUD_SHADER_NAME,
     designated_pass: Some(CLOUD_DESIGNATED_PASS),
+    keep_on_level_unload: true,
 };
 
 /// `CloudPlugin`（impl$0）。
@@ -65,7 +62,6 @@ mod tests {
         let (lib_name, mesh) = &h.meshes[0];
         assert_eq!((lib_name.as_str(), mesh.name), ("cloud", "cloud"));
         assert_eq!(mesh.indices, vec![0, 1, 2, 2, 1, 3]);
-        assert_eq!(mesh.far_param.to_bits(), 0x42a94930);
         assert_eq!(
             h.shaders,
             vec![("/cloud.raster.hlsl".to_string(), "cloud_shader".to_string())]
