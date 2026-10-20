@@ -40,7 +40,29 @@ use crate::{
 #[path = "production_resolve.rs"]
 mod resolve;
 
-const TIMEOUT_NS: u64 = 10_000_000_000;
+/// Bounded GPU wait: past this a frame is treated as a hung device. A software rasterizer
+/// (a CPU-type physical device such as lavapipe) needs 7–11 s for one world frame, so its bound
+/// is raised; real GPUs keep the 10 s bound. Set once when the device is created.
+const GPU_TIMEOUT_NS: u64 = 10_000_000_000;
+const SOFTWARE_GPU_TIMEOUT_NS: u64 = 180_000_000_000;
+static GPU_WAIT_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(GPU_TIMEOUT_NS);
+fn timeout_ns() -> u64 {
+    GPU_WAIT_NS.load(std::sync::atomic::Ordering::Relaxed)
+}
+fn set_gpu_wait_for(device: &rhapsody::device::Device) {
+    // SAFETY: the instance and physical device belong to this live device.
+    let properties = unsafe {
+        device
+            .instance()
+            .raw_instance()
+            .get_physical_device_properties(device.physical_device())
+    };
+    let software = properties.device_type == vk::PhysicalDeviceType::CPU;
+    GPU_WAIT_NS.store(
+        if software { SOFTWARE_GPU_TIMEOUT_NS } else { GPU_TIMEOUT_NS },
+        std::sync::atomic::Ordering::Relaxed,
+    );
+}
 
 /// 管线预热的等待上限（上限而非等待目标：编译完成即返回）。软件光栅化设备（lavapipe）
 /// 编译整套世界管线要数十秒，原先的 10 秒会让首帧前预热超时。
@@ -629,7 +651,7 @@ impl ProductionRenderer {
     ) -> Result<Self> {
         let builder = InstanceBuilder {
             application_name: std::ffi::CString::new("Tiny Glade")?,
-            extensions: platform_extensions(),
+            extensions: platform_extensions(&window)?,
             ..Default::default()
         };
         let instance = builder.build().context("create Vulkan instance")?;
@@ -651,6 +673,7 @@ impl ProductionRenderer {
             },
         )
         .context("create graphics device for native surface")?;
+        set_gpu_wait_for(&device);
         let size = window.inner_size();
         let swapchain = Arc::new(unsafe {
             Swapchain::new(
@@ -813,7 +836,7 @@ impl ProductionRenderer {
     pub fn suspend(&mut self) -> Result<()> {
         self.suspended = true;
         if let Some(image) = self.acquired.take() {
-            image.cancel(TIMEOUT_NS)?;
+            image.cancel(timeout_ns())?;
         }
         Ok(())
     }
@@ -850,17 +873,17 @@ impl ProductionRenderer {
         self.presentation.take();
         self.bridge.cancel_presentation()?;
         if let Some(image) = self.acquired.take() {
-            image.cancel(TIMEOUT_NS)?;
+            image.cancel(timeout_ns())?;
         }
-        self.bridge.wait_submits_done(TIMEOUT_NS)?;
+        self.bridge.wait_submits_done(timeout_ns())?;
         for app in self.other_applications.values_mut() {
-            app.bridge.wait_submits_done(TIMEOUT_NS)?;
+            app.bridge.wait_submits_done(timeout_ns())?;
         }
         for ticket in &self.pending {
-            ticket.wait(TIMEOUT_NS)?;
+            ticket.wait(timeout_ns())?;
         }
         self.pending.clear();
-        self.swapchain.shutdown(TIMEOUT_NS)?;
+        self.swapchain.shutdown(timeout_ns())?;
         self.bridge.raster_resources().clear_attachment_cache();
         self.bridge
             .with_session(|session| session.clear_after_completion())?;
@@ -1034,7 +1057,7 @@ impl RenderHost for ProductionRenderHost<'_> {
             log::warn!(target: crate::render_loop::LOG_TARGET, "aborted presentation cleanup: {error}");
         }
         if let Some(image) = self.renderer.acquired.take() {
-            if let Err(error) = image.cancel(TIMEOUT_NS) {
+            if let Err(error) = image.cancel(timeout_ns()) {
                 log::warn!(target: crate::render_loop::LOG_TARGET, "aborted acquisition cleanup: {error}");
             }
         }
@@ -1196,7 +1219,7 @@ impl RenderHost for ProductionRenderHost<'_> {
         if let Err(error) = self
             .renderer
             .bridge
-            .wait_submits_done(TIMEOUT_NS)
+            .wait_submits_done(timeout_ns())
             .and_then(|()| self.renderer.device.wait_idle())
         {
             self.renderer.record_error(error);
@@ -1302,7 +1325,7 @@ impl RenderHost for ProductionRenderHost<'_> {
                     .pending
                     .front()
                     .expect("nonempty")
-                    .wait(TIMEOUT_NS)?;
+                    .wait(timeout_ns())?;
                 self.renderer.collect()?;
             }
             Swapchain::validate_swapchain_and_acquire_image(&mut self.renderer.swapchain)
@@ -1358,7 +1381,7 @@ impl RenderHost for ProductionRenderHost<'_> {
                 self.renderer.record_error(error);
             }
             if let Some(image) = self.renderer.acquired.take() {
-                if let Err(error) = image.cancel(TIMEOUT_NS) {
+                if let Err(error) = image.cancel(timeout_ns()) {
                     self.renderer.record_error(error);
                 }
             }
@@ -1450,18 +1473,31 @@ mod world_extent_tests {
 
 #[cfg(target_os = "macos")]
 use macos::PlatformSurface;
+#[cfg(all(unix, not(target_os = "macos")))]
+use linux::PlatformSurface;
 
-fn platform_extensions() -> Vec<std::ffi::CString> {
+fn platform_extensions(window: &winit::window::Window) -> Result<Vec<std::ffi::CString>> {
     #[cfg(target_os = "macos")]
-    let names = ["VK_KHR_surface", "VK_EXT_metal_surface"];
+    let names = {
+        let _ = window;
+        vec!["VK_KHR_surface", "VK_EXT_metal_surface"]
+    };
     #[cfg(target_os = "windows")]
-    let names = ["VK_KHR_surface", "VK_KHR_win32_surface"];
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    let names: [&str; 0] = [];
-    names
+    let names = {
+        let _ = window;
+        vec!["VK_KHR_surface", "VK_KHR_win32_surface"]
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let names = linux::surface_extensions(window)?;
+    #[cfg(not(any(target_os = "macos", target_os = "windows", all(unix, not(target_os = "macos")))))]
+    let names: Vec<&str> = {
+        let _ = window;
+        Vec::new()
+    };
+    Ok(names
         .into_iter()
         .map(|name| std::ffi::CString::new(name).expect("static extension"))
-        .collect()
+        .collect())
 }
 
 #[cfg(target_os = "macos")]
@@ -1554,7 +1590,7 @@ mod macos {
             instance: Arc<rhapsody::interop::VulkanInstance>,
         ) -> Result<Arc<rhapsody::present::Surface>> {
             let loader =
-                ash::ext::metal_surface::Instance::new(&instance.entry, &instance.instance);
+                ash::ext::metal_surface::Instance::new(&instance.entry, instance.raw_instance());
             let info = vk::MetalSurfaceCreateInfoEXT::default().layer((*self.layer).cast());
             let handle = unsafe { loader.create_metal_surface(&info, None) }?;
             Ok(Arc::new(unsafe {
@@ -1628,9 +1664,98 @@ impl PlatformSurface {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+// Linux host surface (X11 via Xlib/Xcb, Wayland), built from winit's actual raw handles. The
+// original ships only on Windows and macOS; this adapter exists so the real window/swapchain
+// path can run on Linux (lavapipe/Mesa WSI). The native window owner is kept by the renderer.
+#[cfg(all(unix, not(target_os = "macos")))]
+mod linux {
+    use super::*;
+    use winit::raw_window_handle::{
+        HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle,
+    };
+
+    pub fn surface_extensions(window: &winit::window::Window) -> Result<Vec<&'static str>> {
+        let ext = match window.display_handle()?.as_raw() {
+            RawDisplayHandle::Xlib(_) => "VK_KHR_xlib_surface",
+            RawDisplayHandle::Xcb(_) => "VK_KHR_xcb_surface",
+            RawDisplayHandle::Wayland(_) => "VK_KHR_wayland_surface",
+            other => anyhow::bail!("unsupported Linux display handle {other:?}"),
+        };
+        Ok(vec!["VK_KHR_surface", ext])
+    }
+
+    pub struct PlatformSurface {
+        window: RawWindowHandle,
+        display: RawDisplayHandle,
+    }
+    // SAFETY: the raw handles are plain identifiers; the renderer keeps the winit window alive
+    // for as long as this value and every Vulkan surface created from it exist.
+    unsafe impl Send for PlatformSurface {}
+    unsafe impl Sync for PlatformSurface {}
+
+    impl PlatformSurface {
+        pub fn new(window: &winit::window::Window) -> Result<Self> {
+            Ok(Self {
+                window: window.window_handle()?.as_raw(),
+                display: window.display_handle()?.as_raw(),
+            })
+        }
+        pub fn update(&self, window: &winit::window::Window) -> Result<()> {
+            // The swapchain tracks the client extent; never create a second surface on resize.
+            anyhow::ensure!(
+                window.window_handle()?.as_raw() == self.window,
+                "Vulkan surface belongs to a different native window"
+            );
+            Ok(())
+        }
+        pub fn create_surface(
+            &self,
+            instance: Arc<rhapsody::interop::VulkanInstance>,
+        ) -> Result<Arc<rhapsody::present::Surface>> {
+            let handle = match (self.window, self.display) {
+                (RawWindowHandle::Xlib(w), RawDisplayHandle::Xlib(d)) => {
+                    let display = d.display.context("Xlib display is null")?;
+                    let loader =
+                        ash::khr::xlib_surface::Instance::new(&instance.entry, instance.raw_instance());
+                    let info = vk::XlibSurfaceCreateInfoKHR::default()
+                        .dpy(display.as_ptr().cast())
+                        .window(w.window);
+                    unsafe { loader.create_xlib_surface(&info, None) }
+                        .context("create Vulkan Xlib surface")?
+                }
+                (RawWindowHandle::Xcb(w), RawDisplayHandle::Xcb(d)) => {
+                    let connection = d.connection.context("XCB connection is null")?;
+                    let loader =
+                        ash::khr::xcb_surface::Instance::new(&instance.entry, instance.raw_instance());
+                    let info = vk::XcbSurfaceCreateInfoKHR::default()
+                        .connection(connection.as_ptr().cast())
+                        .window(w.window.get());
+                    unsafe { loader.create_xcb_surface(&info, None) }
+                        .context("create Vulkan XCB surface")?
+                }
+                (RawWindowHandle::Wayland(w), RawDisplayHandle::Wayland(d)) => {
+                    let loader = ash::khr::wayland_surface::Instance::new(
+                        &instance.entry,
+                        instance.raw_instance(),
+                    );
+                    let info = vk::WaylandSurfaceCreateInfoKHR::default()
+                        .display(d.display.as_ptr().cast())
+                        .surface(w.surface.as_ptr().cast());
+                    unsafe { loader.create_wayland_surface(&info, None) }
+                        .context("create Vulkan Wayland surface")?
+                }
+                _ => anyhow::bail!("winit window and display handles are of different kinds"),
+            };
+            Ok(Arc::new(unsafe {
+                rhapsody::present::Surface::from_raw(instance, handle, true)
+            }))
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", unix)))]
 struct PlatformSurface;
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(not(any(target_os = "macos", target_os = "windows", unix)))]
 impl PlatformSurface {
     fn new(_: &winit::window::Window) -> Result<Self> {
         anyhow::bail!("native surface adapter is only available for macOS in this host build")

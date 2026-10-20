@@ -128,6 +128,13 @@ impl crate::game_loop::GameLoop {
                         if self.renderer.any_present_successful() || self.frame_count > 1 {
                             self.window.set_visible(true);
                         }
+                        if self.frame_count % 30 == 0 {
+                            log::info!(
+                                "production frame progress: frame_count={} {:?}",
+                                self.frame_count,
+                                self.frame_progress()
+                            );
+                        }
                         let bounded_run_finished = self
                             .options
                             .frame_limit
@@ -298,6 +305,19 @@ impl crate::game_loop::GameLoop {
                     .video
                     .display
                     .windowed_resolution = [width, height];
+                // `FrameRenderConfig`'s three packed extents are "copied from WindowSize" at startup
+                // (render_config.rs). The tail's display target reads `extent_8`, so a resized
+                // window would keep presenting the old extent. HOST ADAPTATION (I): the original's
+                // per-resize update point is not located; keep the copy semantics on resize.
+                if let Some(mut frame) = self
+                    .app_mut()
+                    .world_mut()
+                    .get_resource_mut::<country_core::render::render_config::FrameRenderConfig>()
+                {
+                    frame.extent_0 = [width, height];
+                    frame.extent_8 = [width, height];
+                    frame.extent_10 = [width, height];
+                }
                 self.renderer.resize([width, height])?;
             }
             OsWindowEvent::Resized(_) => {}
