@@ -42,6 +42,10 @@ mod resolve;
 
 const TIMEOUT_NS: u64 = 10_000_000_000;
 
+/// 管线预热的等待上限（上限而非等待目标：编译完成即返回）。软件光栅化设备（lavapipe）
+/// 编译整套世界管线要数十秒，原先的 10 秒会让首帧前预热超时。
+const PIPELINE_PREWARM_TIMEOUT: Duration = Duration::from_secs(180);
+
 /// Original loader closure 0x1400d7440 must successfully render the gameplay
 /// App once without a swapchain before publishing it.
 ///
@@ -344,7 +348,7 @@ fn compile_full_world_graph(
     if let Err(error) = renderer
         .bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(10))
+        .prewarm(PIPELINE_PREWARM_TIMEOUT)
     {
         if let Err(cleanup) = renderer.bridge.cancel_built(built) {
             log::warn!("world pipeline prewarm cancellation: {cleanup}");
@@ -438,7 +442,7 @@ fn compile_minimal_world_graph(
     if let Err(error) = renderer
         .bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(10))
+        .prewarm(PIPELINE_PREWARM_TIMEOUT)
     {
         if let Err(cleanup) = renderer.bridge.cancel_built(built) {
             log::warn!("minimal world frame prewarm cancellation: {cleanup}");
@@ -934,7 +938,7 @@ impl ProductionRenderHost<'_> {
             .renderer
             .bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(10))
+            .prewarm(PIPELINE_PREWARM_TIMEOUT)
         {
             if let Err(cleanup) = self.renderer.bridge.cancel_built(graph) {
                 log::warn!(target: crate::render_loop::LOG_TARGET,
@@ -1045,7 +1049,7 @@ impl RenderHost for ProductionRenderHost<'_> {
             .renderer
             .bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(10))
+            .prewarm(PIPELINE_PREWARM_TIMEOUT)
         {
             if let Err(cleanup) = self.renderer.bridge.cancel_built(built) {
                 log::warn!("pipeline prewarm cancellation: {cleanup}");
