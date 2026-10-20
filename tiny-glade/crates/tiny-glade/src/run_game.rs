@@ -649,6 +649,12 @@ pub fn run_game_thread(
         country_core::startup::load_glade_grading::load_glade_grading
             .after(country_core::startup::startup_session::load_game_session),
     );
+    // 原版 `update_color_library` 0x14093b530：会话主题的 colors.json 上传到调色板（OnEnter(Game)）。
+    app.add_systems(
+        bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+        country_core::asset_libraries::color_library::update_color_library_for_session
+            .after(country_core::startup::startup_session::load_game_session),
+    );
     // 原版 OnEnter(Game) 会话链（add_game_startup_systems 0x140941150，tuple 0x140839b80）第 7 成员。
     app.add_systems(
         bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),

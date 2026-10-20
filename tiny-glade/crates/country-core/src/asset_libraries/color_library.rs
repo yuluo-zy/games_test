@@ -273,6 +273,34 @@ pub fn try_update_color_library_in(
     Ok(())
 }
 
+/// 原版 `update_color_library`（0x140b…93b530）作为 OnEnter(Game) 系统：主题取自会话
+/// meta（`*arg0 + 0x58`，与 `GladeType` 同值），加载 `colors.json` + 该主题覆盖并上传调色板。
+/// 没有这一步，启动期上传的 `ColorLibrarySsbo::default()` 全是 `MISSING_COLOR`（品红）。
+/// 同时把运行时主题置为会话主题，让后续 `colors.json` 热重载使用同一主题目录。
+pub fn update_color_library_for_session(
+    session: bevy_ecs::prelude::Res<crate::resources::session::ActiveSession>,
+    mut runtime: bevy_ecs::prelude::ResMut<crate::asset_libraries::runtime::AssetLibraryRuntime>,
+    ssbos: bevy_ecs::prelude::Res<AssetSsboLibrary>,
+    mut palette: bevy_ecs::prelude::ResMut<ColorLibrarySsbo>,
+) -> bevy_ecs::error::Result {
+    let theme = match session.meta.glade {
+        crate::resources::session::GladeType::Summer => GladeTheme::Summer,
+        crate::resources::session::GladeType::Olden => GladeTheme::Olden,
+        crate::resources::session::GladeType::Flowery => GladeTheme::Flowery,
+        crate::resources::session::GladeType::Autumn => GladeTheme::Autumn,
+        crate::resources::session::GladeType::Winter => GladeTheme::Winter,
+    };
+    runtime.theme = theme;
+    try_update_color_library_in(
+        &runtime.assets_root,
+        theme,
+        &ssbos,
+        runtime.buffers.as_ref(),
+        &mut palette,
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
