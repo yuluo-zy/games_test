@@ -631,6 +631,9 @@ impl RasterPassHost {
 }
 
 /// 一个 draw 在声明期解析好的东西：包 + 管线条目。
+/// O `RasterPipelineOpts::default()` 0x140be6750.
+const ORIGINAL_DEFAULT_RASTER_STATE: u32 = 0x1ffc_00d0;
+
 struct PreparedDraw {
     packet: DrawPacket,
     entry: Arc<RasterEntry>,
@@ -820,7 +823,12 @@ impl PassHost for RasterPassHost {
 
     /// `rhapsody::pipeline::impl$7::default()`：`RasterPipelineOpts` 的 4 字节位域缺省值。
     fn default_raster_state(&self) -> RasterState {
-        RasterState(RasterPipelineOpts::new().0)
+        // O `<RasterPipelineOpts as Default>::default` 0x140be6750 = `mov eax,0x1ffc00d0`:
+        // depth test+write on with GREATER (reverse-Z), stencil test off but compare ALWAYS /
+        // mask 0xff, blend off, triangle list, fill, no cull. Callers (e.g. deferred raster
+        // `s & 0xbf`) start from these bits, so a zeroed state (depth LESS, stencil NEVER)
+        // would reject every fragment of draws that enable the stencil test.
+        RasterState(ORIGINAL_DEFAULT_RASTER_STATE)
     }
 
     fn create_render_pass(&mut self, desc: &RasterRenderPassDesc) -> ManagedHandle {

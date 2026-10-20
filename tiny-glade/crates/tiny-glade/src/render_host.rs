@@ -1322,6 +1322,16 @@ impl ShaderBackend for ShaderHost {
         desc.vertex_bindings = vertex_bindings;
         desc.vertex_attributes = attributes;
         RasterPipelineOpts(key.selector).apply_to(&mut desc, pass.color_attachments)?;
+        // Vulkan ignores depth/stencil state for a rendering that has no such attachment (the
+        // original default state keeps depth test/write on in every pass); rhapsody rejects the
+        // combination, so drop exactly the bits whose attachment is absent.
+        if pass.formats.depth == vk::Format::UNDEFINED {
+            desc.depth_test = false;
+            desc.depth_write = false;
+        }
+        if pass.formats.stencil == vk::Format::UNDEFINED {
+            desc.stencil_test = false;
+        }
 
         let layout = desc.layout.clone();
         let pipeline = self.compiler.request_raster(desc)?;
