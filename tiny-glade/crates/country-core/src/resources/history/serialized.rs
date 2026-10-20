@@ -531,6 +531,31 @@ mod tests {
         assert_eq!(lengths.iter().sum::<usize>(), 22);
     }
 
+    /// Structural JSON equality where numbers compare as f32. The game stores f32 fields;
+    /// serde_json 1.0.85 (no `float_roundtrip`) may parse a 17-digit f64 text one ulp away
+    /// from the exact widening, so the fixture text and the re-serialised value can differ as
+    /// f64 while naming the same f32.
+    fn json_eq_at_f32_precision(a: &serde_json::Value, b: &serde_json::Value) -> bool {
+        use serde_json::Value::*;
+        match (a, b) {
+            (Number(x), Number(y)) => match (x.as_f64(), y.as_f64()) {
+                (Some(x), Some(y)) if x.fract() != 0.0 || y.fract() != 0.0 => {
+                    (x as f32).to_bits() == (y as f32).to_bits()
+                }
+                _ => x == y,
+            },
+            (Array(x), Array(y)) => {
+                x.len() == y.len() && x.iter().zip(y).all(|(a, b)| json_eq_at_f32_precision(a, b))
+            }
+            (Object(x), Object(y)) => {
+                x.len() == y.len()
+                    && x.iter()
+                        .all(|(k, v)| y.get(k).is_some_and(|w| json_eq_at_f32_precision(v, w)))
+            }
+            _ => a == b,
+        }
+    }
+
     #[test]
     fn all_observed_original_wall_variants_preserve_saved_payloads() {
         let rows: serde_json::Value = serde_json::from_str(include_str!(
@@ -548,7 +573,10 @@ mod tests {
                 assert_eq!(edit.operation_tag() as u64, 8);
             }
             if !matches!(name.as_str(), "WallChanged" | "CreateWall" | "DeleteWall") {
-                assert_eq!(&saved, row, "original named payload {name}");
+                assert!(
+                    json_eq_at_f32_precision(&saved, row),
+                    "original named payload {name}: {saved} != {row}"
+                );
             }
         }
         let rim = serde_json::json!({"ChangeFlatRoofRimStyle":{"wall_index":7,"before":"Rim","after":"NoRim"}});

@@ -365,6 +365,9 @@ pub fn run_game_thread(
     toolbar::configure_app(&mut app);
     crate::decorator_plugin::build_startup_resources(&mut app);
     crate::wall_constructor_plugin::build(&mut app);
+    // Original plugin tuple members WaterPlugin 0x1406501d0 / GladeBorderPlugin 0x140650ab0.
+    crate::water_plugin::build(&mut app);
+    crate::glade_border_plugin::build(&mut app);
     app.add_event::<toolbar::ui_interaction::UiDragEvent>();
     app.add_event::<toolbar::ui_interaction::UiJustBecameInFocusEvent>();
     app.add_event::<toolbar::toolbar_button::UiToolbarButtonResetAllCooldowns>();

@@ -46,12 +46,16 @@ fn parse_saved_game_data_parses_all_native_sections() {
             "time_of_day": 0.25, "sun_xz_rotation": 0.5, "latitude_degrees": 40.0
         },
         "Sheep": {"sheep": []},
+        // Real shipped schema (assets/starting-builds/**/history.json and the native
+        // oracle in glade_color_customization_native_oracle.rs): enum names are strings,
+        // `fences` is plural, `flag` is a colour id and `stairs` is a nested record.
         "Colors": {
             "freeform_wall": 1, "building": 2, "roof": 3,
-            "building_wall_style": 1, "freehand_ty": 2, "halftimber": 4,
-            "lantern_light": 5, "fence": 6, "window_light": 7, "flag": true,
-            "windows": 8, "gates": 9, "flat_rim_style": 3,
-            "lantern_brightness": 0.5, "stairs": 10
+            "building_wall_style": "Stone", "freehand_ty": "FollowTerrain", "halftimber": 4,
+            "lantern_light": 5, "fences": 6, "window_light": 7, "flag": 11,
+            "windows": 8, "gates": 9, "flat_rim_style": "Rim",
+            "lantern_brightness": 0.5,
+            "stairs": {"stairs_color": 10, "ladder_color": 0, "railing_ty": "None", "magic_color": 0}
         },
         "History": {
             "chain_index": -1,

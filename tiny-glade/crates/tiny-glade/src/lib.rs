@@ -55,6 +55,8 @@ pub mod screenshot;
 pub mod theme_fetcher_plugin;
 pub mod toolbar_plugin;
 pub mod wall_constructor_plugin;
+pub mod water_plugin;
+pub mod glade_border_plugin;
 pub mod vram;
 pub mod vulkan_config_main;
 pub mod winit_bevy_glue;

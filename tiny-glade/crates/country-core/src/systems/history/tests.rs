@@ -149,8 +149,9 @@ fn stairs_history_edit_serde_matches_native_single_edge_shape() {
     use crate::resources::stairs::stairs_state::StairGraphEdge;
     let edit = StairsHistoryEdit::SupportsRecreate(StairGraphEdge::new(3, 4));
     let json = serde_json::to_string(&edit).unwrap();
-    // 原生形状：{"SupportsRecreate": {"edge": {"a":3,"b":4}}}（键/字段名来自机器码字符串常量）。
-    assert_eq!(json, r#"{"SupportsRecreate":{"edge":{"a":3,"b":4}}}"#);
+    // 发行存档里的实际形状是元组数组：{"SupportsRecreate":{"edge":[11,12]}}
+    // （assets/starting-builds/**/history.json），不是 {"a":..,"b":..} 对象。
+    assert_eq!(json, r#"{"SupportsRecreate":{"edge":[3,4]}}"#);
     let back: StairsHistoryEdit = serde_json::from_str(&json).unwrap();
     assert_eq!(back, edit);
     let delete = StairsHistoryEdit::SupportsDelete(StairGraphEdge::new(7, 8));
