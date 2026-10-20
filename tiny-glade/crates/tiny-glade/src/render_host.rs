@@ -831,7 +831,8 @@ pub struct RasterEntry {
     pub uniform_binding: Option<u32>,
     /// Exact names and locations from the same original compiled reflection
     /// used by vertex_input_from_reflection to build this Vulkan pipeline.
-    pub vertex_inputs: Vec<(String, u32)>,
+    /// `(属性名, location, 顶点步长字节)`；步长取反射类型 `nbyte`，与管线 binding stride 一致。
+    pub vertex_inputs: Vec<(String, u32, u32)>,
 }
 
 /// 一条已创建的计算管线及执行它所需的反射信息。
@@ -1318,8 +1319,17 @@ impl ShaderBackend for ShaderHost {
                 .reflection
                 .effective_vertex_inputs()
                 .into_iter()
-                .map(|(name, input)| (name.to_owned(), input.location))
-                .collect(),
+                .map(|(name, input)| {
+                    let stride = input
+                        .ty
+                        .nbyte()
+                        .and_then(|bytes| u32::try_from(bytes).ok())
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("vertex input {name} has no byte size")
+                        })?;
+                    Ok((name.to_owned(), input.location, stride))
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?,
             uniform_binding: decoded
                 .reflection
                 .uniform_block
@@ -2761,6 +2771,11 @@ impl GraphPasses<'_> {
                 // exactly one level even though the native view spans the remaining
                 // chain. Declaring the whole chain would demand (preserving RMW) or
                 // claim (plain write) contents of levels the pass can never reach.
+                // Evidence (original 0x140533b10 / ImageBarrier::new 0x140bd65e0): the original
+                // declares access per whole image and tracks no mip contents, so this range is a
+                // host-side refinement of rhapsody's content contract (shader semantics), not an
+                // original behavior; removing it makes read-storage passes (Water deferred rt,
+                // Volumetrics) demand mips 1..5 before "Generate mips" writes them.
                 let storage_single_level = if let CorePassBinding::ImageView { write: true, .. } =
                     &bindings[index]
                 {

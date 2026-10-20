@@ -1095,18 +1095,64 @@ impl PassHost for RasterPassHost {
                         .declarer;
                     draw.index = Some(declarer.import_buffer(&mut graph, vao.index, 0)?);
                     draw.index_count = Some(vao.index_count);
-                    for (name, location) in &draw.entry.vertex_inputs {
-                        let (_, buffer) = vao
+                    for (name, location, stride) in &draw.entry.vertex_inputs {
+                        let (buffer, size) = match vao
                             .bindings
                             .iter()
                             .find(|(attribute, _)| attribute.as_ref() == name)
-                            .ok_or_else(|| {
-                                rhapsody::Error::invalid_usage(format!(
-                                    "VAO lacks the shader's reflected vertex attribute {name}"
-                                ))
-                            })?;
-                        let size = buffer.desc.size;
-                        let resource = declarer.import_buffer(&mut graph, buffer.clone(), 0)?;
+                        {
+                            Some((_, buffer)) => (buffer.clone(), buffer.desc.size),
+                            None => {
+                                // O 0x141697ab0 `RasterPass::render` closure iterates the VAO's
+                                // bindings and looks each name up in the program; a reflected
+                                // input that the VAO lacks is never bound (no error, no
+                                // placeholder), and 0x1416a3720 still creates the pipeline
+                                // attribute. The only such case is nani_cloth `Vertex_Color`
+                                // (vs_main copies it to a varying `C2` the PS never reads;
+                                // the cloth meshes carry no color attribute). Vulkan forbids
+                                // drawing with an unbound vertex binding, so this host binds
+                                // a zero-filled buffer of the right extent instead (DEVIATION,
+                                // value unobservable). Any other missing input stays an error.
+                                if name != "Vertex_Color" {
+                                    return Err(rhapsody::Error::invalid_usage(format!(
+                                        "VAO lacks the shader's reflected vertex attribute {name}"
+                                    )));
+                                }
+                                let vertices = draw
+                                    .entry
+                                    .vertex_inputs
+                                    .iter()
+                                    .filter_map(|(other, _, other_stride)| {
+                                        vao.bindings
+                                            .iter()
+                                            .find(|(attribute, _)| attribute.as_ref() == other)
+                                            .map(|(_, other_buffer)| {
+                                                other_buffer.desc.size / u64::from(*other_stride)
+                                            })
+                                    })
+                                    .min()
+                                    .ok_or_else(|| {
+                                        rhapsody::Error::invalid_usage(
+                                            "VAO has no bound attribute to size the placeholder",
+                                        )
+                                    })?;
+                                let bytes = vertices * u64::from(*stride);
+                                let zeros = vec![0u8; usize::try_from(bytes).map_err(|_| {
+                                    rhapsody::Error::invalid_usage("placeholder vertex size overflow")
+                                })?];
+                                let placeholder = shared.device.create_buffer(
+                                    &rhapsody::resource::BufferDesc::new(
+                                        bytes,
+                                        vk::BufferUsageFlags::VERTEX_BUFFER,
+                                        rhapsody::resource::MemoryLocation::GpuOnly,
+                                    ),
+                                    "Vertex_Color placeholder",
+                                    Some(zeros.as_slice()),
+                                )?;
+                                (placeholder.shared(), bytes)
+                            }
+                        };
+                        let resource = declarer.import_buffer(&mut graph, buffer, 0)?;
                         draw.vertices.push((*location, resource, size));
                     }
                     continue;
