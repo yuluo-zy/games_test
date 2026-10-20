@@ -109,6 +109,8 @@ fn add_original_plugins(app: &mut App) {
         system_clutter::ClutterPlugin,
         system_critters::CritterPlugin,
         system_critters::sheep::SheepPlugin,
+        // 0x14082bd70：Update 里的 cache_prev_object_transforms（羊/鸭的 prev_model_to_world 来源）。
+        country_core::components::drawable::PrevTransformPlugin,
     ));
     // add_roof_events_and_resources @1406305f0 / add_roof_systems @14062fcb0.
     app.add_roof_events_and_resources().add_roof_systems();
