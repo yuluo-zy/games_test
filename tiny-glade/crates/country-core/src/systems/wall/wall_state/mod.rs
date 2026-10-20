@@ -11,3 +11,7 @@ pub mod path_preparation;
 pub mod pending_changed;
 
 pub mod publication_policy;
+
+pub mod spatial_hash_debug;
+
+pub mod debug_viz_threshold_curve;

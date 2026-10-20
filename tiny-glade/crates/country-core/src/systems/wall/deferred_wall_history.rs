@@ -1,5 +1,5 @@
-//! B deferred freehand wall expansion, using the existing typed compound
-//! history and its recording consumer. Merge history remains a separate branch.
+//! B deferred freehand wall expansion and wall-merge history, using the existing
+//! typed compound history and its recording consumer.
 use std::sync::Arc;
 
 use bevy_ecs::prelude::*;
@@ -8,9 +8,12 @@ use utils::curve::Curve2 as InputCurve;
 
 use crate::{
     resources::{
-        history::wall_edit::{WallAuthoritySnapshot, WallCompoundHistoryEdit, WallHistoryEdit},
+        history::wall_edit::{
+            CompoundEditBuilder, WallAuthoritySnapshot, WallCompoundHistoryEdit, WallHistoryEdit,
+            record_deleted_wall,
+        },
         roofs::geometry::surface::Curve2,
-        walls::WallId,
+        walls::{InnerWalls, WallId, WallState},
     },
     systems::wall::history_recording::RecordWallHistory,
 };
@@ -28,6 +31,37 @@ pub struct PendingWallChanged {
 #[derive(Resource, Clone, Debug, Default)]
 pub struct PendingWallHistory {
     pub wall_changed: Option<PendingWallChanged>,
+    /// Original `pending_wall_history.merge_walls` (`Option<PendingMergeWalls>`,
+    /// written once by `merge_walls`, drained by `history_record_merge_walls`).
+    pub merge_walls: Option<PendingMergeWalls>,
+}
+
+/// Original `AdjustHeight` payload inside `PendingMergeWalls` (pending +0x08
+/// wall id, +0x10 `from` f32, +0x14 `to` f32; fed to `new_height_changed`
+/// 0x140a83fb0 as wall / param_3 / param_4).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PendingAdjustHeight {
+    pub wall: WallId,
+    pub from: f32,
+    pub to: f32,
+}
+
+/// Original `deferred_wall_history::PendingMergeWalls`; the field names are the
+/// ones printed by the `merge_walls` assertion text (0x142abb1da). Memory
+/// layout: adjust_height +0x00/+0x08/+0x10/+0x14, wall_state_a +0x18,
+/// wall_state_b +0x88, wall_a +0xf8, wall_b +0x100, merged_wall_id +0x108,
+/// wall_color_a +0x110, wall_color_b +0x114, merged_color_id +0x118.
+#[derive(Clone, Debug)]
+pub struct PendingMergeWalls {
+    pub adjust_height: Option<PendingAdjustHeight>,
+    pub wall_a: WallId,
+    pub wall_b: WallId,
+    pub wall_state_a: WallState,
+    pub wall_state_b: WallState,
+    pub merged_wall_id: WallId,
+    pub merged_color_id: u32,
+    pub wall_color_a: u32,
+    pub wall_color_b: u32,
 }
 
 /// Adapt only representation: retain original authority points_u/length rather
@@ -110,4 +144,59 @@ pub fn history_record_wall_changed(
     if let Some(changed) = pending.wall_changed.take() {
         records.write(RecordWallHistory(Arc::new(changed.into_compound())));
     }
+}
+
+fn recovered(wall: WallId) -> crate::resources::walls::publication_fields::WallId {
+    crate::resources::walls::publication_fields::WallId(wall.0)
+}
+
+/// Original 0x1408dd1b0. Takes `merge_walls` once (the take marks the resource
+/// changed even when empty). When an adjust-height record exists it is added as
+/// its own wall edit (`EditType::new_height_changed`, one group) first; then one
+/// compound of three single-edit groups is added: `DeleteWall(wall_a)` with
+/// `wall_color_a`, `DeleteWall(wall_b)` with `wall_color_b`, and `CreateWall`
+/// for the merged wall cloned from the *current* `InnerWalls` row (color =
+/// `merged_color_id`, restored height/elevation = that row's +0x54/+0x58).
+/// The original adds to `History` directly; both records go through the
+/// shared `RecordWallHistory` consumer here, like `history_record_wall_changed`.
+///
+/// The merged-wall lookup panics (`Option::unwrap`) exactly where the original
+/// does: after the adjust-height record, before the compound is built.
+pub fn history_record_merge_walls(
+    mut pending: ResMut<PendingWallHistory>,
+    inner_walls: Res<InnerWalls>,
+    mut records: EventWriter<RecordWallHistory>,
+) {
+    let Some(merge) = pending.merge_walls.take() else {
+        return;
+    };
+    if let Some(adjust) = merge.adjust_height {
+        records.write(RecordWallHistory(Arc::new(WallCompoundHistoryEdit {
+            groups: vec![vec![WallHistoryEdit::AdjustHeight {
+                wall: recovered(adjust.wall),
+                from: adjust.from,
+                to: adjust.to,
+            }]],
+        })));
+    }
+    let merged = inner_walls.get(merge.merged_wall_id).unwrap();
+    let mut builder = CompoundEditBuilder::default();
+    builder.new_edit_sequence();
+    for (wall, state, color) in [
+        (merge.wall_a, &merge.wall_state_a, merge.wall_color_a),
+        (merge.wall_b, &merge.wall_state_b, merge.wall_color_b),
+    ] {
+        // 0x140a876a0 wall_deleted: Delete { source = state snapshot, color,
+        // restored_height = state +0x54 }, appended as a new group.
+        let mut deleted = record_deleted_wall(recovered(wall), state.snapshot(), color);
+        builder.next(deleted.groups.remove(0).remove(0));
+    }
+    builder.next(WallHistoryEdit::Create {
+        wall: recovered(merge.merged_wall_id),
+        source: merged.snapshot().clone(),
+        color_id: merge.merged_color_id,
+        restored_height: merged.height(),
+        restored_elevation: merged.elevation(),
+    });
+    records.write(RecordWallHistory(Arc::new(builder.build())));
 }

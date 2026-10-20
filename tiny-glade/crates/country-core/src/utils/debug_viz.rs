@@ -149,6 +149,99 @@ impl DebugRectangle3d {
     }
 }
 
+impl DebugSphere {
+    /// 原版 `DebugSphere::show`（0x140b02520）向 `UiSignifierStream` 推一个带名字的工厂槽
+    /// （名字由 `{:?}` 格式化整个球体参数得到，闭包 0x140b027d0 用 `sphere_mesh_name` 对应的
+    /// 网格 + `vertex_color_shader` 生成指示符实体）。这里与 `DebugLine` 一致：名字改为完整参数哈希，
+    /// 闭包直接生成带网格/着色器/变换的指示符实体。`alpha`/`solid` 在原闭包经
+    /// `SignifierEntityBuilder::build` 消费，具体着色器 uniform 绑定尚未逐项取证（未闭合），
+    /// 目前只参与去重名字。
+    pub fn show(&self, stream: &mut UiSignifierStream) {
+        let name = format!("debug_sphere:{:016x}", self.identity_hash());
+        let mesh_name = self.color.sphere_mesh_name();
+        let center = self.center;
+        let radius = self.radius;
+        let factory = SignifierFactory::from_closure(
+            &name,
+            Arc::new(
+                move |meshes: &AssetMeshLibrary,
+                      shaders: &AssetShaderLibrary,
+                      commands: &mut Commands| {
+                    let Some(mesh) = meshes.try_get_handle_by_name(mesh_name) else {
+                        log::warn!("调试球体网格未注册：{mesh_name}");
+                        return Vec::new();
+                    };
+                    let Some(shader) = shaders.get_raster_handle_by_name("vertex_color_shader")
+                    else {
+                        log::warn!("调试球体着色器未注册：vertex_color_shader");
+                        return Vec::new();
+                    };
+                    let entity = commands
+                        .spawn((
+                            DrawableMeshBundle {
+                                mesh,
+                                shader,
+                                transform: Transform::from_translation_scale(
+                                    center,
+                                    Vec3::splat(radius),
+                                ),
+                            },
+                            DontCastShadow,
+                            UiPass,
+                            SignifierId(0),
+                            SignifierAnimation {
+                                flag_8: 1,
+                                duration: 0.0,
+                                value: 1.0,
+                                t: 1.0,
+                                eased: 1.0,
+                                ..Default::default()
+                            },
+                        ))
+                        .id();
+                    vec![entity]
+                },
+            ),
+        );
+        stream.write_factory(&factory);
+    }
+
+    fn identity_hash(&self) -> u64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        self.color.tag().hash(&mut hasher);
+        self.color.as_array().map(f32::to_bits).hash(&mut hasher);
+        self.radius.to_bits().hash(&mut hasher);
+        self.center.to_array().map(f32::to_bits).hash(&mut hasher);
+        self.alpha.to_bits().hash(&mut hasher);
+        self.solid.hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
+/// 二维矩形请求（O：`DebugRectangle2d`，0x140b04640 `show`）。布局 `{ color: DebugColor @0
+/// （16 B：tag + Vec3 载荷）, line_width: f32 @0x10, rect: Rectangle2d @0x14（24 B）,
+/// height: f32 @0x2c }`；`show` 先 `Rectangle2d::as_curve3(height)`，再按曲线折线提交。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DebugRectangle2d {
+    pub color: DebugColor,
+    pub line_width: f32,
+    pub rect: ::utils::geometry::Rectangle2d,
+    pub height: f32,
+}
+
+impl DebugRectangle2d {
+    /// 原版 `DebugRectangle2d::show`：矩形闭合折线（4 角 + 回到起点，高度 `height`）经 `DebugLine`
+    /// 工厂路径提交。原版闭包本体（0x140b04640 之后的工厂）未单独反编译（未闭合），这里复用
+    /// 已有折线工厂，保持颜色/线宽/世界空间点语义。
+    pub fn show(&self, stream: &mut UiSignifierStream) {
+        let curve = self.rect.as_curve3(self.height);
+        DebugLine::new(curve.points.clone())
+            .color(self.color)
+            .line_width(self.line_width)
+            .show(stream);
+    }
+}
+
 /// 折线请求；颜色可按点提供，也可使用统一颜色。
 #[derive(Clone, Debug, PartialEq)]
 pub struct DebugLine {
@@ -374,6 +467,38 @@ mod tests {
             (line.ui_pass, line.dashed, line.line_width),
             (false, true, 3.0)
         );
+    }
+
+    #[test]
+    fn sphere_and_rectangle2d_show_commit_one_slot_each_with_distinct_names() {
+        use crate::systems::ui::signifiers::UiSignifierStream;
+        use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+
+        let mut stream = UiSignifierStream::default();
+        DebugSphere::new(Vec3::ONE).color(DebugColor::Red).show(&mut stream);
+        DebugSphere::new(Vec3::ONE).color(DebugColor::Blue).show(&mut stream);
+        DebugRectangle2d {
+            color: DebugColor::Green,
+            line_width: 2.0,
+            rect: ::utils::geometry::Rectangle2d::new_axis_aligned(
+                glam::Vec2::ZERO,
+                glam::Vec2::new(2.0, 4.0),
+            ),
+            height: 0.0,
+        }
+        .show(&mut stream);
+        assert_eq!(stream.committed_len(), 3);
+        let names: Vec<_> = stream
+            .take_entries()
+            .into_iter()
+            .map(|entry| match entry {
+                UiSignifierEntry::Factory(factory) => factory.name().unwrap().to_string(),
+                other => panic!("unexpected {other:?}"),
+            })
+            .collect();
+        assert_ne!(names[0], names[1], "colour participates in the identity");
+        assert!(names[0].starts_with("debug_sphere:"));
+        assert!(names[2].starts_with("debug_line:"));
     }
 
     #[test]

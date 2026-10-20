@@ -82,3 +82,67 @@ pub fn build<S: Send + Sync + 'static>(world: &mut World, schedule: &mut Schedul
     register_tree_tool_events(world);
     add_tree_tool_cpu_systems::<S>(schedule);
 }
+
+/// `<system_tree::TreePlugin as bevy_app::Plugin>::build`（0x140650520）。
+///
+/// 机器码（逐指令 + 各系统 `Box<dyn System>` 类型名核对）：
+/// 1. `Schedules::add_systems(OnExit(AppLoadingState::Game), reset_tree_tool)`（0x1406505b7；
+///    `MOV DL,1` = `AppLoadingState::Game`，label 单体 0x140e9b080 里 intern 的是 `OnExit<_>`）。
+/// 2. `SubApp::add_systems(Update, (replay_tree.in_set(GameSystemSet(0x28)),
+///    (ui_delete_tree, ui_move_tree, ui_place_tree, place_tree, hide_trees, process_tree_cmds,
+///    despawn_trees, tree_move_bend, recalc_tree_position_on_terrain_height_change,
+///    convert_preplaced_trees).chain_ignore_deferred().in_set(GameSystemSet(0x1b))))`
+///    （in_set 0x1406505c9 `DL=0x28`；chain_ignore_deferred 0x1406505d2，顺序取自单体 0x140e9d530
+///    的 `into_configs` 调用序；in_set_inner 0x140650602 `MOV byte,0x1b`；add_systems 0x1406506ab）。
+///    无 `run_if`。
+/// 3. `App::insert_resource(TreeStorage::default())`（0x14065072f；空 HashMap + next_index 0）。
+/// 4. 7 次 `register_event`（均带 TypeId 判存在）：PlaceTreeCmd（0x140650795）、MoveTreeCmd
+///    （0x1406507f1）、DeleteTreeCmd（0x14065084d）、InsertTreeCmd（0x1406508a9）、
+///    SpawnPreplacedTrees（0x140650905）、HideTreesinAreaCmd（0x140650961）、
+///    HideTreesNextToWallCmd（0x1406509c5 尾调 0x140e9fbb0）。
+/// 泛型实参取宿主已有的 `MaybePendingSnapshotId`。
+pub struct TreePlugin;
+
+impl bevy_app::Plugin for TreePlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        use bevy_app::Update;
+        use bevy_state::state::OnExit;
+        use country_core::app_loading_state::AppLoadingState;
+        use country_core::resources::history::tree_edit::{DeleteTreeCmd, InsertTreeCmd, SpawnPreplacedTrees};
+        use country_core::resources::history::MaybePendingSnapshotId as S;
+        use country_core::resources::tree_storage::{
+            HideTreesNextToWallCmd, HideTreesinAreaCmd, MoveTreeCmd, TreeStorage,
+        };
+        use country_core::systems::GameSystemSet;
+
+        app.add_systems(OnExit(AppLoadingState::Game), startup_tree_tool::reset_tree_tool);
+        app.add_systems(
+            Update,
+            (
+                replay_tree::<S>.in_set(GameSystemSet(0x28)),
+                (
+                    ui_delete_tree::<S>,
+                    ui_move_tree::<S>,
+                    ui_place_tree,
+                    place_tree::<S>,
+                    hide_trees::<S>,
+                    process_tree_cmds::<S>,
+                    despawn_trees,
+                    tree_move_bend,
+                    recalc_tree_position_on_terrain_height_change,
+                    convert_preplaced_trees::<S>,
+                )
+                    .chain_ignore_deferred()
+                    .in_set(GameSystemSet(0x1b)),
+            ),
+        );
+        app.insert_resource(TreeStorage::default());
+        app.add_event::<PlaceTreeCmd>();
+        app.add_event::<MoveTreeCmd>();
+        app.add_event::<DeleteTreeCmd>();
+        app.add_event::<InsertTreeCmd>();
+        app.add_event::<SpawnPreplacedTrees>();
+        app.add_event::<HideTreesinAreaCmd>();
+        app.add_event::<HideTreesNextToWallCmd>();
+    }
+}

@@ -50,10 +50,8 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<res::color_id::SetWallColorIdCmd>();
     app.add_event::<res::color_id::SetGateColorIdCmd>();
     app.add_event::<res::color_id::SetHalftimberColorIdCmd>();
-    // res::tree_storage
-    app.add_event::<res::tree_storage::HideTreesNextToWallCmd>();
-    app.add_event::<res::tree_storage::HideTreesinAreaCmd>();
-    app.add_event::<res::tree_storage::MoveTreeCmd>();
+    // res::tree_storage / system_tree / roof command events moved to TreePlugin and
+    // RoofSystems (run_game::add_original_plugins), which own them in the original.
     // res::glade_border
     app.add_event::<res::glade_border::DisplayOutOfBorder>();
     app.add_event::<res::glade_border::FeedbackInputOutOfBorder>();
@@ -63,27 +61,16 @@ pub(super) fn install(app: &mut App) {
     // sys::history::history_process
     app.add_event::<sys::history::history_process::DebugHistoryMsg>();
     // res::roofs::commands
-    app.add_event::<res::roofs::commands::CreateRoofCmd>();
-    app.add_event::<res::roofs::commands::DeleteRoofCmd>();
     app.add_event::<res::roofs::commands::SwitchRoofDirectionCmd>();
     app.add_event::<res::roofs::commands::SetFlatRoofStyleCmd>();
-    app.add_event::<res::roofs::commands::SetFlatRoofRimStyleCmd>();
-    app.add_event::<res::roofs::commands::EditRoofCmd>();
     app.add_event::<res::roofs::commands::RoofIsInvalid>();
     app.add_event::<res::roofs::commands::ResetRoofs>();
     app.add_event::<res::roofs::commands::WallRoofPresenceChanged>();
     app.add_event::<res::roofs::commands::WallGableChanged>();
-    app.add_event::<res::roofs::commands::RoofGeometryChanged>();
     app.add_event::<res::roofs::commands::RecalculateWallHoles>();
     app.add_event::<res::roofs::commands::RecalculateWallBricks>();
-    app.add_event::<res::roofs::commands::SwitchRoofTypeCmd>();
-    app.add_event::<res::roofs::commands::RoofSound>();
-    app.add_event::<res::roofs::commands::RecordRoofHistory>();
     app.add_event::<res::roofs::commands::RoofEditFeedback>();
     app.add_event::<res::roofs::commands::ReplayRoofEvent>();
-    // system_roof::ui_edit_roof_ridge_dir
-    app.add_event::<system_roof::ui_edit_roof_ridge_dir::SwitchRoofRidgeDirCmd>();
-    app.add_event::<system_roof::ui_edit_roof_ridge_dir::RecordRidgeSwitchHistoryCmd>();
     // system_color
     app.add_event::<system_color::ShowColorMenuCmd>();
     app.add_event::<system_color::HideColorMenuCmd>();
@@ -102,12 +89,6 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<sys::wall::SetWallStyleCmd>();
     // sys::ui::resources::widget_params
     app.add_event::<sys::ui::resources::widget_params::PlayUiSound>();
-    // system_tree
-    app.add_event::<system_tree::PlaceTreeCmd>();
-    // res::history::tree_edit
-    app.add_event::<res::history::tree_edit::InsertTreeCmd>();
-    app.add_event::<res::history::tree_edit::DeleteTreeCmd>();
-    app.add_event::<res::history::tree_edit::SpawnPreplacedTrees>();
     // toolbar::ui_interaction
     app.add_event::<toolbar::ui_interaction::UiClickEvent>();
     app.add_event::<toolbar::ui_interaction::UiDragEvent>();

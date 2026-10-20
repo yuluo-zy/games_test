@@ -9,7 +9,8 @@ pub mod visual;
 
 pub use invalidate::invalidate_dirty_stair_artifacts;
 pub use stairs_assembly_params::{
-    length_ws, AlignKind, ObservedAlignKind, ObservedStairNodeAnchor, PreferredNodeAlignment,
+    length_ws, AlignKind, ObservedAlignKind, ObservedStairNodeAnchor,
+    PlayermadeStairsAssemblyParams, PlayermadeStairsAssemblyRequests, PreferredNodeAlignment,
     StairWallAnchor,
 };
 pub use stairs_collider::StairsCollider;

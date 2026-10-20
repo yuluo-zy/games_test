@@ -91,3 +91,10 @@ pub struct WriteSettingsFileCmd;
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct SaveGameProfileCmd;
 pub use crate::systems::wall::{draw_wall::RecordMouseInputIntoWall, finish_wall::FinishWall};
+
+/// B `country_core::resources::events::FinishAdjWallHeightMode`：墙高度编辑模式结束
+/// 通知（unit，事件实例仅 EventId）。`history_record_adjust_wall_height`
+/// （0x140ac79e0 `EventReader<FinishAdjWallHeightMode>`）只判空并整队消费，
+/// 载荷未被任何已取证消费者读取。
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct FinishAdjWallHeightMode;

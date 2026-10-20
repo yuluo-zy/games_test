@@ -1186,11 +1186,12 @@ pub struct RaycastWorld {
     slots: [RapierSubWorld; SUBWORLD_SLOT_COUNT as usize],
     /// `mesh_intersect_collider_diff_publisher` 返回此字段引用（O：@+0x3cb0）。
     publisher: Publisher<ColliderDiff>,
-    /// 脏瓦片发布器（O：`subscribe_to_changes` 0x1408cdc20 的
-    /// `Publisher::subscribe<DirtyTiles>` 目标；`flush_colliders` 0x1408cd5c0 逐槽
-    /// take-and-clear 后 `publish<DirtyTiles,DirtyTiles>`）。`on_level_reload` 0x1408d8710
-    /// 显示每槽另有内联 `Publisher<DirtyTiles>`（slot+0x150）；world 级发布器为订阅合同。
-    dirty_tiles_publisher: Publisher<crate::utils::dirty_tiles::DirtyTiles>,
+    /// 每槽一个脏瓦片发布器（O：槽内联 `Publisher<DirtyTiles>` @slot+0x150 = world+0x20+0x390*slot+0x150
+    /// = `world + slot*0x390 + 0x170`）。机器码 `RaycastWorld::subscribe_to_changes` 0x1408cdc20 为
+    /// `movzx eax,dl; imul rax,rax,0x390; add rcx,rax; add rcx,0x170; jmp Publisher::subscribe<DirtyTiles>`，
+    /// 即按槽号取发布器；`flush_colliders` 0x1408cd5c0 逐槽 take-and-clear 后向**该槽**发布器
+    /// `publish<DirtyTiles,DirtyTiles>`。（旧实现用单个 world 级发布器，已纠正。）
+    dirty_tiles_publishers: [Publisher<crate::utils::dirty_tiles::DirtyTiles>; crate::systems::collision::SUBWORLD_SLOT_COUNT as usize],
     /// The existing SlotMap is the sole mesh receipt allocator/owner.
     /// Collider.user_data carries its key; the colliders Vec is only its public projection.
     #[cfg(feature = "native-physics")]
@@ -1241,7 +1242,7 @@ impl RaycastWorld {
             #[cfg(feature = "native-physics")]
             slots: std::array::from_fn(|_| RapierSubWorld::default()),
             publisher: Publisher::new(),
-            dirty_tiles_publisher: Publisher::new(),
+            dirty_tiles_publishers: std::array::from_fn(|_| Publisher::new()),
             #[cfg(feature = "native-physics")]
             mesh_sources: MeshInstanceSources::new(),
         }
@@ -1267,12 +1268,12 @@ impl RaycastWorld {
     /// puffin scope 在本实现为调试无操作（原 `are_scopes_on` 门控）。
     #[cfg(feature = "native-physics")]
     pub fn flush_colliders(&mut self) {
-        for slot in self.slots.iter_mut() {
+        for (slot, publisher) in self.slots.iter_mut().zip(self.dirty_tiles_publishers.iter_mut()) {
             if slot.dirty {
                 let tiles = slot.dirty_tiles.take_and_clear();
                 // O：`publish<DirtyTiles,DirtyTiles>`（`take_and_clear` 的快照即 delta，
                 // `DirtyTiles` 的 `StateDelta::apply_to` 为逐字 OR）。
-                let _ = self.dirty_tiles_publisher.publish(tiles);
+                let _ = publisher.publish(tiles);
                 slot.dirty = false;
                 slot.pipeline.update(&slot.colliders);
             }
@@ -1382,13 +1383,14 @@ impl RaycastWorld {
             .expect("collider source: mesh receipt missing or stale")
     }
 
-    /// `RaycastWorld::subscribe_to_changes`（0x1408cdc20，O）：`Publisher::subscribe<DirtyTiles>`
-    /// —— 脏瓦片变化订阅。fresh 反编译：25 B 纯转发 `tabloid::Publisher::subscribe<DirtyTiles>()`
-    /// （发布器为 world 字段；`flush_colliders` 逐槽 take-and-clear 后 publish）。
+    /// `RaycastWorld::subscribe_to_changes`（0x1408cdc20，O）：`(&mut self, slot: u8)` →
+    /// `Publisher::subscribe<DirtyTiles>` on `self.slot[slot]` 的内联发布器
+    /// （`slot * 0x390 + 0x170`，不做边界检查；本实现越界 panic）。
     pub fn subscribe_to_changes(
         &mut self,
+        slot: u8,
     ) -> tabloid::Subscriber<crate::utils::dirty_tiles::DirtyTiles> {
-        self.dirty_tiles_publisher.subscribe()
+        self.dirty_tiles_publishers[slot as usize].subscribe()
     }
 
     /// `Rapier::get_rapier_collider`（0x1408ce440，fresh）：纯转发
@@ -1773,6 +1775,16 @@ impl RaycastWorld {
     ) -> Vec<RaycastWorldResult> {
         Vec::new()
     }
+}
+
+/// 原版系统 `country_core::systems::collision::world::flush_rapier_colliders`（0x1408d8360，757B）。
+///
+/// SystemParam 面：`ResMut<RaycastWorld>`（单参数：`*param_1` 为资源值、`param_1[2]` 变更 tick
+/// 槽、`+0x1c` this_run；`deref_mut` 写 tick）。体：puffin 作用域
+/// `country_core::systems::collision::world::flush_rapier_colliders`（仅 scopes 开启时，非业务）+
+/// `RaycastWorld::flush_colliders()`。
+pub fn flush_rapier_colliders(mut world: bevy_ecs::prelude::ResMut<RaycastWorld>) {
+    world.flush_colliders();
 }
 
 /// `ColliderMeshInstance`（O：`HashMap<K, ColliderMeshInstance>` 的 value，**0x18 B**）。
@@ -4095,5 +4107,24 @@ mod finite_simple_ray_regressions {
         assert_source(&hit, RaycastGeoSource::Slot0);
         assert_eq!(hit.toi, 0.0);
         assert_eq!(hit.position, Vec3::ZERO);
+    }
+}
+
+#[cfg(test)]
+mod slot_publisher_tests {
+    use super::*;
+
+    /// 0x1408cdc20：按槽号取内联发布器（`slot*0x390+0x170`）；每个槽独立，且不检查越界（Rust 侧 panic）。
+    #[test]
+    fn subscribe_to_changes_is_per_slot() {
+        let mut world = RaycastWorld::new();
+        for slot in 0..crate::systems::collision::SUBWORLD_SLOT_COUNT {
+            let _ = world.subscribe_to_changes(slot);
+        }
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut world = RaycastWorld::new();
+            let _ = world.subscribe_to_changes(crate::systems::collision::SUBWORLD_SLOT_COUNT);
+        }));
+        assert!(result.is_err());
     }
 }

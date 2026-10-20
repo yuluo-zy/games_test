@@ -25,28 +25,9 @@ pub enum GameplayGpuPreStartup { Inputs, Atlases, Nani }
 #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GameplaySessionStartup { Walls, Sky, Critters, Roof, Sheep, Clearing, Meadow }
 
-/// Registration identity only. Asset completion is the actual canonical
-/// ClutterMeshes resource inserted by the original Startup producer.
-#[derive(Resource)]
-struct ClutterStartupRegistered;
-
-fn install_clutter_startup(app: &mut App, installed: PathBuf) {
-    if app.world().contains_resource::<ClutterStartupRegistered>() {
-        return;
-    }
-    // B ClutterPlugin1406520f9 -> Schedules::add_systems140ed9480:
-    // loader is one of three Startup members, not part of its Update chain.
-    // The two subscription members are separate unresolved producers.
-    app.add_systems(bevy_app::Startup,
-        move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
-              config: Res<GameConfig>, mut commands: Commands| {
-            let catalog = system_clutter::autoclutter::load_clutter_meshes::load_clutter_meshes_from(
-                &installed, &meshes, &watch, config.dev.demo);
-            commands.insert_resource(catalog);
-        });
-    app.insert_resource(ClutterStartupRegistered);
-}
-
+// The ClutterMeshes loader is the Startup member of ClutterPlugin1406520f9
+// (system_clutter::ClutterPlugin, mounted by run_game::add_original_plugins).
+// This host no longer carries a second closure for it.
 pub(crate) fn require_clutter_catalog(world: &World) -> anyhow::Result<()> {
     anyhow::ensure!(world.contains_resource::<country_core::resources::clutter_meshes::ClutterMeshes>(),
         "gameplay Startup did not publish canonical ClutterMeshes");
@@ -72,71 +53,6 @@ pub fn install_gameplay_device_runtime(
     let demo = app.world().resource::<GameConfig>().dev.demo;
     app.add_plugins(country_core::resources::gpu_lut::GpuLutPlugin { demo });
     Ok(())
-}
-
-#[cfg(test)]
-mod clutter_startup_tests {
-    use super::*;
-    use country_core::resources::clutter_meshes::ClutterMeshes;
-
-    fn startup_app() -> App {
-        let mut app = App::new();
-        let mut config = GameConfig::default();
-        config.dev.demo = false;
-        app.insert_resource(config);
-        app.insert_resource(AssetMeshLibrary::new());
-        app.insert_resource(MeshWatch::new(false));
-        app
-    }
-
-    #[test]
-    fn clutter_loader_registration_is_once_per_app_and_only_in_startup() {
-        for _ in 0..2 {
-            let mut app = startup_app();
-            install_clutter_startup(&mut app, PathBuf::from("not-loaded-at-registration"));
-            install_clutter_startup(&mut app, PathBuf::from("not-loaded-at-registration"));
-            assert_eq!(app.get_schedule(bevy_app::Startup).unwrap().graph().systems()
-                .filter(|(_, system, _)| system.name().contains("install_clutter_startup")).count(), 1);
-            assert_eq!(app.get_schedule(bevy_app::Update).unwrap().graph().systems()
-                .filter(|(_, system, _)| system.name().contains("install_clutter_startup")).count(), 0);
-            assert!(app.world().contains_resource::<ClutterStartupRegistered>());
-            assert!(!app.world().contains_resource::<ClutterMeshes>());
-            assert!(require_clutter_catalog(app.world()).is_err());
-        }
-    }
-
-    #[test]
-    fn a_missing_required_asset_never_publishes_the_canonical_catalog() {
-        let mut app = startup_app();
-        let missing = std::env::temp_dir().join(format!(
-            "tiny-glade-missing-clutter-{}-{}", std::process::id(),
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
-        assert!(!missing.exists());
-        install_clutter_startup(&mut app, missing);
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| app.update()));
-        assert!(result.is_err());
-        assert!(!app.world().contains_resource::<ClutterMeshes>());
-        assert!(require_clutter_catalog(app.world()).is_err());
-    }
-
-    #[test]
-    #[ignore = "requires the original B installation via TG_INSTALL_ROOT; no fabricated catalog"]
-    fn genuine_clutter_startup_loads_once_from_the_explicit_installation() {
-        let installed = crate::run_game::installation_root().unwrap();
-        let mut app = startup_app();
-        install_clutter_startup(&mut app, installed.clone());
-        app.update();
-        require_clutter_catalog(app.world()).unwrap();
-        assert_eq!(app.world().resource::<AssetMeshLibrary>().mesh_entries.len(), 61);
-        let catalog = app.world().resource::<ClutterMeshes>();
-        assert_eq!(catalog.window_flowerbeds().len(), 6);
-        let first = catalog.window_flowerbeds()[0].mesh.unwrap();
-        let mesh = app.world().resource::<AssetMeshLibrary>().get(first).unwrap();
-        assert!(std::path::Path::new(&mesh.source_file.as_ref().unwrap().path).starts_with(&installed));
-        app.update();
-        assert_eq!(app.world().resource::<AssetMeshLibrary>().mesh_entries.len(), 61);
-        assert_eq!(app.world().resource::<ClutterMeshes>().window_flowerbeds()[0].mesh, Some(first));
-    }
 }
 
 pub fn install_gameplay_gpu_startup(
@@ -181,31 +97,19 @@ pub fn install_gameplay_gpu_startup(
     let watching = config.dev.live_link();
     app.init_resource::<PrefabLibrary>();
     app.init_resource::<MeshAtlasLibrary>();
-    // Original ForestPlugin and run_game_thread own these actual resources;
-    // init preserves an already-loaded same-World owner across installers.
-    app.init_resource::<country_core::resources::tree_storage::InteractableForestPlacements>();
+    // ForestPlugin (InteractableForestPlacements) is mounted by run_game::add_original_plugins;
+    // run_game_thread owns these remaining actual resources.
     app.init_resource::<country_core::resources::history::tree_edit::TreeCanopyMaxCullDistance>();
     app.init_resource::<country_core::asset_libraries::audio_trigger_library::AudioTriggerLibrary>();
     app.init_resource::<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>();
     app.add_event::<country_core::systems::prefab::SpawnPrefabCmd>();
     app.add_event::<country_core::systems::prefab::DespawnPrefabCmd>();
-    app.add_event::<country_core::resources::events::ConstructTimberframeCmd>();
-    // B ForestPlugin140650c50: manage -> forest animation -> handplaced
-    // animation, chain_ignore_deferred in the existing set36. No World/view
-    // mirror, synthetic instance or extra Commands flush is introduced.
-    app.add_systems(bevy_app::Update,
-        (forest::manage_tree_prefabs::manage_tree_prefabs::<
-            country_core::resources::history::MaybePendingSnapshotId>,
-         forest::tree_animation::forest_tree_animation,
-         forest::tree_animation::handplaced_tree_animation)
-            .chain_ignore_deferred().in_set(crate::run_game::GameSystemSet(36)));
     if !app.world().contains_resource::<GpuWorld>() {
         app.insert_resource(GpuWorld::new(hosts.buffers.as_ref()));
     }
     if !app.world().contains_resource::<MeshWatch>() {
         app.insert_resource(MeshWatch::new(watching));
     }
-    install_clutter_startup(app, installed.clone());
     if !app.world().contains_resource::<TextureWatch>() {
         app.insert_resource(TextureWatch::new(watching));
     }
@@ -265,7 +169,7 @@ pub fn install_gameplay_gpu_startup(
     
     // Central-only narrow insertion in install_gameplay_gpu_startup. Original
     // register order is the already declared GameplaySessionStartup::Sheep.
-    app.init_resource::<system_critters::bird_spots::BirdSpotManager>();
+    // BirdSpotManager is inserted by CritterPlugin14067d440 (run_game::add_original_plugins).
     let sheep_root = installed.clone();
     let sheep_backend = hosts.shaders.clone();
     let sheep_device = hosts.buffers.clone();

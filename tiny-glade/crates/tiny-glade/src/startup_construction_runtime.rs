@@ -7,14 +7,8 @@ use crate::run_game::GameSystemSet;
 use country_core::{resources as res, systems as sys};
 
 pub(super) fn install(app: &mut App) {
-    // Narrow insertion into the real gameplay runtime installer. Existing GameSystemSet gating applies.
-    app.init_resource::<country_core::resources::critters::CritterControl>();
-    app.add_systems(bevy_app::Update,
-        system_critters::control_critters::control_critters.in_set(crate::run_game::GameSystemSet(36)));
-    app.add_systems(bevy_app::Update,
-        (system_critters::butterfly::butterflies_send_to_gpu,
-         system_critters::firefly::fireflies_send_to_gpu).in_set(crate::run_game::GameSystemSet(44)));
-    
+    // Critter systems/resources (control_critters, butterflies/fireflies GPU upload,
+    // CritterControl) belong to CritterPlugin14067d440 (run_game::add_original_plugins).
     // Owning empty constructors run before actual load; init preserves existing
     // authoritative content and never resets a loaded scene to make it start.
     sys::wall::registration::register_wall_cpu_resources(app.world_mut());
@@ -30,7 +24,6 @@ pub(super) fn install(app: &mut App) {
     app.init_resource::<sys::wall::construct_wall_bricks::WallBrickBuildState>();
     app.init_resource::<res::rt::RtWorld>();
     app.init_resource::<sys::ui::signifiers::signifier_create::UiSignifierStream>();
-    app.init_resource::<sys::render_loop::draw_passes::draw_callbacks_a::RoofHighlight>();
     app.add_event::<res::walls::public_walls::OnWallChanged>();
     app.add_event::<res::walls::public_walls::OnWallDeleted>();
     app.add_event::<sys::wall::construct_wall_bricks::RecalculateWallBricks>();
@@ -38,26 +31,19 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<sys::wall::calc_wall_bend::WallBendChangedEvent>();
     app.add_event::<res::rt::UpdateRtWorldEvent>();
     app.add_event::<system_wall_constructor::construct_gates::systems::ConstructGateCmd>();
-    app.add_event::<res::roofs::commands::HighlightRoofCmd>();
-    app.add_event::<res::roofs::commands::RoofSound>();
-    app.add_event::<res::roofs::commands::CreateRoofCmd>();
-    app.add_event::<res::roofs::commands::SwitchRoofTypeCmd>();
-    app.add_event::<res::roofs::commands::RoofGeometryChanged>();
     app.add_event::<res::roofs::commands::WallGableChanged>();
     app.add_event::<res::roofs::commands::WallRoofPresenceChanged>();
     app.add_event::<res::roofs::commands::RoofIsInvalid>();
 
-    // ForestPlugin140650c50: exact Update36 tuple order, without deferred
-    // flushes between its leaves. The same handplaced animation is not mounted
-    // again in the replay/prefab adapter below40.
-    app.init_resource::<res::tree_storage::InteractableForestPlacements>();
-    app.add_event::<res::events::ConstructTimberframeCmd>();
-    app.add_systems(Update, (
-        forest::manage_tree_prefabs::manage_tree_prefabs::<res::history::MaybePendingSnapshotId>,
-        forest::tree_animation::forest_tree_animation,
-        forest::tree_animation::handplaced_tree_animation,
-    ).chain_ignore_deferred().in_set(GameSystemSet(36)));
+    // The ForestPlugin140650c50 chain and InteractableForestPlacements, and the
+    // timberframe ConstructTimberframeCmd event, are mounted once by
+    // run_game::add_original_plugins.
 
+    install_open_adapter_inputs(app);
+
+    // OPEN (not closed): wall_roof_hashmap and process_invalid_roof_notifications are NOT
+    // members of the original add_roof_systems@14062fcb0 (RoofSystems); their original
+    // registration point is unlocated, so they stay here exactly as before.
     // The root patch extends the EXISTING19 publication tuple in place. The
     // second copy of publication/spatial systems must never be installed here.
     app.add_systems(Update, (
@@ -78,4 +64,63 @@ pub(super) fn install(app: &mut App) {
     ).chain_ignore_deferred().in_set(GameSystemSet(28)));
     app.add_systems(Update,
         system_wall_constructor::gpu_output::flush_constructor_output.in_set(GameSystemSet(44)));
+}
+
+/// OPEN (NOT CLOSED) inputs of the plugin-registered systems. Every item below is a
+/// Rust-side seam/adapter of a recovered crate with no recovered original creator
+/// (the original system reads a different native owner or an unrecovered event).
+/// They are created in their idle (empty/zero) state ONLY so that the Bevy system
+/// parameter validation of the original-registered systems passes; no producer is
+/// wired, so the dependent behaviour stays unclosed until the owning domain replaces
+/// the seam with the real source. None of this is claimed as original behaviour.
+fn install_open_adapter_inputs(app: &mut App) {
+    // Original creator is known and exact: add_wall_shape_ux@140945f50 inserts it
+    // all-zero (u32@+0 = 0, u64@+8 = 0), read by timberframe's two construct systems.
+    // The remaining half of add_wall_shape_ux (8 shape systems + 4 resources) belongs to
+    // the wall owner's pass and is intentionally not mounted here.
+    app.insert_resource(
+        sys::wall::shapes::calc_shape_height::TimberframeConstructionParamsCache::default());
+    // OPEN: terrain tool adapters (country-core terrain/*): "I" seams whose native
+    // owners (CursorTerrainRaycast/Rapier raycast/SSBO readback/UI context) are not yet
+    // bridged; no host writer exists, so hover/focus/selection stay idle.
+    use sys::terrain::{terrain_hover_idx as hover, ui_draw_terrain as draw,
+        ui_edit_terrain as edit, ui_terrain_focus_mode as focus, deferred_terrain_history as hist};
+    app.init_resource::<hover::MouseTerrainHoverReadback>();
+    app.init_resource::<hover::TerrainWaterSample>();
+    app.init_resource::<draw::TerrainHoverInput>();
+    app.init_resource::<draw::TerrainDrawState>();
+    app.init_resource::<edit::TerrainEditUiState>();
+    app.init_resource::<edit::TerrainWidgetResponseTable>();
+    app.init_resource::<edit::StairsPlacementBucket>();
+    app.init_resource::<edit::TerrainEditHistoryPending>();
+    app.init_resource::<focus::TerrainFocusRaycast>();
+    app.init_resource::<focus::TerrainFocusHover>();
+    app.init_resource::<focus::TerrainFocusSelection>();
+    app.init_resource::<hist::PendingTerrainHistory>();
+    // OPEN: ShowPinnedDecoClutter is an Event (56 B) in the original; country-core models
+    // it as a Resource, so ClutterPlugin's decoclutter_show_pins needs this idle value.
+    app.init_resource::<sys::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>();
+    {
+        use sys::ui_clutter::decoclutter_show_pins as pins;
+        app.init_resource::<pins::PinnedDecoClutter>();
+        app.init_resource::<pins::PinnedDecoGeometryTable>();
+        app.init_resource::<pins::PinnedDecoClutterBuffers>();
+        app.init_resource::<pins::PinAnimationTable>();
+        app.init_resource::<pins::PinHitDedup>();
+        app.add_event::<pins::PinVisibilityToggle>();
+    }
+    // OPEN: HintResetState is an onboarding-crate adapter (reset_hints state).
+    app.init_resource::<system_onboarding::reset_hints::HintResetState>();
+    // OPEN: SheepInputStream is a crate seam; the original gate is a field of an
+    // unidentified native resource (+0x40). Empty stream => the system returns early.
+    app.init_resource::<system_critters::sheep::sheep_input_record_replay::SheepInputStream>();
+    // OPEN: onboarding seam events (unrecovered original trigger sources) and the
+    // ToolbarUiIsInFocus event (toolbar-owned in the original, per the onboarding report).
+    app.add_event::<system_onboarding::hint_deselect_tool::DeselectReset>();
+    app.add_event::<system_onboarding::reset_hints::ResetHintsCommand>();
+    app.add_event::<system_onboarding::hint_orchestrator::ToolbarUiIsInFocus>();
+    // Terrain-tool adapter events with no recovered original registrar.
+    app.add_event::<edit::TerrainWindowFocus>();
+    app.add_event::<focus::SignifierDrawTopology>();
+    app.add_event::<focus::TerrainFocusTrigger>();
 }

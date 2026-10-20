@@ -46,7 +46,7 @@ fn save_is_corrupted() -> bool {
 pub fn sheep_unstuck(
     time: Res<GameTime>,
     terrain: Res<TerrainHeightsData>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     rock_mask: Res<TerrainRockMask>,
     raycast: Res<RaycastWorldHandle>,
     mut query: Query<(

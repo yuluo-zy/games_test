@@ -28,6 +28,13 @@ pub use ui::{
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
 pub struct KeepOnLevelUnload;
 
+/// B `components::TestCube`（`register_required_components` 0x140845610，registry.rs
+/// 第 2 项）。`ui_adjust_wall_height_mode` / `history_record_adjust_wall_height` 的
+/// `Query<(&TestCube, &mut Transform)>` 形参只占位、函数体均不读写；字段未取证，
+/// 故只建标记组件。
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
+pub struct TestCube;
+
 // 保持已有公共入口；权威定义分别属于 prefab 系统和树编辑资源。
 pub use crate::resources::history::tree_edit::TreeCanopyMaxCullDistance;
 pub use crate::systems::prefab::PrefabInstanceData;

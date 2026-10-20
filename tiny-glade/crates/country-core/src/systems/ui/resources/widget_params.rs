@@ -251,6 +251,10 @@ pub struct WidgetParams {
     pub occlude_by_world: bool,
     /// @0xa9 flags 字节。
     pub flags: WidgetFlags,
+    /// Mesh volume variant (volume tag 2, original `{tag, Vec<Triangle>}` in the
+    /// 0x20 B volume slot @0x88). Only `wall_splitter` (0x140a74c20) produces it:
+    /// two triangles per wall segment. `None` for every other volume variant.
+    pub mesh_volume: Option<Vec<utils::geometry::intersect::Triangle>>,
 }
 
 impl Default for WidgetParams {
@@ -277,7 +281,18 @@ impl WidgetParams {
             volume,
             occlude_by_world: true,
             flags: WidgetFlags(0x01),
+            mesh_volume: None,
         }
+    }
+
+    /// Volume variant tag 2: triangle mesh (original `wall_splitter` volume).
+    pub fn mesh_volume(mut self, triangles: Vec<utils::geometry::intersect::Triangle>) -> Self {
+        self.volume = WidgetVolumeShape {
+            tag: 2,
+            ..WidgetVolumeShape::default()
+        };
+        self.mesh_volume = Some(triangles);
+        self
     }
 
     /// 兼容面：同时承接 sounds（O：`new` 之后由 `sounds()` 覆写 0x18..0x78）。

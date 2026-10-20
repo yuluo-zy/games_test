@@ -1,15 +1,12 @@
 //! B AdjustWallHeightCmd transport into the actual InnerWalls authority.
+//! Original submodules (`adjust_wall_height::{adjust_wall_height_impl, signifier_animation, ui_adjust_wall_height_mode}`).
+pub mod adjust_wall_height_impl;
+pub mod signifier_animation;
+pub mod ui_adjust_wall_height_mode;
 use crate::systems::wall::height_command::AdjustWallHeightRequest;
-use crate::systems::wall::height_command::ResolvedWallHeightClamp;
 use crate::systems::wall::height_command::WallHeightCommandError;
 use crate::systems::wall::height_command::WallHeightFeedback;
-use crate::systems::wall::height_command::apply_resolved_height_command;
-use crate::resources::roofs::Roof;
-use crate::resources::time::GameTime;
-use crate::resources::walls::InnerWalls;
 use crate::resources::walls::WallId;
-use crate::resources::walls::public_walls::PublicWalls;
-use crate::systems::wall::wall_state::publish_public_wall_state::WallPublicationTerrain;
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 
@@ -17,8 +14,11 @@ use crate::systems::camera_rig::main_camera::MainCamera;
 
 #[derive(Event, Clone, Copy, Debug)]
 pub struct AdjustWallHeightCmd(pub AdjustWallHeightRequest);
+/// 旧合并反馈事件。原版 `adjust_wall_height_impl` 不产生它（见 `adjust_wall_height_impl`：写
+/// `RequestWallMaterialAudio`/`PlayBuildingAudio`）；仅为宿主既有 `add_event` 引用保留。
 #[derive(Event, Clone, Copy, Debug)]
 pub struct WallHeightAudio(pub WallHeightFeedback);
+/// 旧失败事件：原版没有该事件（`mode`/曲线非法走 panic）；不再被写出，仅为宿主引用保留。
 #[derive(Event, Clone, Copy, Debug)]
 pub struct WallHeightCommandFailed {
     pub wall: WallId,
@@ -29,79 +29,18 @@ pub fn register_wall_height_events(world: &mut World) {
     world.init_resource::<Events<AdjustWallHeightCmd>>();
     world.init_resource::<Events<WallHeightAudio>>();
     world.init_resource::<Events<WallHeightCommandFailed>>();
+    // 原版 `adjust_wall_height_impl` 实际写出的两个事件队列（0x140ac1f20 param_3/param_4）。
+    world.init_resource::<Events<crate::systems::audio::RequestWallMaterialAudio>>();
+    world.init_resource::<Events<crate::systems::audio::PlayBuildingAudio>>();
     // B `adjust_wall_ui_mode::UiWallHeight` host resource (+0 wall, +8 flag,
     // +9 mode; +0x90/+0x98 points, +0xe0/+0xe8 heights).
     world.init_resource::<UiWallHeight>();
 }
 
-/// Shared command algorithm retains ordered comparison, equal-height skipping,
-/// source +65 bounds, terrain anchor and the original repeated authority write.
-pub fn adjust_wall_height(
-    mut requests: EventReader<AdjustWallHeightCmd>,
-    mut inner: ResMut<InnerWalls>,
-    public: Res<PublicWalls>,
-    roofs: Query<&Roof>,
-    terrain: Res<WallPublicationTerrain>,
-    time: Res<GameTime>,
-    mut audio: EventWriter<WallHeightAudio>,
-    mut failures: EventWriter<WallHeightCommandFailed>,
-) {
-    for event in requests.read() {
-        let request = &event.0;
-        // 0x140ac1f20（fresh 2026-10-17）：驱动循环 `while mode == 0` 跳过；
-        // `if mode != 1 → panic`。Rust 此前把非 1 模式转为事件。
-        if request.mode == 0 {
-            continue;
-        }
-        assert_eq!(
-            request.mode, 1,
-            "unsupported wall height scalar mode"
-        );
-        let wall = WallId(request.wall.0);
-        // walls 探针 miss：原生 unwrap_failed panic（Rust 此前发事件）。
-        let Some(state) = inner.get(wall) else {
-            panic!("adjust_wall_height_impl: wall {wall:?} missing from InnerWalls");
-        };
-        // 0x140ac7f30 clamp_wall_height：PublicWalls 探针 + 曲线有效性断言
-        // （count > 1 且 length > 0，validate_public_wall_read 同式）→ roof component。
-        let public_state = public
-            .get(wall)
-            .unwrap_or_else(|| panic!("clamp_wall_height: wall {wall:?} missing from PublicWalls"));
-        public_state.assert_valid();
-        let clamp = Some(ResolvedWallHeightClamp {
-            roof_height_01: public_roof_height(&public, wall, &roofs),
-            special_flag: public_state.authority.source_flag_65(),
-        });
-        let mut height = state.height();
-        match apply_resolved_height_command(
-            request,
-            &mut height,
-            state.source().curve_kind_tag,
-            &state.source().curve,
-            &terrain.0,
-            clamp,
-            time.delta,
-        ) {
-            Ok(Some(result)) => {
-                for update in result.authority_updates {
-                    inner.update_wall_state_height(wall, update.requested_height);
-                }
-                audio.write(WallHeightAudio(result.feedback));
-            }
-            Ok(None) => {}
-            Err(error) => {
-                failures.write(WallHeightCommandFailed { wall, error });
-            }
-        }
-    }
-}
-
-fn public_roof_height(public: &PublicWalls, wall: WallId, roofs: &Query<&Roof>) -> Option<f32> {
-    public
-        .roof_entity(wall)
-        .and_then(|entity| roofs.get(entity).ok())
-        .map(Roof::height_01)
-}
+/// 原版系统 `adjust_wall_height::adjust_wall_height_impl::adjust_wall_height_impl`
+/// （0x140ac1f20）。本仓库旧名 `adjust_wall_height` 保留为同一函数项别名，
+/// 以免宿主 `.before(adjust_wall_height)` 排序引用失效；原版没有第二个系统。
+pub use self::adjust_wall_height_impl::adjust_wall_height_impl as adjust_wall_height;
 
 // ---------------------------------------------------------------------------
 // `ui_adjust_wall_height_mode::get_closest_point_u_to_cursor` (B 0x140ac7400)

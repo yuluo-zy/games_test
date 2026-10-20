@@ -50,13 +50,148 @@ pub mod ui_pet_ducks;
 pub mod wren;
 pub mod wren_boids;
 
+use bevy_app::{App, Plugin, Update};
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::Schedule;
+use bevy_state::state::OnExit;
+
+use country_core::app_loading_state::AppLoadingState;
+use country_core::systems::GameSystemSet;
 
 use components::{CritterControlState, DuckSpawnLocations, FishSpawnLocations};
 
 /// B 种子（插件 build 0x14067d537 传 raw Perchance state 0xc0df → PerchanceContext）。
 pub const CRITTER_RNG_SEED_B: u128 = 0x606f;
+
+/// `<system_critters::CritterPlugin as bevy_app::Plugin>::build`（B 0x14067d440，966 B）。
+///
+/// | 调用点 | 动作 | 内容 |
+/// |---|---|---|
+/// | 0x14067d45d/0x14067d470/0x14067d48a/0x14067d495 | `chain_ignore_deferred`×2 + `in_set(GameSystemSet(0x24))`（R8B=0x24）+ `SubApp::add_systems(Update)` | 见下 |
+/// | 0x14067d4a9/0x14067d4ab/0x14067d4b6 | `in_set(GameSystemSet(0x2c))`（DL=0x2c）+ `SubApp::add_systems(Update)` | 普通 tuple `(butterflies_send_to_gpu, fireflies_send_to_gpu)`（系统签名在 0x14067d4ab 的 in_set 单态类型实参内） |
+/// | 0x14067d532 | `Schedules::add_systems(OnExit(AppLoadingState::Game))`（DL=1，辅助 0x140f81fa0） | tuple2 `(despawn_birds, despawn_fish)`，无序 |
+/// | 0x14067d542…0x14067d693 | 8× `insert_resource` | `CritterRng`(Perchance 原始状态 0xc0df)、`WrenBoids`、`CritterControl::default()`、`DuckTrajectoryPlanner`、`DuckSpawnLocations::new()`、`BirdSpotManager`(Arc 强/弱=1、next_id=0)、`FishBoids`、`FishSpawnLocations::new()` |
+/// | 0x14067d6f9 与尾跳 0x140f94300 | 2× `register_event`（`get_resource_id` 幂等门） | `DespawnDuckCmd`、`SpawnSplashParticle` |
+///
+/// 0x24 系结构（辅助 0x140f801d0 = `(G1配置, 鹪鹩 tuple4, fish).in_set(0x24)`，三者间无序；G1 = 0x140f7e4e0
+/// 的 `chain_ignore_deferred`，成员按 `into_configs` 调用序）：
+/// 0 `critter_control`（内联系统 0x140f7de90，即本 crate `control_critters`）；1 `ui_pet_ducks`；
+/// 2 `ducks_react_to_being_inside_buildings`；3 `sheep_unstuck`；
+/// 4 普通 tuple7 `((update_butterfly_states, update_butterfly_goals).chain_ignore_deferred(), update_firefly_goals,
+/// update_sheep_goals, update_duck_goals, spawn_ducks, despawn_ducks, plan_duck_trajectories)`；
+/// 5 `move_ducks_along_trajectories`；6 `duck_splash_particle`；7 `critters_avoid_collisions`；
+/// 8 普通 tuple4 `(set_butterfly_velocities_towards_goals, set_firefly_velocities_towards_goals,
+/// set_sheep_velocities_towards_goals, set_duck_velocities_towards_goals)`；9 `smooth_critter_velocities`；
+/// 10 `sheep_walk_on_terrain`；11 `move_critters`；12 `sheep_umbrellas`；13 `sheep_floaties`；
+/// 14 普通 tuple3 `(update_butterfly_audio, update_sheep_audio, update_duck_ripples)`；15 `sheep_input_record_replay`。
+/// 鹪鹩 tuple4（0x141db2d10）= `(update_decorator_bird_spots, update_roof_bird_spots, update_wrens, sim_wren_boids)`。
+/// 嵌套 tuple 内部成员互不排序，只整体位于前后链成员之间；`chain_ignore_deferred` 与 `chain()` 的区别
+/// （不在成员间插 `ApplyDeferred`）是契约的一部分。
+pub struct CritterPlugin;
+
+impl Plugin for CritterPlugin {
+    fn build(&self, app: &mut App) {
+        // 0x14067d45d…0x14067d495：Update，set 0x24。
+        app.add_systems(
+            Update,
+            (
+                (
+                    control_critters::control_critters,
+                    ui_pet_ducks::ui_pet_ducks,
+                    ducks_react_to_being_inside_buildings::ducks_react_to_being_inside_buildings,
+                    sheep::sheep_unstuck::sheep_unstuck,
+                    (
+                        (butterfly::update_butterfly_states, butterfly::update_butterfly_goals)
+                            .chain_ignore_deferred(),
+                        firefly::update_firefly_goals,
+                        sheep::sheep_behavior::update_sheep_goals,
+                        duck::update_duck_goals,
+                        spawn_ducks::spawn_ducks,
+                        spawn_ducks::despawn_ducks,
+                        duck::plan_duck_trajectories,
+                    ),
+                    duck::move_ducks_along_trajectories,
+                    duck_splash_particle::duck_splash_particle,
+                    shared::critters_avoid_collisions,
+                    (
+                        butterfly::set_butterfly_velocities_towards_goals,
+                        firefly::set_firefly_velocities_towards_goals,
+                        sheep::sheep_behavior::set_sheep_velocities_towards_goals,
+                        duck::set_duck_velocities_towards_goals,
+                    ),
+                    shared::smooth_critter_velocities,
+                    sheep::sheep_terrain::sheep_walk_on_terrain,
+                    shared::move_critters,
+                    sheep::sheep_umbrella::sheep_umbrellas,
+                    sheep::sheep_floatie::sheep_floaties,
+                    (
+                        butterfly::update_butterfly_audio,
+                        sheep::sheep_behavior::update_sheep_audio,
+                        duck::update_duck_ripples,
+                    ),
+                    sheep::sheep_input_record_replay::sheep_input_record_replay,
+                )
+                    .chain_ignore_deferred(),
+                (
+                    wren::update_decorator_bird_spots,
+                    wren::update_roof_bird_spots,
+                    wren::update_wrens,
+                    wren_boids::sim_wren_boids,
+                ),
+                fish::fish,
+            )
+                .in_set(GameSystemSet(0x24)),
+        );
+
+        // 0x14067d4a9…0x14067d4b6：Update，set 0x2c，普通 tuple。
+        app.add_systems(
+            Update,
+            (butterfly::butterflies_send_to_gpu, firefly::fireflies_send_to_gpu)
+                .in_set(GameSystemSet(0x2c)),
+        );
+
+        // 0x14067d532：OnExit(AppLoadingState::Game)。原版 tuple2 = (`wren_boids::despawn_birds`,
+        // `fish::despawn_fish`)；`despawn_birds`（`ResMut<WrenBoids>`）本 crate 未还原——未闭合缺口，只注册 despawn_fish。
+        app.add_systems(OnExit(AppLoadingState::Game), fish::despawn_fish);
+
+        // 0x14067d542…0x14067d693：8 个 insert_resource（顺序同机器码）。
+        app.insert_resource(duck::CritterRng::default()); // CritterRng：PerchanceContext(0xc0df)，crate 落位 duck.rs
+        app.insert_resource(wren_boids::WrenBoids::default());
+        app.insert_resource(country_core::resources::critters::CritterControl::default());
+        app.insert_resource(duck::DuckTrajectoryPlanner::default());
+        app.insert_resource(DuckSpawnLocations::new());
+        app.insert_resource(bird_spots::BirdSpotManager::default());
+        app.insert_resource(components::FishBoids::default());
+        app.insert_resource(FishSpawnLocations::new());
+
+        // 0x14067d6f9 与尾跳 0x140f94300：register_event（`add_event` 等价）。
+        app.add_event::<spawn_ducks::DespawnDuckCmd>();
+        app.add_event::<duck_splash_particle::SpawnSplashParticle>();
+
+        // ---- 非原版 build 面：本 crate 近似系统所需的 crate 局部资源/事件 ----
+        init_adapter_resources(app.world_mut());
+        app.add_event::<sheep::sheep_input_record_replay::SheepInputReplayCmd>();
+        // update_roof_bird_spots 消费的屋顶/墙变更事件（宿主亦发布）。
+        app.add_event::<country_core::resources::roofs::commands::RecalculateRoofCmd>();
+        app.add_event::<country_core::resources::walls::public_walls::OnWallChanged>();
+    }
+}
+
+/// 本 crate 近似系统消费、但原版 `CritterPlugin::build` 不插入的 crate 局部资源（`init_resource`，不覆盖宿主值）。
+pub fn init_adapter_resources(world: &mut World) {
+    world.init_resource::<duck::DevHotkeys>();
+    world.init_resource::<duck::DuckRipples>();
+    world.init_resource::<fish::FishRng>();
+    world.init_resource::<wren::WrenRng>();
+    world.init_resource::<wren_boids::WrenRng2>();
+    world.init_resource::<wren_boids::WrenEnabled>();
+    world.init_resource::<shared::TerrainRockMask>();
+    world.init_resource::<butterfly::ButterflyProximity>();
+    world.init_resource::<butterfly::ButterflyGpuData>();
+    world.init_resource::<firefly::FireflyGpuData>();
+    world.init_resource::<sheep::ui_pet_sheep::PetSheepTarget>();
+    world.init_resource::<sheep::sheep_umbrella::Raining>();
+}
 
 /// 注册全部 critters 系统与资源（B 0x14067d440 `CritterPlugin::build` 语义）。
 ///
@@ -194,3 +329,47 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
 
 #[cfg(test)]
 mod upload_tests;
+
+#[cfg(test)]
+mod plugin_registration_tests {
+    use super::*;
+    use bevy_ecs::schedule::{ScheduleLabel, Schedules};
+
+    /// CritterPlugin + SheepPlugin 的 Update/OnExit 调度图必须可构建，且原版 build 插入的 8 个资源齐全。
+    #[test]
+    fn plugins_build_valid_schedules_and_insert_original_resources() {
+        let mut app = App::new();
+        app.add_plugins((CritterPlugin, sheep::SheepPlugin));
+        let world = app.world_mut();
+        assert!(world.contains_resource::<duck::CritterRng>());
+        assert!(world.contains_resource::<wren_boids::WrenBoids>());
+        assert!(world.contains_resource::<country_core::resources::critters::CritterControl>());
+        assert!(world.contains_resource::<duck::DuckTrajectoryPlanner>());
+        assert!(world.contains_resource::<DuckSpawnLocations>());
+        assert!(world.contains_resource::<bird_spots::BirdSpotManager>());
+        assert!(world.contains_resource::<components::FishBoids>());
+        assert!(world.contains_resource::<FishSpawnLocations>());
+        world.schedule_scope(Update.intern(), |world, schedule| {
+            schedule.initialize(world).expect("critters Update graph must build");
+        });
+        world.schedule_scope(OnExit(AppLoadingState::Game).intern(), |world, schedule| {
+            schedule.initialize(world).expect("critters OnExit graph must build");
+        });
+        let mut schedules = app.world_mut().resource_mut::<Schedules>();
+        let names: Vec<String> = schedules
+            .get_mut(Update)
+            .unwrap()
+            .systems()
+            .unwrap()
+            .map(|(_, s)| s.name().to_string())
+            .collect();
+        for expected in [
+            "control_critters", "update_butterfly_states", "update_firefly_goals", "plan_duck_trajectories",
+            "set_sheep_velocities_towards_goals", "update_duck_ripples", "sheep_input_record_replay",
+            "update_wrens", "sim_wren_boids", "fish", "butterflies_send_to_gpu", "fireflies_send_to_gpu",
+            "sheep_controls", "sheep_walk_animation", "sheep_reaction_emoji",
+        ] {
+            assert_eq!(names.iter().filter(|n| n.ends_with(&format!("::{expected}"))).count(), 1, "{expected}");
+        }
+    }
+}

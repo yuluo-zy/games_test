@@ -334,6 +334,48 @@ impl WallEraserArchivist {
     }
 }
 
+/// Additive faithful face of `add_split_event` (0x14092f280) used by
+/// `wall_splitter`: the original takes the full piece list `(new id, t1, t2)`,
+/// not a count.
+impl WallEraserArchivist {
+    /// True when `add_split_event_pieces(wall, ..)` can find its rewire target
+    /// and child wall (map1 -> map3 -> child with `id == wall`).
+    pub fn has_split_target(&self, wall: WallId) -> bool {
+        self.map1
+            .get(&OriginalWallId(wall.0))
+            .and_then(|target| self.map3.get(target))
+            .is_some_and(|child_walls| child_walls.children.iter().any(|c| c.id == wall.0))
+    }
+
+    /// B add_split_event (0x14092f280): map1 -> map3 (both `expect`/unwrap
+    /// failures as in the original), `swap_remove` the child whose id is
+    /// `wall`, push `removed.slice(piece.id, t1, t2)` for every piece, then
+    /// `map1.insert(piece.id, target)` for every piece.
+    pub fn add_split_event_pieces(&mut self, wall: WallId, pieces: &[(u64, f32, f32)]) {
+        let id = OriginalWallId(wall.0);
+        let target = self
+            .map1
+            .get(&id)
+            .copied()
+            .expect("add_split_event: wall not in rewire map");
+        let child_walls = self
+            .map3
+            .get_mut(&target)
+            .expect("add_split_event: rewire target has no ChildWalls");
+        let removed = child_walls
+            .remove(wall.0)
+            .unwrap_or_else(|| panic!("add_split_event: child wall {id:?} not found"));
+        child_walls.extend(
+            pieces
+                .iter()
+                .map(|&(piece, t1, t2)| removed.slice(piece, t1, t2)),
+        );
+        for &(piece, _, _) in pieces {
+            self.map1.insert(OriginalWallId(piece), target);
+        }
+    }
+}
+
 impl Default for WallEraserArchivist {
     fn default() -> Self {
         Self {
@@ -625,6 +667,29 @@ mod tests {
             .map3
             .insert(children.wall, children);
         archivist
+    }
+
+    /// `add_split_event_pieces` (0x14092f280): the split child is swap-removed,
+    /// each piece is sliced from it and registered in map1 with the same target.
+    #[test]
+    fn add_split_event_pieces_replaces_child_and_registers_pieces() {
+        let mut archivist = archivist_with(ChildWalls {
+            wall: RewireEnclosedWall(1),
+            original: snapshot(3.0),
+            children: vec![ChildWall::new(1, 0.0, 1.0), ChildWall::new(9, 0.0, 0.0)],
+            fully_erased: false,
+        });
+        assert!(archivist.has_split_target(WallId(1)));
+        archivist.add_split_event_pieces(WallId(1), &[(2, 0.0, 0.25), (3, 0.25, 1.0)]);
+        let ids: Vec<u64> = archivist.map3[&RewireEnclosedWall(1)]
+            .children
+            .iter()
+            .map(|c| c.id)
+            .collect();
+        assert_eq!(ids, vec![9, 2, 3]);
+        assert_eq!(archivist.map1[&OriginalWallId(2)], RewireEnclosedWall(1));
+        assert_eq!(archivist.map1[&OriginalWallId(3)], RewireEnclosedWall(1));
+        assert!(!archivist.has_split_target(WallId(1)));
     }
 
     /// cache_if_original_wall：首次 cache → map2/map1 落位；重复（map1 已存在）→

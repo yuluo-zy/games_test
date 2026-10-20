@@ -35,6 +35,20 @@ use crate::resources::walls::decorator_storage::{
 };
 use crate::resources::walls::publication_fields::WallId as RecoveredWallId;
 
+/// B `resources::walls::decorator_archivist::DecoratorArchivalResources`
+/// （`#[derive(SystemParam)]`，`archive_current_decorators_in_storages` 第 5 形参）：
+/// `Res<RaycastWorld>` + `Res<DecoratorPhysicsColliders>`，仅供碰撞体载荷重建读取。
+/// 重建本身属 collision 域（见 `archive_storage_decorators` 说明），本参数面只转交。
+#[derive(bevy_ecs::system::SystemParam)]
+pub struct DecoratorArchivalResources<'w> {
+    pub raycast_world: bevy_ecs::system::Res<'w, crate::systems::collision::world::RaycastWorld>,
+    #[cfg(feature = "native-physics")]
+    pub colliders: bevy_ecs::system::Res<
+        'w,
+        crate::resources::walls::decorator_collision::DecoratorPhysicsColliders,
+    >,
+}
+
 /// Original archive collision payload. These are owned collision objects, not
 /// addresses copied from a native allocation.
 #[cfg(feature = "native-physics")]

@@ -65,3 +65,34 @@ pub fn build<C: Send + Sync + 'static>(world: &mut World, schedule: &mut Schedul
     register_forest_events(world);
     add_forest_cpu_systems::<C>(schedule);
 }
+
+/// `<forest::ForestPlugin as bevy_app::Plugin>::build`（0x140650c50）。
+///
+/// 机器码（逐指令 + `Box<dyn System>` 类型名核对）：
+/// 1. `chain_ignore_deferred((manage_tree_prefabs, forest_tree_animation,
+///    handplaced_tree_animation))`（0x140650c73；链内顺序取自单体 0x140ea68d0 里 `into_configs`
+///    的调用顺序）→ `in_set(GameSystemSet(0x24))`（0x140650c78 `MOV byte,0x24` + intern
+///    0x14362c370 + `in_set_inner` 0x140650ca3）→ `SubApp::add_systems(Update, ..)`（0x140650ce7）；
+///    无 `run_if`。
+/// 2. `App::insert_resource(InteractableForestPlacements::default())`（0x140650d0f；
+///    Vec{dangling 8, len 0, cap 0} + processed=false）。
+/// 无 `register_event`。`manage_tree_prefabs` 的泛型实参取宿主已有的 `MaybePendingSnapshotId`。
+pub struct ForestPlugin;
+
+impl bevy_app::Plugin for ForestPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        use country_core::resources::history::MaybePendingSnapshotId as C;
+        use country_core::systems::GameSystemSet;
+        app.add_systems(
+            bevy_app::Update,
+            (
+                manage_tree_prefabs::<C>,
+                forest_tree_animation,
+                handplaced_tree_animation,
+            )
+                .chain_ignore_deferred()
+                .in_set(GameSystemSet(0x24)),
+        );
+        app.insert_resource(InteractableForestPlacements::default());
+    }
+}

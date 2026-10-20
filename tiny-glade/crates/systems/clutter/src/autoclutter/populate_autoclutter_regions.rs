@@ -80,8 +80,9 @@ pub fn autoclutter_subscribe_to_tabloids(
     // O（0x1422d6930）顺序：8× RaycastWorld::subscribe_to_changes（0x1408cdc20）→
     // 1× Publisher<DirtyTiles>::subscribe → 3× WorldRaster::subscribe<512>
     // （经 TweakerView::as_inner_mut）→ 1× Publisher<DirtyTiles>::subscribe。
-    for _ in 0..8 {
-        guard.push(raycast.0.subscribe_to_changes());
+    // 槽号序列取自 0x1422d6930 的 `subscribe_to_changes(world, slot)` 实参：0,1,3,4,5,6,7,2。
+    for slot in [0u8, 1, 3, 4, 5, 6, 7, 2] {
+        guard.push(raycast.0.subscribe_to_changes(slot));
     }
     guard.push(publisher.0.subscribe());
     for _ in 0..3 {
@@ -105,7 +106,7 @@ impl std::fmt::Debug for RaycastWorldHandleClutter {
 pub fn populate_autoclutter_regions(
     mut state: ResMut<AutoClutterState>,
     mut dirty: ResMut<DirtyTilesResource>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     rock_mask: Res<RockMaskData>,
     mut sub: ResMut<AutoClutterDirtySubscriptions>,
     mut local: ResMut<PopulateLocal>,
@@ -558,11 +559,10 @@ pub struct SessionMeta {
     pub is_halloween2024: bool,
 }
 
-/// GPU 灌木网格（build 里 insert_resource BushGrid；read_bush 域）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct BushGrid {
-    pub cells: Vec<[f32; 2]>,
-}
+/// GPU 灌木网格：build 里 insert_resource 的唯一 `BushGrid`（read_bush 域）。此前这里有一个
+/// 并行占位类型（`Vec<[f32;2]>`），ClutterPlugin 插入的是 read_bush 版，导致本系统的参数
+/// 校验永远失败；统一为同一个类型。
+pub use super::read_bush_positions_from_gpu::BushGrid;
 
 /// 全局 id 包装（hash_one<&GlobalId>）。
 pub fn global_id(cell: [i32; 2]) -> GlobalId {

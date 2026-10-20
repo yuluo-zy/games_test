@@ -90,3 +90,49 @@ pub fn build(world: &mut World, schedule: &mut Schedule) {
     register_timberframe_events(world);
     add_timberframe_cpu_systems(schedule);
 }
+
+/// `<bevy_app::App as timberframe::TimberframeSystems>::add_timberframe`（0x140630a20）。
+///
+/// 机器码（PyGhidra 逐指令 + `Box<dyn System>` 类型名串核对）：
+/// | 调用点 | 动作 |
+/// |---|---|
+/// | 0x140630a43 | `App::insert_resource(TimberframeInstanceBuffer)`（RDX=0：gate==0 槽空 = `Default`） |
+/// | 0x140630a5d | `App::insert_resource(TimberframeBeamCount)`（0x14 字节全零 = `Default`） |
+/// | 0x140630abd | `EventRegistry::register_event::<ConstructTimberframeCmd>`（先 `get_resource_id` 判重，等价 `add_event`） |
+/// | 0x140630ac6/0x140630af9 | `(construct_timberframe_rectangle, construct_timberframe_circle, timberframe_beam_count_change_audio).chain_ignore_deferred().in_set(GameSystemSet(0x1b))`（单体 0x140de80e0 内 into_configs 顺序） |
+/// | 0x140630b40 | `SubApp::add_systems(Update, …)`（调度标签 vtable 0x142ebe6a0，slot3 = "Update"） |
+/// | 0x140630bac | `Schedules::add_systems(OnExit(AppLoadingState::Game), timberframe_on_glade_unload)`（标签 u8 = 1 = `Game`，vtable 0x142ebe708 = `OnExit<S>`） |
+///
+/// 原版**不**注册 `PlayTimberframeSound`（`add_audio_events` 注册）。
+/// 未闭合：原版 `TimberframeConstructionParamsCache`（两个构造系统的 `Res`）不由本函数插入，来源待查。
+pub trait TimberframeSystems {
+    fn add_timberframe(&mut self) -> &mut Self;
+}
+
+impl TimberframeSystems for bevy_app::App {
+    fn add_timberframe(&mut self) -> &mut Self {
+        use bevy_app::Update;
+        use bevy_state::state::OnExit;
+        use country_core::app_loading_state::AppLoadingState;
+        use country_core::resources::events::ConstructTimberframeCmd;
+        use country_core::systems::GameSystemSet;
+
+        self.insert_resource(TimberframeInstanceBuffer::default());
+        self.insert_resource(
+            crate::timberframe_beam_count_change_audio::TimberframeBeamCount::default(),
+        );
+        self.add_event::<ConstructTimberframeCmd>();
+        self.add_systems(
+            Update,
+            (
+                construct_timberframe_rectangle,
+                construct_timberframe_circle,
+                timberframe_beam_count_change_audio,
+            )
+                .chain_ignore_deferred()
+                .in_set(GameSystemSet(0x1b)),
+        );
+        self.add_systems(OnExit(AppLoadingState::Game), timberframe_on_glade_unload);
+        self
+    }
+}

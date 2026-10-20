@@ -16,6 +16,8 @@ pub use crate::systems::render_loop::compute_passes::rasterize_terrain_stroke::R
 use bevy_ecs::prelude::*;
 use glam::Vec3;
 
+use crate::systems::render_loop::compute_passes::read_terrain_data::ScheduledTerrainReadback;
+
 /// Original terrain sound observations. The SystemParam identity and audio
 /// consumer determine the type; folded grow_one names are not event identities.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
@@ -178,4 +180,74 @@ pub fn add_terrain_tool_systems<S: Send + Sync + 'static>(schedule: &mut Schedul
             .after(ui_edit_terrain::ui_edit_terrain)
             .in_set(crate::systems::history::HistoryCpuStage::Record),
     );
+}
+
+/// `<bevy_app::App as country_core::systems::terrain::TerrainSystems>`（原版三个方法：
+/// `add_terrain_systems` 0x1409455f0、`insert_terrain_resources` 0x1409457c0、
+/// `add_terrain_events` 0x140945a20）。
+///
+/// `add_terrain_systems`：`SubApp::add_systems(Update, (chain_ignore_deferred((ui_terrain_focus_mode,
+/// ui_draw_terrain, ui_edit_terrain, edit_terrain_stroke, terrain_stroke_changed,
+/// delayed_terrain_changed_msg)).in_set(GameSystemSet(0x0f)),
+/// history_record_terrain.in_set(GameSystemSet(0x22))))`（chain 0x140945613，`MOV byte,0xf` 0x140945618，
+/// in_set_inner 0x14094563d；`DL=0x22` in_set 0x14094569c；add_systems 0x140945742；顺序取自单体
+/// 0x141755b40 的 `into_configs` 调用序；无 `run_if`）。原版此函数不含 terrain_hover_idx /
+/// replay_terrain / ui_edit_focus_terrain / arrow_gizmo_animation（本仓库 `add_terrain_tool_systems`
+/// 另行挂载，原版挂载点未定位，见报告）。
+///
+/// `insert_terrain_resources`（顺序）：MouseActivityTimer（0x1409457f2，**本仓库无此类型，未闭合**）、
+/// TerrainStrokeParamsCache（0x14094580c，**本仓库无此类型，未闭合**）、
+/// `TerrainHeightsData<TerrainHeightSsbo>`（0x1409458a5）、`TerrainHeightsData<VisualTerrainHeightSsbo>`
+/// （0x140945936）、`HoveredTerrainStrokeId`（0x140945940，全零）、`ScheduledTerrainReadback`（0x140945958，全零）。
+///
+/// `add_terrain_events`（6 次 register_event，顺序）：EvTerrainStrokeChanged（0x140945a84）、
+/// EditTerrainStrokeCmd（0x140945ae0）、AddTerrainHighlightCmd（0x140945b3c）、RecalculateHeightMapCmd
+/// （0x140945b98）、OnTerrainChange（0x140945bf4）、SetTerrainStrokePtsCmd（0x140945c50）。
+pub trait TerrainSystems {
+    fn add_terrain_systems(&mut self) -> &mut Self;
+    fn insert_terrain_resources(&mut self) -> &mut Self;
+    fn add_terrain_events(&mut self) -> &mut Self;
+}
+
+impl TerrainSystems for bevy_app::App {
+    fn add_terrain_systems(&mut self) -> &mut Self {
+        use crate::resources::history::MaybePendingSnapshotId as S;
+        use crate::systems::GameSystemSet;
+        self.add_systems(
+            bevy_app::Update,
+            (
+                (
+                    ui_terrain_focus_mode::ui_terrain_focus_mode,
+                    ui_draw_terrain::ui_draw_terrain,
+                    ui_edit_terrain::ui_edit_terrain,
+                    edit_terrain_stroke::edit_terrain_stroke,
+                    draw_terrain_stroke::terrain_stroke_changed,
+                    delayed_terrain_changed_msg::delayed_terrain_changed_msg,
+                )
+                    .chain_ignore_deferred()
+                    .in_set(GameSystemSet(0x0f)),
+                deferred_terrain_history::history_record_terrain::<S>.in_set(GameSystemSet(0x22)),
+            ),
+        )
+    }
+
+    fn insert_terrain_resources(&mut self) -> &mut Self {
+        use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData, VisualTerrainHeightSsbo};
+        // 未闭合：原版先 insert MouseActivityTimer（初值 {f32 0.0, f32 1000.0}, u8 0）与
+        // TerrainStrokeParamsCache（全零 20B）；本仓库无对应类型，不伪造。
+        self.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+        self.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
+        self.insert_resource(terrain_hover_idx::HoveredTerrainStrokeId::default());
+        self.insert_resource(ScheduledTerrainReadback::default())
+    }
+
+    fn add_terrain_events(&mut self) -> &mut Self {
+        use crate::systems::render_loop::compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd;
+        self.add_event::<draw_terrain_stroke::EvTerrainStrokeChanged>();
+        self.add_event::<edit_terrain_stroke::EditTerrainStrokeCmd>();
+        self.add_event::<AddTerrainHighlightCmd>();
+        self.add_event::<RecalculateHeightMapCmd>();
+        self.add_event::<delayed_terrain_changed_msg::OnTerrainChange>();
+        self.add_event::<edit_terrain_stroke::SetTerrainStrokePtsCmd>()
+    }
 }

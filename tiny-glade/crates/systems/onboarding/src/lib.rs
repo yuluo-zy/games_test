@@ -156,3 +156,113 @@ pub fn prompt_rollercoaster(
         );
     }
 }
+
+/// `<bevy_app::App as system_onboarding::OnboardingSystems>::add_onboarding`（0x140650d50）。
+///
+/// 机器码（PyGhidra 逐指令；每个系统名取自 `Box<dyn System>`/`into_configs` 单体内的
+/// 类型名串，顺序取自单体内 into_configs 调用顺序）：
+///
+/// | 调用点 | 动作 |
+/// |---|---|
+/// | 0x140650de9 | `Schedules::add_systems(Startup, hints_startup)`（标签 vtable 0x142f006f0 = "Startup"） |
+/// | 0x140650df2/0x140650dfe/0x140650e0a | 三条 `chain_ignore_deferred`（链 1 0x140eaf480、链 2 0x140eb14a0、链 3 0x140eb6830） |
+/// | 0x140650f16 | 外层 `(链1, 链2, 链3).chain_ignore_deferred()` |
+/// | 0x140650f49 | `.in_set(GameSystemSet(0x0b))` |
+/// | 0x140650fa2 | `SubApp::add_systems(Update, 外层链)`（标签 vtable 0x142f00728 = "Update"） |
+/// | 0x140650fb7 | `hint_draw.in_set(GameSystemSet(0x24))`（单系统，ZST `in_set` 单体 0x140eb7990） |
+/// | 0x140650fc2 | `SubApp::add_systems(Update, hint_draw…)` |
+/// | 0x14065101e…0x14065174e | 21 次 `register_event`（先 `get_resource_id` 判重，等价 `add_event`），顺序见下方实现 |
+///
+/// 原版没有 `insert_resource`/`init_resource`：各 `*HintConditions` 等资源由 `hints_startup`
+/// 与系统参数的 `FromWorld`/宿主创建。未闭合：本仓库 `configure()` 里的
+/// `ToolbarUiIsInFocus` 事件属 toolbar 插件，不在原 add_onboarding 面内，本 trait 不注册。
+pub trait OnboardingSystems {
+    fn add_onboarding(&mut self) -> &mut Self;
+}
+
+impl OnboardingSystems for bevy_app::App {
+    fn add_onboarding(&mut self) -> &mut Self {
+        use bevy_app::{Startup, Update};
+        use country_core::resources::events::DisplayRollercoasterPrompt;
+        use country_core::resources::onboarding::*;
+        use country_core::systems::GameSystemSet;
+
+        self.add_systems(Startup, hints_startup::hints_startup);
+
+        // 链 1（0x140eaf480）。
+        let chain1 = (
+            reset_hints::reset_hints,
+            hint_deselect_tool::hint_deselect_tool,
+            hint_focused_edit::hint_focused_edit_condition,
+            hint_focused_edit::hint_focused_edit_hint,
+        )
+            .chain_ignore_deferred();
+        // 链 2（0x140eb14a0）。
+        let chain2 = (
+            hint_clutter_focus_edit::hint_clutter_focused_edit_condition,
+            hint_clutter_focus_edit::hint_clutter_focused_edit_hint,
+            hint_disable_snapping::hint_disable_snapping,
+            hint_terrain_steepness::hint_terrain_steepness,
+            hint_terrain::hint_terrain_layering,
+            hint_terrain_focus::hint_terrain_focus,
+            hint_roof_shape::hint_roof_shape,
+            hint_unlink_windows::hint_unlink_windows,
+            hint_camera_progress::hint_camera_progress_update,
+            hint_camera_controls::hint_camera_enable_condition,
+            hint_camera_controls::hint_camera_display_condition,
+            hint_undo::hint_undo,
+            hint_stairs::hint_stairs,
+            prompt_rollercoaster,
+            exponential_back_off::exponential_back_off,
+            tutorial_completion::tutorial_completion,
+            hint_orchestrator::hint_orchestrator,
+            hint_camera_progress::hint_camera_progress_reset,
+        )
+            .chain_ignore_deferred();
+        // 链 3（0x140eb6830）。
+        let chain3 = (
+            hint_display_system::hint_audio,
+            hint_display_system::hint_deletion_cooldown_system,
+            hint_display_system::hint_animation_system,
+            hint_display_system::hint_deletion_system,
+            hint_display_system::hint_position_update,
+            hint_display_system::hint_highlight_shape,
+            hint_display_system::progress_bar_update_system,
+        )
+            .chain_ignore_deferred();
+
+        self.add_systems(
+            Update,
+            (chain1, chain2, chain3)
+                .chain_ignore_deferred()
+                .in_set(GameSystemSet(0x0b)),
+        );
+        self.add_systems(
+            Update,
+            hint_display_system::hint_draw.in_set(GameSystemSet(0x24)),
+        );
+
+        self.add_event::<NotifyHintSystemShapeEditWasPerformed>();
+        self.add_event::<DisplayHintRequest>();
+        self.add_event::<NotifyHintSystemCameraMoved>();
+        self.add_event::<NotifyHintSystemSnapping>();
+        self.add_event::<NotifyHintSystemTerrain>();
+        self.add_event::<LingerHintRequest>();
+        self.add_event::<TutorialOp>();
+        self.add_event::<tutorial_completion::TutorialHintComplete>();
+        self.add_event::<NotifyHintSystemWindow>();
+        self.add_event::<NotifyHintSystemToolWasJustUsed>();
+        self.add_event::<NotifyHintSystemSomethingWasErased>();
+        self.add_event::<NotifyHintSystemTerrainSteepness>();
+        self.add_event::<NotifyHintSystemRoofShape>();
+        self.add_event::<NotifyHintSystemClutterWasMoved>();
+        self.add_event::<NotifyHintSystemStairsPlaced>();
+        self.add_event::<NotifyHintSystemHoveringOverStairs>();
+        self.add_event::<NotifyHintSystemStartedStairsContinue>();
+        self.add_event::<NotifyHintSystemCanContinueStairs>();
+        self.add_event::<NotifyHintSystemStairsDetachedFromWall>();
+        self.add_event::<NotifyHintSystemStairsCanDetachFromWall>();
+        self.add_event::<DisplayRollercoasterPrompt>();
+        self
+    }
+}

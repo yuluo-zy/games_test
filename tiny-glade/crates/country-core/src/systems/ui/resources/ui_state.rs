@@ -108,6 +108,10 @@ pub struct UiState {
     /// rejects value 2 (`CMP dword ptr [RAX+0x28],2; SETNZ`). The remaining
     /// intersection bytes are host-owned and not modelled here.
     intersection_tag: u32,
+    /// +0x4c/+0x50/+0x54: intersection world point read by
+    /// `ui_adjust_wall_height_signifier_animation` (0x14085bb50) when the tag
+    /// is not 2. Written by the input owner; inactive state keeps zero.
+    intersection_point: glam::Vec3,
     clearing_canvases: RwLock<HashMap<WidgetId, Arc<ClearingCanvasWidget>>>,
     /// +0x68：`HashMap<WidgetId, Arc<WidgetParams>>`（O：ui_state 章/DI-§2.4；
     /// `add` 0x1409236d0 / `add_with_id` 0x14092e3e0 插表）。The parking-lot
@@ -133,6 +137,7 @@ impl UiState {
         Self {
             interaction,
             intersection_tag: 0,
+            intersection_point: glam::Vec3::ZERO,
             clearing_canvases: RwLock::new(HashMap::new()),
             widgets: RwLock::new(HashMap::new()),
         }
@@ -162,6 +167,16 @@ impl UiState {
     /// Writes the +0x28 intersection discriminant (input owner).
     pub fn set_intersection_tag(&mut self, tag: u32) {
         self.intersection_tag = tag;
+    }
+
+    /// +0x4c intersection world point (valid when the tag is not 2).
+    pub fn intersection_point(&self) -> glam::Vec3 {
+        self.intersection_point
+    }
+
+    /// Writes the +0x4c intersection world point (input owner).
+    pub fn set_intersection_point(&mut self, point: glam::Vec3) {
+        self.intersection_point = point;
     }
 
     /// +0x38 active widget id.

@@ -2083,16 +2083,27 @@ pub fn apply_loaded_snapshot_to_world(
     }
 
     // ---- Stairs / StairsRemovedSupports ----
-    if let Some(value) = section("Stairs") {
-        let section: StairsSectionJson = serde_json::from_value(value.clone())
-            .map_err(|error| anyhow::anyhow!("Stairs section: {error}"))?;
-        let snapshot = StairsSnapshot::new(section.edges.clone());
-        if section.checksum.is_some() && section.checksum != snapshot.cached_checksum() {
-            report.gaps.push(
-                "Stairs: saved checksum differs from the edge-derived checksum; cached value not preserved"
-                    .to_string(),
-            );
-        }
+    // B init_game_state_from_snapshot 0x1417a9c50 calls StairsState::restore_snapshot
+    // (0x1417aab6b) unconditionally; restore_snapshot ends with make_backup, which
+    // capture_game_snapshot_save_data later asserts via `res.stairs.backup_accurate()`.
+    // A file without a "Stairs" section (e.g. the v17 shipped samples) therefore restores
+    // an empty snapshot instead of skipping the call.
+    {
+        let snapshot = match section("Stairs") {
+            Some(value) => {
+                let section: StairsSectionJson = serde_json::from_value(value.clone())
+                    .map_err(|error| anyhow::anyhow!("Stairs section: {error}"))?;
+                let snapshot = StairsSnapshot::new(section.edges.clone());
+                if section.checksum.is_some() && section.checksum != snapshot.cached_checksum() {
+                    report.gaps.push(
+                        "Stairs: saved checksum differs from the edge-derived checksum; cached value not preserved"
+                            .to_string(),
+                    );
+                }
+                snapshot
+            }
+            None => StairsSnapshot::new(Vec::new()),
+        };
         if world.contains_resource::<StairsState>() {
             apply_stairs_writeback(&mut world.resource_mut::<StairsState>(), snapshot);
             report.stairs = true;

@@ -79,7 +79,7 @@ pub const TREE_ITERATIONS: usize = 12;
 pub fn add_tree_setdressing(
     mut state: ResMut<AutoClutterState>,
     trees: Res<TreePositions>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     mut rng: ResMut<TreeRng>,
     started: Res<crate::autoclutter::add_lantern_water_setdresssing::IsStarted>,
     dragging: Res<IsDragging>,

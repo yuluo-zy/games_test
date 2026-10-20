@@ -90,6 +90,32 @@ impl Plugin for EmptyPlugin {
     fn build(&self, _app: &mut App) {}
 }
 
+/// Original plugin / extension-trait registrations whose bodies were recovered
+/// from machine code in their own crates. The host only mounts them; it never
+/// re-lists their systems, resources or events (one registration per system).
+/// Original ordering of the plugin tuple inside run_game_thread is not recovered
+/// (OPEN); every system keeps the explicit GameSystemSet recovered in its own body.
+fn add_original_plugins(app: &mut App) {
+    use country_core::systems::terrain::TerrainSystems;
+    use system_onboarding::OnboardingSystems;
+    use system_roof::RoofSystems;
+    use timberframe::TimberframeSystems;
+    // insert_terrain_resources @1409457c0 / add_terrain_events @140945a20 /
+    // add_terrain_systems @1409455f0.
+    app.insert_terrain_resources().add_terrain_events().add_terrain_systems();
+    app.add_plugins((
+        forest::ForestPlugin,
+        system_tree::TreePlugin,
+        system_clutter::ClutterPlugin,
+        system_critters::CritterPlugin,
+        system_critters::sheep::SheepPlugin,
+    ));
+    // add_roof_events_and_resources @1406305f0 / add_roof_systems @14062fcb0.
+    app.add_roof_events_and_resources().add_roof_systems();
+    app.add_timberframe(); // @140630a20
+    app.add_onboarding(); // @140650d50
+}
+
 /// `tiny_glade::run_game::compute_on_dedicated_thread` `0x14032d170` —— 判等。
 ///
 /// `sync_channel(1)` + `Builder::name(name)` + spawn + recv；spawn 失败 panic
@@ -214,6 +240,10 @@ pub fn run_game_thread(
     let mut app = App::new();
     app.insert_resource(GameplayApplication);
     startup_event_runtime::install(&mut app);
+    // Original plugin/extension-trait registrations. They run right after the
+    // App-level event list so that their add_event calls precede any helper that
+    // would init_resource<Events<T>> (which would make add_event skip).
+    add_original_plugins(&mut app);
     // Complete the original unchained set7 tuple on the existing App.
     // The other three leaves were delivered in brush-startup/runtime-registration.rs.
     app.add_systems(bevy_app::Update, (
@@ -339,9 +369,7 @@ pub fn run_game_thread(
     // InnerWalls::new @140859f90 creates the actual owning map/id counter.
     // Saved commands later populate this same authority; no snapshot is made.
     app.insert_resource(country_core::resources::walls::InnerWalls::new());
-    // R10G1: 预置树系统（B save::add_save_load_systems 注册的同一 owner）在
-    // OnEnter(Game) 写入该表；宿主在本文件直接注册 save 批次，因此补上资源。
-    app.init_resource::<country_core::resources::tree_storage::TreeStorage>();
+    // TreeStorage is inserted by TreePlugin140650520 (add_original_plugins).
     app.init_resource::<country_core::resources::stairs::stairs_state::TransientStairEdgeIdAllocator>();
     // Original full-game tuple immediately follows MainCamera insertion with
     // ImageFormationConfigs::default @1408ae7f0.
@@ -633,12 +661,8 @@ pub fn run_game_thread(
     // run on no-event frames to allow the deferred prefab contents to arrive.
     app.add_systems(
         bevy_app::Update,
-        (
-            country_core::startup::spawn_preplaced_trees::spawn_preplaced_trees,
-            system_tree::convert_preplaced_trees::convert_preplaced_trees::<
-                country_core::resources::history::MaybePendingSnapshotId,
-            >,
-        )
+        // convert_preplaced_trees belongs to TreePlugin140650520 (set 0x1b chain).
+        country_core::startup::spawn_preplaced_trees::spawn_preplaced_trees
             .run_if(bevy_state::condition::in_state(
                 country_core::app_loading_state::AppLoadingState::Game,
             )),
@@ -729,7 +753,7 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     use country_core::{
         resources::{
             history::{History, ReplayBuffer},
-            terrain_height::{TerrainHeightSsbo, TerrainHeightsData, VisualTerrainHeightSsbo},
+            terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
             walls::{
                 decorator::{DecoratorIdGen, DeferredDecoratorOpEvents},
                 decorator_archivist::LiveDecoratorArchivist,
@@ -775,14 +799,12 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.add_event::<country_core::systems::timelapse_replay::StartTimelapseReplayCmd>();
     app.add_event::<country_core::systems::timelapse_replay::InterruptTimelapse>();
     app.add_event::<country_core::systems::timelapse_replay::TimelapseReplayFinished>();
-    app.add_event::<country_core::resources::history::tree_edit::SpawnPreplacedTrees>();
     app.add_systems(bevy_app::PostUpdate, country_core::systems::timelapse_replay::cleanup_timelapse);
-    // insert_terrain_resources @1409457c0 creates both actual CPU readback
-    // owners: 0x80000 zero bytes with the original -2.5/24 height bounds.
-    let heights = TerrainHeightsData::<TerrainHeightSsbo>::new();
-    let view = WallPublicationTerrain::from_height_data(&heights);
-    app.insert_resource(heights);
-    app.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
+    // insert_terrain_resources @1409457c0 (TerrainSystems, add_original_plugins)
+    // already created both CPU readback owners; derive the wall-publication view
+    // from the actual TerrainHeightSsbo owner.
+    let view = WallPublicationTerrain::from_height_data(
+        app.world().resource::<TerrainHeightsData<TerrainHeightSsbo>>());
     app.insert_resource(view);
     // PathsPlugin @140b68e40: one Shared Path publisher and its three
     // Secondary cobblestone publishers, not four unrelated unique streams.
@@ -800,6 +822,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         shared,
     )));
     app.insert_resource(PathRaster::new(primary));
+    // PathsPlugin@140b68e40 owns path stroke events; ui_delete_tree (TreePlugin) reads this one.
+    // OPEN: the other path stroke events of that plugin are not yet registered here.
+    app.add_event::<country_core::resources::path_stroke::PathDrawEvent>();
     // PathPlugin::build @140b68e40 inserts BrushSizes right after PathRaster (0x140b691c0).
     // Value bytes: qword @142ac56d0 = {0.8f, 2.0f} then dword 0x40400000 (3.0f) — exactly
     // the core PATH/WATER/GARDEN defaults.

@@ -367,7 +367,7 @@ pub fn move_ducks_along_trajectories(
     time: Res<GameTime>,
     mut commands: Commands,
     mut splash: EventWriter<SpawnSplashParticle>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     mut query: Query<(
         Entity,
         &mut Duck,
@@ -566,7 +566,7 @@ pub fn advance_trajectory(progress: f32, speed_dir: f32, segment_len: f32, dt: f
 #[allow(clippy::too_many_arguments)]
 pub fn update_duck_goals(
     time: Res<GameTime>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     path_rasters: PathRastersResources,
     rng: Res<CritterRng>,
     mut query: Query<(

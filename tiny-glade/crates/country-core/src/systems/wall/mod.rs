@@ -14,6 +14,7 @@ pub mod snapping;
 pub mod eraser;
 pub mod shapes;
 pub mod structure_outline;
+pub mod upload_instanced_wall_ssbo;
 pub mod set_wall_style;
 
 // ---------------------------------------------------------------- 组 A 接线
@@ -54,4 +55,6 @@ pub mod draw_wall;
 pub mod deferred_wall_history;
 pub mod ui_draw_wall;
 pub mod finish_wall;
+pub mod merge_walls;
 pub mod ui_continue_wall;
+pub mod wall_splitter;

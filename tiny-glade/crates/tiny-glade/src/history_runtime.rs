@@ -8,13 +8,12 @@ use country_core::{resources as res, systems as sys};
 
 pub(super) fn install(app: &mut App) {
     system_color::register_color_events(app.world_mut());
-    system_tree::register_tree_tool_events(app.world_mut());
-    system_roof::add_roof_events_and_resources(app.world_mut());
+    // Tree-tool events/TreeStorage/systems come from TreePlugin140650520 and the roof
+    // events/resources/systems from RoofSystems (run_game::add_original_plugins).
     app.init_resource::<res::color_id::WallColorIds>();
     app.init_resource::<res::color_id::GateColorIds>();
     app.init_resource::<res::color_id::RoofColorIds>();
     app.init_resource::<res::color_id::HalftimberColorIds>();
-    app.init_resource::<res::tree_storage::TreeStorage>();
     app.init_resource::<res::stairs::stairs_removed_supports::StairsRemovedSupports>();
     app.init_resource::<res::walls::cached_decorator_transforms::CachedDecoratorTransforms>();
     app.init_resource::<sys::save::snapshot::PendingRoofAssociationRebuild>();
@@ -57,12 +56,8 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<system_color::SetWindowLightCmd>();
     app.add_event::<system_color::SetFlagConnectionCmd>();
     app.add_event::<system_color::SetChimneySmokeCmd>();
-    app.add_event::<res::history::tree_edit::InsertTreeCmd>();
-    app.add_event::<res::history::tree_edit::DeleteTreeCmd>();
-    app.add_event::<res::tree_storage::MoveTreeCmd>();
     app.add_event::<sys::prefab::SpawnPrefabCmd>();
     app.add_event::<sys::prefab::DespawnPrefabCmd>();
-    app.add_event::<sys::terrain::delayed_terrain_changed_msg::OnTerrainChange>();
     app.add_event::<sys::audio::PlayTreeSoundCmd>();
     app.add_event::<sys::audio::PlayStairsAudioCmd>();
     app.add_event::<sys::audio::PlayWallAudio>();
@@ -71,7 +66,6 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<res::walls::plaster::DeletePlasterCmd>();
     app.add_event::<res::roofs::commands::SetFlatRoofStyleCmd>();
     app.add_event::<res::roofs::commands::RecalculateWallHoles>();
-    app.add_event::<res::roofs::commands::RoofSound>();
 
     install_domain_lifecycles(app);
     app.add_systems(
@@ -85,7 +79,6 @@ pub(super) fn install(app: &mut App) {
         (
             sys::history::replay_decorator::replay_decorator,
             sys::history::replay_stairs::replay_stairs,
-            system_tree::replay_tree::replay_tree::<res::history::MaybePendingSnapshotId>,
         )
             .chain()
             .in_set(GameSystemSet(40)),
@@ -97,16 +90,13 @@ pub(super) fn install(app: &mut App) {
         system_roof::edit_roof::set_flat_roof_style
             .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
     ).in_set(GameSystemSet(40)));
-    app.add_systems(Update, (
-        system_tree::process_tree_cmds::process_tree_cmds::<res::history::MaybePendingSnapshotId>
-            .run_if(|session: Option<Res<res::session::ActiveSession>>| session.is_some()),
-        system_tree::recalc_tree_position_on_terrain_height_change::recalc_tree_position_on_terrain_height_change,
-    ).chain().after(system_tree::replay_tree::replay_tree::<res::history::MaybePendingSnapshotId>)
-        .in_set(GameSystemSet(40)));
+    // OPEN (not closed): the original registration point of the prefab command
+    // runtime (spawn/update/despawn_prefab_commands) is unlocated; it stays here. The
+    // tree systems that used to be interleaved (tree_move_bend, despawn_trees,
+    // process_tree_cmds, recalc_tree_position_on_terrain_height_change) now live in
+    // TreePlugin's set 0x1b chain.
     app.add_systems(Update, (
         sys::prefab::runtime::spawn_prefab_commands,
-        system_tree::tree_move_bend::tree_move_bend,
-        system_tree::process_tree_cmds::despawn_trees,
         sys::prefab::runtime::update_prefab_commands,
         sys::prefab::runtime::despawn_prefab_commands,
     ).chain().after(GameSystemSet(40)).before(GameSystemSet(41))
@@ -125,59 +115,17 @@ pub(super) fn install(app: &mut App) {
 /// GPU-dependent consumers borrow canonical startup owners; no second rasters,
 /// placeholder assets, or independent history ledger are constructed here.
 fn install_domain_lifecycles(app: &mut App) {
-    macro_rules! roof_events { ($($name:ident),*) => { $(app.add_event::<res::roofs::commands::$name>();)* }; }
-    roof_events!(
-        CreateRoofCmd,
-        DeleteRoofCmd,
-        EditRoofCmd,
-        RoofGeometryChanged,
-        WallGableChanged,
-        RoofIsInvalid,
-        ResetRoofs,
-        WallRoofPresenceChanged,
-        SwitchRoofDirectionCmd,
-        SetFlatRoofRimStyleCmd,
-        SwitchRoofTypeCmd,
-        RecordRoofHistory,
-        RoofEditFeedback,
-        RecalculateWallBricks
-    );
-    app.add_event::<system_roof::ui_edit_roof_ridge_dir::SwitchRoofRidgeDirCmd>();
+    // Roof events are registered by startup_event_runtime (cross-domain ones) and
+    // RoofSystems (the original add_roof_events_and_resources set).
     app.init_resource::<sys::ui::signifiers::signifier_create::UiSignifierStream>();
-    app.add_systems(
-        Update,
-        system_roof::replay_roof::replay_roof.in_set(GameSystemSet(40)),
-    );
-    app.add_systems(Update, (
-        (
-            (
-                system_roof::delete_roof::mark_roof_for_deletion,
-                system_roof::update_roof_spatial::update_roof_spatial,
-                system_roof::wall_height_dt::wall_height_dt,
-                system_roof::visual::roof_animation::roof_animation,
-            ).chain_ignore_deferred(),
-            system_roof::create_roof::create_roof,
-            system_roof::edit_roof::edit_roof,
-        ).chain(),
-        system_roof::simulate_roof_tile_for_audio::simulate_roof_tile_for_audio,
-        system_roof::highlight_roof::highlight_roof,
-        system_roof::visual::switch_roof_type::switch_roof_type,
-        system_roof::roof_trigger_volume::calculate_roof_trigger_volumes,
-    ).chain().in_set(GameSystemSet(20)));
-    app.add_systems(Update,
-        system_roof::delete_roof::delete_roofs.in_set(GameSystemSet(21)));
-    app.add_systems(Update, (
-        system_roof::visual::assemble_roof_tiles::assemble_roof_tiles,
-        system_roof::visual::generate_roof_stone_floor_and_roof_bottom::generate_roof_stone_floor_and_roof_bottom,
-        system_roof::visual::place_spires::place_roof_spires,
-    ).in_set(GameSystemSet(29)));
-    app.add_systems(Update,
-        system_roof::gpu_flush_buffers.in_set(GameSystemSet(44)));
     // Preserve already existing nonempty command adapters. Their individual native
     // caller stages remain separately adjudicated; they are not native20 items.
+    // OPEN (not closed): switch_roof_direction, set_flat_roof_rim_style and
+    // update_wall_gable_heights (and set_flat_roof_style above) are not members of the
+    // original add_roof_systems@14062fcb0; their original registration points are
+    // unlocated. switch_roof_ridge_direction IS original (RoofSystems set 0x12).
     app.add_systems(Update, (
         system_roof::edit_roof::switch_roof_direction,
-        system_roof::ui_edit_roof_ridge_dir::switch_roof_ridge_direction,
         system_roof::edit_roof::set_flat_roof_rim_style,
         system_roof::update_roof_spatial::update_wall_gable_heights,
     ).chain().after(system_roof::replay_roof::replay_roof).in_set(GameSystemSet(40)));
@@ -195,30 +143,32 @@ fn install_domain_lifecycles(app: &mut App) {
             ),
     );
 
-    app.add_event::<sys::terrain::edit_terrain_stroke::EditTerrainStrokeCmd>();
-    app.add_event::<sys::terrain::edit_terrain_stroke::SetTerrainStrokePtsCmd>();
-    app.add_event::<sys::terrain::draw_terrain_stroke::EvTerrainStrokeChanged>();
-    app.add_event::<sys::terrain::RecalculateHeightMapCmd>();
+    // EditTerrainStrokeCmd / SetTerrainStrokePtsCmd / EvTerrainStrokeChanged /
+    // RecalculateHeightMapCmd / OnTerrainChange events, ScheduledTerrainReadback and the
+    // edit_terrain_stroke -> terrain_stroke_changed -> delayed_terrain_changed_msg chain
+    // (set 0x0f) come from TerrainSystems (run_game::add_original_plugins).
     app.add_event::<sys::terrain::PlayTerrainSound>();
     app.add_event::<sys::history::replay_raster::RasterReplayFeedback>();
-    app.init_resource::<sys::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback>();
+    // OPEN (not closed): original registration points of replay_terrain,
+    // terrain_hover_idx and ui_edit_focus_terrain are NOT in the recovered
+    // add_terrain_systems@1409455f0; they stay mounted here (arrow_gizmo_animation is
+    // mounted in run_game_thread set 7). Constraints are those of country-core's
+    // add_terrain_tool_systems: hover -> focus before mode_manager; replay in set 40.
     app.add_systems(
         Update,
-        (
-            sys::terrain::replay_terrain::replay_terrain,
-            sys::terrain::edit_terrain_stroke::edit_terrain_stroke,
-            sys::terrain::draw_terrain_stroke::terrain_stroke_changed,
-        )
-            .chain()
+        sys::terrain::replay_terrain::replay_terrain
             .in_set(GameSystemSet(40))
             .run_if(|data: Option<Res<res::terrain_editing::TerrainEditingData>>| data.is_some()),
     );
-    app.add_systems(Update, sys::terrain::delayed_terrain_changed_msg::delayed_terrain_changed_msg
-        .before(system_tree::recalc_tree_position_on_terrain_height_change::recalc_tree_position_on_terrain_height_change)
-        .in_set(GameSystemSet(40)).run_if(|world: &World| {
-            world.contains_resource::<res::terrain_height::TerrainHeightsData<res::terrain_height::TerrainHeightSsbo>>()
-                && world.contains_resource::<res::terrain_height::TerrainHeightsData<res::terrain_height::VisualTerrainHeightSsbo>>()
-        }));
+    app.add_systems(
+        Update,
+        (
+            sys::terrain::terrain_hover_idx::terrain_hover_idx,
+            sys::ui_edit_focus::ui_edit_focus_terrain,
+        )
+            .chain()
+            .before(sys::mode_manager::mode_manager::<res::history::EditType, res::history::MaybePendingSnapshotId>),
+    );
     app.add_systems(
         Update,
         sys::history::replay_raster::replay_rasters::<res::history::MaybePendingSnapshotId>

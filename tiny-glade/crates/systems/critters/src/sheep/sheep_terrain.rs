@@ -61,7 +61,7 @@ pub const STATE_FLOATING: u32 = 6;
 pub fn sheep_walk_on_terrain(
     time: Res<GameTime>,
     terrain: Res<TerrainHeightsData>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     mut query: Query<(&mut Transform, &mut SheepTerrainState, &mut SheepVerticalDelta)>,
 ) {
     let dt = time.delta;

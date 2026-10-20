@@ -117,3 +117,133 @@ pub fn gpu_flush_buffers(
     // O：GraphicsDeviceResource::deref() → SparseInstanceBuffer::gpu_flush<T>。
     buffer.gpu_flush(device.device());
 }
+
+/// `<bevy_app::App as system_roof::RoofSystems>::{add_roof_events_and_resources, add_roof_systems}`
+/// （0x1406305f0 / 0x14062fcb0）。上方同名自由函数为旧约定（`World`/`Schedule` 手工落地），
+/// 真实游戏经本 trait。
+///
+/// `add_roof_events_and_resources`（0x1406305f0）机器码：
+/// | 调用点 | 动作 |
+/// |---|---|
+/// | 0x140630603 | `insert_resource(RoofParamsCacheResource)`（原值 = u32 `2`，空缓存哨兵；本仓库该类型为 Option 字段结构，取 `Default`） |
+/// | 0x14063060e | `insert_resource(RoofHighlight)`（tag=0；value 寄存器未初始化，取 0） |
+/// | 0x140630674…0x140630a0c | 11 次 `register_event`（先 `get_resource_id` 判重，等价 `add_event`）：CreateRoofCmd、DeleteRoofCmd、EditRoofCmd、RecalculateRoofCmd、PlayRoofSound、HighlightRoofCmd、SwitchRoofTypeCmd、SwitchRoofRidgeDirCmd、RecordRoofHistoryCmd、RecordRidgeSwitchHistoryCmd、SetFlatRoofRimStyleCmd |
+///
+/// 命名对照（本仓库）：`RecalculateRoofCmd` = `RoofGeometryChanged` 别名；`PlayRoofSound` = core `RoofSound`；
+/// `RecordRoofHistoryCmd` = core `RecordRoofHistory`。
+pub trait RoofSystems {
+    fn add_roof_events_and_resources(&mut self) -> &mut Self;
+    fn add_roof_systems(&mut self) -> &mut Self;
+}
+
+impl RoofSystems for bevy_app::App {
+    fn add_roof_events_and_resources(&mut self) -> &mut Self {
+        use country_core::resources::roofs::commands::{
+            CreateRoofCmd, DeleteRoofCmd, EditRoofCmd, HighlightRoofCmd, RecalculateRoofCmd,
+            RecordRoofHistory, RoofSound, SetFlatRoofRimStyleCmd, SwitchRoofTypeCmd,
+        };
+        use country_core::systems::render_loop::draw_passes::draw_callbacks_a::RoofHighlight;
+
+        self.insert_resource(ui_edit_roof::RoofParamsCacheResource::default());
+        self.insert_resource(RoofHighlight::default());
+        self.add_event::<CreateRoofCmd>();
+        self.add_event::<DeleteRoofCmd>();
+        self.add_event::<EditRoofCmd>();
+        self.add_event::<RecalculateRoofCmd>();
+        self.add_event::<RoofSound>();
+        self.add_event::<HighlightRoofCmd>();
+        self.add_event::<SwitchRoofTypeCmd>();
+        self.add_event::<ui_edit_roof_ridge_dir::SwitchRoofRidgeDirCmd>();
+        self.add_event::<RecordRoofHistory>();
+        self.add_event::<ui_edit_roof_ridge_dir::RecordRidgeSwitchHistoryCmd>();
+        self.add_event::<SetFlatRoofRimStyleCmd>();
+        self
+    }
+
+    /// `add_roof_systems`（0x14062fcb0）机器码：
+    /// 1. 3 次 `register_event`：0x14062fd2b `DoUiEditRoof`、0x14062fd87 `DoUiEditRoofRidgeDir`、
+    ///    0x14062fde3 `DoUiEditRoofRidgeLength`；
+    /// 2. 一次 `SubApp::add_systems(Update, 9 元组)`（0x1406303f3；标签 vtable 0x142ff4e08 slot3 = "Update"），
+    ///    元组元素（`in_set` 号取 `MOV DL,imm` / `MOV byte,imm` + `GameSystemSet`）：
+    ///    - E0 0x14062fdf8：`(ui_edit_roof, ui_edit_roof_ridge_dir, ui_edit_roof_ridge_length).in_set(0x11)`（无 chain）；
+    ///    - E1 0x14062fe04/0x14062fe37：`(do_ui_edit_roof, ui_edit_roof_ridge_and_height_focused,
+    ///      do_ui_edit_roof_ridge_dir, do_ui_edit_roof_ridge_length, switch_roof_ridge_direction)
+    ///      .chain_ignore_deferred().in_set(0x12)`；
+    ///    - E2 0x14062fea5/0x14062ff1a/0x14062ff8f/0x14062ffc2：
+    ///      `((((mark_roof_for_deletion, update_roof_spatial, wall_height_dt, roof_animation)
+    ///      .chain_ignore_deferred(), create_roof, edit_roof).chain(), simulate_roof_tile_for_audio,
+    ///      highlight_roof, switch_roof_type, calculate_roof_trigger_volumes).chain()).in_set(0x14)`；
+    ///    - E3 0x140630039：`(assemble_roof_tiles, generate_roof_stone_floor_and_roof_bottom,
+    ///      place_roof_spires).in_set(0x1d)`（无 chain）；
+    ///    - E4 0x14063004e `delete_roofs.in_set(0x15)`；E5 0x140630063 `replay_roof.in_set(0x28)`；
+    ///      E6 0x140630075 `roof_record_history.in_set(0x22)`；E7 0x140630087
+    ///      `record_switch_roof_ridge_history.in_set(0x22)`；E8 0x14063009c `gpu_flush_buffers.in_set(0x2c)`。
+    ///
+    /// 与旧 `add_roof_systems(schedule)` 差异：旧版含原版没有的 `wall_roof_hashmap`、`switch_roof_direction`、
+    /// `set_flat_roof_style`、`set_flat_roof_rim_style`、`process_invalid_roof_notifications`、
+    /// `update_wall_gable_heights`，且用 `WallCpuStage`/`HistoryCpuStage`；原版全用 `GameSystemSet(n)`。
+    fn add_roof_systems(&mut self) -> &mut Self {
+        use bevy_app::Update;
+        use country_core::systems::GameSystemSet;
+
+        self.add_event::<ui_edit_roof::DoUiEditRoof>();
+        self.add_event::<ui_edit_roof_ridge_dir::DoUiEditRoofRidgeDir>();
+        self.add_event::<ui_edit_roof_ridge_length::DoUiEditRoofRidgeLength>();
+
+        self.add_systems(
+            Update,
+            (
+                (
+                    ui_edit_roof::ui_edit_roof,
+                    ui_edit_roof_ridge_dir::ui_edit_roof_ridge_dir,
+                    ui_edit_roof_ridge_length::ui_edit_roof_ridge_length,
+                )
+                    .in_set(GameSystemSet(0x11)),
+                (
+                    ui_edit_roof::do_ui_edit_roof,
+                    ui_focused::ui_edit_roof_height_focused::ui_edit_roof_ridge_and_height_focused,
+                    ui_edit_roof_ridge_dir::do_ui_edit_roof_ridge_dir,
+                    ui_edit_roof_ridge_length::do_ui_edit_roof_ridge_length,
+                    ui_edit_roof_ridge_dir::switch_roof_ridge_direction,
+                )
+                    .chain_ignore_deferred()
+                    .in_set(GameSystemSet(0x12)),
+                (
+                    (
+                        (
+                            (
+                                delete_roof::mark_roof_for_deletion,
+                                update_roof_spatial::update_roof_spatial,
+                                wall_height_dt::wall_height_dt,
+                                visual::roof_animation::roof_animation,
+                            )
+                                .chain_ignore_deferred(),
+                            create_roof::create_roof,
+                            edit_roof::edit_roof,
+                        )
+                            .chain(),
+                        simulate_roof_tile_for_audio::simulate_roof_tile_for_audio,
+                        highlight_roof::highlight_roof,
+                        visual::switch_roof_type::switch_roof_type,
+                        roof_trigger_volume::calculate_roof_trigger_volumes,
+                    )
+                        .chain()
+                )
+                .in_set(GameSystemSet(0x14)),
+                (
+                    visual::assemble_roof_tiles::assemble_roof_tiles,
+                    visual::generate_roof_stone_floor_and_roof_bottom::generate_roof_stone_floor_and_roof_bottom,
+                    visual::place_spires::place_roof_spires,
+                )
+                    .in_set(GameSystemSet(0x1d)),
+                delete_roof::delete_roofs.in_set(GameSystemSet(0x15)),
+                replay_roof::replay_roof.in_set(GameSystemSet(0x28)),
+                deferred_record_roof_history::roof_record_history.in_set(GameSystemSet(0x22)),
+                ui_edit_roof_ridge_dir::record_switch_roof_ridge_history
+                    .in_set(GameSystemSet(0x22)),
+                gpu_flush_buffers.in_set(GameSystemSet(0x2c)),
+            ),
+        );
+        self
+    }
+}

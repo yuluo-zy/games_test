@@ -52,7 +52,7 @@ fn path_grid_sum(r: &PathRastersResources, x: f32, z: f32) -> f32 {
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_ducks(
     time: Res<GameTime>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     terrain: Res<TerrainHeightsData>,
     mut locations: ResMut<DuckSpawnLocations>,
     mut planner: ResMut<DuckTrajectoryPlanner>,
@@ -131,7 +131,7 @@ pub fn spawn_ducks(
 #[allow(clippy::too_many_arguments)]
 pub fn despawn_ducks(
     time: Res<GameTime>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     path_rasters: PathRastersResources,
     mut planner: ResMut<DuckTrajectoryPlanner>,
     rng: Res<CritterRng>,

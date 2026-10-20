@@ -35,7 +35,7 @@ use crate::components::{Fish, FishBoids, FishSpawnLocations};
 pub fn fish(
     time: Res<GameTime>,
     spawn_locations: Res<FishSpawnLocations>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     walls: Res<WallSpatialHash>,
     mut rng: ResMut<FishRng>,
     mut commands: Commands,

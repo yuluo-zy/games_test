@@ -67,7 +67,7 @@ pub fn do_ui_edit_roof(
     _dispatch: EventReader<DoUiEditRoof>,
     _roofs: Query<&Roof>,
     _cache: ResMut<RoofParamsCacheResource>,
-    _archivist: ResMut<country_core::resources::walls::decorator_archivist::changes::DecoratorArchivist<()>>,
+    _archivist: ResMut<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>,
     _storage: Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,
     _inner_walls: ResMut<InnerWalls>,
     _cursor: EventReader<country_core::resources::window::CursorMovedScreenSpace>,

@@ -47,7 +47,6 @@ use crate::components::{
 };
 use crate::duck::CritterRng;
 use crate::sample::uniform_sample_sphere;
-use crate::shared::TerrainRockMask;
 
 /// ButterflyAudio（core `resources::critters::ButterflyAudio` 的消费侧：set_position
 /// 0x140f85ba0 = 5B thunk → 0x140a57da0 共享实现）。stride-4 槽；`update_butterfly_states`
@@ -104,8 +103,8 @@ pub fn update_butterfly_states(
     camera: Res<MainCamera>,
     cursor: Res<CursorTerrainRaycast>,
     rng: Res<CritterRng>,
-    water: Res<WorldRaster<512>>,
-    rock_mask: Res<TerrainRockMask>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
+    buffers: Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,
     mut query: Query<(
         &Transform,
         &Velocity,
@@ -116,6 +115,12 @@ pub fn update_butterfly_states(
     sheep_query: Query<(&Transform, &Sheep)>,
 ) {
     let dt = time.delta;
+    // Canonical mapped rock-mask readback (same owner as shared::move_critters); the old
+    // TerrainRockMask shadow is never populated.
+    let rock_mask = &*buffers
+        .get::<terrain_rock_mask::TerrainRockMaskSsbo>()
+        .expect("update_butterfly_states requires canonical mapped TerrainRockMaskSsbo")
+        .mapped;
     let mut rng_ctx = rng.0.lock().unwrap();
     // O 0x141d851cb：`from_iter<Vec2, Map<QueryIter<(Transform, Sheep)>>>` 收集避羊位。
     let sheep_positions: Vec<Vec2> = sheep_query
@@ -158,7 +163,7 @@ pub fn update_butterfly_states(
             goal_active,
             pos,
             &water,
-            rock_mask.mask(),
+            rock_mask,
         );
     }
 }
@@ -184,7 +189,7 @@ pub fn step_state(
     goal_active: bool,
     pos: Vec3,
     water: &WorldRaster<512>,
-    rock_mask: &[u32],
+    rock_mask: &[terrain_rock_mask::TerrainRockMaskSsbo],
 ) {
     // 相位推进（O 0x141d85765）：phase = max(0, phase - 0.5*dt)；近/避羊 → 1.0。
     st.phase = (st.phase - 0.5 * dt).max(0.0);
@@ -273,7 +278,7 @@ fn butterfly_state_dispatch(
     pos: Vec3,
     near_or_sheep: bool,
     water: &WorldRaster<512>,
-    rock_mask: &[u32],
+    rock_mask: &[terrain_rock_mask::TerrainRockMaskSsbo],
     rng: &mut PerchanceContext,
 ) -> (u32, f32, f32) {
     let mut flag = flag_in;
@@ -294,7 +299,7 @@ fn butterfly_state_dispatch(
             let mut next = 2u32;
             let mut t = t_in;
             if st.phase == 0.0 && goal_active {
-                let rock = terrain_rock_mask::sample_at_world_xz(rock_mask, pos.x, pos.z) > 0;
+                let rock = terrain_rock_mask::TerrainRockMaskSsbo::sample_mapped_at_world_xz(rock_mask, pos.x, pos.z) > 0;
                 if !rock {
                     let w = water
                         .as_ref()

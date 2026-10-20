@@ -217,6 +217,40 @@ fn read(bytes: &[u8], offset: usize) -> f32 {
     f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
 }
 
+/// One 0x150-byte element of `PlayermadeStairsAssemblyRequests` (native
+/// `PlayermadeStairsAssemblyParams`, the type `length_ws` 0x140959ca0 belongs to).
+///
+/// Only the fields consumed by `structure_outline` (0x140959fc0, element walk
+/// 0x14095a387 and `FUN_14095fca0`) are modelled; the remaining bytes of the
+/// native record (`AlignKind`s, anchors, ...) belong to the assembly producer
+/// (`playermade_stairs_assemble`) and are **not recovered here**:
+///
+/// | native offset | field |
+/// |---|---|
+/// | `+0x08/+0x10` | `positions` (`Vec<Vec2>`, xz of the sampled stair path) |
+/// | `+0x40/+0x48` | `heights` (`Vec<f32>`, same sample count) |
+/// | `+0x58/+0x60` | `widths` (`Vec<f32>`, outline adds 0.3 and uses half) |
+/// | `+0x70/+0x78` | `tangents` (`Vec<Vec2>`, normalized and rotated to a left normal) |
+/// | `+0x128/+0x12c` | `segment` (two u32 endpoints compared with `OutlineStairsCmd::segment`) |
+///
+/// Field names for the four vectors are inferred from their arithmetic use.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlayermadeStairsAssemblyParams {
+    pub positions: Vec<Vec2>,
+    pub heights: Vec<f32>,
+    pub widths: Vec<f32>,
+    pub tangents: Vec<Vec2>,
+    pub segment: super::stairs_state::StairSegment,
+}
+
+/// B `country_core::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests`
+/// (a `Res<>` of `structure_outline`; element stride 0x150, vec ptr `+8`, len `+0x10`).
+/// Its producer (`playermade_stairs_assemble`) is a separate, still-unrecovered owner.
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default, PartialEq)]
+pub struct PlayermadeStairsAssemblyRequests {
+    pub requests: Vec<PlayermadeStairsAssemblyParams>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

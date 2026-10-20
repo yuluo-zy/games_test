@@ -64,7 +64,7 @@ pub const LANTERN_ITERATIONS: usize = 5;
 pub fn add_lantern_water_setdresssing(
     mut state: ResMut<AutoClutterState>,
     decorators: Res<TerrainDecoratorPositions>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     mut started: ResMut<IsStarted>,
 ) {
     let w = (*water).as_ref();

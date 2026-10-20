@@ -115,7 +115,7 @@ pub fn update_sheep_goals(
     time: Res<GameTime>,
     camera: Res<MainCamera>,
     cursor: Res<CursorTerrainRaycast>,
-    water: Res<WorldRaster<512>>,
+    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     rng: Res<CritterRng>,
     mut query: Query<(&Transform, &mut Sheep, &SheepTerrainState, &mut SheepGoal)>,
 ) {

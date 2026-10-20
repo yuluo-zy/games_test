@@ -42,6 +42,8 @@ pub struct FocusSubjectByte(pub u8);
 /// PlayUiSound(kind 0x13)。
 /// **重建（2026-10-17，ModeJustChanged + GameProfile 落库）**；分歧点：焦点字节 Query
 /// 组件类型 U（seam `FocusSubjectByte`）、PlayUiSound id U。
+// O：反编译返回 void（0x14227da70 / 0x141c3d890 全部 `return;`），且原 add_onboarding 经 InfallibleSystemWrapper
+// 以普通系统入链（Out=()）；早先 `-> bool` 属误判，已改为 `()`，各早退路径语义不变。
 pub fn hint_focused_edit_condition(
     profile: Res<country_core::game_profile::GameProfile>,
     mut state: ResMut<FocusedEditHintConditions>,
@@ -49,19 +51,19 @@ pub fn hint_focused_edit_condition(
     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
     mut sound: EventWriter<country_core::systems::ui::resources::widget_params::PlayUiSound>,
     query: Query<&FocusSubjectByte>,
-) -> bool {
+) {
     if profile.focused_edit_completed {
         state.hint_done = true;
-        return true;
+        return;
     }
     if let Some(first) = mode.read().next() {
         if matches!(first.tool, 1 | 2) {
             state.hint_done = true;
         } else if !state.hint_done {
-            return false;
+            return;
         }
     } else {
-        return false;
+        return;
     }
     completed.write(crate::tutorial_completion::TutorialHintComplete { id: 1 });
     if query.iter().next().is_some_and(|b| b.0 == 1) {
@@ -71,7 +73,6 @@ pub fn hint_focused_edit_condition(
             id: 0,
         });
     }
-    true
 }
 
 /// hint_focused_edit_hint（O 0x14227dd60，PDB 全签名：
