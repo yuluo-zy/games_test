@@ -20,7 +20,7 @@
 
 ## 未闭合
 - 上述 bindless 存储缓冲描述符耗尽（排查已按用户要求暂停）。
-- 羊渲染（过曝 + 几何退化）：agent 进行中，`view_constants.rs`、`raster_host.rs` 中的诊断改动未提交。
+- 羊渲染：已修复（ffb61aa15）。根因是 `Reproject GI` 对 output_tex 的就地更新没声明保留内容，`Eval screen radiance` 被图剔除，`Screen indirect radiance` 与 velocity 别名到同一块瞬态内存，读到残留。对照图 `pixel-verification/06-*`。遗留：temporal_stats_out_tex 部分分支写入未声明保留（无症状、无原版取证）；同步校验 6 个 WAW + 1 个 WAR（rhapsody barrier 生成，lavapipe 无影响）；羊在该机位仅约 7 像素，毛色/阴影画质未对照原版。
 - 窗口生命周期：挂起/恢复、焦点、vsync、交换链 out-of-date 重建、DeviceLost/OOM 重试、AdaptiveRenderState 均未实测。
 - 窗口内容是否为玩法画面（相对菜单背景）未做对照截图。
 - 渲染尾部：loading_screen 进度、Ivy 插件、ICC 自定义 LUT、color_menu、未注册着色器（sun_gizmo/tree_billboard/rain_particles/waterfall/roof_snow）、PhotoModeCmd(4) 生产者。

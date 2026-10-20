@@ -131,16 +131,6 @@ impl CoreGraphicsDevice for BufferHost {
         let managed = self
             .device
             .create_buffer(&Self::convert(desc)?, name, data)?;
-        if name == "Sheep Animation" { // TMPDIAG
-            eprintln!("TMPDIAG SHEEPBUF size={} host_ptr={:?} desc={:?}", managed.size, managed.persistent_host_ptr(), managed.desc);
-            if let Some(p) = managed.persistent_host_ptr() {
-                let sl = unsafe { std::slice::from_raw_parts(p as *const f32, (managed.size as usize) / 4) };
-                let n = sl.len() / 248;
-                let mut bad = 0usize; let mut zero = 0usize;
-                for v in 0..n { let r = &sl[v*248..(v+1)*248]; if r.iter().any(|x| !x.is_finite()) { bad += 1; } if r.iter().all(|x| *x == 0.0) { zero += 1; } }
-                eprintln!("TMPDIAG SHEEPBUF verts={} nonfinite_rows={} zero_rows={} v0 f6={:?} v0 n6={:?} v0 del={:?} v100 f6={:?}", n, bad, zero, &sl[24..28], &sl[120+24..120+28], &sl[240..248], &sl[100*248+24..100*248+28]);
-            }
-        }
         let mut slots = self.slots.lock();
         let index = slots
             .iter()
