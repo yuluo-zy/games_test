@@ -163,9 +163,9 @@ impl WallSpatialHash {
     /// straight edges of the simplified curve, the closest point on the edge
     /// equals the native snap point. Points outside the strict (-65,65) grid
     /// are clamped to the border cells, matching the world->grid clamp.
-    /// fresh 反编译：`get_cells_from_aabb` 后 **`sort_unstable_by` 按距离比较器
-    /// 排序（复用 query_with_circle 比较器）** + 相邻同墙去重（keep 最近）；消费者
-    /// 依赖最近优先。Rust 此前直接遍历 cell 收集段端点（非最近点），已重建为最近点。
+    /// fresh 反编译：`get_cells_from_aabb` 后与 0x140aa5940 同骨架——按墙 id 排序 +
+    /// 相邻同墙去重（无距离排序）。返回按墙 id 升序、每墙一条（排序后首段）的最近点，
+    /// 消费者自行按距离取最近。
     pub fn query_with_aabb_clamped(&self, min: [f32; 2], max: [f32; 2]) -> Vec<([f32; 2], WallId)> {
         use crate::resources::walls::spatial_index::GRID_SIDE;
         use crate::resources::walls::spatial_index::grid_coord_to_cell_index;
@@ -182,91 +182,26 @@ impl WallSpatialHash {
         let hi = clamp_to_cell(max);
         let (min_x, max_x) = (lo % GRID_SIDE, hi % GRID_SIDE);
         let (min_z, max_z) = (lo / GRID_SIDE, hi / GRID_SIDE);
-        // 排序/最近点参考点 = AABB 中心（fresh 0x140aa5a10 复用圆查询比较器）。
+        // 最近点参考点 = AABB 中心（消费者 0x140a6b5e0 以游标为参考，AABB 以游标为中心）。
         let center = [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5];
-        let mut seen = HashSet::new();
-        let mut out = Vec::new();
+        // 0x140aa5a10：get_cells_from_aabb 收集段 → 按墙 id（+0x30 u32）排序 + 相邻同墙
+        // 去重（每墙只保留排序后首段，非最近段）；无距离排序。距离排序/取最近在消费者里。
+        let mut segments: Vec<&WallSpatialSegment> = Vec::new();
         for z in min_z..=max_z {
             for x in min_x..=max_x {
-                let cell = z * GRID_SIDE + x;
-                for segment in self.segments_in_cell(cell) {
-                    // 每段取到参考点的最近点（fresh 消费端 SnapProposal 语义）。
-                    let closest = segment_closest_point_to(segment, center);
-                    // [f32;2] is not Eq/Hash; dedup on bit patterns.
-                    let key = ([closest[0].to_bits(), closest[1].to_bits()], segment.wall);
-                    if seen.insert(key) {
-                        out.push((closest, segment.wall));
-                    }
-                }
+                segments.extend(self.segments_in_cell(z * GRID_SIDE + x));
             }
         }
-        // 原按距离比较器排序（最近优先），再相邻同墙去重（keep 最近）。
-        out.sort_by(|a, b| {
-            endpoint_distance2_to(center, a.0).total_cmp(&endpoint_distance2_to(center, b.0))
-        });
-        let mut seen_walls = HashSet::new();
-        let mut deduped = Vec::with_capacity(out.len());
-        for item in out {
-            if seen_walls.insert(item.1) {
-                deduped.push(item);
-            }
-        }
-        deduped
-    }
-
-    /// `query_with_circle`（O：0x140aa5940 + 0x1425defd0/0x1425df320/0x1422785d0
-    /// 单态族——树域与墙共享的圆查询）。fresh 反编译 0x140aa5940：`get_cells_from_circle`
-    /// 收集 WallSegment 指针后 **`sort_unstable_by`（smallsort/ipnsort，圆查询比较器）**
-    /// + **相邻同墙去重（keep 最近，按 +0x30 wall id）**；半径筛在回调单态内
-    /// （0x1422785d0 等：`d <= radius` 才调用用户回调）。Rust 此前直接遍历 cell
-    /// 无序回调——补排序 + 同墙去重（与 query_with_aabb_clamped 重建一致）。
-    /// 森林候选评估与树放置共用（间距 7.0 规则）。
-    pub fn query_with_circle<F: FnMut(&WallSpatialSegment, f32)>(
-        &self,
-        center: glam::Vec2,
-        radius: f32,
-        mut on_hit: F,
-    ) {
-        let min = [center.x - radius, center.y - radius];
-        let max = [center.x + radius, center.y + radius];
-        use crate::resources::walls::spatial_index::GRID_SIDE;
-        use crate::resources::walls::spatial_index::grid_coord_to_cell_index;
-        use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
-        let clamp_to_cell = |p: [f32; 2]| {
-            let g = world_space_to_grid_coord_unclamped(p);
-            let g = [
-                g[0].clamp(0, GRID_SIDE as i32 - 1),
-                g[1].clamp(0, GRID_SIDE as i32 - 1),
-            ];
-            grid_coord_to_cell_index(g) as usize
-        };
-        let lo = clamp_to_cell(min);
-        let hi = clamp_to_cell(max);
-        let mut candidates: Vec<(&WallSpatialSegment, f32)> = Vec::new();
-        for z in lo / GRID_SIDE..=hi / GRID_SIDE {
-            for x in lo % GRID_SIDE..=hi % GRID_SIDE {
-                let cell = z * GRID_SIDE + x;
-                for segment in self.segments_in_cell(cell) {
-                    let d = segment_distance_to_point(segment, center);
-                    candidates.push((segment, d));
-                }
-            }
-        }
-        // 原按圆心距离排序（最近优先），相邻同墙去重 keep 最近；半径筛随后（同
-        // 0x1422785d0 回调单态：d <= radius 才回调）。同墙最近段在半径外则该墙
-        // 不回调（与原生 dedup-then-filter 顺序一致）。
-        candidates.sort_by(|a, b| a.1.total_cmp(&b.1));
-        let mut seen_walls = HashSet::new();
-        for (segment, d) in candidates {
-            if seen_walls.insert(segment.wall) && d <= radius {
-                on_hit(segment, d);
-            }
-        }
+        sort_and_dedup_by_wall_id(&mut segments);
+        segments
+            .into_iter()
+            .map(|segment| (segment_closest_point_to(segment, center), segment.wall))
+            .collect()
     }
 
     /// Original B1425defd0 specialization used by converted preplaced trees.
     /// Its callback rejects any occupied cell, without the different public
-    /// segment-distance/sort/dedup policy of query_with_circle.
+    /// wall-id sort/dedup policy of the 0x140aa5940 family.
     pub fn has_occupied_cells_in_circle(&self, center: glam::Vec2, radius: f32) -> bool {
         use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
         let half = WORLD_SIZE * 0.5;
@@ -308,8 +243,8 @@ impl WallSpatialHash {
 
     /// B 0x140aa5850 (native-only variant): query with a world-space segment.
     /// fresh 反编译：`get_cells_from_segment`（0x1409eff80）收集覆盖格 →
-    /// `sort_unstable_by`（smallsort/ipnsort，query_with_circle 比较器）+ 相邻
-    /// 同墙去重（keep 最近）。与 query_with_circle 同骨架。
+    /// 按墙 id（`WallSegment+0x30` 的 u32）排序 + 相邻同墙去重（每墙只保留排序后首段，
+    /// 无距离排序、无半径筛）。与 0x140aa5940 / 0x140aa5ba0 同骨架。
     pub fn query_with_segment(
         &self,
         a: [f32; 2],
@@ -317,39 +252,26 @@ impl WallSpatialHash {
         radius: f32,
     ) -> Vec<&WallSpatialSegment> {
         let mut candidates: Vec<&WallSpatialSegment> = Vec::new();
-        let reference = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
         for &cell in &segment_cells(a, b, radius) {
             for segment in self.segments_in_cell(cell) {
                 candidates.push(segment);
             }
         }
-        candidates.sort_by(|x, y| {
-            segment_distance2_to_point(x, reference)
-                .total_cmp(&segment_distance2_to_point(y, reference))
-        });
-        // 相邻同墙去重（排序后同墙相邻，keep 最近）。
-        let mut seen_walls = HashSet::new();
-        candidates.retain(|segment| seen_walls.insert(segment.wall));
+        sort_and_dedup_by_wall_id(&mut candidates);
         candidates
     }
 
     /// B 0x140aa5ba0 (native-only variant): query with a Rectangle2d.
     /// fresh 反编译：`get_cells_from_rectangle2d`（0x1409ef210）收集覆盖格 →
-    /// 排序 + 相邻同墙去重。与 query_with_circle 同骨架。
+    /// 按墙 id（`WallSegment+0x30` 的 u32）排序 + 相邻同墙去重。与 0x140aa5940 同骨架。
     pub fn query_with_rectangle2d(&self, rect: Rectangle2d) -> Vec<&WallSpatialSegment> {
         let mut candidates: Vec<&WallSpatialSegment> = Vec::new();
-        let reference = [rect.center.x, rect.center.y];
         for &cell in &rectangle_cells(rect) {
             for segment in self.segments_in_cell(cell) {
                 candidates.push(segment);
             }
         }
-        candidates.sort_by(|x, y| {
-            segment_distance2_to_point(x, reference)
-                .total_cmp(&segment_distance2_to_point(y, reference))
-        });
-        let mut seen_walls = HashSet::new();
-        candidates.retain(|segment| seen_walls.insert(segment.wall));
+        sort_and_dedup_by_wall_id(&mut candidates);
         candidates
     }
 
@@ -429,20 +351,13 @@ pub fn spatial_hash_update(
     }
 }
 
-/// 点到线段距离（圆查询筛选用；语义 I——机器码为 segment 最近点距离判定）。
-fn segment_distance_to_point(segment: &WallSpatialSegment, point: glam::Vec2) -> f32 {
-    let a = glam::Vec2::new(segment.endpoints[0][0], segment.endpoints[0][1]);
-    let b = glam::Vec2::new(segment.endpoints[1][0], segment.endpoints[1][1]);
-    let ab = b - a;
-    let t = ((point - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
-    (a + ab * t - point).length()
-}
-
 /// 端点到参考点距离平方（query_with_aabb_clamped 排序键，fresh 复用圆查询比较器）。
-fn endpoint_distance2_to(reference: [f32; 2], endpoint: [f32; 2]) -> f32 {
-    let dx = endpoint[0] - reference[0];
-    let dy = endpoint[1] - reference[1];
-    dx * dx + dy * dy
+/// 0x140aa5850/0x140aa5940/0x140aa5ba0 共有的尾段：`sort_unstable_by(seg.wall as u32)`
+/// （比较器 0x141338ac3，`len <= 20` 为稳定插入排序，更长走 ipnsort）+ 相邻同墙去重。
+/// 未闭合：`len > 20` 时 ipnsort 对同墙多段的保留顺序未复刻，统一用稳定排序。
+pub(crate) fn sort_and_dedup_by_wall_id(candidates: &mut Vec<&WallSpatialSegment>) {
+    candidates.sort_by_key(|segment| segment.wall.0 as u32);
+    candidates.dedup_by_key(|segment| segment.wall.0 as u32);
 }
 
 /// 段上到参考点的最近点（fresh 0x140aa5a10 消费端 SnapProposal 语义：段为简化
@@ -455,20 +370,6 @@ fn segment_closest_point_to(segment: &WallSpatialSegment, point: [f32; 2]) -> [f
     let t = ((p - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
     let nearest = a + ab * t;
     [nearest.x, nearest.y]
-}
-
-/// 点到线段最近距离平方（query_with_segment/rectangle2d 排序键；圆查询比较器
-/// 语义复用——机器码以 segment 最近点距离判定）。
-fn segment_distance2_to_point(segment: &WallSpatialSegment, point: [f32; 2]) -> f32 {
-    let a = glam::Vec2::new(segment.endpoints[0][0], segment.endpoints[0][1]);
-    let b = glam::Vec2::new(segment.endpoints[1][0], segment.endpoints[1][1]);
-    let p = glam::Vec2::new(point[0], point[1]);
-    let ab = b - a;
-    let t = ((p - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
-    let nearest = a + ab * t;
-    let dx = nearest.x - p.x;
-    let dy = nearest.y - p.y;
-    dx * dx + dy * dy
 }
 
 /// 矩形覆盖格（query_with_rectangle2d 用）。
