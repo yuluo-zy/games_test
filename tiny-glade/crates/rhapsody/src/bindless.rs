@@ -181,7 +181,12 @@ impl Slots {
                 generation,
             });
         }
-        Err(Error::exhausted("bindless descriptor table is full"))
+        Err(Error::exhausted(format!(
+            "bindless {kind:?} descriptor table is full (live={} retiring={} capacity={})",
+            self.live,
+            self.retiring_count,
+            self.entries[table].len()
+        )))
     }
     fn valid(&self, index: BindlessIndex) -> bool {
         self.entries[index.kind as usize]

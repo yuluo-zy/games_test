@@ -83,6 +83,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn prev_transform_plugin_caches_the_current_transform_every_update() {
+        let mut app = bevy_app::App::new();
+        app.add_plugins(PrevTransformPlugin);
+        let mut moved = Transform::identity();
+        moved.translation = glam::Vec3::new(3.0, 0.0, -2.0);
+        let entity = app
+            .world_mut()
+            .spawn((Transform::identity(), PrevTransform::from(Transform::identity())))
+            .id();
+        app.update();
+        assert_eq!(
+            app.world().get::<PrevTransform>(entity).unwrap().translation,
+            glam::Vec3::ZERO
+        );
+        *app.world_mut().get_mut::<Transform>(entity).unwrap() = moved;
+        app.update();
+        assert_eq!(
+            app.world().get::<PrevTransform>(entity).unwrap().translation,
+            moved.translation
+        );
+    }
+
+    #[test]
     fn atlas_part_index_is_preserved_not_zeroed() {
         let desc = NaniInstanceMeshDesc::from(42);
         assert_eq!(desc, NaniInstanceMeshDesc::AtlasPart(42));
@@ -168,6 +191,21 @@ pub fn cache_prev_object_transforms(
 ) {
     for (current, mut previous) in &mut transforms {
         *previous = PrevTransform::from(*current);
+    }
+}
+
+/// `PrevTransformPlugin`（原版 `Plugin::build` 0x14082bd70：`MOV RCX,RDX; JMP 0x140b66340`，即对
+/// `SubApp::add_systems` 的一次尾调用）。该 monomorph 的调度标签 vtable 为 0x142c8c3b0，其 Debug 桩
+/// （0x1416c6b90）写出 "Update"（长度 6；Startup 的桩 0x1416c6bb0 写长度 7）；系统配置没有
+/// `in_set` / `chain` / `run_if`，与 `cache_prev_object_transforms` 的 `IntoScheduleConfigs`
+/// （0x140b51630，名字串 0x142af1078）一致。没有这个系统，`PrevTransform` 只保留生成时的值，
+/// 羊/鸭的 `prev_model_to_world` 陈旧，速度缓冲出现巨大垃圾值。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PrevTransformPlugin;
+
+impl bevy_app::Plugin for PrevTransformPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(bevy_app::Update, cache_prev_object_transforms);
     }
 }
 

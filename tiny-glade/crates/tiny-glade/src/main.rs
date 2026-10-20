@@ -134,6 +134,26 @@ fn launch(
     std::env::set_current_dir(&installation)
         .with_context(|| format!("Setting installation directory {}", installation.display()))?;
     let mut config = crate::app_config::get_app_config(&cli)?;
+    if steam.is_none() && std::env::var_os("TG_FULLSCREEN").is_none() {
+        // Local host adapter only (no Steam client): the original default is fullscreen
+        // (`DisplayConfig::default().fullscreen == true`), which takes over a development
+        // machine's desktop. Start windowed; `TG_FULLSCREEN=1` restores the original default.
+        // The original Steam launch path is untouched.
+        config.video.display.fullscreen = false;
+    }
+    if steam.is_none() {
+        // Local host adapter only: `TG_WINDOW_SIZE=WxH` overrides the windowed resolution (the
+        // world renders at this size). A software rasterizer (lavapipe) needs minutes per frame
+        // at desktop resolutions; the whole-frame tests use 480x270.
+        if let Ok(value) = std::env::var("TG_WINDOW_SIZE") {
+            let (w, h) = value
+                .split_once('x')
+                .and_then(|(w, h)| Some((w.parse::<u32>().ok()?, h.parse::<u32>().ok()?)))
+                .filter(|(w, h)| *w > 0 && *h > 0)
+                .with_context(|| format!("TG_WINDOW_SIZE must be WxH, got {value:?}"))?;
+            config.video.display.windowed_resolution = [w, h];
+        }
+    }
     crate::logging::set_up_logging(log::LevelFilter::Info, true)?;
     if config.dev.capture_crashes {
         // main's spawn_server error branch logs and continues. No fake client

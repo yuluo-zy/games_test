@@ -1061,6 +1061,9 @@ mod tests {
     }
 }
 
+/// 等待首帧 GPU 完成的上限。软件光栅化设备(lavapipe)在负载下整帧可超过 10 秒，上限而非目标。
+const WARMUP_GPU_COMPLETION_TIMEOUT_NS: u64 = 120_000_000_000;
+
 /// Actual full-world builder seam. The caller supplies the recovered world
 /// stage plus the compile_main tail subset, ending in the real final22 export
 /// of `"msaa color out"` (0x2b, sample_count 4, display extent) — not the TAA
@@ -1091,7 +1094,7 @@ pub fn warm_up_gameplay_with_world_builder(
     let (output, built) = bridge.build_frame(|frame| build_world(frame, world, &lists))?;
     if let Err(error) = bridge
         .shader_backend()
-        .prewarm(std::time::Duration::from_secs(10))
+        .prewarm(crate::production_renderer::PIPELINE_PREWARM_TIMEOUT)
     {
         if let Err(cleanup) = bridge.cancel_built(built) {
             log::warn!("failed gameplay warmup prewarm cancellation: {cleanup}");
@@ -1114,7 +1117,7 @@ pub fn warm_up_gameplay_with_world_builder(
     // Real final export, physical allocation and retained native owner are
     // required; neither a logical texture number nor a ready flag suffices.
     let actual_output = bridge.exported_texture(&receipt, output.resource)?;
-    let completed = bridge.complete_gameplay_warmup(10_000_000_000)?;
+    let completed = bridge.complete_gameplay_warmup(WARMUP_GPU_COMPLETION_TIMEOUT_NS)?;
     drop(bridge.take_exported_texture(&receipt, output.resource)?);
     drop(actual_output);
     world.insert_resource(completed);

@@ -77,6 +77,14 @@ pub fn select_main_world(world: &World) -> rhapsody::Result<MainWorldDecision> {
     Ok(MainWorldDecision { render_world, painterly_enabled })
 }
 
+/// Read-only observation of the last declared world frame: whether the TAA/TGSR color history pair
+/// held valid previous-frame contents (`TemporalTexturePair::history_valid`). Written by `build_world`
+/// after the lighting stage; multi-frame validation reads it, no producer consumes it.
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct WorldHistoryObservation {
+    pub color_history_valid: bool,
+}
+
 /// Must run inside the original main prelude and its one FrameSetup scope.
 /// Each stage borrows the same World and graph; any missing owner aborts before
 /// successful compilation and before warmup can publish the SubApp.
@@ -143,6 +151,7 @@ pub fn build_world(
     let lighting = world_lighting::build_world_lighting(frame, world, lists, WorldGeometryOutputs {
         gbuffer: GBuffer { gbuffer, depth }, velocity, color, previous_depth,
     }, history_mode)?;
+    world.insert_resource(WorldHistoryObservation { color_history_valid: lighting.history.fresh });
     let skip_refraction = world.resource::<GameConfig>().dev.demo;
     world_surface::build_world_surface(frame, world, lists, &lighting,
         SurfaceControls { glade, skip_refraction })?;

@@ -153,9 +153,21 @@ impl ConstantPage for Buffer {
         self.allocation_bytes()
     }
 }
+/// Every host write into a page is its own native range cell (each write bumps the revision,
+/// so neighbours never coalesce) and a sequential page holds up to two cells per write.
+/// `RangeStateConfig::max_cells` is 4096; stay below half of it so a page can never exhaust
+/// its range table before it is full or reused.
+const MAX_ALLOCATIONS_PER_PAGE: u32 = 1000;
 struct Page<B> {
     buffer: Arc<B>,
     cursor: u64,
+    /// Allocations handed out since the page was created or last reset.
+    allocations: u32,
+    /// The page's recorded GPU uses when it was created or last reset. Any later registered use
+    /// (a submission referenced the page) seals it: a used page is never appended to again, only
+    /// reset once its uses completed. Appending after a use would make chunk offsets depend on
+    /// whether the GPU happened to finish first, and offsets are part of the render-graph plan key.
+    use_mark: crate::sync::SyncSet,
 }
 struct PageRing<B> {
     // Free the actual page table storage before crediting the host reservation.
@@ -199,7 +211,9 @@ impl<B: ConstantPage> PageRing<B> {
             return Ok(false);
         };
         let page = &self.pages[index];
-        Ok(page.buffer.use_cell().is_reached(&self.completed)
+        Ok(page.allocations < MAX_ALLOCATIONS_PER_PAGE
+            && page.buffer.use_cell().snapshot() == page.use_mark
+            && page.buffer.use_cell().is_reached(&self.completed)
             && allocation_offset(page.cursor, size, alignment, device_alignment)?.is_some())
     }
     fn allocate(
@@ -216,16 +230,24 @@ impl<B: ConstantPage> PageRing<B> {
                 allocation_offset(self.pages[index].cursor, size, alignment, device_alignment)?
                     .expect("checked placement");
             self.pages[index].cursor = offset + size;
+            self.pages[index].allocations += 1;
             self.stats.allocations += 1;
             return Ok((self.pages[index].buffer.clone(), offset));
         }
         for (index, page) in self.pages.iter_mut().enumerate() {
             let cell = page.buffer.use_cell().clone();
-            let _submission = cell.lock_submission();
             // get_mut also rejects outstanding Weak pointers. A Weak upgrade
             // must not resurrect an old range while this page is being reset.
-            if Arc::get_mut(&mut page.buffer).is_some() && cell.is_reached(&self.completed) {
+            // The reset page's contents are discarded: its native range table
+            // (one cell per distinct host write, as every write bumps the
+            // revision) returns to a single cell once all GPU uses completed,
+            // otherwise it only grows across frames until `max_cells`.
+            if Arc::get_mut(&mut page.buffer).is_some()
+                && cell.discard_idle_range_state(&self.completed)
+            {
                 page.cursor = size;
+                page.allocations = 1;
+                page.use_mark = cell.snapshot();
                 self.current = Some(index);
                 self.stats.page_reuses += 1;
                 self.stats.allocations += 1;
@@ -254,9 +276,12 @@ impl<B: ConstantPage> PageRing<B> {
             return Err(Error::Timeout);
         };
         self.current = Some(self.pages.len());
+        let use_mark = buffer.use_cell().snapshot();
         self.pages.push(Page {
             buffer: buffer.clone(),
             cursor: size,
+            allocations: 1,
+            use_mark,
         });
         self.stats.backing_bytes = total;
         self.stats.pages = self.pages.len();
@@ -755,6 +780,37 @@ mod tests {
         }
         assert_eq!(ring.stats().page_creations, 1);
         assert_eq!(ring.stats().page_reuses, 1000);
+    }
+    #[test]
+    fn production_ring_page_used_by_a_submission_is_sealed_even_after_completion() {
+        use crate::sync::{QueueId, SyncPoint};
+        let budget = Arc::new(super::super::allocator::AllocatorStats::default());
+        let mut ring = PageRing::new(config(2), &budget).unwrap();
+        let queue = QueueId::new(0).unwrap();
+        let (first, first_offset) = ring.allocate(64, None, 16, cpu_page).unwrap();
+        let (second, second_offset) = ring.allocate(64, None, 16, cpu_page).unwrap();
+        assert_eq!(first_offset, 0);
+        assert_eq!(second_offset, 64, "unused page keeps appending");
+        assert!(Arc::ptr_eq(&first, &second));
+        // A submission uses the page and the GPU finishes before the next allocation.
+        first.cell.insert(SyncPoint { queue, value: 1 });
+        ring.completed.raise(queue, 1);
+        let cell = first.cell.clone();
+        drop((first, second));
+        // Without sealing, completion timing would decide between offset 128 here and a restart.
+        let (third, third_offset) = ring.allocate(64, None, 16, cpu_page).unwrap();
+        assert_eq!(third_offset, 0, "a used page restarts instead of appending");
+        assert!(Arc::ptr_eq(&third.cell, &cell), "the idle used page is reset in place");
+        assert_eq!(ring.stats().page_reuses, 1);
+        // The reset page is appendable again until its next use.
+        let (_, fourth_offset) = ring.allocate(64, None, 16, cpu_page).unwrap();
+        assert_eq!(fourth_offset, 64);
+        // Still in flight: a second page is created at offset 0 instead.
+        cell.insert(SyncPoint { queue, value: 2 });
+        let (fifth, fifth_offset) = ring.allocate(64, None, 16, cpu_page).unwrap();
+        assert_eq!(fifth_offset, 0);
+        assert!(!Arc::ptr_eq(&fifth.cell, &cell));
+        assert_eq!(ring.stats().page_creations, 2);
     }
     #[test]
     fn production_ring_caps_actual_bytes_and_preserves_oom_or_device_loss() {

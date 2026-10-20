@@ -2002,6 +2002,13 @@ impl PassPgoStats {
     pub fn is_empty(&self) -> bool {
         self.durations.is_empty()
     }
+    /// Read-only view for diagnostics: `(pass name, final duration ns, invocation count)`.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, u64, u64)> + '_ {
+        self.durations.iter().map(|(name, duration)| {
+            let name: &str = std::borrow::Borrow::borrow(name);
+            (name, *duration, self.counts.get(name).copied().unwrap_or(0))
+        })
+    }
     pub fn total_ns(&self) -> u64 {
         self.total_ns
     }
