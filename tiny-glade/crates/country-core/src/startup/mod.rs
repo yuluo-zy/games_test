@@ -185,12 +185,13 @@ fn add_startup_mesh_systems(session_schedule: &mut bevy_ecs::schedule::Schedule)
             startup_roof::startup_roof_meshes,
             clearing::init_clearing_meshes,
             startup_meadow::startup_meadow_asset_files,
-            spawn_brush_previews::spawn_brush_previews_meshes,
         )
             .chain()
             .run_if(run_once)
             .run_if(assets_present),
     );
+    // spawn_brush_previews needs the host's ShaderBackend and MeshWatch, so the host calls it
+    // directly (tiny-glade/src/gameplay_startup.rs); it is not a core-only ECS system.
     // Sheep requires the typed animation library and its full ECS birth. The
     // device host registers it; a bare mesh here would poison its cache gate.
 }

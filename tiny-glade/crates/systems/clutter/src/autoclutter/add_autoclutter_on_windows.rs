@@ -81,7 +81,7 @@ mod tests {
         assert!(world.resource::<WindowAutoClutterCandidates>().0.is_empty());
         for (i, spawn) in world.resource::<AutoClutterState>().spawn_candidates.iter().enumerate() {
             let SpawnShared::Mesh { metadata, color } = &spawn.shared else { panic!("real metadata required") };
-            assert_eq!(metadata.name_hash, expected[i]);
+            assert_eq!(metadata.name_hash.0, expected[i].0);
             assert_eq!(spawn.key, 0x1234_5678_0000_0000 + i as u64);
             assert_eq!(spawn.host_id, 0xfedc_ba98_7654_3210);
             assert_eq!(spawn.position, Vec3::new(3.0, 7.0, -2.0));

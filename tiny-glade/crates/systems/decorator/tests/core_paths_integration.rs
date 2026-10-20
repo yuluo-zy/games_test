@@ -113,7 +113,12 @@ fn backup_create_then_restore_round_trips_storage() {
     let wall = WallId(5);
     let id = DecoratorId(11);
     let info = decorator_info(id.0, 0x38, 1, 1);
-    insert_wall_decorator(world.resource_mut::<DecoratorStorage>(), wall, id, info);
+    insert_wall_decorator(
+        world.resource_mut::<DecoratorStorage>().into_inner(),
+        wall,
+        id,
+        info,
+    );
     assert!(world
         .resource::<DecoratorStorage>()
         .wall_decorators(wall)

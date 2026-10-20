@@ -264,7 +264,8 @@ pub struct ResolvedClutterMesh {
 impl From<&country_core::resources::clutter_meshes::ClutterMesh> for ResolvedClutterMesh {
     fn from(mesh: &country_core::resources::clutter_meshes::ClutterMesh) -> Self {
         Self {
-            name_hash: mesh.name_hash,
+            // Both NameHash types wrap the same unseeded XXH3-64 value.
+            name_hash: country_core::name_hash::NameHash(mesh.name_hash.0),
             radius_xz: mesh.radius_xz,
             native_group: mesh.native_group,
             solid_texture: mesh.solid_texture,
@@ -635,7 +636,7 @@ pub(crate) mod window_test_helpers {
             bounds: utils::geometry::rectangle::Rectangle3d::new(Vec3::ZERO, Vec3::ONE, Vec2::X),
             mesh_name: "unit/window-metadata",
             mesh: None,
-            name_hash: country_core::name_hash::NameHash(id),
+            name_hash: utils::name_hash::NameHash(id),
             radius_xz: 1.0,
             native_group: 7,
             solid_texture: None,
@@ -647,7 +648,7 @@ pub(crate) mod window_test_helpers {
     pub fn textured_meshes(name: &'static str,
         texture: country_core::components::drawable::NaniSolidTexture) -> ClutterMeshes {
         let mut fixed = std::array::from_fn(|index| metadata(index as u64 + 1));
-        fixed[27].name_hash = country_core::name_hash::NameHash::compute(name);
+        fixed[27].name_hash = utils::name_hash::NameHash::compute(name);
         fixed[27].solid_texture = Some(texture);
         ClutterMeshes::from_parts(fixed, vec![metadata(1000), metadata(1001)])
     }

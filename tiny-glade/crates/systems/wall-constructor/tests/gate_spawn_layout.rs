@@ -10,6 +10,7 @@
 //! The producers are `construct_gates::systems::construct_gates` and the arch
 //! 120B command; this test pins the byte layout with the *real* constituent
 //! types so a field reorder/type change fails immediately.
+use std::mem::offset_of;
 use country_core::asset_libraries::transient_mesh::TransientMesh;
 use country_core::asset_libraries::Handle;
 use country_core::render::mesh::Mesh;

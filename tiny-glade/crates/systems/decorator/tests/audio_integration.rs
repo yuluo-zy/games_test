@@ -262,7 +262,7 @@ fn stairs_disc4_emits_delete_with_stair_payload() {
     transforms.swap_buffers_and_clear();
     world.insert_resource(storage);
     world.insert_resource(transforms);
-    world.insert_resource(TerrainHeightsData::new());
+    world.insert_resource(TerrainHeightsData::<country_core::resources::terrain_height::TerrainHeightSsbo>::new());
     world.insert_resource(StairsState::new());
 
     let pos = Vec3::new(4.0, 5.0, 6.0);
@@ -307,7 +307,7 @@ fn stairs_change_emits_place_or_ladder_from_graph_presence() {
         }
         world.insert_resource(storage);
         world.insert_resource(transforms);
-        world.insert_resource(TerrainHeightsData::new());
+        world.insert_resource(TerrainHeightsData::<country_core::resources::terrain_height::TerrainHeightSsbo>::new());
         world.insert_resource(stairs);
 
         let mut event = op_event(3, 0x3d, 0, Vec3::new(1.0, 0.5, 1.0));
@@ -337,7 +337,7 @@ fn stairs_requires_transform_cache_and_skips_roof_events() {
     world.insert_resource(storage);
     // 未写变换缓存 → try_transform 未命中，跳过。
     world.insert_resource(CachedDecoratorTransforms::default());
-    world.insert_resource(TerrainHeightsData::new());
+    world.insert_resource(TerrainHeightsData::<country_core::resources::terrain_height::TerrainHeightSsbo>::new());
     world.insert_resource(StairsState::new());
 
     let mut event = op_event(4, 0x3d, 0, Vec3::ONE);

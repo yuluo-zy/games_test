@@ -1552,10 +1552,11 @@ impl RaycastWorld {
         Rapier::spherecast(self, origin, dir, radius, options, mask)
     }
 
-    /// `mesh_intersect_collider_diff_publisher`（0x1408cc670）：返回 &Publisher（O：
-    /// `lea rax,[rcx+0x3cb0]; ret`，即 &self+0x3cb0）。
-    pub fn mesh_intersect_collider_diff_publisher(&self) -> &Publisher<ColliderDiff> {
-        &self.publisher
+    /// `mesh_intersect_collider_diff_publisher`（0x1408cc670）：返回 Publisher 的地址（O：
+    /// `lea rax,[rcx+0x3cb0]; ret`，即 &self+0x3cb0）。机器码不区分共享/独占借用；
+    /// `Publisher::subscribe` 需要 `&mut`，所以这里给出独占借用。
+    pub fn mesh_intersect_collider_diff_publisher(&mut self) -> &mut Publisher<ColliderDiff> {
+        &mut self.publisher
     }
 
     /// Unbounded compatibility form of B `RaycastWorld::intersects_any`.

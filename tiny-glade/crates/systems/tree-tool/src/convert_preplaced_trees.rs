@@ -101,7 +101,7 @@ pub fn convert_preplaced_trees<S: Send + Sync + 'static>(
                 TreeEditData::from_placement(
                     *id,
                     placement,
-                    original_name.0.as_name_ref().to_string(),
+                    original_name.0.as_name_ref().as_str().to_owned(),
                     true,
                 ),
             ))));

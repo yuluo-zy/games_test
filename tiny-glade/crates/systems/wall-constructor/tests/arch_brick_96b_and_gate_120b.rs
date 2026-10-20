@@ -24,6 +24,7 @@ use country_core::systems::wall::construction::segmentation::{
 };
 use country_core::systems::wall::construction::structures::MaterializedWallSegment;
 use glam::Vec3;
+use std::mem::offset_of;
 
 /// Contract-derived 96B record for one arch brick (`emit_arch_brick`,
 /// 0x140763... core chain): x = direction*full_length, y = up*0.42,

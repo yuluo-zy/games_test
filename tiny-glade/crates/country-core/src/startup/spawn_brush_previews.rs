@@ -58,7 +58,10 @@ fn mesh(
     watch: &MeshWatch,
 ) -> anyhow::Result<Handle<Mesh>> {
     let path = root.join(format!("assets/meshes/{stem}.json"));
-    let mut value = try_load_json_as_mesh(&path)
+    let path_text = path
+        .to_str()
+        .with_context(|| format!("brush preview path is not UTF-8: {}", path.display()))?;
+    let mut value = try_load_json_as_mesh(path_text)
         .with_context(|| format!("loading brush preview {}", path.display()))?;
     if let Some(color) = color {
         value.add_color(color);
@@ -363,10 +366,10 @@ mod original_startup_tests {
                     .iter()
                     .map(|v| v.as_u64().unwrap() as u32)
                     .collect();
-                let VertexAttributeValues::Float3(colors) = mesh.attr(ATTR_COLOR) else {
+                let VertexAttributeValues::Float3(colors) = mesh.attributes.get(ATTR_COLOR).expect("native color overwrite attribute") else {
                     panic!("native color overwrite must be Float3")
                 };
-                assert_eq!(colors.len(), mesh.positions().len());
+                assert_eq!(colors.len(), mesh.positions_without_indices().len());
                 for color in colors {
                     assert_eq!(color.to_array().map(f32::to_bits).as_slice(), expected_bits);
                 }
@@ -376,7 +379,7 @@ mod original_startup_tests {
             meshes
                 .get(meshes.get_handle_by_name("temp_sphere"))
                 .unwrap()
-                .positions()
+                .positions_without_indices()
                 .len(),
             12
         );

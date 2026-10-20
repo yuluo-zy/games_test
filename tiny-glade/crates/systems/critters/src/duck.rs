@@ -223,7 +223,7 @@ pub fn plan_duck_trajectories(
                         let a = traj.points[len - 2];
                         let b = traj.points[len - 1];
                         let delta = Vec3::new(b.x - a.x, b.y - a.y, b.z - a.z);
-                        let res = raycast.0.legacy_raycast(a, delta);
+                        let res = raycast.legacy_raycast(a, delta);
                         if res.toi.to_bits() != country_core::systems::collision::world::RAYCAST_WORLD_RESULT_MISS {
                             let hp = res.position;
                             let d2 = (hp - b).length_squared();

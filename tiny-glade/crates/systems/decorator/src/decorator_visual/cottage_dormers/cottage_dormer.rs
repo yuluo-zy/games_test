@@ -76,7 +76,7 @@ fn section_avoids_corners(roof: &Roof, position: Vec3, half_width: f32) -> bool 
         },
         RoofSection::Circle { .. } => panic!("rectangle roof bounds expected a rectangle section"),
     };
-    let center_u = rectangle.get_closest_u(Vec2::new(position.x, position.z));
+    let center_u = rectangle.get_closest_u_from_pos(Vec2::new(position.x, position.z));
     let half_interval = half_width / rectangle.perimeter();
     let wrap = |value: f32| {
         let u = value % 1.0;

@@ -888,7 +888,7 @@ impl GameRenderHostFactory for ProductionRenderer {
             // retry path; no anyhow context is discarded by downcasting it.
             self.record_error(rhapsody::Error::InvalidUsage {
                 what: "B per-App rendering library ownership".into(),
-                source: Some(error.into_boxed_dyn_error()),
+                source: Some(error.into()),
             });
         }
         ProductionRenderHost {

@@ -287,11 +287,14 @@ pub fn install_gameplay_gpu_startup(
                 &assets, &meshes, &shaders.0, &mut birds, &mut commands, snapshot,
                 |name| {
                     use country_core::resources::audio_resources::AudioInstance;
-                    match audio.instantiate_audio(name) {
+                    // AudioInstance implements Drop, so its fields cannot be moved out
+                    // in a by-value match; inspect it by reference and move the whole value.
+                    let instance = audio.instantiate_audio(name);
+                    match &instance {
                         AudioInstance::Disabled => Ok(system_critters::audio::AudioHandle::Disabled),
-                        AudioInstance::Err(error) => Err(error),
-                        active @ AudioInstance::Active { .. } =>
-                            Ok(system_critters::audio::AudioHandle::Active(Box::new(active))),
+                        AudioInstance::Err(error) => Err(error.clone()),
+                        AudioInstance::Active { .. } =>
+                            Ok(system_critters::audio::AudioHandle::Active(Box::new(instance))),
                     }
                 },
             ).expect("original complete sheep ECS producer");

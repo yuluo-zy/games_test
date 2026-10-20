@@ -1814,7 +1814,7 @@ mod save_shutdown_preparation_tests {
             app.add_event::<country_core::systems::save::load_game::LoadingGameComplete>();
             app.add_systems(bevy_app::Update, move |world: &mut World| {
                 assert_ne!(phase, "update panic", "injected update panic");
-                world.send_event(country_core::systems::save::load_game::LoadingGameComplete);
+                world.send_event(country_core::systems::save::load_game::LoadingGameComplete::default());
             });
             let flags = attach_save_owner(app.world_mut());
             let gameplay = std::mem::take(app.main_mut());
