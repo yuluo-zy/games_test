@@ -1601,6 +1601,19 @@ impl PassHost for RasterPassHost {
                     ctx.report_error(error);
                     return false;
                 }
+                // O 0x141698690..0x141698742 (per draw, after push_constants): when the state's
+                // stencil test bit is set (byte1 bit0) the packet's +0xb1 byte is the stencil
+                // reference (deferred material id); line topologies / LINE polygon mode take
+                // their width from the packet's blend float (+0xac).
+                let state = draw.packet.state.0;
+                if state & 0x100 != 0 {
+                    api.set_stencil_ref(draw.packet.unknown_b1);
+                }
+                match state & 3 {
+                    0 if state >> 31 != 0 => api.set_line_width(draw.packet.blend),
+                    1 | 2 => api.set_line_width(draw.packet.blend),
+                    _ => {}
+                }
                 if let Err(error) = record_draw(&mut api, draw, managed) {
                     ctx.report_error(error);
                     return false;
