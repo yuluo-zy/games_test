@@ -108,7 +108,13 @@ pub fn eval_gi_screen_radiance(
             &WriteTextureUnchecked(stats_pair.current),
             0x32,
         )
-        .bind_texture(binding::OUTPUT_TEX, &WriteTextureUnchecked(radiance), 0x37);
+        .bind_texture(binding::OUTPUT_TEX, &WriteTextureUnchecked(radiance), 0x37)
+        // 原版 reproject_screen_radiance SPV 就地更新 output_tex：历史有效分支
+        // `lerp(hist, output_tex[..], inv)` 与 5x5 滤波分支读取 EVAL 写入的像素，
+        // 且提前返回/部分分支不写该像素，EVAL 的结果必须保留到 Filter GI 读取。
+        // 不声明保留时图把 EVAL 视为被 0x37 丢弃覆盖而剔除，Screen indirect radiance
+        // 读到别名内存里的残留数据。
+        .preserve_storage_texture_contents(binding::OUTPUT_TEX);
     // 原版 reproject_screen_radiance SPV：`history_valid != 0 && frame_index != 0`
     // 不成立时只写统计并提前返回，history_tex / temporal_stats_tex 的全部采样
     // 都在该分支之后；保留原绑定与同步，仅声明无效历史下这两个读不要求内容。
@@ -276,6 +282,25 @@ mod tests {
             },
             0
         );
+    }
+
+    /// 原版 reproject SPV 读取并部分重写 output_tex（EVAL 的结果），必须声明保留内容，
+    /// 否则 EVAL 被图剔除，Filter GI 读到未初始化（别名）内存。
+    #[test]
+    fn reproject_preserves_the_eval_output_it_updates_in_place() {
+        use crate::render::pass_builder::pass_resource_access::PassBinding;
+        for valid in [true, false] {
+            let (e, out) = run(0, valid);
+            let radiance = e.frame.textures[0].2.resource;
+            assert_eq!(out.reproject.preserving_texture_bindings.len(), 1);
+            assert!(matches!(
+                out.reproject.bindings[out.reproject.preserving_texture_bindings[0] as usize],
+                PassBinding::ImageView { resource, write: true, .. } if resource == radiance
+            ));
+            // EVAL 写同一资源（丢弃式 0x32）；FILTER 不就地更新辐射度。
+            assert!(out.eval.preserving_texture_bindings.is_empty());
+            assert!(out.filter.preserving_texture_bindings.is_empty());
+        }
     }
 
     #[test]
