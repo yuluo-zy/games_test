@@ -78,6 +78,12 @@ pub enum WallDrawingIssue {
         wall: WallId,
         commit: bool,
     },
+    /// finish_wall 的 snap-merge 闭包（0x140a82060）在 `wall_a == wall_b`（吸附到自己的端点）
+    /// 时把墙推入局部 Vec，随后对其逐个做 enclosure 的 CompoundEdit + `_try_update_state`
+    /// （0x140a8105..0x140a81359）。该闭环 enclosure 记录尚未恢复；PlayLineAcrossWall 已照写。
+    ClosedLoopEnclosureNotRecovered {
+        wall: WallId,
+    },
 }
 
 /// Failure observations keep the original input and leave live authority and
@@ -409,6 +415,8 @@ mod tests {
         world.insert_resource(camera);
         world.init_resource::<Events<RecordMouseInputIntoWall>>();
         world.init_resource::<Events<FinishWall>>();
+        world.init_resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>();
+        world.init_resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>();
         world.init_resource::<Events<RecordWallHistory>>();
         world.init_resource::<Events<HistoryRecordingFailed>>();
         world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
@@ -664,7 +672,7 @@ mod tests {
         );
     }
     #[test]
-    fn unsupported_snap_keeps_the_live_curve_and_exact_last_finish_request() {
+    fn end_snap_finish_commits_and_produces_merge_command_with_line_telegraphs() {
         let mut world = world(false);
         let input = InputCurve::crashy_new_from_points(vec![Vec2::ZERO, Vec2::X], false);
         let wall = world.resource_mut::<InnerWalls>().new_wall_w_params(
@@ -702,7 +710,24 @@ mod tests {
         assert!(
             matches!(world.resource::<WallDrawingIssues>().0.as_slice(), [WallDrawingIssue::SnappedTopology { wall: id, mode: 2, point }] if *id == wall && *point == Vec3::new(4.0,2.0,3.0))
         );
-        world.resource_mut::<SnappingMode>().mode = 2;
+        // 端点吸附（mode 2）完成：原版 0x140a82060 对另一堵同类墙写 MergeWallsCmd
+        // 与两条 PlayLineAcrossWall，且普通提交（历史记录）照常发生。
+        let target = world.resource_mut::<InnerWalls>().new_wall_w_params(
+            to_authority_curve(&InputCurve::crashy_new_from_points(
+                vec![Vec2::new(4.0, 2.0), Vec2::new(8.0, 2.0)],
+                false,
+            )),
+            2.0,
+            0,
+            0,
+            false,
+        );
+        {
+            let mut snap = world.resource_mut::<SnappingMode>();
+            snap.mode = 2;
+            snap.wall = target;
+            snap.end = 1;
+        }
         world
             .resource_mut::<Events<FinishWall>>()
             .send(FinishWall(false));
@@ -712,12 +737,37 @@ mod tests {
         let mut finish = Schedule::default();
         finish.add_systems(finish_wall);
         finish.run(&mut world);
-        assert_eq!(world.resource::<InProgressCurve>().wall, Some(wall));
+        assert!(world.resource::<InProgressCurve>().wall.is_none());
         assert!(world.resource::<InnerWalls>().contains(wall));
-        assert!(
-            matches!(world.resource::<WallDrawingIssues>().0.last(), Some(WallDrawingIssue::UnsupportedFinish { wall: id, commit: true, snapped_mode: 2, continued: false }) if *id == wall)
+        assert!(!matches!(
+            world.resource::<WallDrawingIssues>().0.last(),
+            Some(WallDrawingIssue::UnsupportedFinish { .. })
+        ));
+        assert_eq!(world.resource::<Events<RecordWallHistory>>().len(), 1);
+        let merges: Vec<_> = world
+            .resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>()
+            .get_cursor()
+            .read(world.resource())
+            .copied()
+            .collect();
+        assert_eq!(
+            merges,
+            [crate::systems::wall::merge_walls::MergeWallsCmd {
+                wall_a: wall,
+                wall_b: target,
+                wall_a_original_height: 3.9,
+                wall_a_original_color_id: 23,
+                reverse_a: false,
+                keep_b_direction: true,
+            }]
         );
-        assert!(world.resource::<Events<RecordWallHistory>>().is_empty());
+        let lines: Vec<_> = world
+            .resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>()
+            .get_cursor()
+            .read(world.resource())
+            .map(|line| (line.wall, line.flag))
+            .collect();
+        assert_eq!(lines, [(wall, 0), (target, 1)]);
     }
     #[test]
     fn first_wall_and_fence_ui_operation_commits_through_actual_history_lifecycle() {

@@ -369,6 +369,8 @@ mod tests {
         world.init_resource::<Events<MainCameraMoved>>();
         world.init_resource::<Events<RecordMouseInputIntoWall>>();
         world.init_resource::<Events<FinishWall>>();
+        world.init_resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>();
+        world.init_resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>();
         world.init_resource::<Events<DisplayOutOfBorder>>();
         world.init_resource::<Events<FeedbackInputOutOfBorder>>();
         let mut history = History::<()>::empty_glade();

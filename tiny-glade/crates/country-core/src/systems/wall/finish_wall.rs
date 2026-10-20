@@ -13,7 +13,8 @@ use crate::{
         deferred_wall_history::{PendingWallChanged, PendingWallHistory},
         draw_wall::{WallDrawingIssue, WallDrawingIssues},
         history_recording::RecordWallHistory,
-        snapping::SnappingMode,
+        merge_walls::MergeWallsCmd,
+        snapping::{SnappingMode, telegraph_walls_are_merged::PlayLineAcrossWall},
     },
 };
 
@@ -35,6 +36,65 @@ pub fn is_valid_finished_wall(point_count: usize, length: f32) -> bool {
     point_count >= 2 && length > 0.0 && !(length < 0.2)
 }
 
+/// 原版 snap-merge 闭包 `FUN_140a82060`（0x140a82060，finish_wall 在两条提交成功路径上调用）。
+/// 仅 `SnappingMode.mode == 2`（端点吸附）时生效：
+/// 1. 目标墙 = `InnerWalls[snap.wall]`（缺失即 `Option::unwrap` panic，原版 `unwrap_failed`）；
+/// 2. 目标墙 `source +0x65`（`WallState` 条目 +0x6d）与当前绘制 `kind`（InProgress +0x9c）
+///    不一致则直接返回（墙不与栅栏合并）；
+/// 3. `wall_a == wall_b`（吸附到自己的端点）：把该墙推入局部 Vec（随后逐个做 enclosure 的
+///    CompoundEdit + `_try_update_state`，该闭环记录尚未恢复，见
+///    `WallDrawingIssue::ClosedLoopEnclosureNotRecovered`），并写一条
+///    `PlayLineAcrossWall(snap.wall, snap.end)`；
+/// 4. 否则写 `MergeWallsCmd { wall_a, wall_b, height(+0x94), color_id(+0x98), flags(+0x9e),
+///    snap.end(+0x18) }`，再写 `PlayLineAcrossWall(wall_a, flags)` 与
+///    `PlayLineAcrossWall(snap.wall, snap.end)`。
+/// 返回自合并墙（原版局部 Vec 的内容）。
+fn snap_merge(
+    wall: WallId,
+    snap: &SnappingMode,
+    progress: &InProgressCurve,
+    walls: &InnerWalls,
+    merges: &mut EventWriter<MergeWallsCmd>,
+    lines: &mut EventWriter<PlayLineAcrossWall>,
+) -> Option<WallId> {
+    if snap.mode != 2 {
+        return None;
+    }
+    let target = walls.get_unwrapped(snap.wall);
+    let metadata = progress
+        .drawing
+        .as_ref()
+        .expect("original reads in-progress +0x94..+0x9d after a successful commit");
+    if metadata.kind != target.source_flag_65() {
+        return None;
+    }
+    let snap_end = snap.end;
+    if wall == snap.wall {
+        lines.write(PlayLineAcrossWall {
+            wall: snap.wall,
+            flag: snap_end,
+        });
+        return Some(wall);
+    }
+    merges.write(MergeWallsCmd {
+        wall_a: wall,
+        wall_b: snap.wall,
+        wall_a_original_height: metadata.desired_height,
+        wall_a_original_color_id: metadata.color_id,
+        reverse_a: progress.flags != 0,
+        keep_b_direction: snap_end != 0,
+    });
+    lines.write(PlayLineAcrossWall {
+        wall,
+        flag: progress.flags,
+    });
+    lines.write(PlayLineAcrossWall {
+        wall: snap.wall,
+        flag: snap_end,
+    });
+    None
+}
+
 pub fn finish_wall(
     mut events: EventReader<FinishWall>,
     mut walls: ResMut<InnerWalls>,
@@ -47,6 +107,8 @@ pub fn finish_wall(
     mut pending: ResMut<PendingWallHistory>,
     wall_colors: Res<WallColorIds>,
     fence_colors: Res<HalftimberColorIds>,
+    mut merges: EventWriter<MergeWallsCmd>,
+    mut lines: EventWriter<PlayLineAcrossWall>,
 ) {
     // Original consumes every pending event and uses the final bool, rather
     // than replaying completion once for each unread event.
@@ -67,9 +129,9 @@ pub fn finish_wall(
             progress.clear();
             return;
         }
-        // Premade-shape enclosure and snapped merges have additional original
-        // producers/consumers. Retain both owners until those paths are ready.
-        if snap.mode > 1 || state.source().curve_kind_tag < 2 {
+        // Premade-shape (kind tag < 2) continuation has an extra enclosure tail in
+        // the original that is not recovered; keep that owner untouched.
+        if state.source().curve_kind_tag < 2 {
             issues.0.push(WallDrawingIssue::UnsupportedFinish {
                 wall,
                 commit: event.0,
@@ -104,6 +166,14 @@ pub fn finish_wall(
                     pending.wall_changed.replace(changed).is_none(),
                     "pending_wall_history.wall_changed.replace(expand).is_none()"
                 );
+                // 0x140a80f26: snap-merge 闭包在 pending 写入之后、清 progress 之前。
+                if let Some(looped) =
+                    snap_merge(wall, &snap, &progress, &walls, &mut merges, &mut lines)
+                {
+                    issues
+                        .0
+                        .push(WallDrawingIssue::ClosedLoopEnclosureNotRecovered { wall: looped });
+                }
                 progress.clear();
                 return;
             }
@@ -126,12 +196,12 @@ pub fn finish_wall(
         progress.clear();
         return;
     }
-    if continuation.previous.is_some() || snap.mode > 1 {
+    if continuation.previous.is_some() {
         issues.0.push(WallDrawingIssue::UnsupportedFinish {
             wall,
             commit: event.0,
             snapped_mode: snap.mode,
-            continued: continuation.previous.is_some(),
+            continued: true,
         });
         return;
     }
@@ -154,6 +224,12 @@ pub fn finish_wall(
             RecordWallHistory::new_wall(wall, &captured, metadata.color_id)
                 .expect("original finished wall history slice must be valid"),
         );
+        // 0x140a81000：ev_new_wall 之后、NotifyHint 之前。
+        if let Some(looped) = snap_merge(wall, &snap, &progress, &walls, &mut merges, &mut lines) {
+            issues
+                .0
+                .push(WallDrawingIssue::ClosedLoopEnclosureNotRecovered { wall: looped });
+        }
         used.write(NotifyHintSystemToolWasJustUsed);
     } else {
         walls.remove(wall);
@@ -222,6 +298,8 @@ mod tests {
         world.insert_resource(colors);
         world.init_resource::<HalftimberColorIds>();
         world.init_resource::<Events<FinishWall>>();
+        world.init_resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>();
+        world.init_resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>();
         world.init_resource::<Events<RecordWallHistory>>();
         world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
         world.init_resource::<Events<HistoryRecordingFailed>>();
@@ -384,6 +462,8 @@ mod tests {
         world.insert_resource(WallColorIds(Vec::new()));
         world.init_resource::<HalftimberColorIds>();
         world.init_resource::<Events<FinishWall>>();
+        world.init_resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>();
+        world.init_resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>();
         world.init_resource::<Events<RecordWallHistory>>();
         world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
         world
@@ -400,6 +480,90 @@ mod tests {
         assert!(!world.resource::<InnerWalls>().contains(wall));
         // Only the confirmed removal is asserted after panic: other unwound
         // owners are deliberately outside this native failure observation.
+    }
+
+    /// 新墙提交后 snap-merge 闭包（0x140a82060）：自吸附 → 只写一条 PlayLineAcrossWall 并登记
+    /// 闭环 enclosure 未恢复；类型（kind）不同 → 什么都不写；mode != 2 → 什么都不写。
+    #[test]
+    fn snap_merge_self_loop_kind_mismatch_and_non_end_modes() {
+        use crate::resources::{
+            roofs::geometry::surface::Curve2, walls::in_progress_wall::WallDrawingMetadata,
+        };
+        // (snap.mode, snap onto self, target flag 65, drawing.kind)
+        for (mode, onto_self, target_flag, kind) in [
+            (2u8, true, 0u8, 0u8),
+            (2, false, 1, 0),
+            (3, false, 0, 0),
+            (0, false, 0, 0),
+        ] {
+            let state = |flag: u8, x: f32| {
+                WallState::new(
+                    Curve2::try_new(vec![[x, 0.0], [x + 2.0, 0.0]], false).unwrap(),
+                    3.9,
+                    0,
+                    flag,
+                    false,
+                )
+            };
+            let mut world = World::new();
+            let mut walls = InnerWalls::new();
+            let wall = walls.new_wall_from_curve(state(0, 0.0));
+            let other = walls.new_wall_from_curve(state(target_flag, 10.0));
+            world.insert_resource(walls);
+            let mut progress = InProgressCurve::default();
+            progress.wall = Some(wall);
+            progress.current_wall = wall;
+            progress.drawing = Some(WallDrawingMetadata {
+                first_unsnapped_cursor: None,
+                desired_height: 3.9,
+                color_id: 5,
+                kind,
+                freehand_ty: 0,
+            });
+            world.insert_resource(progress);
+            world.init_resource::<ContinueWallOriginalState>();
+            let mut snap = SnappingMode::new();
+            snap.mode = mode;
+            snap.wall = if onto_self { wall } else { other };
+            snap.end = 0;
+            world.insert_resource(snap);
+            world.init_resource::<WallDrawingIssues>();
+            world.init_resource::<PendingWallHistory>();
+            world.init_resource::<WallColorIds>();
+            world.init_resource::<HalftimberColorIds>();
+            world.init_resource::<Events<FinishWall>>();
+            world.init_resource::<Events<RecordWallHistory>>();
+            world.init_resource::<Events<NotifyHintSystemToolWasJustUsed>>();
+            world.init_resource::<Events<MergeWallsCmd>>();
+            world.init_resource::<Events<PlayLineAcrossWall>>();
+            world
+                .resource_mut::<Events<FinishWall>>()
+                .send(FinishWall(true));
+            let mut schedule = Schedule::default();
+            schedule.add_systems(finish_wall);
+            schedule.run(&mut world);
+            let merges = world.resource::<Events<MergeWallsCmd>>().len();
+            let lines: Vec<_> = world
+                .resource::<Events<PlayLineAcrossWall>>()
+                .get_cursor()
+                .read(world.resource())
+                .map(|l| (l.wall, l.flag))
+                .collect();
+            assert_eq!(merges, 0, "mode {mode} self {onto_self} flag {target_flag}");
+            if mode == 2 && onto_self {
+                assert_eq!(lines, [(wall, 0)]);
+                assert!(matches!(
+                    world.resource::<WallDrawingIssues>().0.last(),
+                    Some(WallDrawingIssue::ClosedLoopEnclosureNotRecovered { wall: w }) if *w == wall
+                ));
+            } else {
+                assert!(lines.is_empty());
+                assert!(world.resource::<WallDrawingIssues>().0.is_empty());
+            }
+            // 普通提交照常发生。
+            assert_eq!(world.resource::<Events<RecordWallHistory>>().len(), 1);
+            assert!(world.resource::<InProgressCurve>().wall.is_none());
+        }
     }
 
     #[test]

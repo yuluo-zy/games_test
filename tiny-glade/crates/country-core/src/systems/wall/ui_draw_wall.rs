@@ -534,6 +534,8 @@ mod tests {
             world.init_resource::<DecoratorStorage>();
             world.init_resource::<Events<RecordMouseInputIntoWall>>();
             world.init_resource::<Events<FinishWall>>();
+            world.init_resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>();
+            world.init_resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>();
             world.init_resource::<Events<DebugHistoryMsg>>();
             world.init_resource::<Events<WallBendAudioParamReset>>();
             world.init_resource::<Events<DisplayOutOfBorder>>();
@@ -619,6 +621,8 @@ mod tests {
         world.init_resource::<DecoratorStorage>();
         world.init_resource::<Events<RecordMouseInputIntoWall>>();
         world.init_resource::<Events<FinishWall>>();
+        world.init_resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>();
+        world.init_resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>();
         world.init_resource::<Events<DebugHistoryMsg>>();
         world.init_resource::<Events<WallBendAudioParamReset>>();
         world.init_resource::<Events<DisplayOutOfBorder>>();

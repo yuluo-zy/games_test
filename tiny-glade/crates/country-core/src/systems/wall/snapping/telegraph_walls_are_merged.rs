@@ -30,6 +30,16 @@ const TELEGRAPH_DURATION: f32 = 0.75;
 /// 极小切片 ε 扩展基数（0.025 @ fresh `0.025 / fVar52`）。
 const SLICE_MIN_LEN: f32 = 0.025;
 
+/// 原版 `telegraph_walls_are_merged::PlayLineAcrossWall`（`Events` 实例 0x18 B：id @+0、
+/// wall @+8、u8 @+0x10）。生产者 finish_wall 的 snap-merge 闭包 0x140a82060：
+/// 合并时写两条（`(wall_a, in_progress+0x9e)`、`(snap.wall, snap.end)`），自合并时只写
+/// `(snap.wall, snap.end)`。字节槽名称原版未恢复，按其来源描述。
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlayLineAcrossWall {
+    pub wall: WallId,
+    pub flag: u8,
+}
+
 /// 每墙段累计计时器（原生存于 public 段记录 @+0x40；域内以资源承载）。
 #[derive(Resource, Clone, Debug, Default)]
 pub struct TelegraphTimers(pub HashMap<WallId, f32>);

@@ -158,6 +158,8 @@ pub fn register_wall_drawing_resources(world: &mut World) {
     world.init_resource::<LiveDecoratorArchivist>();
     world.init_resource::<Events<RecordMouseInputIntoWall>>();
     world.init_resource::<Events<FinishWall>>();
+    world.init_resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>();
+    world.init_resource::<Events<crate::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>();
     world.init_resource::<Events<SetWallColorIdCmd>>();
     world.init_resource::<Events<SetHalftimberColorIdCmd>>();
     world.init_resource::<Events<HideTreesNextToWallCmd>>();
