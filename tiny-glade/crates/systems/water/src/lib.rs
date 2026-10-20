@@ -157,5 +157,9 @@ impl bevy_app::Plugin for WaterPlugin {
         app.add_event::<RecordWaterEditToHistoryCmd>();
         app.add_event::<WaterDrawEvent>();
         app.add_event::<WaterEraseEvent>();
+        // 未闭合：原版 draw_water 写的是 core 的 `ShowPinnedDecoClutter` 事件（56 B union，注册点
+        // 不在本插件的三次 register_event 里）。`WaterPinnedClutterCircle` 是它的圈/高特化替身，
+        // 事件队列在此建立只为 `EventWriter` 参数校验通过；真正的统一事件与消费者仍待还原。
+        app.add_event::<draw_water::WaterPinnedClutterCircle>();
     }
 }

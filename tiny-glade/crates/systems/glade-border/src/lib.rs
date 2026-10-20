@@ -65,5 +65,9 @@ impl bevy_app::Plugin for GladeBorderPlugin {
         );
         app.add_event::<DisplayOutOfBorder>();
         app.add_event::<FeedbackInputOutOfBorder>();
+        // 未闭合：原版 `Events<ShowDemoBorderOverlay>` 的注册点不在本插件的两次 register_event 里
+        // （注册者未定位）。生产者 display_glade_border 与消费者 draw_callbacks_a 都按该事件校验，
+        // 这里先建立队列使其可运行。
+        app.add_event::<country_core::resources::glade_border::ShowDemoBorderOverlay>();
     }
 }

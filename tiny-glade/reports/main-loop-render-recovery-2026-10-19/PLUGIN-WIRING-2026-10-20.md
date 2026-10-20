@@ -56,3 +56,36 @@ Ghidra 库（`reverse-engineering/tiny-glade/scripts/reverse_tools/linux/`，PE 
 - 真实 gameplay App（含真实 intro 存档、真实资产、lavapipe 设备）现在能跑过 `Startup`/`PreStartup` 并进入存档加载；**单个系统参数校验失败的清单已清空**，下一个暴露的是存档回放阶段的 `adjust_wall_height_impl: wall WallId(29) missing from InnerWalls`（未解决）。
 - 本机验证方式：Linux 缺 `libfmod`/`libfmodstudio`，用仓库外的链接垫片（`~/tools/fmod-link-stub`，所有 FMOD 调用返回 `FMOD_ERR_INTERNAL`）满足链接，原版 `AudioCore::None` 分支生效。**音频链路未经验证。**
 - 为让 Linux 走同一份代码，宿主新增了 `native-audio` feature，把原先写死 Windows 的音频接线（`cfg(windows)`）改为 `cfg(any(windows, feature = "native-audio"))`；Windows 行为不变。
+
+## 附录 A：`WallSystems::add_wall_systems`（0x140493120）完整注册表（机器码取证，2026-10-20）
+
+方法：调度标签取自 add_systems 实例内 `Schedules::entry` 的 label vtable Debug::fmt 字符串（0x1429f1e78="Update"、0x1429f1eb0="Startup"、0x1429b7ca0=`OnExit<S>` 且 DL=1 即 `AppLoadingState::Game`）；set 号取 in_set 前立即数（`chain_ignore_deferred` 之后的 in_set 经 `Interner::intern(vtable 0x14292af98 = GameSystemSet)`）；系统名取 tuple 实例内 `LEA` 的类型名串，字符串池里粘连，按 crate 前缀切分。chain1 的 Vec 槽位顺序已与读写来源核对，其余 chain 按 `into_configs` 调用顺序，未逐个复查 Vec 写入。
+
+| # | 调用点 | 标签 | 内容 | set |
+|---|---|---|---|---|
+| 1 | 0x14049315b | Update | `ui_arch_controls` | 17 |
+| 2 | 0x140493177 | Update | `restore_archived_decorators`（泛型 C 未闭合） | 42 |
+| 3 | 0x1404932c7 | Update | 外层 `chain_ignore_deferred(chain1, chain2)` | 19 |
+| — | 0x1404932eb | — | `insert_resource(OverhangSupportDirtySubscriptions)`，值三个 qword (0,8,0)=`Vec::new()` | — |
+| 4 | 0x1404932f6 | **Startup** | `overhang_subscribe_to_tabloids` | 无 |
+| 5 | 0x140493385 | Update | chain：detect_overhang_support_segments, construct_circle_supports, construct_rectangle_columns, maintain_stone_column_colliders, flush_rapier_colliders | 24 |
+| 6 | 0x140493414 | Update | chain：update_gates_hashmap, construct_gates, construct_fences, construct_platform_stairs, place_pillars, construct_walls, construct_floors, debug_viz_threshold_curve, structure_outline | 28 |
+| 7 | 0x140493430 | Update | `construct_rectangle_brackets` | 36 |
+| 8 | 0x1404934bf | Update | chain：history_record_adjust_wall_height, history_record_wall_changed, history_record_merge_walls, history_record_auto_clutter | 34 |
+| 9 | 0x1404934db | Update | **普通 tuple（非 chain）**：gpu_flush_brick_buffers, gpu_flush_plank_buffers | 44 |
+| 10 | 0x14049356a | Update | chain：create_plaster, maintain_plaster, curved_halftimber_maintain_entities | 32 |
+| 11 | 0x140493574 | **OnExit(Game)** | `walls_on_glade_unload` | 无 |
+
+set 19 chain1（18 成员，0x14050d290）：wall_splitter, wall_eraser_bulldoze（唯一 run_if：`wall_eraser_bulldoze_condition`）, wall_eraser, animate_wall_bulldoze, ui_draw_wall, suppress_continue_wall, ui_continue_wall, snapping_init, snapping_to_ends, snapping_to_segments, check_for_disable_snapping, snapping_audio, snapping_signifiers, snapping_maintain, draw_wall, finish_wall, merge_walls, telegraph_walls_are_merged。
+set 19 chain2（16 成员，0x140335b30）：ui_adjust_wall_height_signifier_animation, ui_adjust_wall_height_mode, adjust_wall_height_impl, do_ui_arch_controls, ui_lintel_controls, wall_highlight, publish_public_wall_state, delete_wall, spatial_hash_update, spatial_hash_debug, calc_wall_bend, debug_force_update_arches, gpu_clear_wall_gate_pieces, sample_wall_path_intersections, calculate_path_wall_segmentation（原版函数名；本仓库叫 `calculate_wall_path_segmentation`）, init_wall_height_and_arch_segment_height。
+
+### 本仓库缺失的原版系统（未恢复，不得用空函数冒充）
+`wall_splitter`、`merge_walls`、`ui_adjust_wall_height_signifier_animation`、`ui_adjust_wall_height_mode`、`spatial_hash_debug`、`debug_viz_threshold_curve`、`history_record_adjust_wall_height`、`history_record_merge_walls`、`gpu_flush_brick_buffers`（原路径 `upload_instanced_wall_ssbo`）、`structure_outline` 系统函数。
+本仓库是空壳或 `todo!`：`gpu_clear_wall_gate_pieces`、`debug_force_update_arches`、`gpu_flush_plank_buffers`、`overhang_subscribe_to_tabloids`、`construct_circle_supports`、`construct_rectangle_columns`、`construct_rectangle_brackets`、`detect_overhang_support_segments`。
+等价性未闭合：`adjust_wall_height_impl` vs 本仓库 `adjust_wall_height`；`construct_walls` vs `construct_wall_bricks` 别名；`flush_rapier_colliders` 只有 `RaycastWorld` 方法，无系统包装；`OverhangSupportDirtySubscriptions` 本仓库字段是 HashMap，原版值为 `Vec::new()`。
+
+### 宿主现状差异
+宿主 `run_game.rs` 手写 set19 的 12 成员（含宿主适配 `synchronize_wall_publication_terrain`、`collect_wall_publication_dirty`、`prepare_wall_brick_assembly_owners`、`delete_constructor_output`、`clear_constructor_planks`——原版 chain 中没有）与 set28 的 2 成员（含宿主适配 `finalize_wall_holes`）；`startup_construction_runtime.rs` 另挂 set28 的 5 成员。原版 set 17/42/24/34/32/44/36 与 Startup 的组在宿主完全没有。
+
+## 附录 B：设备预算（原版取证，2026-10-20）
+原版没有可配置的设备内存预算：`GpuAllocator::new`（0x140c0d980）参数里无预算，`allocate`（0x140c0da40）无"总量>上限即 OOM"的分支；`PhysicalDevice::{device_local,host}_memory_budget_bytes`（0x140c006a0/0x140c00890）只被 `vram::calculate_max_resolution_scale`（0x1404f7f20）与设置界面显示文本使用，预算只用来限制渲染分辨率缩放上限（`run_game` 0x1405967c6 存 `[state+0x184]`）。本仓库 `production_renderer.rs:570-577` 用 `DeviceConfig::default()`（1 GiB/512 MiB，rhapsody 自有策略）是偏差。`vram::calculate_max_resolution_scale` 在本仓库无生产调用点。未闭合：原版纹理加载的显存策略、`allocation_sizes`、`[device+0x1a]` 来源。
