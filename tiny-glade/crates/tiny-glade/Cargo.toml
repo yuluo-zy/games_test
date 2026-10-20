@@ -93,6 +93,8 @@ native-audio = ["country-core/native-audio"]
 [dev-dependencies]
 rspirv.workspace = true
 country-core = { workspace = true, features = ["test-support"] }
+# Lets tests/main_chain_audit.rs record every failed system instead of panicking on the first.
+bevy_ecs = { version = "=0.16.0", default-features = false, features = ["std", "configurable_error_handler"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 country-core = { workspace = true, features = ["native-audio"] }
