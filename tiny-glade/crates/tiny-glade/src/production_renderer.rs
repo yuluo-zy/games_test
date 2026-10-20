@@ -59,6 +59,9 @@ const TIMEOUT_NS: u64 = 10_000_000_000;
 /// a named error instead of presenting a frame without UI text. This never
 /// reports success unless the graph compiled, executed and exported a real
 /// texture.
+/// rhapsody 的预算校验要求非零；原版没有设备内存预算，取 2^48 字节表示不限。
+pub const UNBOUNDED_DEVICE_BUDGET_BYTES: u64 = 1 << 48;
+
 pub fn warm_up_gameplay(
     owners: crate::render_bridge::CoreRenderOwners,
     world: &mut World,
@@ -568,6 +571,10 @@ impl ProductionRenderer {
             instance,
             Some(&surface),
             &rhapsody::device::DeviceConfig {
+                // 原版 GpuAllocator::new (0x140c0d980) 没有预算参数，allocate (0x140c0da40)
+                // 没有总量上限分支；真实上限只有驱动堆与 VK_EXT_memory_budget。rhapsody 的
+                // 1 GiB 默认值是它自有策略，装不下全量纹理加 Nani/地形缓冲，这里取“不限”。
+                memory_budget_bytes: UNBOUNDED_DEVICE_BUDGET_BYTES,
                 queues: rhapsody::device::QueueConfig {
                     require_present: true,
                     ..Default::default()

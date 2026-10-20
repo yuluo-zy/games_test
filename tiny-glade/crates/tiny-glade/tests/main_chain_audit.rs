@@ -68,14 +68,8 @@ fn every_system_runs_on_the_real_gameplay_app() -> Result<()> {
     tiny_glade::game_loop::register_settings_application_system(&mut app);
     let device =
         rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig {
-            // The default 1 GiB device budget is smaller than the full compiled texture set
-            // plus the Nani/terrain buffers; the audit must not die on that before it can
-            // report wiring gaps. TG_AUDIT_BUDGET_GIB overrides.
-            memory_budget_bytes: std::env::var("TG_AUDIT_BUDGET_GIB")
-                .ok()
-                .and_then(|v| v.parse::<u64>().ok())
-                .unwrap_or(8)
-                << 30,
+            // Same unbounded budget as the production window path (the original has no cap).
+            memory_budget_bytes: tiny_glade::production_renderer::UNBOUNDED_DEVICE_BUDGET_BYTES,
             ..rhapsody::device::DeviceConfig::headless()
         })
             .context("gameplay physical device")?;
