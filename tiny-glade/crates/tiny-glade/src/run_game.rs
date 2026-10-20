@@ -190,6 +190,16 @@ pub fn run_game(
         app.insert_resource(country_core::systems::steam::SteamClientResource {
             client: Some(client.clone()),
         });
+        // add_steam_integration 0x140945320: new request list, HookScreenshots(true), then
+        // register_callback::<ScreenshotRequested> whose body (0x14091ad50) pushes an empty
+        // placeholder that gather_screenshot_requests turns into one capture.
+        let screenshot_requests = country_core::systems::steam::SteamScreenshotRequests::default();
+        client.hook_screenshots(true);
+        let callback_requests = screenshot_requests.clone();
+        client.register_screenshot_requested(Arc::new(move || {
+            callback_requests.on_screenshot_requested()
+        }));
+        app.insert_resource(screenshot_requests);
         app.world_mut().resource_mut::<country_core::systems::steam::SteamOverlayOpenResources>().client = Some(client);
     } else {
         // The explicitly named standalone host has neither GFN nor Steam SDK.
