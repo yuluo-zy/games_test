@@ -44,7 +44,7 @@ const TIMEOUT_NS: u64 = 10_000_000_000;
 
 /// 管线预热的等待上限（上限而非等待目标：编译完成即返回）。软件光栅化设备（lavapipe）
 /// 编译整套世界管线要数十秒，原先的 10 秒会让首帧前预热超时。
-const PIPELINE_PREWARM_TIMEOUT: Duration = Duration::from_secs(180);
+pub(crate) const PIPELINE_PREWARM_TIMEOUT: Duration = Duration::from_secs(180);
 
 /// Original loader closure 0x1400d7440 must successfully render the gameplay
 /// App once without a swapchain before publishing it.
@@ -95,6 +95,70 @@ pub fn warm_up_gameplay(
         },
     )?;
     Ok(())
+}
+
+/// One headless steady-state gameplay frame: the same declaration -> compile -> execute -> export
+/// sequence as `ProductionRenderHost` (`build_draw_lists`, `compile_full_world_graph`,
+/// `execute_main_graph`) without a swapchain, presentation graph or egui backend.
+/// Used by multi-frame validation after `accept_gameplay_warmup`; the caller owns the App update
+/// and `RenderTemporalState::frame_render_returned` exactly as `GameFrameDriver` does.
+pub struct HeadlessGameplayFrame {
+    pub receipt: rhapsody::rg::SessionFrameReceipt,
+    pub texture: std::sync::Arc<rhapsody::resource::Texture>,
+    /// Draw-list construction plus `refresh_draw_vaos`.
+    pub draw_lists: Duration,
+    /// Graph declaration (`build_frame`), i.e. the world stage builders.
+    pub declare: Duration,
+    /// Pipeline prewarm wait plus `compile_built`.
+    pub compile: Duration,
+    /// `execute_compiled` (recording + submit).
+    pub execute: Duration,
+}
+
+pub fn render_headless_gameplay_frame(
+    bridge: &mut crate::render_bridge::CoreRenderBridge,
+    world: &mut World,
+) -> Result<HeadlessGameplayFrame> {
+    let started = std::time::Instant::now();
+    let mut lists = DrawLists::new();
+    build_draw_lists(world, bridge.shader_library().as_ref(), &mut lists);
+    lists.sort();
+    bridge.raster_resources().refresh_draw_vaos(world, &lists).context("refresh draw VAOs")?;
+    let draw_lists = started.elapsed();
+    let extent = world_extent(world, None, None)?;
+    let started = std::time::Instant::now();
+    let (output, built) = bridge.build_frame(|frame| {
+        frame.with_main_prelude(world, |frame, world| {
+            build_full_world_stage(frame, world, &lists, extent, None)
+        })
+    }).context("declare world graph")?;
+    let declare = started.elapsed();
+    let started = std::time::Instant::now();
+    if let Err(error) = bridge.shader_backend().prewarm(PIPELINE_PREWARM_TIMEOUT) {
+        if let Err(cleanup) = bridge.cancel_built(built) {
+            log::warn!("headless frame prewarm cancellation: {cleanup}");
+        }
+        return Err(error.into());
+    }
+    let capture_graph_id = built.graph_id();
+    let compiled = bridge.compile_built(built).context("compile world graph")?;
+    let compile = started.elapsed();
+    let started = std::time::Instant::now();
+    let receipt = match bridge.execute_compiled(compiled) {
+        Ok(receipt) => receipt,
+        Err(error) => {
+            crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
+            return Err(anyhow::Error::from(error).context("execute world graph"));
+        }
+    };
+    let execute = started.elapsed();
+    if crate::screenshot::shared_texture_capture::installed(world) {
+        crate::screenshot::shared_texture_capture::submitted(
+            world, bridge, capture_graph_id, &receipt,
+        )?;
+    }
+    let texture = bridge.take_exported_texture(&receipt, output.texture).context("take exported texture")?;
+    Ok(HeadlessGameplayFrame { receipt, texture, draw_lists, declare, compile, execute })
 }
 
 // ---------------------------------------------------------------------------------------------
