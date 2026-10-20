@@ -813,6 +813,8 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.init_resource::<history::replay_mode::ReplayModeElapsedTime>();
     app.init_resource::<history::replay_mode::HoldToFastReplay>();
     app.init_resource::<mode_manager::RestoreAppTo>();
+    // insert_history_resources 0x140943eec：WallEraserArchivist（RestoreAppTo 之后、PendingHistoryCommands 之前）。
+    app.init_resource::<country_core::systems::wall::eraser::archivist::WallEraserArchivist>();
     // Safe projection of the unengaged original ActionSetStates slots16/17.
     // ActionSetStates aliases MainActionSet; this is the same input owner.
     // Native startup1405a146f supplies tag2; this is a real inactive state,

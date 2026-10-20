@@ -110,9 +110,9 @@ pub struct SplitEventWriters<'w> {
 #[derive(Debug, PartialEq)]
 pub enum WallSplitterError {
     /// `add_split_event` needs the eraser's rewire map (map1) and child walls
-    /// (map3) to contain the wall. The local `cache_if_original_wall` does not
-    /// create the map3 child entry (unclosed in the eraser domain), so the split
-    /// is refused *before* any state is touched.
+    /// (map3) to contain the wall (original: `expect` panic). `cache_if_original_wall`
+    /// (Start) now creates the map3 entry like 0x14092ee80, so this only fires when Split
+    /// runs without a preceding Start; it is refused *before* any state is touched.
     EraserSplitTargetMissing(WallId),
     /// The wall was removed by a different system between the widget being
     /// active and the click being handled.
@@ -513,7 +513,7 @@ pub fn wall_splitter<S: Send + Sync + 'static>(
                 .map(|&(id, low, high)| (WallId(id), low, high))
                 .collect();
             storage.on_wall_split(wall, &removed_curve, &children);
-            let compound = eraser.finish();
+            let compound = eraser.finish(&wall_colors, &halftimber_colors);
             history
                 .add(EditType::Wall(Arc::new(compound)))
                 .map_err(|_| WallSplitterError::HistoryNotRecording)?;
