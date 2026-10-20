@@ -53,6 +53,42 @@ pub fn gather_screenshot_requests(
     }
     Ok(())
 }
+/// `Vec::retain_mut(add_captured_screenshots_to_steam_library::closure)` (0x1402c13d0).
+/// `Requested` placeholders and still-empty slots are kept; a filled slot is taken and
+/// removed: Err -> logged, Ok -> `AddScreenshotToLibrary` when the file exists.
+/// The SDK boundary is `SteamSdk::add_screenshot_to_library` (default: Err, never a fake
+/// success). Log levels/message arguments of the Steam-error branch are not recovered
+/// beyond the format strings at 0x1429ae6e8/0x1429ae720/0x1429ae628.
+pub fn add_captured_screenshots_to_steam_library(
+    requests: &country_core::systems::steam::SteamScreenshotRequests,
+    client: &dyn country_core::resources::steam::SteamSdk,
+) {
+    use country_core::systems::steam::SteamScreenshotRequest;
+    requests.requests.write().retain_mut(|request| {
+        let SteamScreenshotRequest::Captured(slot) = request else {
+            return true;
+        };
+        let Some(result) = slot.lock().take() else {
+            return true;
+        };
+        match result {
+            Err(error) => log::error!("Error taking a screenshot for Steam: {error}"),
+            Ok((path, [width, height])) => {
+                if !path.is_file() {
+                    log::error!(
+                        "Screenshot request claims success but file doesn't exist: {path:?}"
+                    );
+                } else if let Err(error) = std::path::absolute(&path)
+                    .map_err(|error| error.to_string())
+                    .and_then(|absolute| client.add_screenshot_to_library(&absolute, width, height))
+                {
+                    log::error!("Steam error: {error}");
+                }
+            }
+        }
+        false
+    });
+}
 pub fn active_capture_purpose(world: &bevy_ecs::world::World) -> u8 {
     shared_texture_capture::active_capture_purpose(world)
 }
