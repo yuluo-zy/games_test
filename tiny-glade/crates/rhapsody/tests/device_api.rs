@@ -99,6 +99,61 @@ fn dynamic_attachment_views_are_cached_and_reject_foreign_devices() {
 }
 
 #[test]
+fn attachment_cache_releases_views_of_textures_nobody_else_owns() {
+    use rhapsody::{
+        raw::texture::{Texture, TextureDesc},
+        rg::attachments::{Attachment, AttachmentCache, RenderingPolicy},
+    };
+    use std::sync::Arc;
+    let Some(device) = device() else { return };
+    let new_texture = || {
+        Arc::new(
+            Texture::new(
+                device.clone(),
+                &TextureDesc::new_2d(8, 8, vk::Format::R8G8B8A8_UNORM).color_attachment(),
+            )
+            .unwrap(),
+        )
+    };
+    let extent = vk::Extent2D {
+        width: 8,
+        height: 8,
+    };
+    let mut cache = AttachmentCache::new(device.clone()).unwrap();
+    let mut prepare = |texture: &Arc<Texture>| {
+        let attachment = Attachment::color(texture.clone(), 0, Some([0.; 4])).unwrap();
+        cache
+            .prepare_for_rendering(
+                std::slice::from_ref(&attachment),
+                extent,
+                1,
+                RenderingPolicy::RequireDynamic,
+            )
+            .map(drop)
+            .unwrap();
+    };
+    let first = new_texture();
+    let second = new_texture();
+    prepare(&first);
+    prepare(&second);
+    let (first_weak, second_weak) = (Arc::downgrade(&first), Arc::downgrade(&second));
+    // `first` is still owned elsewhere: its cached view must stay valid.
+    drop(second);
+    assert!(second_weak.upgrade().is_some(), "the cache alone still pins the texture");
+    // A new target appears: unreachable textures' views are released, owned ones kept.
+    let third = new_texture();
+    prepare(&third);
+    assert!(second_weak.upgrade().is_none(), "texture only pinned by the cache is released");
+    assert!(first_weak.upgrade().is_some());
+    drop(first);
+    drop(third);
+    let fourth = new_texture();
+    prepare(&fourth);
+    assert!(first_weak.upgrade().is_none());
+    assert_eq!(cache.view_count(), 1);
+}
+
+#[test]
 fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure() {
     use rhapsody::{
         raw::texture::{Texture, TextureDesc},

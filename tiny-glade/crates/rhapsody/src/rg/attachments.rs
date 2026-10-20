@@ -502,6 +502,40 @@ impl AttachmentCache {
             },
         )))
     }
+    /// Drop cached views whose texture nobody else can reach any more. A view is looked up by an
+    /// `Attachment` that holds its texture, so once every strong reference to a texture is one of
+    /// this cache's own (otherwise unused) views, no lookup can ever hit them again; keeping them
+    /// would pin per-frame targets (for example the exported main target) until the cache is
+    /// saturated. Views still held by prepared attachments or recorded commands, and textures
+    /// with any other owner, stay. The view/image destruction itself is deferred by the graveyard
+    /// until the GPU uses finished.
+    fn release_unreachable_textures(&mut self) -> Result<()> {
+        let cache_refs = |texture: &Arc<Texture>| {
+            self.views
+                .iter()
+                .filter(|(_, view)| Arc::ptr_eq(&view.texture, texture))
+                .count()
+        };
+        let candidate = |(_, view): &(ViewKey, Arc<TextureView>)| {
+            Arc::strong_count(view) == 1 && Arc::strong_count(&view.texture) == cache_refs(&view.texture)
+        };
+        if !self.views.iter().any(candidate) {
+            return Ok(());
+        }
+        let completed = self.device.poll()?;
+        let dead = self
+            .views
+            .iter()
+            .map(|entry| candidate(entry) && entry.1.last_use.is_reached(&completed))
+            .collect::<smallvec::SmallVec<[bool; 256]>>();
+        let mut index = 0;
+        self.views.retain(|_| {
+            let keep = !dead[index];
+            index += 1;
+            keep
+        });
+        Ok(())
+    }
     /// 整次生产成功后才发布缓存项，失败不会留下半完成对象。
     fn reserve_views(&mut self, views: &[ViewKey]) -> Result<()> {
         let missing = views
@@ -511,6 +545,9 @@ impl AttachmentCache {
                 !views[..*index].contains(key) && !self.views.iter().any(|(old, _)| old == *key)
             })
             .count();
+        if missing > 0 {
+            self.release_unreachable_textures()?;
+        }
         if self.views.len().saturating_add(missing) > self.capacity {
             let completed = self.device.poll()?;
             while self.views.len().saturating_add(missing) > self.capacity {
