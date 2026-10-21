@@ -1002,7 +1002,7 @@ impl GameLoop {
     }
 
     /// B begin_frame → App::update → end_frame → PlatformOutput → render.
-    pub(crate) fn frame(&mut self, target: &EventLoopWindowTarget<()>) -> anyhow::Result<bool> {
+    pub(crate) fn frame(&mut self, target: &dyn crate::event_loop::LoopTarget) -> anyhow::Result<bool> {
         if !self.lifecycle.is_running() {
             return Ok(false);
         }
@@ -1260,6 +1260,14 @@ impl GameLoop {
     pub fn extract_available_monitors_info(
         available: &mut AvailableMonitors,
         event_loop: &EventLoopWindowTarget<()>,
+    ) {
+        Self::extract_monitors_from_target(available, event_loop)
+    }
+
+    /// Same enumeration for any loop target, including the game thread's view.
+    pub(crate) fn extract_monitors_from_target(
+        available: &mut AvailableMonitors,
+        event_loop: &dyn crate::event_loop::LoopTarget,
     ) {
         available.clear();
         for handle in event_loop.available_monitors() {

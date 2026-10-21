@@ -71,6 +71,46 @@ pub enum OsWindowEvent {
     LineMouseWheel([f32; 2]),
 }
 
+/// What the frame/event code needs from the OS loop. Implemented by winit's
+/// window target on the main thread, and by [`ThreadTarget`] when the game
+/// runs on its own thread and only forwarded events reach it.
+pub trait LoopTarget {
+    fn exit(&self);
+    fn set_control_flow(&self, flow: winit::event_loop::ControlFlow);
+    fn available_monitors(&self) -> Vec<winit::monitor::MonitorHandle>;
+}
+
+impl LoopTarget for winit::event_loop::EventLoopWindowTarget<()> {
+    fn exit(&self) {
+        winit::event_loop::EventLoopWindowTarget::exit(self)
+    }
+    fn set_control_flow(&self, flow: winit::event_loop::ControlFlow) {
+        winit::event_loop::EventLoopWindowTarget::set_control_flow(self, flow)
+    }
+    fn available_monitors(&self) -> Vec<winit::monitor::MonitorHandle> {
+        winit::event_loop::EventLoopWindowTarget::available_monitors(self).collect()
+    }
+}
+
+/// Game-thread view of the OS loop. `exit` raises a flag and wakes the main
+/// thread (a redraw request is an event it must handle), which then leaves its
+/// loop. Control flow is the main thread's business and is ignored here.
+pub(crate) struct ThreadTarget {
+    window: std::sync::Arc<winit::window::Window>,
+    exit: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl LoopTarget for ThreadTarget {
+    fn exit(&self) {
+        self.exit.store(true, std::sync::atomic::Ordering::Release);
+        self.window.request_redraw();
+    }
+    fn set_control_flow(&self, _flow: winit::event_loop::ControlFlow) {}
+    fn available_monitors(&self) -> Vec<winit::monitor::MonitorHandle> {
+        self.window.available_monitors().collect()
+    }
+}
+
 /// Runs the actual winit loop on the OS main thread. B used pump_events on the
 /// OS thread and a separate game thread. Main-thread rendering here is an
 /// explicit macOS host adaptation, not recovered B thread scheduling.
@@ -84,10 +124,162 @@ pub fn run_event_loop(
     crate::game_loop::GameLoop::new(app, window, options, shaders)?.run(event_loop)
 }
 
+/// `TG_GAME_THREAD=1` runs the game (update, render, present) on its own thread
+/// while the OS main thread only pumps window events, like the original. Off by
+/// default: window handling off the main thread is only exercised on X11, and
+/// platforms such as macOS require main-thread window calls.
+pub fn game_thread_enabled() -> bool {
+    std::env::var_os("TG_GAME_THREAD").is_some_and(|value| value == "1")
+}
+
+/// Threaded variant of [`run_event_loop`]. `build` runs on the game thread and
+/// creates every `!Send` object there (the `App`, renderer and `GameLoop`); only
+/// forwarded winit events cross the channel. The first error from either side is
+/// returned after the game thread has been joined.
+pub fn run_event_loop_threaded(
+    event_loop: winit::event_loop::EventLoop<()>,
+    window: std::sync::Arc<winit::window::Window>,
+    build: impl FnOnce(std::sync::Arc<winit::window::Window>) -> anyhow::Result<crate::game_loop::GameLoop>
+        + Send
+        + 'static,
+) -> anyhow::Result<()> {
+    use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc};
+    use winit::event::{DeviceEvent, Event, WindowEvent};
+    let (sender, receiver) = mpsc::channel::<Event<()>>();
+    let exit = Arc::new(AtomicBool::new(false));
+    let handle = std::thread::Builder::new()
+        .name("tiny-glade game".into())
+        .spawn({
+            let window = window.clone();
+            let exit = exit.clone();
+            move || -> anyhow::Result<()> {
+                let target = ThreadTarget { window: window.clone(), exit: exit.clone() };
+                // However this thread ends, wake the main loop so it can leave.
+                struct WakeMain<'a>(&'a ThreadTarget);
+                impl Drop for WakeMain<'_> {
+                    fn drop(&mut self) {
+                        LoopTarget::exit(self.0);
+                    }
+                }
+                let _wake = WakeMain(&target);
+                let mut game = build(window)?;
+                game.run_on_game_thread(receiver, &target)
+            }
+        })?;
+    let mut handle = Some(handle);
+    let game_result: Arc<std::sync::Mutex<Option<anyhow::Result<()>>>> = Arc::default();
+    let result_slot = game_result.clone();
+    let loop_result = event_loop.run(move |event, target| {
+        target.set_control_flow(winit::event_loop::ControlFlow::Wait);
+        if exit.load(Ordering::Acquire) {
+            target.exit();
+        }
+        match event {
+            // Frames are paced by the game thread, never by OS redraw requests.
+            Event::WindowEvent { event: WindowEvent::RedrawRequested, .. } => {}
+            Event::WindowEvent { .. }
+            | Event::DeviceEvent { event: DeviceEvent::MouseMotion { .. }, .. }
+            | Event::Suspended
+            | Event::Resumed => {
+                let _ = sender.send(event);
+            }
+            Event::LoopExiting => {
+                let _ = sender.send(event);
+                if let Some(handle) = handle.take() {
+                    *result_slot.lock().unwrap() = Some(handle.join().unwrap_or_else(|panic| {
+                        Err(anyhow::anyhow!("game thread panicked: {panic:?}"))
+                    }));
+                }
+            }
+            _ => {}
+        }
+    });
+    let finished = game_result.lock().unwrap().take();
+    match finished {
+        Some(Err(error)) => Err(error),
+        _ => loop_result.map_err(Into::into),
+    }
+}
+
 impl crate::game_loop::GameLoop {
+    /// Body of the game thread: the same event handling and frame code as the
+    /// main-thread loop, driven by forwarded events plus a frame every iteration
+    /// (the `RedrawRequested` the OS loop would otherwise request).
+    pub(crate) fn run_on_game_thread(
+        &mut self,
+        events: std::sync::mpsc::Receiver<winit::event::Event<()>>,
+        target: &ThreadTarget,
+    ) -> anyhow::Result<()> {
+        use std::sync::mpsc::RecvTimeoutError;
+        use winit::event::{Event, WindowEvent};
+        let lifecycle = self.lifecycle.clone();
+        self.refresh_monitors(target);
+        'run: loop {
+            let background_pending = crate::loading_graph::is_background_preparation_pending(
+                self.driver.app().world(),
+            );
+            // Suspended: nothing to render, block for the next OS event. Background
+            // loading: at most one frame per display tick, woken early by events.
+            // Otherwise poll, so frames are only paced by the limiter and present.
+            let first = if self.suspended {
+                events.recv().map_err(|_| RecvTimeoutError::Disconnected)
+            } else {
+                let wait = if background_pending {
+                    std::time::Duration::from_millis(16)
+                } else {
+                    std::time::Duration::ZERO
+                };
+                events.recv_timeout(wait)
+            };
+            let mut batch = Vec::new();
+            match first {
+                Ok(event) => batch.push(event),
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => break 'run,
+            }
+            batch.extend(events.try_iter());
+            let mut loop_exiting = false;
+            for event in batch {
+                loop_exiting |= matches!(event, Event::LoopExiting);
+                if let Err(error) = self.main_loop(event, target) {
+                    lifecycle.record_failure(error);
+                    if let Err(shutdown) = self.shut_down() {
+                        lifecycle.record_failure(shutdown);
+                    }
+                    LoopTarget::exit(target);
+                    break 'run;
+                }
+            }
+            if loop_exiting || !lifecycle.is_running() {
+                break 'run;
+            }
+            if !self.suspended {
+                let redraw = Event::WindowEvent {
+                    window_id: self.window.id(),
+                    event: WindowEvent::RedrawRequested,
+                };
+                if let Err(error) = self.main_loop(redraw, target) {
+                    lifecycle.record_failure(error);
+                    if let Err(shutdown) = self.shut_down() {
+                        lifecycle.record_failure(shutdown);
+                    }
+                    LoopTarget::exit(target);
+                    break 'run;
+                }
+                if !lifecycle.is_running() {
+                    break 'run;
+                }
+            }
+        }
+        match lifecycle.take_failure() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
+
     pub fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) -> anyhow::Result<()> {
         let lifecycle = self.lifecycle.clone();
-        self.refresh_monitors(&event_loop);
+        self.refresh_monitors(&*event_loop);
         let loop_result = event_loop.run(move |event, target| {
             if let Err(error) = self.main_loop(event, target) {
                 self.lifecycle.record_failure(error);
@@ -109,7 +301,7 @@ impl crate::game_loop::GameLoop {
     pub fn main_loop(
         &mut self,
         event: winit::event::Event<()>,
-        target: &winit::event_loop::EventLoopWindowTarget<()>,
+        target: &dyn LoopTarget,
     ) -> anyhow::Result<()> {
         if !self.lifecycle.is_running() {
             // exit() can leave already queued Redraw/Resumed/AboutToWait events.
@@ -128,7 +320,7 @@ impl crate::game_loop::GameLoop {
     fn dispatch_running_event(
         &mut self,
         event: winit::event::Event<()>,
-        target: &winit::event_loop::EventLoopWindowTarget<()>,
+        target: &dyn LoopTarget,
     ) -> anyhow::Result<()> {
         use winit::event::{Event, WindowEvent};
         match event {
@@ -325,7 +517,7 @@ impl crate::game_loop::GameLoop {
     pub(crate) fn dispatch_os_event(
         &mut self,
         event: OsWindowEvent,
-        target: &winit::event_loop::EventLoopWindowTarget<()>,
+        target: &dyn LoopTarget,
     ) -> anyhow::Result<()> {
         if !self.lifecycle.is_running() {
             return Ok(());
@@ -529,9 +721,9 @@ impl crate::game_loop::GameLoop {
         Ok(())
     }
 
-    fn refresh_monitors(&mut self, target: &winit::event_loop::EventLoopWindowTarget<()>) {
+    fn refresh_monitors(&mut self, target: &dyn LoopTarget) {
         let mut monitors = country_core::resources::window::AvailableMonitors::default();
-        Self::extract_available_monitors_info(&mut monitors, target);
+        Self::extract_monitors_from_target(&mut monitors, target);
         self.app_mut().world_mut().insert_resource(monitors);
     }
 }

@@ -192,11 +192,33 @@ pub fn run_game(
         crate::setup::setup_window(&event_loop, &mut config.video.display);
     let window = Arc::new(window);
     let physical = window.inner_size();
-    let mut app = run_game_thread(
-        config,
-        &cli,
-        WindowSize::new(physical.width, physical.height),
-    )?;
+    let size = WindowSize::new(physical.width, physical.height);
+    if crate::event_loop::game_thread_enabled() {
+        return crate::event_loop::run_event_loop_threaded(event_loop, window, move |window| {
+            let (app, options, shaders) = build_game(config, cli, steam, launch_display, size)?;
+            crate::game_loop::GameLoop::new(app, window, options, shaders)
+        });
+    }
+    let (app, options, shaders) = build_game(config, cli, steam, launch_display, size)?;
+    crate::event_loop::run_event_loop(event_loop, window, app, options, shaders)
+}
+
+/// Everything between "the window exists" and "the game loop can start": the
+/// `App` with its plugins, the Steam/platform resources and the loop options.
+/// With `TG_GAME_THREAD=1` this runs on the game thread, because the `App` and
+/// the objects built from it are `!Send`.
+fn build_game(
+    config: GameConfig,
+    cli: crate::app_config::CliArgs,
+    steam: Option<Arc<dyn country_core::resources::steam::SteamSdk>>,
+    launch_display: Option<crate::app_config::LaunchDisplayOverride>,
+    window: WindowSize,
+) -> anyhow::Result<(
+    App,
+    crate::game_loop::GameLoopOptions,
+    Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
+)> {
+    let mut app = run_game_thread(config, &cli, window)?;
     if let Some(policy) = launch_display {
         app.insert_resource(policy);
     }
@@ -237,7 +259,7 @@ pub fn run_game(
         input_recording: cli.to_input_recording_opts(),
     };
     let shaders = app.world().resource::<ApplicationShaderLibrary>().0.clone();
-    crate::event_loop::run_event_loop(event_loop, window, app, options, shaders)
+    Ok((app, options, shaders))
 }
 
 /// Materialize the recovered registration slice from B run_game_thread.
