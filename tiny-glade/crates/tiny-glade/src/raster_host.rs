@@ -294,6 +294,23 @@ struct VaoSnapshot {
     bindings: Vec<(Arc<str>, Arc<rhapsody::resource::Buffer>)>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct VaoScopeState {
+    /// Address of the `DrawLists` the snapshot was taken for; only compared while
+    /// the scope is open, so a recycled address cannot match across frames.
+    lists: usize,
+    library_revision: u64,
+    table_revision: u64,
+}
+
+/// Closes the reuse window opened by [`RasterShared::begin_vao_scope`] on drop.
+pub struct VaoScope(Arc<RasterShared>);
+impl Drop for VaoScope {
+    fn drop(&mut self) {
+        *self.0.vao_scope.lock() = None;
+    }
+}
+
 /// 全部光栅 pass 共享的宿主状态。
 pub struct RasterShared {
     pub buffers: Arc<BufferHost>,
@@ -304,6 +321,10 @@ pub struct RasterShared {
     programs: RasterPrograms,
     reflections: Mutex<HashMap<(u64, u8), Arc<CoreReflection>>>,
     vao_refresh_timing: Mutex<VaoRefreshTiming>,
+    /// Bumped every time the VAO snapshot table is replaced.
+    vao_table_revision: std::sync::atomic::AtomicU64,
+    /// Open while one synchronous world-graph declaration reuses a single full snapshot.
+    vao_scope: Mutex<Option<VaoScopeState>>,
     dynamic: Arc<Mutex<DynamicConstants>>,
     pub assets: Mutex<AssetTables>,
 }
@@ -502,6 +523,66 @@ impl RasterShared {
             );
         }
         self.assets.lock().vaos = snapshots;
+        self.vao_table_revision
+            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+        Ok(())
+    }
+
+    /// Number of times the VAO snapshot table was replaced (diagnostics/tests).
+    #[doc(hidden)]
+    pub fn vao_table_revision(&self) -> u64 {
+        self.vao_table_revision
+            .load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    fn vao_scope_state(
+        &self,
+        world: &bevy_ecs::world::World,
+        lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
+    ) -> Option<VaoScopeState> {
+        let library = world.get_resource::<country_core::asset_libraries::vao_library::AssetVAOLibrary>()?;
+        Some(VaoScopeState {
+            lists: lists as *const _ as usize,
+            library_revision: library.revision(),
+            table_revision: self.vao_table_revision.load(std::sync::atomic::Ordering::Acquire),
+        })
+    }
+
+    /// Takes one full draw-list VAO snapshot and keeps it valid for the guard's
+    /// lifetime: [`Self::ensure_draw_vaos`] then skips the refresh while the same
+    /// draw lists are used and neither the VAO library nor the snapshot table
+    /// changed. Any direct `refresh_vao_handles` (for example the terrain readback)
+    /// replaces the table and so ends the reuse until the next full refresh.
+    /// Must not outlive the synchronous declaration of one frame.
+    pub fn begin_vao_scope(
+        self: &Arc<Self>,
+        world: &mut bevy_ecs::world::World,
+        lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
+    ) -> rhapsody::Result<VaoScope> {
+        self.refresh_draw_vaos(world, lists)?;
+        *self.vao_scope.lock() = self.vao_scope_state(world, lists);
+        Ok(VaoScope(self.clone()))
+    }
+
+    /// Same result as [`Self::refresh_draw_vaos`], skipping the work when the
+    /// open [`VaoScope`] proves the snapshot is still exact. Never uses a stale
+    /// table: any mismatch falls back to the full refresh.
+    pub fn ensure_draw_vaos(
+        &self,
+        world: &mut bevy_ecs::world::World,
+        lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
+    ) -> rhapsody::Result<()> {
+        let open = *self.vao_scope.lock();
+        if let Some(open) = open
+            && self.vao_scope_state(world, lists) == Some(open)
+        {
+            return Ok(());
+        }
+        self.refresh_draw_vaos(world, lists)?;
+        if open.is_some() {
+            // The snapshot is exact again: re-arm the open scope on it.
+            *self.vao_scope.lock() = self.vao_scope_state(world, lists);
+        }
         Ok(())
     }
     /// The same dynamic-constant allocator is read by PassResources::new_from
@@ -574,6 +655,8 @@ impl RasterShared {
             programs,
             reflections: Mutex::new(HashMap::new()),
             vao_refresh_timing: Mutex::new(VaoRefreshTiming::default()),
+            vao_table_revision: std::sync::atomic::AtomicU64::new(0),
+            vao_scope: Mutex::new(None),
             assets: Mutex::new(AssetTables::default()),
         }))
     }

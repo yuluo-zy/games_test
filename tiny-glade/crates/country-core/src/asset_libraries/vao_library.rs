@@ -23,15 +23,27 @@ pub struct VaoEntry {
 pub struct AssetVAOLibrary {
     vaos: HashMap<Handle<Vao>, VaoEntry>,
     mesh_to_vao: HashMap<Handle<Mesh>, Handle<Vao>>,
+    /// 任何实际改变 VAO 表的 `add/rebuild_vao/remove` 都会自增。宿主据此判断
+    /// 同一帧里缓存的 VAO 快照是否仍然有效。起点每个实例唯一,库被整体替换时
+    /// 版本号不会回到旧值。
+    revision: u64,
 }
 
 impl AssetVAOLibrary {
     /// 创建初始状态。
     pub fn new() -> Self {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT_BASE: AtomicU64 = AtomicU64::new(0);
         AssetVAOLibrary {
             vaos: HashMap::new(),
             mesh_to_vao: HashMap::new(),
+            revision: NEXT_BASE.fetch_add(1 << 32, Ordering::Relaxed),
         }
+    }
+
+    /// VAO 表的修订号;只有表真的发生变化时才改变。
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     pub fn has_vao(&self, mesh: Handle<Mesh>) -> bool {
@@ -69,6 +81,7 @@ impl AssetVAOLibrary {
         let index_count = mesh_ref.indices.len();
         drop(self.vaos.insert(vao_handle, VaoEntry { vao, index_count }));
         self.mesh_to_vao.insert(mesh, vao_handle);
+        self.revision += 1;
         Ok(vao_handle)
     }
 
@@ -98,6 +111,7 @@ impl AssetVAOLibrary {
         release_vao(device, &entry.vao);
         entry.vao = new_vao;
         entry.index_count = mesh_ref.indices.len();
+        self.revision += 1;
         Ok(())
     }
 
@@ -107,10 +121,11 @@ impl AssetVAOLibrary {
 
     /// 删除 VAO 并释放宿主拥有的物理缓冲。
     pub fn remove(&mut self, device: &dyn GraphicsDevice, mesh: Handle<Mesh>) {
-        if let Some(vao_handle) = self.mesh_to_vao.remove(&mesh)
-            && let Some(entry) = self.vaos.remove(&vao_handle)
-        {
-            release_vao(device, &entry.vao);
+        if let Some(vao_handle) = self.mesh_to_vao.remove(&mesh) {
+            self.revision += 1;
+            if let Some(entry) = self.vaos.remove(&vao_handle) {
+                release_vao(device, &entry.vao);
+            }
         }
     }
 }
@@ -143,6 +158,34 @@ mod tests {
         let lib = AssetMeshLibrary::new();
         let h = lib.add(MeshAsset::new(quad(), None));
         (lib, h)
+    }
+
+    #[test]
+    fn revision_changes_exactly_when_the_table_changes() {
+        let (meshes, h) = setup();
+        let dev = MockDevice::default();
+        let mut vaos = AssetVAOLibrary::new();
+        let r0 = vaos.revision();
+        vaos.add(&dev, &meshes, h).unwrap();
+        let r1 = vaos.revision();
+        assert_ne!(r0, r1);
+        // 已存在的 mesh 不改表。
+        vaos.add(&dev, &meshes, h).unwrap();
+        assert_eq!(vaos.revision(), r1);
+        // 失败的 add 不改表。
+        assert!(vaos.add(&dev, &meshes, Handle::<Mesh>::new()).is_err());
+        assert_eq!(vaos.revision(), r1);
+        // 重建保留身份但换了物理缓冲,必须使快照失效。
+        vaos.rebuild_vao(&dev, &meshes, h).unwrap();
+        let r2 = vaos.revision();
+        assert_ne!(r1, r2);
+        // 删除不存在的 mesh 不改表;删除存在的才改。
+        vaos.remove(&dev, Handle::<Mesh>::new());
+        assert_eq!(vaos.revision(), r2);
+        vaos.remove(&dev, h);
+        assert_ne!(vaos.revision(), r2);
+        // 另一个实例的修订号不会与本实例撞上。
+        assert_ne!(AssetVAOLibrary::new().revision() >> 32, vaos.revision() >> 32);
     }
 
     #[test]

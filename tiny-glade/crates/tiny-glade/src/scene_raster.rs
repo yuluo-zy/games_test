@@ -69,7 +69,8 @@ impl<'f, 's, 'w, 'l> SceneRasterHost<'f, 's, 'w, 'l> {
         world: &'w mut World,
         lists: &'l DrawLists,
     ) -> rhapsody::Result<Self> {
-        frame.raster_resources().refresh_draw_vaos(world, lists)?;
+        // Reuses the frame's full snapshot while a VaoScope proves it is exact.
+        frame.raster_resources().ensure_draw_vaos(world, lists)?;
         Ok(Self {
             frame,
             world,

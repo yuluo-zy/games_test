@@ -120,6 +120,9 @@ pub fn build_world(
     geometry::stairs(frame, world)?;
     world_walls::generate_wall_draw_lists(frame, world)?;
     scene_compute::generate_nani_draw_lists(frame, world, None)?;
+    // One full VAO snapshot for every raster host of this declaration (W23..W53).
+    // The W5 terrain readback above replaced the table, so refresh here, after it.
+    let _vao_scope = frame.raster_resources().begin_vao_scope(world, lists)?;
     SceneRasterHost::new(frame, world, lists)?.shadow_pass()?;
     geometry::calc_terrain_lighting_texture(frame, world)?;
 
