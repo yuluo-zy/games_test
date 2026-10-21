@@ -267,6 +267,7 @@ pub fn run_game_thread(
             camera_rig::main_camera::MainCamera,
         },
     };
+    init_ecs_task_pool();
     let mut app = App::new();
     app.insert_resource(GameplayApplication);
     startup_event_runtime::install(&mut app);
@@ -773,7 +774,59 @@ pub fn run_game_thread(
             .in_set(GameSystemSet(44)),
     );
     debug_assert!(app.world().contains_resource::<SavedSessionList>());
+    apply_ecs_executor_policy(&mut app);
     Ok(app)
+}
+
+/// Sizes the shared compute task pool before anything creates it with defaults.
+/// The ECS multi-threaded executor and rhapsody's parallel command recording both
+/// use this pool; one core is left for the render/main thread. `TG_ECS_THREADS`
+/// overrides the count. `get_or_init` is first-come, so tests that initialise
+/// their own pool are unaffected.
+fn init_ecs_task_pool() {
+    use bevy_tasks::{ComputeTaskPool, TaskPoolBuilder};
+    let cores = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let threads = std::env::var("TG_ECS_THREADS")
+        .ok()
+        .and_then(|value| value.trim().parse::<usize>().ok())
+        .filter(|threads| *threads > 0)
+        .unwrap_or_else(|| cores.saturating_sub(1).clamp(2, 8));
+    ComputeTaskPool::get_or_init(|| {
+        TaskPoolBuilder::new()
+            .thread_name("tg-compute".into())
+            .num_threads(threads)
+            .build()
+    });
+}
+
+/// The original runs the multi-threaded executor, so that is the default.
+/// `TG_ECS_EXECUTOR=single` restores the single-threaded executor on the main
+/// schedules (a kill switch if a system-order dependency shows up), and
+/// `TG_SCHEDULE_AMBIGUITY=1` logs every pair of conflicting systems that has no
+/// declared order, which is what a parallel executor would make nondeterministic.
+fn apply_ecs_executor_policy(app: &mut App) {
+    use bevy_ecs::schedule::{ExecutorKind, LogLevel, ScheduleBuildSettings};
+    let single = std::env::var("TG_ECS_EXECUTOR").is_ok_and(|value| value == "single");
+    let ambiguity = std::env::var_os("TG_SCHEDULE_AMBIGUITY").is_some_and(|value| value == "1");
+    if !single && !ambiguity {
+        return;
+    }
+    macro_rules! configure {
+        ($($label:expr),*) => {$(
+            if let Some(schedule) = app.get_schedule_mut($label) {
+                if single {
+                    schedule.set_executor_kind(ExecutorKind::SingleThreaded);
+                }
+                if ambiguity {
+                    schedule.set_build_settings(ScheduleBuildSettings {
+                        ambiguity_detection: LogLevel::Warn,
+                        ..Default::default()
+                    });
+                }
+            }
+        )*};
+    }
+    configure!(bevy_app::PreUpdate, bevy_app::Update, bevy_app::PostUpdate);
 }
 
 /// Original device-input slices in the actual gameplay App's numbered sets.
