@@ -705,6 +705,20 @@ pub struct ShaderHost {
     passes: Arc<RenderPassHost>,
     frame_globals: Arc<Mutex<Option<Arc<crate::frame_setup::FrameGlobals>>>>,
     indexed_count_adapter: Mutex<Option<Arc<rhapsody::rg::IndexedCountAdapter>>>,
+    /// Requested pipelines not yet observed ready by `prewarm`.
+    pending_tickets: Mutex<Vec<PendingTicket>>,
+}
+
+struct PendingTicket {
+    ticket: PipelineTicket,
+    identity: PrewarmIdentity,
+}
+
+/// What a pending ticket was requested for; only used to word failures.
+enum PrewarmIdentity {
+    Compute(Arc<ComputeEntry>),
+    Raster(Arc<RasterEntry>),
+    IndexedCount,
 }
 
 /// Bounded attachment signatures used to request dynamic-rendering pipelines.
@@ -1572,6 +1586,7 @@ impl ShaderHost {
             passes: Arc::new(RenderPassHost::default()),
             frame_globals: Arc::new(Mutex::new(None)),
             indexed_count_adapter: Mutex::new(None),
+            pending_tickets: Mutex::new(Vec::new()),
         })
     }
     /// Uses this host's existing heap/compiler. Device support policy is
@@ -1588,35 +1603,46 @@ impl ShaderHost {
             self.pages.clone(),
             &self.compiler,
         )?;
+        self.note_pending(adapter.ticket(), PrewarmIdentity::IndexedCount)?;
         *cached = Some(adapter.clone());
         Ok(adapter)
     }
     pub fn set_frame_globals(&self, globals: Arc<crate::frame_setup::FrameGlobals>) {
         *self.frame_globals.lock() = Some(globals);
     }
+    /// Tickets that were requested and not yet observed ready by `prewarm`.
+    /// Registered at request time so a warm frame scans nothing.
+    fn note_pending(
+        &self,
+        ticket: PipelineTicket,
+        identity: PrewarmIdentity,
+    ) -> rhapsody::Result<()> {
+        let mut pending = self.pending_tickets.lock();
+        pending
+            .try_reserve(1)
+            .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+        pending.push(PendingTicket { ticket, identity });
+        Ok(())
+    }
+    /// Puts tickets back in front of newer registrations, keeping request order.
+    fn requeue(&self, items: impl Iterator<Item = PendingTicket>) {
+        let mut rest: Vec<_> = items.collect();
+        let mut pending = self.pending_tickets.lock();
+        rest.append(&mut pending);
+        *pending = rest;
+    }
     /// Explicit startup/prewarm operation. Rendering uses ticket.try_get().
+    ///
+    /// Waits only for tickets registered since the last successful call. A
+    /// failed or timed-out ticket stays registered, so every later call reports
+    /// it again, exactly like the former whole-table scan did.
     pub fn prewarm(&self, timeout: Duration) -> rhapsody::Result<()> {
         let deadline = Instant::now()
             .checked_add(timeout)
             .ok_or(rhapsody::Error::Timeout)?;
-        // 保持原等待次序和错误类别；只在失败时补充实际请求身份。
-        enum Target {
-            Compute(Arc<ComputeEntry>),
-            Raster(Arc<RasterEntry>),
-            IndexedCount(PipelineTicket),
-        }
-        let mut targets = self
-            .compute
-            .lock()
-            .iter()
-            .cloned()
-            .map(Target::Compute)
-            .collect::<Vec<_>>();
-        targets.extend(self.raster.lock().iter().cloned().map(Target::Raster));
-        if let Some(adapter) = self.indexed_count_adapter.lock().as_ref() {
-            targets.push(Target::IndexedCount(adapter.ticket()));
-        }
-        let total = targets.len();
+        // 不持锁等待;保持原等待次序和错误类别;只在失败时补充实际请求身份。
+        let batch = std::mem::take(&mut *self.pending_tickets.lock());
+        let total = batch.len();
         // Counts every scan, including ones that return early with an error.
         struct PrewarmSample(Option<Instant>, usize);
         impl Drop for PrewarmSample {
@@ -1625,55 +1651,60 @@ impl ShaderHost {
             }
         }
         let _sample = PrewarmSample(crate::frame_counters::start(), total);
-        for (index, target) in targets.into_iter().enumerate() {
-            let remaining = deadline
-                .checked_duration_since(Instant::now())
-                .ok_or(rhapsody::Error::Timeout)?;
-            let ticket = match &target {
-                Target::Compute(entry) => &entry.pipeline,
-                Target::Raster(entry) => &entry.pipeline,
-                Target::IndexedCount(ticket) => ticket,
+        let mut iter = batch.into_iter().enumerate();
+        while let Some((index, pending)) = iter.next() {
+            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                self.requeue(std::iter::once(pending).chain(iter.map(|(_, rest)| rest)));
+                return Err(rhapsody::Error::Timeout);
             };
-            if let Err(error) = ticket.wait(remaining) {
-                let identity = match &target {
-                    Target::Compute(entry) => format!(
-                        "compute shader={} local_size={:?} ABI={}bytes/{}bindings",
-                        entry.bindings.name,
-                        entry.local_size,
-                        entry.bindings.abi.parameter_bytes,
-                        entry.bindings.abi.bindings.len(),
-                    ),
-                    Target::Raster(entry) => format!(
-                        "raster shader={} samples={:?} colors={:?} depth={:?} stencil={:?} view_mask={} ABI={}bytes/{}bindings",
-                        entry.bindings.name,
-                        entry.pass.samples,
-                        entry.pass.formats.colors,
-                        entry.pass.formats.depth,
-                        entry.pass.formats.stencil,
-                        entry.pass.formats.view_mask,
-                        entry.bindings.abi.parameter_bytes,
-                        entry.bindings.abi.bindings.len(),
-                    ),
-                    Target::IndexedCount(_) => "indexed-count platform adapter".to_owned(),
-                };
-                let message = format!(
-                    "pipeline prewarm failed [{}/{}] {}: {} ({:?}); compiler={:?}",
-                    index + 1,
-                    total,
-                    identity,
-                    error,
-                    error.kind(),
-                    self.compiler.stats(),
-                );
-                log::error!(target: "tiny_glade::pipeline", "{message}");
-                // 集成测试可能未安装 logger；失败诊断仍需在实际运行日志可见。
-                if !log::log_enabled!(target: "tiny_glade::pipeline", log::Level::Error) {
-                    eprintln!("{message}");
-                }
-                return Err(error.into());
+            let Err(error) = pending.ticket.wait(remaining) else {
+                continue;
+            };
+            let identity = match &pending.identity {
+                PrewarmIdentity::Compute(entry) => format!(
+                    "compute shader={} local_size={:?} ABI={}bytes/{}bindings",
+                    entry.bindings.name,
+                    entry.local_size,
+                    entry.bindings.abi.parameter_bytes,
+                    entry.bindings.abi.bindings.len(),
+                ),
+                PrewarmIdentity::Raster(entry) => format!(
+                    "raster shader={} samples={:?} colors={:?} depth={:?} stencil={:?} view_mask={} ABI={}bytes/{}bindings",
+                    entry.bindings.name,
+                    entry.pass.samples,
+                    entry.pass.formats.colors,
+                    entry.pass.formats.depth,
+                    entry.pass.formats.stencil,
+                    entry.pass.formats.view_mask,
+                    entry.bindings.abi.parameter_bytes,
+                    entry.bindings.abi.bindings.len(),
+                ),
+                PrewarmIdentity::IndexedCount => "indexed-count platform adapter".to_owned(),
+            };
+            let message = format!(
+                "pipeline prewarm failed [{}/{}] {}: {} ({:?}); compiler={:?}",
+                index + 1,
+                total,
+                identity,
+                error,
+                error.kind(),
+                self.compiler.stats(),
+            );
+            log::error!(target: "tiny_glade::pipeline", "{message}");
+            // 集成测试可能未安装 logger；失败诊断仍需在实际运行日志可见。
+            if !log::log_enabled!(target: "tiny_glade::pipeline", log::Level::Error) {
+                eprintln!("{message}");
             }
+            // Timeout and Failed both stay registered: the next call reports them again.
+            self.requeue(std::iter::once(pending).chain(iter.map(|(_, rest)| rest)));
+            return Err(error.into());
         }
         Ok(())
+    }
+    /// Registered tickets `prewarm` has not yet observed ready (diagnostics/tests).
+    #[doc(hidden)]
+    pub fn pending_ticket_count(&self) -> usize {
+        self.pending_tickets.lock().len()
     }
     pub fn save_pipeline_cache(&self) -> rhapsody::Result<()> {
         self.disk_cache
@@ -1883,6 +1914,7 @@ impl ShaderBackend for ShaderHost {
             .try_reserve(1)
             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
         self.sampler_leases.register(entry.bindings.samplers.as_slice());
+        self.note_pending(entry.pipeline.clone(), PrewarmIdentity::Compute(entry.clone()))?;
         table.push(entry);
         Ok(ComputePipeline {
             id: table.len() as u64,
@@ -1992,6 +2024,7 @@ impl ShaderBackend for ShaderHost {
             .try_reserve(1)
             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
         self.sampler_leases.register(entry.bindings.samplers.as_slice());
+        self.note_pending(entry.pipeline.clone(), PrewarmIdentity::Raster(entry.clone()))?;
         table.push(entry);
         Ok(RasterPipeline {
             id: table.len() as u64,

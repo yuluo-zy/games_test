@@ -133,6 +133,10 @@ fn core_compute_pipeline_loads_compiled_bin_and_creates_vulkan_pipeline() {
         country_core::render::shader::ComputeShaderProgram::try_new("empty", desc, &host).unwrap();
     let pipeline = program.pipeline;
     drop(loaded);
+    // The requested pipeline is registered once; a warm host scans nothing.
+    assert_eq!(host.pending_ticket_count(), 1);
+    host.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    assert_eq!(host.pending_ticket_count(), 0, "ready tickets leave the registry");
     host.prewarm(std::time::Duration::from_secs(10)).unwrap();
     assert!(host.compute_pipeline(&pipeline).is_some());
     std::fs::remove_dir_all(root).ok();
