@@ -13,7 +13,6 @@
 use bevy_ecs::prelude::*;
 use country_core::resources::walls::public_walls::{OnWallChanged, PublicWalls};
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use country_core::systems::wall::construction::segmentation::WallPathSegmentationMask;
 use country_core::systems::wall::construction::segmentation::wall_path_segmentation;
 
 /// B 0x14074f310：分段计算主入口（每墙掩码产出 → 136B 掩码写回）。
@@ -49,13 +48,10 @@ pub fn calculate_wall_path_segmentation(
     }
 }
 
-/// B 0x140750420：逐段处理。
-/// **未实现（U）**：旧 `[0.0;4]` 比例近似不是原逻辑。原件为 mask LoopRange
-/// 长度分配 + 逐段 flags/coords 处理；其 closure/输出结构尚未逐语句锚定。
-pub fn process_segment(mask: &WallPathSegmentationMask, out: &mut Vec<[f32; 4]>) {
-    let _ = (mask, out);
-    todo!("未实现: process_segment 0x140750420（段处理 closure/输出结构未取证）")
-}
+/// B 0x140750420：逐段处理。真实实现位于 country-core 的权威分段生产者
+/// （`wall_path_segmentation` 的逐段构造，0x14074f310 的活路径调用同一函数），
+/// 此处直接复用，避免第二份副本。
+pub use country_core::systems::wall::construction::segmentation::process_segment;
 
 /// B 0x140751240：空区间补分裂（逐语句重建：
 /// building-segmentation/B-process/140751240.c）。
@@ -129,14 +125,13 @@ impl WallPathSegmentationMaskCoord {
     }
 }
 
-/// B 0x140751610：分裂候选处理。
-/// **未实现（U）**：原件无返回值，按 `flags[index]&0xf==0` 走
-/// `CurveSlice::extend_left_until/extend_right_until`（closure_env$0/$1
-/// 未反编译）→ 两次 `sample_at_coord` → 以墙形参数化坐标写回；closure
-/// 停止条件无证据，不能以距离公式冒充。
-pub fn score_split_candidate(segment: &WallPathSegmentationMask, index: usize) -> f32 {
-    let _ = (segment, index);
-    todo!("未实现: score_split_candidate 0x140751610（extend_left/right_until closure 未取证）")
+/// B 0x140751610 `score_split_candidate(index, curve_slice, flags, len)`：
+/// `flags[index] & 0xf != 0` → 0；否则沿 flags 非零点向两侧各延伸 2.0
+/// （`extend_left_until/extend_right_until`，停止条件 `flags & 0xf != 0`），
+/// 取两端点连线上的投影，返回 `(|xz 偏差| + proj.y - p.y) * 0.5`。
+/// 与 country-core 活路径共用同一实现。
+pub fn score_split_candidate(index: usize, points: &[[f32; 3]], flags: &[u8]) -> f32 {
+    country_core::systems::wall::construction::segmentation::score(index, points, flags)
 }
 
 #[cfg(test)]
@@ -175,4 +170,26 @@ mod tests {
         add_splits_in_empty_range(0, &points, &mut flags, &mut coords, 10.0);
         assert_eq!(flags, vec![0u8; 4]);
     }
+
+    #[test]
+    fn score_split_candidate_flagged_point_is_zero_and_collinear_is_zero() {
+        let pts = [[0.0, 0.0, 0.0], [5.0, 0.0, 0.0], [10.0, 0.0, 0.0], [15.0, 0.0, 0.0]];
+        let flags = [2u8, 0, 0, 4];
+        assert_eq!(score_split_candidate(1, &pts, &flags), 0.0);
+        let flagged = [2u8, 1, 0, 4];
+        assert_eq!(score_split_candidate(1, &pts, &flagged), 0.0);
+    }
+
+    #[test]
+    fn score_split_candidate_bent_point_scores_half_deviation() {
+        // B(10,0,2) 两侧各 2.0 弧长处的连线在 B 的投影 z = 2*(1-2/|AB|)...
+        let pts = [[0.0, 0.0, 0.0], [10.0, 0.0, 2.0], [20.0, 0.0, 0.0], [30.0, 0.0, 0.0]];
+        let flags = [2u8, 0, 0, 4];
+        let ab = (104.0f32).sqrt();
+        let proj_z = 2.0 * (1.0 - 2.0 / ab);
+        let expect = (2.0 - proj_z) * 0.5;
+        let got = score_split_candidate(1, &pts, &flags);
+        assert!((got - expect).abs() < 1e-3, "got {got} expect {expect}");
+    }
 }
+

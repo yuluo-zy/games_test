@@ -1604,6 +1604,7 @@ impl PassHost for RasterPassHost {
 
             let mut page_cursor = shared.shaders.page_cursor();
             let frozen_globals = shared.shaders.frame_globals_snapshot();
+            let count_form = plain_indirect_needs_count_form(&device);
             for (draw, pipeline) in prepared.iter().zip(&pipelines) {
                 // SAFETY: 管线属于本设备，命令缓冲在录制中。
                 unsafe {
@@ -1646,7 +1647,7 @@ impl PassHost for RasterPassHost {
                     1 | 2 => api.set_line_width(draw.packet.blend),
                     _ => {}
                 }
-                if let Err(error) = record_draw(&mut api, draw, managed) {
+                if let Err(error) = record_draw(&mut api, draw, managed, count_form) {
                     ctx.report_error(error);
                     return false;
                 }
@@ -1751,10 +1752,45 @@ fn validate_indirect_ranges(graph: &RhGraph, kind: &DrawKind) -> rhapsody::Resul
     Ok(())
 }
 
+/// Plain (non-count) indirect draws are recorded as one count-form call per command on the
+/// Mesa llvmpipe/lavapipe driver.
+///
+/// Observed on lavapipe (Mesa 25.2.8): inside one frame, a plain `vkCmdDrawIndirect` /
+/// `vkCmdDrawIndexedIndirect` that follows a multi-draw (`drawCount > 1`) or a count-form draw
+/// whose GPU-written commands are all empty (second occlusion phase of Nani: nothing new to draw)
+/// is silently dropped, even in a different render pass. The grass LOD0/LOD1 draws are the last
+/// draws of "G-buffer OC/2" and vanished from the second frame on, while the first frame (every
+/// Nani draw non-empty) was correct. The command stream is valid (validation layers report no
+/// draw error) and the indirect data was verified on the GPU, so the draws are re-expressed
+/// without changing their meaning: command `i` is drawn with `maxDrawCount = 1` and its own
+/// `instanceCount` field as the count, which is exactly "draw it unless it has no instances".
+/// No raster shader reads `DrawIndex`, so splitting a multi-draw is exact. Needs
+/// `DrawIndirectCount`; other drivers keep the plain calls.
+fn plain_indirect_needs_count_form(device: &rhapsody::device::Device) -> bool {
+    use rhapsody::device::Feature;
+    static LLVMPIPE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !device.caps().is_enabled(Feature::DrawIndirectCount) {
+        return false;
+    }
+    *LLVMPIPE.get_or_init(|| {
+        let mut driver = vk::PhysicalDeviceDriverProperties::default();
+        let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut driver);
+        // SAFETY: the physical device belongs to the instance it is queried through.
+        unsafe {
+            device
+                .instance()
+                .raw_instance()
+                .get_physical_device_properties2(device.physical_device(), &mut properties);
+        }
+        driver.driver_id == vk::DriverId::MESA_LLVMPIPE
+    })
+}
+
 fn record_draw<B: rhapsody::rg::CommandBackend>(
     api: &mut RhRenderPassApi<'_, B>,
     draw: &PreparedDraw,
     managed: &ManagedPassResources,
+    count_form: bool,
 ) -> rhapsody::Result<()> {
     // O 0x1416988f8: reflected location selects the binding point. Pipeline
     // formats/strides were produced from that very same compiled reflection.
@@ -1828,7 +1864,16 @@ fn record_draw<B: rhapsody::rg::CommandBackend>(
         } => {
             let buffer = managed.buffer_for(*buffer)?;
             // B @141698f89..8f96: stride on stack, count in r9d, offset r8.
-            api.draw_indirect(buffer.raw(), 0, *arg_50 as u32, *arg_58 as u32);
+            if count_form {
+                // Same commands, one count-form call each (see `plain_indirect_needs_count_form`).
+                let stride = if *arg_50 > 1 { *arg_58 } else { 0 };
+                for i in 0..*arg_50 {
+                    let offset = i * stride;
+                    api.draw_indirect_count(buffer.raw(), offset, buffer.raw(), offset + 4, 1, 16);
+                }
+            } else {
+                api.draw_indirect(buffer.raw(), 0, *arg_50 as u32, *arg_58 as u32);
+            }
         }
         DrawKind::IndexedIndirect {
             buffer,
@@ -1845,7 +1890,15 @@ fn record_draw<B: rhapsody::rg::CommandBackend>(
             api.bind_index_buffer(index.raw(), vk::IndexType::UINT32);
             let buffer = managed.buffer_for(*buffer)?;
             // B @141698dfb..8e08, optional indexCount metadata is not read.
-            api.draw_indexed_indirect(buffer.raw(), *arg_48, *arg_50 as u32, *arg_58 as u32);
+            if count_form {
+                let stride = if *arg_50 > 1 { *arg_58 } else { 0 };
+                for i in 0..*arg_50 {
+                    let offset = *arg_48 + i * stride;
+                    api.draw_indexed_indirect_count(buffer.raw(), offset, buffer.raw(), offset + 4, 1, 20);
+                }
+            } else {
+                api.draw_indexed_indirect(buffer.raw(), *arg_48, *arg_50 as u32, *arg_58 as u32);
+            }
         }
         DrawKind::IndexedIndirectCount {
             buffer,

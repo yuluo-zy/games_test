@@ -402,7 +402,14 @@ fn boot_shipped_session() -> Result<BootedSession> {
         !config.dev.demo,
         "this acceptance requires the full original build"
     );
-    let mut app = run_game_thread(config, &cli, WindowSize::new(480, 270))?;
+    let mut app = run_game_thread(config, &cli, {
+        // 只用于出高分辨率验证图：TG_TEST_SIZE=宽x高，默认 480x270。
+        let (w, h) = std::env::var("TG_TEST_SIZE")
+            .ok()
+            .and_then(|v| v.split_once('x').and_then(|(w, h)| Some((w.parse().ok()?, h.parse().ok()?))))
+            .unwrap_or((480, 270));
+        WindowSize::new(w, h)
+    })?;
     app.insert_resource(
         country_core::resources::platform::RuntimePlatform::from_detection(false, false),
     );
@@ -886,6 +893,21 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     }
     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
     bridge.wait_submits_done(10_000_000_000)?;
+    // Grass blades survive the steady state. The ground carries a fine blade texture only while
+    // the blade draws land (see `plain_indirect_needs_count_form`); a bare ground, blades dropped
+    // after the first frame, loses most of its horizontal luma gradient in the lower picture.
+    // Checked before the timing-sensitive resource assertions so a failure names its own cause.
+    for (index, w, h, rgba) in captured.lock().iter() {
+        let energy = lower_gradient_energy(rgba, *w, *h);
+        eprintln!("MULTIFRAME ground detail frame {}: {energy:.2}", index + 1);
+        // Only the converged frames (20 and 30) separate the two pictures at 480x270: with the
+        // blades 2.5 against 1.5 without; earlier frames still carry TAA's unsettled noise.
+        assert!(
+            *index < 19 || energy >= MIN_GROUND_DETAIL,
+            "frame {}: the grass blades are gone (ground detail {energy:.2})",
+            index + 1
+        );
+    }
     diagnose_completed_retirement(&device, "thirty-world-complete")?;
     if gpu_timing {
         let (stats, samples) = bridge.with_session(|session| {
@@ -1033,4 +1055,20 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
         assert!(l.iter().sum::<f32>() / l.len() as f32 > 40.0, "readback {n} is (nearly) black");
     }
     Ok(())
+}
+
+const MIN_GROUND_DETAIL: f32 = 2.0;
+
+/// Mean absolute horizontal luma difference over the lower 40% of the picture.
+fn lower_gradient_energy(rgba: &[u8], w: u32, h: u32) -> f32 {
+    let l = luma(rgba);
+    let (w, h) = (w as usize, h as usize);
+    let (mut sum, mut count) = (0.0f64, 0usize);
+    for y in h * 6 / 10..h {
+        for x in 0..w.saturating_sub(1) {
+            sum += f64::from((l[y * w + x] - l[y * w + x + 1]).abs());
+            count += 1;
+        }
+    }
+    (sum / count.max(1) as f64) as f32
 }

@@ -250,7 +250,9 @@ fn sample(points: &[[f32; 3]], i: usize, t: f32) -> [f32; 3] {
         b[2] * t + a[2] * s,
     ]
 }
-fn score(index: usize, points: &[[f32; 3]], flags: &[u8]) -> f32 {
+/// B `score_split_candidate`（0x140751610）：候选拐点评分（原件的
+/// `extend_left/right_until` closure 即 `flags & 15 != 0` 停止，距离 2.0）。
+pub fn score(index: usize, points: &[[f32; 3]], flags: &[u8]) -> f32 {
     if flags[index] & 15 != 0 {
         return 0.0;
     }
@@ -312,7 +314,8 @@ fn score(index: usize, points: &[[f32; 3]], flags: &[u8]) -> f32 {
     let z = p[2] - projected[2];
     (((x * x + z * z).sqrt() + projected[1]) - p[1]) * 0.5
 }
-pub(crate) fn process_segment(
+/// B `process_segment`（0x140750420）：单段掩码构造。
+pub fn process_segment(
     raw: &[[f32; 3]],
     shifted: &[[f32; 3]],
     range: WallLoopRange,
