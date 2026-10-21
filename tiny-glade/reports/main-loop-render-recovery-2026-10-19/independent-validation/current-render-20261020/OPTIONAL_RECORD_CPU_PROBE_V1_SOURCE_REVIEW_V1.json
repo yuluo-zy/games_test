@@ -1,0 +1,76 @@
+{
+  "review": "OPTIONAL_RECORD_CPU_PROBE_SIX_SOURCE_V1",
+  "reviewer": "/root/render_reviewer",
+  "verdict": "静态无阻断，允许root实际编译/4纯测试和相同实际输入验证。此为工程观测，不计游戏业务恢复/性能优化已完成。",
+  "inputs": {
+    "manifest_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/record-cpu-probe-v1-20261021/MANIFEST.json",
+    "manifest_sha256": "8b3a23aaaae6103bc16dc552037fb3f64731778fe6b65a4e3f45951bfe8e1ded",
+    "combined_patch_sha256": "0bff41a5dc244f09eb66fcf3036edd7cfbf070376be6c921d6291bf8010bf1dd",
+    "files": [
+      {
+        "source": "tiny-glade/crates/rhapsody/src/raw/command_buffer.rs",
+        "baseline_sha256": "1b3923a9dfe6bb15e29c5f7f3c7b8a6741a69a54cbc61c56ca59e61b1be040fa",
+        "candidate_sha256": "9000bef0746f623ce0e4fd36feeada3edebc2455ad8c34dbca32da34c0e2e505",
+        "patch_sha256": "6f71f3a427ad6ca719457bed7a60de9c4b6852f507c206b96c17736a5fe2efef"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/rg/profiling.rs",
+        "baseline_sha256": "5fa06cd32c29f4d9c04714feebe95e9775a5d8584d3ac0e4fca952a4447d4452",
+        "candidate_sha256": "74bf25a6d63343c905f1792f8cc913b7973117edf63f5d4c22e3657d02fdb6c4",
+        "patch_sha256": "97cbf9516fefc924167b023e4dc4ebd2114df30fa8c6c0ffa81309d856ad9764"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/rg/executor.rs",
+        "baseline_sha256": "3a64c53267e8d064a43048bbd24ba448e984e7204f6b3d9c488bb36ad99eea49",
+        "candidate_sha256": "b67a09f1512d6530933ac54787ab9dfebed3da3b2ce3104c281b44cda731a0a7",
+        "patch_sha256": "5a911b2ce6049b592c7ccfde674db78fb4d5749689fb4708fc25bed66782c137"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/rg/owner_storage.rs",
+        "baseline_sha256": "52d573701fc051b1ccdfb2aac5ee304a2704a5c8e349c4d63c8042488d9d25a0",
+        "candidate_sha256": "9a21483be8794781a2ea5277eb700dfef6ccf05a2e5dde7648816a0badefd9b7",
+        "patch_sha256": "749c5300d9716a198f25fce122f699afd0010908d08054bdfc6ea58f6158a1da"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/bindless.rs",
+        "baseline_sha256": "9fe4e3f97bd92b6925892839cde8aec818e7d7cf5811b2ab8a3ac43895ef9016",
+        "candidate_sha256": "d6e4af3b7dccd4147815bd71e8c371303000e31fd968bba3db5f96a666ea97f9",
+        "patch_sha256": "c73d19b0f1069d74413d5055961d5cd5f5dfb498c7470292b33e6b2c9fe4831f"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/bindless_parameters.rs",
+        "baseline_sha256": "f6799ac7615329869cd8c571895525dda9aee6cc283e4919c0b3089be1edf024",
+        "candidate_sha256": "1504e6534488a25bfa2a7dc8bc41b91a6b30ebec24518d2ffda779c57d5f9db7",
+        "patch_sha256": "ccc84cd1f61fcee5140022722b7110903ed701da902bd35c2ebb8190bd2a15e1"
+      }
+    ],
+    "addendum_a_sha256": "5d2c0e812d77c337b8a1741deec0a2505fd184759d9ba28c7a656d1d1e5c36bd",
+    "addendum_b_sha256": "31ec1a842d4c02a4d1f0fa6de7e9a0441a15490474aba8cc688f1620e27cffa7"
+  },
+  "identity": "6 baseline、6 candidate、审查时生产逐SHA全部和冻结manifest一致。",
+  "checked": [
+    "SubmitTrace仅提取同一OnceLock开关，原submit观测格式/错误处理不变。RecordScope每真实callback边界读cached开关；descriptor nested span只读const TLS Cell id，off不调用Instant/不分配/不格式化/不借RefCell/不复制统计数组/不新增每descriptor atomic或Mutex。紧循环Tally为两个本地整数、Drop一次写统计，off仍有局部分支和TLS访问，不能说零CPU开销。",
+    "启用时固定15phase/26count数组，按graph/pass/command/name和唯一启用record_id归属；guard带PhantomData<Rc<()>>不可跨线程，RAII先恢复父id/stats再I/O，false/Err/panic都保恢复。id饱和禁新scope，计数饱和；不持Cell/RefCell借用跨原callee，不引入新锁序。",
+    "serial和parallel worker callback均在原首GPU timestamp之后、原PGO timer之前建立scope；原末timestamp和elapsed顺序保留，写duration后complete/drop。不改变callback调用次数、原bool短路、错误归还、实际record行为。",
+    "两条owner-transfer均仍调用原backend.retain_command_owners一次，记录原成功/失败，不吞MissingCommand；ResourceOwners::len是Pooled slice/Local Vec O(1)，仅enabled读取，临时RefCell借用在into_inner前结束。transfer归因使用I/O前mark的retain_resources，原SubmitTrace total仍可能含stderr锁等待，不能拿它归因。",
+    "Bindless采样器/图像/缓冲实际Vulkan update后计Writes，validate/retention/nativebind/nativepush等保持原顺序与锁、预算和?错误传播；actual pass覆盖检查保原惰性filter/find，不为了计数重扫metadata。RetainSuccesses仅成功调用，不将尝试数伪称成功。",
+    "require_slots/complete_group选择、current复用、页创建、InsufficientSlots和全部Error分支逻辑保留；counter事件仍原Slots→Counter锁，仅包络等待/工作，未移除任何全局高水位/回收检查。"
+  ],
+  "corrected_measurement_blocker": {
+    "draft": "RecordScope elapsed在writeln(stderr.lock(),...,elapsed)实参中，stdout/stderr锁等待可能混入total，尤其parallel。",
+    "frozen_fix": "Drop入口先total_ns=active.start.elapsed()，然后restoreTLS→构造固定格式数组→stderr lock/I/O，完整最终源已核。旧草稿不用于性能归因。"
+  },
+  "tests": {
+    "pure": 4,
+    "executed_by_author_or_reviewer": false,
+    "cases": "off不触统计；nested还原与foreign span丢弃；false/unwind还原；parallel线程身份和tally隔离。",
+    "still_required": "root实际测试；off输出无新前缀、on实际serial/parallel worker各自归属；现完整GPU链回归不因探针改变业务。"
+  },
+  "measurement_limits": [
+    "字段都是inclusive。CompleteGroup包含准入/分配/finish等子项；多worker服务时间不能当帧墙钟，不能求phase和得到互斥百分比。",
+    "启用时每span时钟和固定TLS统计复制可能改变短锁持有和调度，stderr I/O也会改变整个frame wall；只用于定位数量级。真实性能应使用优化构建+关闭probe+相同世界与采样条件。",
+    "当前callback外drop/submit/完成回收不在每pass counter行，0不说明这些阶段无成本。首次原var_os开关初始化仍可能分配。",
+    "冻结source静审不等于编译通过、观测数据正确解释或60FPS；未运行任何Cargo/GPU/游戏。"
+  ],
+  "execution": "独立只读源码/hash/合同审核，未改生产。"
+}

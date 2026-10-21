@@ -1,0 +1,7 @@
+# V2源码准入确认
+
+绑定V2合同362198301c161e4b33ba4ab6a6e9aa818ea7ed9a92081b2b21605754865c5507与前独审87fc845277c41ff8b370520346c1cedaa6a49e1a9f7cccac5a7e12d7783bdc6a。独立逐diff复核，V2已准确将support改为真实collider单业务实参/+0height写入，撤回旧透传height，符合完整87B与真实两个caller。其余六方法/type/owner/副作用顺序保持已复核合同。
+
+V2新增assembly_parts()/StairsStructuralGraphParts七字段mut refs为当前Rust封装所需同owner拆借，类型与原graph+六表一一对应；没有clone/分配/第二registry，不新增数值或业务规则，允许作为必要consumer适配。字段引用以单一&mut self生命周期借出，不用裸指针或隐式表重建，现readonly getters保持。
+
+结论：V2完整七方法/schema/必要借用面源码准入通过。源码冻结后仍须独立SOURCE审与中央实际测试；本记录不把前阶段17KB/fullmesh/宿主/真实Info63缺口标完成。未Cargo或生产修改。

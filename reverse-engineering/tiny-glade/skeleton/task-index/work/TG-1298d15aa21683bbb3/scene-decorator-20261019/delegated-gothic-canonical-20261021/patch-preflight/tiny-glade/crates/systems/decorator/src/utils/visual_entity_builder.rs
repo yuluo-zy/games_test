@@ -1,0 +1,1428 @@
+//! B `utils/visual_entity_builder.rs` — 装饰视觉实体构建器。
+//!
+//! 本轮（restorer-consume-nani-decorator，2026-10-17）在 `NaniBundle<T>` /
+//! `DrawableMeshBundle` 落库（`country_core::components::drawable`）后，
+//! fresh 复核并重建两个 `build` 实例：
+//!
+//! * `build<DecoratorTransientVisualState>` 0x1412ab270（5949 B）
+//! * `build<DecoratorPersistentVisualState>` 0x1412a9b30（5949 B）
+//!
+//! 两实例函数体逐字节同构（仅尾部 impl$4/impl$5 与标签地址不同；`diff` 证据）。
+//! 证据：`reports/unlock/nani/job1-0x1412ab270.c` /
+//! `job1-0x1412a9b30.c`（ghidra fresh 全量反编译）+ 本轮 r2 独立反汇编
+//! `work/restorer-consume-nani-decorator/disasm_1412ab270.txt`（ghidra）与
+//! job6/job7（radare2 RNE 指令 oracle；跳表 case 体 Ghidra 流分析缺失，由 r2 补齐）。
+//!
+//! ## 构建器字段（O 偏移；字段名 U）
+//!
+//! 原 builder 完整槽为 **0x160 B**（`instantiate_blueprints` 0x1408289d0..0x140828a30：
+//! 先复制首 8 B，再复制尾区 0x158 B，传首字地址为 self；旧文档误把尾区当总大小）。build 读取：
+//!
+//! | 偏移 | 内容 | 用途 |
+//! |---|---|---|
+//! | +0x00 bit0 | `NormalMap` 条件位 | 链 10 |
+//! | +0x08 | `NormalMap` 载荷 u64 | 链 10 |
+//! | +0x10 bit0 | `WindowLight` 条件位 | 链 6 |
+//! | +0x18 | `WindowLight` 载荷 u64 | 链 6 |
+//! | +0x20 ==1 | `AlbedoMap` 条件 | 链 9 |
+//! | +0x28 | `AlbedoMap` 载荷 u64 | 链 9 |
+//! | +0x30 ==1 | scale 覆盖 tag | transform |
+//! | +0x34..0x40 | 覆盖 scale（3×f32） | transform |
+//! | +0x40 ==1 | `GothicWindowBrickDeformation` 条件 | 链 2 |
+//! | +0x44..0x80 | 其载荷 0x3c B | 链 2 |
+//! | +0x80 ==1 | `ClothlineCloth` 条件 | 链 4 |
+//! | +0x84 / +0x8c | 其载荷 u64 / u32 | 链 4 |
+//! | +0x90 ==1 | `SittableForBirds` 条件 | 链 14 |
+//! | +0x94 / +0x9c | 其载荷 u64 / u32 | 链 14 |
+//! | +0xa0 / +0xa8 | **mesh 名** `&str`（ptr/len） | NameHash + `get_handle_by_name` |
+//! | +0xb0 / +0xb8 | **nani 名** `&str`（ptr/len） | 12 类分派 + `get_raster_handle_by_name` |
+//! | +0xc0 | rotation `Quat`（16 B） | transform |
+//! | +0xd0 | translation `Vec3`（12 B） | transform（+ 法线偏移） |
+//! | +0xdc | scale `Vec3`（12 B） | transform |
+//! | +0xe8 | Transform 尾部 8 B padding（被整体拷贝） | — |
+//! | +0xf0 bit0 | `ColorId` 条件位 | 链 1 |
+//! | +0xf4 | `ColorId` 载荷 u32 | 链 1 |
+//! | +0xf8 ==1 | `RoofFlagCloth` 条件 | 链 11 |
+//! | +0xfc | 其载荷 u32 | 链 11 |
+//! | +0x100..0x118 | `BrickColor` 载荷 0x18 B（tag 字节在 +0x114） | 链 3 |
+//! | +0x114 !=2 | `BrickColor` 插入条件（**不是 ==2**；旧报告极性写反） | 链 3 |
+//! | +0x118 ==1 | `LanternLightParams` 条件 | 链 13 |
+//! | +0x11c..0x12c | 方向 4×f32 | 链 13 |
+//! | +0x130..0x140 | `WallFlagCloth` 载荷 0x10 B（tag 字节在 +0x13c） | 链 12 |
+//! | +0x13c !=2 | `WallFlagCloth` 插入条件 | 链 12 |
+//! | +0x140..0x14c | **法线偏移** Vec3（rotation 旋转后加到 translation） | transform |
+//! | +0x14c !=2 | `Smoke` 插入条件；+0x14c / +0x14d 为两 u8 载荷 | 链 8 |
+//! | +0x14e !=0 | `SemiTransparent` 条件 | 链 5 |
+//! | +0x14f !=0 | `BalconyDoor` 条件 | 链 7 |
+//! | +0x150 | `Option<NaniSolidTexture>`（1 B；**None 判别 = 9**） | 两个 albedo 分支 |
+//!
+//! transform 的构造（fresh 逐语句）：
+//! 1. `translation += rotation * normal_offset`（仅当 `|normal_offset| > 0`；
+//!    机器码 `UCOMISS; JBE`，NaN 亦跳过）；
+//! 2. 若 `+0x30 == 1`，scale 取 `+0x34..0x40`，否则取 `+0xdc..0xe8`；
+//! 3. `Transform { rotation, translation, scale }`。
+//!
+//! ## mesh 名分派（12 类 + 默认；r2 跳表 0x142c2b058 / 字节比较逐一复核）
+//!
+//! | nani 名（+0xb0，len） | 实例数据 | subset kind | selector |
+//! |---|---|---|---|
+//! | `nani_uber` (9) | `UberInstanceData` | 23 | Named(NameHash(mesh)) |
+//! | `nani_cloth` (10) | `ClothInstanceData` | 20 | Named |
+//! | `nani_smoke` (10) | `SmokeInstanceData` | 21 | **AtlasPart(0)**（`DecoratorRank::new(0)`→`impl$1::from`） |
+//! | `nani_balcony_door` (17) | `BalconyDoorInstanceData` | 22 | Named |
+//! | `nani_lantern_emissive` (21) | `LanternEmissiveInstanceData` | 18 | Named |
+//! | `nani_solid_vertex_color` (23) | `SolidVertexColorInstanceData` | 3 | Named |
+//! | `nani_gothic_window_bricks` (25) | `GothicWindowBricksInstanceData` | 7 | Named |
+//! | `nani_clutter_SolidAlbedoMap` (27) | `SolidAlbedoMapInstanceData` | 15 | Named + `NaniSolidTexture` |
+//! | `nani_solid_vertex_color_window` (30) | `SolidVertexColorWindowInstanceData` | 4 | Named |
+//! | `nani_solid_vertex_color_bricks` (30 后的第二支) | `SolidVertexColorBricksInstanceData` | 6 | Named |
+//! | `nani_clutter_SolidAlbedoMapEmissive` (35) | `SolidAlbedoMapEmissiveInstanceData` | 16 | Named + `NaniSolidTexture` |
+//! | `nani_solid_vertex_color_window_glass` (36) | `SolidVertexColorWindowGlassInstanceData` | 5 | Named |
+//! | 默认 | `DrawableMeshBundle`（`get_handle_by_name` / `get_raster_handle_by_name(...).expect(nani 名)`） | — | — |
+//!
+//! 两个 albedo 分支对 `+0x150` 做 `Option::unwrap`（判别 9 = None → `unwrap_failed`）。
+//!
+//! ## 条件组件链（14 位；O 顺序与载荷偏移）
+//!
+//! 1 `ColorId`（+0xf0 bit0，载荷 +0xf4）→ 2 `GothicWindowBrickDeformation`
+//! （+0x40==1，0x3c B @+0x44）→ 3 `BrickColor`（+0x114!=2，0x18 B @+0x100）→
+//! 4 `ClothlineCloth`（+0x80==1，u64@+0x84+u32@+0x8c）→ 5 `SemiTransparent`
+//! （+0x14e!=0，ZST）→ 6 `WindowLight`（+0x10 bit0，u64@+0x18 + id）→
+//! 7 `BalconyDoor`（+0x14f!=0，translation + `rotation*Vec3::Z`）→ 8 `Smoke`
+//! （+0x14c!=2，`u64(id)` + u32 0 + u8(+0x14c) + u8(+0x14d)）→ 9 `AlbedoMap`
+//! （+0x20==1，u64@+0x28）→ 10 `NormalMap`（+0x00 bit0，u64@+0x08）→
+//! 11 `RoofFlagCloth`（+0xf8==1，u32@+0xfc）→ 12 `WallFlagCloth`（+0x13c!=2，
+//! u64@+0x130 + u64@+0x134 + u32@+0x13c）→ 13 `LanternLightParams`（+0x118==1，
+//! `rotation*direction` 3×f32 + 原始 4×f32 + id + 0）→ 14 `SittableForBirds`
+//! （+0x90==1，id + u64@+0x94 + u32@+0x9c）。
+//!
+//! 主链之后：`build<Persistent>` → `impl$4::add_decorator_visual_entity`
+//! （0x1408119e0，`HashMap<u32, PersistentVisualEntities>`，seal 位 → panic）；
+//! `build<Transient>` → `impl$5::add_decorator_visual_entity`（0x140811c30）。
+//!
+//! ## impl$5 目标更正（fresh 机器码证据，2026-10-17）
+//!
+//! wave3 报告据 Ghidra 类型串称 impl$5 目标是
+//! `HashMap<u32, Vec<DisplayChildAutoClutterInfo>>`。本轮 r2/ghidra 独立复核
+//! **否证**该结论：调用点 0x1412ac662 为 `MOV EDX,ESI; MOV R8,RBX; CALL
+//! 0x140811c30`，`RBX` = 入参 Entity；impl$5 尾部把该 **8 B Entity** 写入
+//! `Vec`（步长 `len*8`）。`DisplayChildAutoClutterInfo` 的
+//! `grow_one<DisplayChildAutoClutterInfo>` 在 0x14099ca60 处步长是 **0x60**，
+//! 不可能由 `*8` 的同一容器承担。因此 impl$5 是
+//! `DecoratorTransientVisualState::add_decorator_visual_entity(id, entity)`，
+//! 目标即瞬态实体表 `HashMap<u32, Vec<Entity>>`（与 `clear_out_visual_entities`
+//! 的 `Drain<DecoratorId, Vec<Entity>>` 一致）；Ghidra 的类型串是错误类型应用。
+//! 旧 wave3 "目标分歧" 结论据此更正——D1 原 `build_transient` 落瞬态表是对的。
+//!
+//! ## typed-gap（不编造）
+//!
+//! * `NaniSolidTexture`：原组件观测为 1 B selector，`Option` 以 9 为 None；
+//!   原 Rust 声明与变体名未知。使用 core 的 checked opaque 编码类型；
+//!   两个真实分支保留输入代码，仅接受已恢复映射的 0..=8，不提供默认值。
+//! * 其余未落库条件组件继续保留原证缺口；AlbedoMap 已重导出 core 的真实 u64 类型。
+//!   本文件 `pending_core` 子模块按 **原 PDB 名 + 机器码载荷字节数** 建 stand-in
+//!   （core 落库后应删除并改用 core 类型；届时组件 TypeId 才与原版一致）。
+//! * 构建器 `mesh_name` / `nani_name` 字段名 U；偏移/用途 O。
+//! * `mark_as_preview` / `mark_as_window_glass` / `custom_shader` 的 build 外消费
+//!   面 U（build 本体不读取对应状态；其设置方法保留）。
+
+use bevy_ecs::entity::Entity;
+use bevy_ecs::system::Commands;
+use country_core::asset_libraries::mesh_library::AssetMeshLibrary;
+use country_core::asset_libraries::shader_library::AssetShaderLibrary;
+use country_core::components::drawable::{DrawableMeshBundle, NaniBundle, NaniInstanceDesc};
+use country_core::name_hash::NameHash;
+use country_core::render::nani::gpu_world::{GpuWorldSubsetKind, InstanceDataMarker};
+use country_core::render::nani::instance_data::{
+    BalconyDoorInstanceData, ClothInstanceData, GothicWindowBricksInstanceData,
+    LanternEmissiveInstanceData, SmokeInstanceData, SolidAlbedoMapEmissiveInstanceData,
+    SolidAlbedoMapInstanceData, SolidVertexColorBricksInstanceData, SolidVertexColorInstanceData,
+    SolidVertexColorWindowGlassInstanceData, SolidVertexColorWindowInstanceData, UberInstanceData,
+};
+use country_core::render::nani::systems::NaniMeshSelector;
+use country_core::resources::color_id::ColorId;
+use country_core::resources::walls::decorator::DecoratorRank;
+use country_core::utils::components::transform::Transform;
+use glam::{Quat, Vec3};
+
+use crate::decorator_visual_state::{
+    DecoratorPersistentVisualState, DecoratorTransientVisualState,
+};
+
+/// 核心组件未落库时的 stand-in（原 PDB 路径 = `country_core::components::*`）。
+///
+/// 每项字段都是**机器码载荷的字节数**（O），字段语义 U。core 落库后应删除本
+/// 模块并把 `build` 的 insert 改为 core 类型（否则 TypeId 与原版不同）。
+pub mod pending_core {
+    use bevy_ecs::component::Component;
+
+    macro_rules! raw_component {
+        ($(#[$m:meta])* $name:ident, $n:expr) => {
+            $(#[$m])*
+            #[derive(Component, Clone, Copy, Debug)]
+            #[repr(transparent)]
+            pub struct $name(pub [u8; $n]);
+        };
+    }
+
+    // 与两个真实Nani砖材质查询使用同一组件，保留构建器既有公开导入路径。
+    pub use country_core::components::{BrickColor, GothicWindowBrickDeformation};
+    // One canonical12-byte value, also read by the actual Nani ECS query.
+    pub use country_core::components::drawable::ClothlineCloth;
+    // 与窗灯系统和 Nani 玻璃查询共享同一个键值组件。
+    pub use country_core::resources::window_lights::WindowLight;
+    // Same six-value component read by the actual auto-clutter balcony gate.
+    pub use country_core::components::drawable::BalconyDoor;
+    raw_component!(
+        /// B `components::Smoke`（u64(id) + u32 0 + u8 + u8，14 B，U）。
+        Smoke,
+        14
+    );
+    // The core u64 owner already exists. Preserve this public import path
+    // while inserting the exact component read by Nani Uber.
+    pub use country_core::components::drawable::AlbedoMap;
+    // Existing disk-texture NameHash owner, not a local raw component.
+    pub use country_core::components::NormalMap;
+    raw_component!(
+        /// B `components::RoofFlagCloth`（u32，U）。
+        RoofFlagCloth,
+        4
+    );
+    raw_component!(
+        /// B `components::WallFlagCloth`（u64 + u64 + u32，0x14 B，U）。
+        WallFlagCloth,
+        0x14
+    );
+    raw_component!(
+        /// B `components::LanternLightParams`（旋转方向 12 B + 原始 16 B + u32 + u8，0x24 B，U）。
+        LanternLightParams,
+        0x24
+    );
+    raw_component!(
+        /// B `components::SittableForBirds`（u32(id) + u64 + u32，0x10 B，U）。
+        SittableForBirds,
+        0x10
+    );
+
+    // Preserve the import path while using the same checked canonical
+    // component as the actual Nani ECS update. No local raw/default type.
+    pub use country_core::components::drawable::NaniSolidTexture;
+}
+
+use pending_core::{
+    AlbedoMap, BalconyDoor, BrickColor, ClothlineCloth, GothicWindowBrickDeformation,
+    LanternLightParams, NaniSolidTexture, NormalMap, RoofFlagCloth, SittableForBirds, Smoke,
+    WallFlagCloth, WindowLight,
+};
+
+/// 视觉实体状态落点（`impl$4` / `impl$5` 的统一抽象）。
+pub trait DecoratorVisualStateSink {
+    /// `add_decorator_visual_entity`：把本次生成的实体登记到装饰 id 下。
+    fn add_decorator_visual_entity(&mut self, id: u32, entity: Entity);
+}
+
+impl DecoratorVisualStateSink for DecoratorPersistentVisualState {
+    /// `impl$4::add_decorator_visual_entity` 0x1408119e0（O）：seal 位已置 →
+    /// panic；否则 `entry(id).or_default().push(entity)`。
+    fn add_decorator_visual_entity(&mut self, id: u32, entity: Entity) {
+        DecoratorPersistentVisualState::add_decorator_visual_entity(self, id, entity);
+    }
+}
+
+impl DecoratorVisualStateSink for DecoratorTransientVisualState {
+    /// `impl$5::add_decorator_visual_entity` 0x140811c30（O，机器码复核）：
+    /// `HashMap<u32, Vec<Entity>>::entry(id).or_default().push(entity)`。
+    fn add_decorator_visual_entity(&mut self, id: u32, entity: Entity) {
+        DecoratorTransientVisualState::add_decorator_visual_entity(self, id, entity);
+    }
+}
+
+/// B `WindowVisualEntityBuilder`（完整 native 槽 0x160 B；本机语义字段不复刻 ABI）。
+///
+/// 字段与偏移的对应见模块头表；`Option` 字段取 `Some` 即机器码中的插入分支
+/// （原始 tag 比较值记在字段文档里）。字段名 U、条件/载荷 O。
+#[derive(Clone, Debug)]
+pub struct WindowVisualEntityBuilder {
+    /// rotation（+0xc0，O）。
+    pub rotation: Quat,
+    /// translation（+0xd0，O）。
+    pub translation: Vec3,
+    /// scale（+0xdc，O）。
+    pub scale: Vec3,
+    /// 法线偏移（+0x140，O 数据流；语义名 U）：非零时 `rotation * offset`
+    /// 加到 translation。
+    pub normal_offset: Vec3,
+    /// scale 覆盖（+0x30==1 → +0x34..0x40，O）。
+    pub scale_override: Option<Vec3>,
+    /// mesh 名（+0xa0/+0xa8，O；NameHash 与 `get_handle_by_name` 的输入）。
+    pub mesh_name: &'static str,
+    /// nani 名（+0xb0/+0xb8，O；12 类分派键 + `get_raster_handle_by_name`）。
+    pub nani_name: &'static str,
+    /// `ColorId`（+0xf0 bit0 / +0xf4，O）。
+    pub color_id: Option<ColorId>,
+    /// `GothicWindowBrickDeformation`（+0x40==1，载荷 0x3c B，O）。
+    pub gothic_window_brick_deformation: Option<[u8; 0x3c]>,
+    /// `BrickColor`（+0x114**!=2**，载荷 0x18 B，O）。
+    pub brick_color: Option<[u8; 0x18]>,
+    /// `ClothlineCloth`（+0x80==1，u64@+0x84 + u32@+0x8c，O）。
+    pub clothline_cloth: Option<(u64, u32)>,
+    /// `SemiTransparent`（+0x14e!=0，ZST，O）。
+    pub semi_transparent: bool,
+    /// `WindowLight`（+0x10 bit0，u64@+0x18，O）。
+    pub window_light: Option<u64>,
+    /// `BalconyDoor`（+0x14f!=0，O）。
+    pub balcony_door: bool,
+    /// `Smoke`（+0x14c!=2，载荷 u8(+0x14c)+u8(+0x14d)，O）。
+    pub smoke: Option<(u8, u8)>,
+    /// `AlbedoMap`（+0x20==1，u64@+0x28，O）。
+    pub albedo_map: Option<u64>,
+    /// `NormalMap`（+0x00 bit0，u64@+0x08，O）。
+    pub normal_map: Option<u64>,
+    /// `RoofFlagCloth`（+0xf8==1，u32@+0xfc，O）。
+    pub roof_flag_cloth: Option<u32>,
+    /// `WallFlagCloth`（+0x13c 低字节 !=2，u64@+0x12c + u64@+0x134 + u32@+0x13c，O）。
+    pub wall_flag_cloth: Option<(u64, u64, u32)>,
+    /// `LanternLightParams`（+0x118==1，方向 4×f32 @+0x11c，O）。
+    pub lantern_light_params: Option<[f32; 4]>,
+    /// `SittableForBirds`（+0x90==1，u64@+0x94 + u32@+0x9c，O）。
+    pub sittable_for_birds: Option<(u64, u32)>,
+    /// `Option<NaniSolidTexture>`（+0x150；None 判别 = 9，O；变体名 typed-gap）。
+    pub solid_texture: Option<u8>,
+    /// 装饰 id（build 的 u32 参数在 D1 API 中随构建器携带；原版由调用点传入，O）。
+    pub decorator_id: u32,
+    /// `mark_as_preview` 状态（build 不读取；U：原消费面待取证）。
+    pub preview: bool,
+    /// `mark_as_window_glass` 状态（build 不读取；U：与 +0x14e 的映射无证据）。
+    pub window_glass: bool,
+    /// `custom_shader` 句柄（build 不读取；U：消费面待取证）。
+    pub shader: Option<u32>,
+}
+
+impl Default for WindowVisualEntityBuilder {
+    fn default() -> Self {
+        Self {
+            rotation: Quat::IDENTITY,
+            translation: Vec3::ZERO,
+            scale: Vec3::ONE,
+            normal_offset: Vec3::ZERO,
+            scale_override: None,
+            mesh_name: "",
+            nani_name: "",
+            color_id: None,
+            gothic_window_brick_deformation: None,
+            brick_color: None,
+            clothline_cloth: None,
+            semi_transparent: false,
+            window_light: None,
+            balcony_door: false,
+            smoke: None,
+            albedo_map: None,
+            normal_map: None,
+            roof_flag_cloth: None,
+            wall_flag_cloth: None,
+            lantern_light_params: None,
+            sittable_for_birds: None,
+            solid_texture: None,
+            decorator_id: 0,
+            preview: false,
+            window_glass: false,
+            shader: None,
+        }
+    }
+}
+
+impl WindowVisualEntityBuilder {
+    /// `new`（行 54，O 结构）：位置/旋转/id。scale = 1。
+    pub fn new(pos: Vec3, rot: Quat, decorator_id: u32) -> Self {
+        Self {
+            translation: pos,
+            rotation: rot,
+            decorator_id,
+            ..Self::default()
+        }
+    }
+
+    /// `mark_as_preview`（行 84）。U：build 不消费。
+    pub fn mark_as_preview(&mut self) {
+        self.preview = true;
+    }
+
+    /// `has_birdspot`（行 89）：打开 `SittableForBirds`（+0x90==1）；载荷
+    /// `(u64@+0x94, u32@+0x9c)` 由宿主另行填充（U，此处取 0）。
+    pub fn has_birdspot(&mut self) {
+        self.sittable_for_birds = Some((0, 0));
+    }
+
+    /// `color_id`（行 99）。
+    pub fn color_id(&mut self, color: ColorId) {
+        self.color_id = Some(color);
+    }
+
+    /// `lantern_light`（行 104）：打开 `LanternLightParams`（+0x118==1）；
+    /// 方向 4×f32 载荷 U（此处 0）。
+    pub fn lantern_light(&mut self) {
+        self.lantern_light_params = Some([0.0; 4]);
+    }
+
+    /// `custom_shader`（行 126）。U：build 不消费。
+    pub fn custom_shader(&mut self, shader: u32) {
+        self.shader = Some(shader);
+    }
+
+    /// `albedo_map`（行 131）：打开 `AlbedoMap`（+0x20==1，载荷 +0x28）。
+    pub fn albedo_map(&mut self, albedo: u64) {
+        self.albedo_map = Some(albedo);
+    }
+
+    /// Supply all original value words explicitly; no zero/default producer.
+    /// This host API spelling does not claim the original Rust declaration.
+    pub fn clothline(&mut self, cloth: ClothlineCloth) {
+        let [a, b, tail] = cloth.words();
+        self.clothline_cloth = Some((u64::from(a) | (u64::from(b) << 32), tail));
+    }
+
+    /// `flag_roof_cloth`：打开 `RoofFlagCloth`（+0xf8==1）；载荷 U（0）。
+    pub fn flag_roof_cloth(&mut self) {
+        self.roof_flag_cloth = Some(0);
+    }
+
+    /// `flag_wall_cloth`：打开 `WallFlagCloth`（+0x13c!=2）；载荷 U（0,0,0）。
+    pub fn flag_wall_cloth(&mut self) {
+        self.wall_flag_cloth = Some((0, 0, 0));
+    }
+
+    /// `smoke`：打开 `Smoke`（+0x14c!=2）；载荷 u8(+0x14c)+u8(+0x14d) U（0,0）。
+    pub fn smoke(&mut self) {
+        self.smoke = Some((0, 0));
+    }
+
+    /// `mark_as_window_glass`（行 415 前）。U：build 本体无对应读取。
+    pub fn mark_as_window_glass(&mut self) {
+        self.window_glass = true;
+    }
+
+    /// 计算本实体 transform（fresh 逐语句）。
+    fn compute_transform(&self) -> Transform {
+        let mut translation = self.translation;
+        // `|normal_offset| > 0` 才旋转叠加；NaN 走 JBE（跳过）。
+        if self.normal_offset.length() > 0.0 {
+            translation += self.rotation * self.normal_offset;
+        }
+        let scale = self.scale_override.unwrap_or(self.scale);
+        Transform {
+            rotation: self.rotation,
+            translation,
+            scale,
+        }
+    }
+
+    /// 生成 `NaniBundle<T>`（12 类分支共用；每 case 原始代码都是
+    /// `NameHash::compute(mesh 名)` → `Commands::spawn<NaniBundle<T>>`
+    /// （helper 0x14126dfe0 等内部 `spawn_empty`），返回新实体）。
+    // `InstanceDataMarker<T>` 的 `Default` 由 derive 要求 `T: Default`（12 类
+    // 实例数据均 derive Default）；`NaniBundle<T>` 另要求 `Send + Sync`。
+    fn spawn_nani<T: Send + Sync + Default + 'static>(
+        &self,
+        commands: &mut Commands,
+        transform: Transform,
+        subset_kind: GpuWorldSubsetKind,
+        named: bool,
+    ) -> Entity {
+        let mesh = if named {
+            // O：`NameHash::compute(+0xa0/+0xa8)`。
+            NaniMeshSelector::Named(NameHash::compute(self.mesh_name))
+        } else {
+            // O：Smoke 分支 `DecoratorRank::new(0)`（0x140833250）→
+            // `impl$1::from`（0x14082bd60，AtlasPart）。
+            NaniMeshSelector::AtlasPart(u32::from(DecoratorRank::new(0).x()))
+        };
+        // O：`Commands::spawn<NaniBundle<T>>` = spawn_empty + insert。
+        let entity = commands.spawn_empty().id();
+        commands.entity(entity).insert(NaniBundle::<T> {
+            desc: NaniInstanceDesc { mesh, subset_kind },
+            transform,
+            marker: InstanceDataMarker::<T>::default(),
+        });
+        entity
+    }
+
+    /// `build<State>`：mesh 分派 → 条件组件链 → 状态落点；返回新建实体。
+    ///
+    /// 参数面按原调用点（0x1407e29e7 / 0x140828a30）fresh 复核：
+    /// `RCX=&builder, EDX=id, R8=&AssetMeshLibrary, R9=&AssetShaderLibrary,
+    /// arg6([RSP+0x178])=&mut Commands, arg7([RSP+0x180])=&mut 状态表`；
+    /// arg5 未被 build 读取。**实体由 build 内部的
+    /// `Commands::spawn`/`spawn_empty` 创建**（不是入参）。
+    pub fn build<S: DecoratorVisualStateSink>(
+        &self,
+        commands: &mut Commands,
+        id: u32,
+        mesh_lib: &AssetMeshLibrary,
+        shader_lib: &AssetShaderLibrary,
+        state: &mut S,
+    ) -> Entity {
+        let transform = self.compute_transform();
+
+        // ---- mesh 名 12 类分派（O；跳表 0x142c2b058）----
+        // 原版每个 case 都内部 `spawn`/`spawn_empty` 建实体，返回该 Entity。
+        let entity = match self.nani_name {
+            "nani_uber" => self.spawn_nani::<UberInstanceData>(
+                commands,
+                transform,
+                GpuWorldSubsetKind::Uber,
+                true,
+            ),
+            "nani_cloth" => self.spawn_nani::<ClothInstanceData>(
+                commands,
+                transform,
+                GpuWorldSubsetKind::Cloth,
+                true,
+            ),
+            "nani_smoke" => self.spawn_nani::<SmokeInstanceData>(
+                commands,
+                transform,
+                GpuWorldSubsetKind::Smoke,
+                false,
+            ),
+            "nani_balcony_door" => self.spawn_nani::<BalconyDoorInstanceData>(
+                commands,
+                transform,
+                GpuWorldSubsetKind::BalconyDoor,
+                true,
+            ),
+            "nani_lantern_emissive" => self.spawn_nani::<LanternEmissiveInstanceData>(
+                commands,
+                transform,
+                GpuWorldSubsetKind::LanternEmissive,
+                true,
+            ),
+            "nani_solid_vertex_color" => self.spawn_nani::<SolidVertexColorInstanceData>(
+                commands,
+                transform,
+                GpuWorldSubsetKind::SolidVertexColor,
+                true,
+            ),
+            "nani_gothic_window_bricks" => self.spawn_nani::<GothicWindowBricksInstanceData>(
+                commands,
+                transform,
+                GpuWorldSubsetKind::GothicWindowBricks,
+                true,
+            ),
+            "nani_clutter_SolidAlbedoMap" => {
+                // O：`+0x150` Option::unwrap（None=9 → unwrap_failed，行 243）。
+                let tex = NaniSolidTexture::try_from(self.solid_texture.unwrap())
+                    .unwrap_or_else(|code| panic!("Unsupported native NaniSolidTexture encoding {code}"));
+                self.spawn_nani_tuple::<SolidAlbedoMapInstanceData>(
+                    commands,
+                    transform,
+                    GpuWorldSubsetKind::SolidAlbedoMap,
+                    tex,
+                )
+            }
+            "nani_solid_vertex_color_window" => self
+                .spawn_nani::<SolidVertexColorWindowInstanceData>(
+                    commands,
+                    transform,
+                    GpuWorldSubsetKind::SolidVertexColorWindow,
+                    true,
+                ),
+            "nani_solid_vertex_color_bricks" => self
+                .spawn_nani::<SolidVertexColorBricksInstanceData>(
+                    commands,
+                    transform,
+                    GpuWorldSubsetKind::SolidVertexColorBricks,
+                    true,
+                ),
+            "nani_clutter_SolidAlbedoMapEmissive" => {
+                let tex = NaniSolidTexture::try_from(self.solid_texture.unwrap())
+                    .unwrap_or_else(|code| panic!("Unsupported native NaniSolidTexture encoding {code}"));
+                self.spawn_nani_tuple::<SolidAlbedoMapEmissiveInstanceData>(
+                    commands,
+                    transform,
+                    GpuWorldSubsetKind::SolidAlbedoMapEmissive,
+                    tex,
+                )
+            }
+            "nani_solid_vertex_color_window_glass" => self
+                .spawn_nani::<SolidVertexColorWindowGlassInstanceData>(
+                    commands,
+                    transform,
+                    GpuWorldSubsetKind::SolidVertexColorWindowGlass,
+                    true,
+                ),
+            _ => {
+                // O 默认分支：AssetMeshLibrary::get_handle_by_name（内部 panic）
+                // + AssetShaderLibrary::get_raster_handle_by_name(...).expect(nani 名)
+                // （None → expect_failed，0x1412ac982）；两查表先于 spawn。
+                let mesh = mesh_lib.get_handle_by_name(self.mesh_name);
+                let shader = shader_lib
+                    .get_raster_handle_by_name(self.nani_name)
+                    .expect(self.nani_name);
+                let entity = commands.spawn_empty().id();
+                commands.entity(entity).insert(DrawableMeshBundle {
+                    mesh,
+                    shader,
+                    transform,
+                });
+                entity
+            }
+        };
+
+        // ---- 条件组件链（14 位，O 顺序）----
+
+        // 1 ColorId
+        if let Some(color) = self.color_id {
+            commands.entity(entity).insert(color);
+        }
+        // 2 GothicWindowBrickDeformation
+        if let Some(payload) = self.gothic_window_brick_deformation {
+            commands
+                .entity(entity)
+                .insert(GothicWindowBrickDeformation::from_native_bytes(payload));
+        }
+        // 3 BrickColor（+0x114 != 2）
+        if let Some(payload) = self.brick_color.filter(|payload| payload[20] != 2) {
+            commands.entity(entity).insert(BrickColor::from_native_bytes(payload));
+        }
+        // 4 ClothlineCloth
+        if let Some((a, b)) = self.clothline_cloth {
+            commands.entity(entity).insert(ClothlineCloth::from_words([
+                a as u32, (a >> 32) as u32, b,
+            ]));
+        }
+        // 5 SemiTransparent（ZST）
+        if self.semi_transparent {
+            commands
+                .entity(entity)
+                .insert(country_core::components::SemiTransparent);
+        }
+        // 6 WindowLight（u64 @+0x18 + id）
+        if let Some(a) = self.window_light {
+            commands.entity(entity).insert(WindowLight {
+                key: usize::try_from(a).expect("native window light key requires a64-bit host"),
+                decorator_id: id,
+            });
+        }
+        // 7 BalconyDoor: preserve all actual values and the original +0x14f gate.
+        if self.balcony_door {
+            commands.entity(entity).insert(BalconyDoor {
+                translation: transform.translation,
+                forward: transform.rotation * Vec3::Z,
+            });
+        }
+        // 8 Smoke（u64(id) + u32 0 + u8 + u8）
+        if let Some((tag, sub)) = self.smoke.filter(|value| value.0 != 2) {
+            let mut payload = [0u8; 14];
+            payload[0..8].copy_from_slice(&u64::from(id).to_le_bytes());
+            payload[8..12].copy_from_slice(&0u32.to_le_bytes());
+            payload[12] = tag;
+            payload[13] = sub;
+            commands.entity(entity).insert(Smoke(payload));
+        }
+        // 9 AlbedoMap
+        if let Some(handle) = self.albedo_map {
+            commands
+                .entity(entity)
+                .insert(AlbedoMap(handle));
+        }
+        // 10 NormalMap
+        if let Some(handle) = self.normal_map {
+            commands
+                .entity(entity)
+                .insert(NormalMap(handle));
+        }
+        // 11 RoofFlagCloth
+        if let Some(value) = self.roof_flag_cloth {
+            commands
+                .entity(entity)
+                .insert(RoofFlagCloth(value.to_le_bytes()));
+        }
+        // 12 WallFlagCloth（+0x13c != 2）
+        if let Some((a, b, tag)) = self.wall_flag_cloth.filter(|value| value.2 as u8 != 2) {
+            let mut payload = [0u8; 0x14];
+            payload[0..8].copy_from_slice(&a.to_le_bytes());
+            payload[8..16].copy_from_slice(&b.to_le_bytes());
+            payload[16..20].copy_from_slice(&tag.to_le_bytes());
+            commands.entity(entity).insert(WallFlagCloth(payload));
+        }
+        // 13 LanternLightParams（旋转方向 3×f32 + 原始 4×f32 + id + u8 0）
+        if let Some(dir) = self.lantern_light_params {
+            let mut payload = [0u8; 0x24];
+            let rotated = transform.rotation * Vec3::new(dir[0], dir[1], dir[2]);
+            payload[0..4].copy_from_slice(&rotated.x.to_le_bytes());
+            payload[4..8].copy_from_slice(&rotated.y.to_le_bytes());
+            payload[8..12].copy_from_slice(&rotated.z.to_le_bytes());
+            for (i, v) in dir.iter().enumerate() {
+                payload[12 + i * 4..16 + i * 4].copy_from_slice(&v.to_le_bytes());
+            }
+            payload[28..32].copy_from_slice(&id.to_le_bytes());
+            payload[32] = 0;
+            commands.entity(entity).insert(LanternLightParams(payload));
+        }
+        // 14 SittableForBirds（id + u64 + u32）
+        if let Some((a, b)) = self.sittable_for_birds {
+            let mut payload = [0u8; 0x10];
+            payload[0..4].copy_from_slice(&id.to_le_bytes());
+            payload[4..12].copy_from_slice(&a.to_le_bytes());
+            payload[12..16].copy_from_slice(&b.to_le_bytes());
+            commands.entity(entity).insert(SittableForBirds(payload));
+        }
+
+        // ---- 状态落点（impl$4 / impl$5）----
+        state.add_decorator_visual_entity(id, entity);
+        entity
+    }
+
+    /// 两个 albedo 分支的 tuple `Commands::spawn<(NaniBundle<T>, NaniSolidTexture)>`
+    /// （helper 0x140d146a0 内部 `spawn_empty`），返回新实体。
+    fn spawn_nani_tuple<T: Send + Sync + Default + 'static>(
+        &self,
+        commands: &mut Commands,
+        transform: Transform,
+        subset_kind: GpuWorldSubsetKind,
+        texture: NaniSolidTexture,
+    ) -> Entity {
+        let mesh = NaniMeshSelector::Named(NameHash::compute(self.mesh_name));
+        let entity = commands.spawn_empty().id();
+        commands.entity(entity).insert((
+            NaniBundle::<T> {
+                desc: NaniInstanceDesc { mesh, subset_kind },
+                transform,
+                marker: InstanceDataMarker::<T>::default(),
+            },
+            texture,
+        ));
+        entity
+    }
+
+    /// `build<DecoratorTransientVisualState>`（0x1412ab270）。
+    ///
+    /// 原调用点在系统中传 `(builder, id, &mut Commands, &mut 状态表, 两库)`；
+    /// 实体由 `build` 内部分派分支创建。此处仅按 D1 API 固定 id 来源。
+    pub fn build_transient(
+        &self,
+        commands: &mut Commands,
+        state: &mut DecoratorTransientVisualState,
+        mesh_lib: &AssetMeshLibrary,
+        shader_lib: &AssetShaderLibrary,
+    ) -> Entity {
+        self.build(commands, self.decorator_id, mesh_lib, shader_lib, state)
+    }
+
+    /// `build<DecoratorPersistentVisualState>`（0x1412a9b30）。
+    pub fn build_persistent(
+        &self,
+        commands: &mut Commands,
+        state: &mut DecoratorPersistentVisualState,
+        mesh_lib: &AssetMeshLibrary,
+        shader_lib: &AssetShaderLibrary,
+    ) -> Entity {
+        self.build(commands, self.decorator_id, mesh_lib, shader_lib, state)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn actual_builder_balcony_flag_uses_canonical_six_values_with_nonidentity_transform() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::drawable::BalconyDoor as CanonicalBalconyDoor;
+        assert_eq!(core::any::TypeId::of::<pending_core::BalconyDoor>(),
+            core::any::TypeId::of::<CanonicalBalconyDoor>());
+        for active in [false, true] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let rotation = Quat::from_rotation_y(0.73) * Quat::from_rotation_x(-0.41);
+            let position = Vec3::new(3.25, -2.5, 7.75);
+            let normal_offset = Vec3::new(0.125, -0.375, 0.625);
+            let mut builder = WindowVisualEntityBuilder::new(position, rotation, 83);
+            builder.mesh_name = "CPU balcony value fixture";
+            builder.nani_name = "nani_balcony_door";
+            builder.normal_offset = normal_offset;
+            builder.scale_override = Some(Vec3::new(2.0, 3.0, 4.0));
+            builder.balcony_door = active;
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 83,
+                &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+            queue.apply(&mut world);
+            if active {
+                let component = world.get::<CanonicalBalconyDoor>(entity).unwrap();
+                let translation = position + rotation * normal_offset;
+                let forward = rotation * Vec3::Z;
+                assert_eq!(component.translation.to_array().map(f32::to_bits),
+                    translation.to_array().map(f32::to_bits));
+                assert_eq!(component.forward.to_array().map(f32::to_bits),
+                    forward.to_array().map(f32::to_bits));
+                assert_ne!(component.translation, Vec3::ZERO);
+                assert_ne!(component.forward, Vec3::Z);
+            } else {
+                assert!(world.get::<CanonicalBalconyDoor>(entity).is_none());
+            }
+            assert_eq!(state.entities_of(83), Some([entity].as_slice()));
+        }
+    }
+
+    // Cross-consumer contract: native tag2 is None even when the host outer
+    // Option carries its raw bytes. Exercise actual Commands/build insertion.
+    #[test]
+    fn real_cloth_build_preserves_explicit_words_and_canonical_normal_identity() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::drawable::ClothlineCloth as CanonicalCloth;
+        use country_core::components::NormalMap as CanonicalNormal;
+        assert_eq!(core::any::TypeId::of::<pending_core::ClothlineCloth>(),
+            core::any::TypeId::of::<CanonicalCloth>());
+        assert_eq!(core::any::TypeId::of::<pending_core::NormalMap>(),
+            core::any::TypeId::of::<CanonicalNormal>());
+        for words in [[0x3e80_0000, 0xbe00_0000, 37], [0x7fc0_0123, 0x8000_0000, u32::MAX]] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(
+                Vec3::new(2.0, 3.0, 4.0), Quat::from_rotation_y(0.37), 61);
+            builder.mesh_name = "decorators/setdressing_clothline_cloth";
+            builder.nani_name = "nani_cloth";
+            let cloth = CanonicalCloth::from_words(words);
+            assert_eq!(cloth.clone().words(), words);
+            builder.clothline(cloth);
+            builder.normal_map = Some(0xb9fb_cd49_9788_b2f1);
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 61,
+                &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+            queue.apply(&mut world);
+            assert_eq!(world.get::<CanonicalCloth>(entity).unwrap().words(), words);
+            assert_eq!(world.get::<CanonicalNormal>(entity).unwrap().0, 0xb9fb_cd49_9788_b2f1);
+            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind, GpuWorldSubsetKind::Cloth);
+            assert!(world.get::<InstanceDataMarker<ClothInstanceData>>(entity).is_some());
+            assert_eq!(state.entities_of(61), Some([entity].as_slice()));
+        }
+    }
+
+    #[test]
+    fn actual_builder_commands_feed_same_world_cloth_maintain_update_and_flush() {
+        use bevy_ecs::{schedule::{ApplyDeferred, IntoScheduleConfigs, Schedule},
+            world::{CommandQueue, World}};
+        use country_core::{asset_libraries::texture_library::{AssetTextureLibrary,
+            DescriptorImageUpdate, ImageView, TextureLibraryDevice, TextureUpdate},
+            render::{load_texture::boundary::TextureDevice, mesh::Mesh,
+                nani::{gpu_world::{GpuWorld, GpuWorldSubset, InstanceDataBuffer, InstanceKey, OwnedGpuWorldSubset},
+                    systems::{nani_maintain_instances_ecs, nani_update_cloth_ecs,
+                        nani_flush_instance_updates}},
+                ssbo::rhapsody_boundary::{Buffer, BufferDesc, GraphicsDevice}},
+            resources::render::mesh_atlas_library::MeshAtlasLibrary,
+            rhapsody_contract::DescriptorSet,
+            rhapsody_types::{BackendError, Texture, TextureDesc}};
+        use std::cell::{Cell, RefCell};
+        // Recording CPU boundary only. It neither creates nor claims a GPU;
+        // texture upload/publish is forbidden here, and full rows are asserted.
+        #[derive(Default)]
+        struct RecordingDevice { next: Cell<u64>, writes: RefCell<Vec<Vec<u8>>> }
+        impl GraphicsDevice for RecordingDevice {
+            fn create_buffer(&self, desc: &BufferDesc, _: &str, _: Option<&[u8]>)
+                -> Result<Buffer, BackendError> {
+                let id = self.next.get() + 1;
+                self.next.set(id);
+                Ok(Buffer { id, generation: 1, byte_size: desc.size as u64, _gap10: 0, _gap20: 0 })
+            }
+            fn update_buffer_bytes(&self, _: &Buffer, data: &[u8],
+                _: &[core::ops::Range<usize>], _: usize) -> Result<(), BackendError> {
+                self.writes.borrow_mut().push(data.to_vec());
+                Ok(())
+            }
+            fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
+                let page = Box::leak(vec![0u128; (buffer.byte_size as usize).div_ceil(16)].into_boxed_slice());
+                Some(unsafe { core::slice::from_raw_parts_mut(page.as_mut_ptr().cast::<u8>(),
+                    buffer.byte_size as usize) })
+            }
+        }
+        impl TextureDevice for RecordingDevice {
+            fn create_texture(&self, _: &str, _: &TextureDesc, _: &[u8]) -> Result<Texture, BackendError> {
+                panic!("CPU test registers explicit texture values; upload is outside this boundary")
+            }
+        }
+        impl TextureLibraryDevice for RecordingDevice {
+            fn create_persistent_descriptor_set(&self, _: &str) -> Result<DescriptorSet, BackendError> {
+                Ok(DescriptorSet::default())
+            }
+            fn update_persistent_descriptor_set(&self, _: &DescriptorSet, _: &[DescriptorImageUpdate])
+                -> Result<(), BackendError> { panic!("no GPU descriptor publication in CPU test") }
+            fn get_vk_image_view(&self, _: &Texture, _: u32) -> Result<ImageView, BackendError> {
+                panic!("no native image view in CPU test")
+            }
+            fn update_texture(&self, _: &Texture, _: &TextureUpdate) -> Result<(), BackendError> {
+                panic!("no GPU texture update in CPU test")
+            }
+        }
+        let device = RecordingDevice::default();
+        let mut gpu = GpuWorld::new(&device);
+        gpu.assign_subset(GpuWorldSubsetKind::Cloth, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<ClothInstanceData>(&device, GpuWorldSubsetKind::Cloth)));
+        let mut atlas = MeshAtlasLibrary::default();
+        let mut mesh = Mesh::new("same-World cloth CPU triangle");
+        mesh.set_attribute(country_core::render::mesh::ATTR_POSITION,
+            vec![Vec3::X, Vec3::new(0.0, 2.0, 0.0), Vec3::new(0.0, 0.0, 3.0)]);
+        mesh.set_indices(vec![0, 1, 2]);
+        atlas.add(GpuWorldSubsetKind::Cloth, "decorators/setdressing_clothline_cloth", &mesh);
+        let mut textures = AssetTextureLibrary::new(&device);
+        let tex = |id| Texture { id, width: 4, height: 4, format: 0x25 };
+        let first = textures.add(Some("first_normal".into()), tex(81));
+        textures.add(Some("unused_normal".into()), tex(82));
+        let normal = textures.add(Some("actual_cloth_normal".into()), tex(83));
+        assert_eq!(normal.0, 2);
+        assert_eq!(textures.handle_to_bindless_index(first).0, 0);
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(atlas);
+        world.insert_resource(textures);
+        let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut builder = WindowVisualEntityBuilder::new(Vec3::new(3.0, 4.0, 5.0),
+            Quat::from_rotation_y(0.31), 67);
+        builder.mesh_name = "decorators/setdressing_clothline_cloth";
+        builder.nani_name = "nani_cloth";
+        builder.scale_override = Some(Vec3::new(1.3, 0.7, 2.5));
+        builder.clothline(ClothlineCloth::from_words([0x3e80_0000, 0xbe00_0000, 71]));
+        builder.normal_map = Some(NameHash::compute("actual_cloth_normal").0);
+        let entity = builder.build(&mut Commands::new(&mut queue, &world), 67,
+            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+        queue.apply(&mut world);
+        assert!(world.get::<InstanceKey>(entity).is_none());
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_cloth_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let key = *world.get::<InstanceKey>(entity).unwrap();
+        {
+            let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Cloth);
+            let row = subset.data().as_any().downcast_ref::<InstanceDataBuffer<ClothInstanceData>>()
+                .unwrap().shadow.data[key.index as usize].raw;
+            let expected = country_core::render::nani::instance_updates::build_cloth(
+                builder.rotation, builder.translation, builder.scale_override.unwrap(),
+                [0x3e80_0000, 0xbe00_0000, 71], 1).words;
+            assert_eq!(row, expected); // actual producer TRS/payload/descriptor reach the same row
+            assert_eq!(&row[12..], &[0x3e80_0000, 0xbe00_0000, 71, 1]);
+            assert_eq!(subset.instance_count(), 1);
+            assert_eq!(subset.positions()[key.index as usize].position, Vec3::new(3.0, 4.0, 5.0));
+        }
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &device);
+        let tail = [0x3e80_0000u32, 0xbe00_0000, 71, 1].map(u32::to_le_bytes).concat();
+        assert!(device.writes.borrow().iter().any(|bytes| bytes.len() == 64 && bytes[48..] == tail));
+        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 1);
+        assert_eq!(world.resource::<AssetTextureLibrary>().handle_to_bindless_index(normal).0, 1);
+        assert_eq!(state.entities_of(67), Some([entity].as_slice()));
+    }
+
+    #[test]
+    fn absent_cloth_payload_is_not_fabricated_by_real_build() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let mut world = World::new();
+        let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut builder = WindowVisualEntityBuilder::new(Vec3::X, Quat::IDENTITY, 63);
+        builder.nani_name = "nani_cloth";
+        builder.mesh_name = "decorators/setdressing_clothline_cloth";
+        let entity = builder.build(&mut Commands::new(&mut queue, &world), 63,
+            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+        queue.apply(&mut world);
+        assert!(world.get::<ClothlineCloth>(entity).is_none());
+        assert!(world.get::<NormalMap>(entity).is_none());
+    }
+
+    #[test]
+    fn real_build_skips_three_native_none_tags_in_some_payloads() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for wall_tag in [2u32, 0x7856_3402] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(
+                Vec3::new(1.0, 2.0, 3.0), Quat::IDENTITY, 41);
+            builder.nani_name = "nani_clutter_SolidAlbedoMap";
+            builder.mesh_name = "none_tag_test_mesh"; // CPU producer boundary
+            builder.solid_texture = Some(2);
+            let mut brick = [0x5bu8; 0x18];
+            brick[20] = 2;
+            builder.brick_color = Some(brick);
+            builder.smoke = Some((2, 0x7d));
+            builder.wall_flag_cloth = Some((0x0102_0304_0506_0708,
+                0x1112_1314_1516_1718, wall_tag));
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 41,
+                &meshes, &shaders, &mut state);
+            queue.apply(&mut world);
+            assert!(world.get::<BrickColor>(entity).is_none());
+            assert!(world.get::<Smoke>(entity).is_none());
+            assert!(world.get::<WallFlagCloth>(entity).is_none());
+            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind,
+                GpuWorldSubsetKind::SolidAlbedoMap);
+            assert_eq!(state.entities_of(41), Some([entity].as_slice()));
+        }
+    }
+
+    #[test]
+    fn real_build_preserves_active_raw_payloads_after_none_tag_gates() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for tag in [0u8, 1, 3, 255] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(
+                Vec3::new(1.0, 2.0, 3.0), Quat::IDENTITY, 43);
+            builder.nani_name = "nani_clutter_SolidAlbedoMap";
+            builder.mesh_name = "active_tag_test_mesh"; // CPU producer boundary
+            builder.solid_texture = Some(8);
+            let mut brick = [0x6bu8; 0x18];
+            brick[20] = tag;
+            builder.brick_color = Some(brick);
+            builder.smoke = Some((tag, 0x7e));
+            let a = 0x0102_0304_0506_0708u64;
+            let b = 0x1112_1314_1516_1718u64;
+            let wall_tag = 0x7856_3400u32 | u32::from(tag);
+            builder.wall_flag_cloth = Some((a, b, wall_tag));
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 43,
+                &meshes, &shaders, &mut state);
+            queue.apply(&mut world);
+            assert_eq!(
+                world.get::<BrickColor>(entity).unwrap().words(),
+                std::array::from_fn(|index| u32::from_le_bytes(
+                    brick[4 * index..4 * index + 4].try_into().unwrap()
+                )),
+            );
+            let smoke = &world.get::<Smoke>(entity).unwrap().0;
+            assert_eq!(&smoke[0..8], &43u64.to_le_bytes());
+            assert_eq!(&smoke[8..12], &0u32.to_le_bytes());
+            assert_eq!(&smoke[12..14], &[tag, 0x7e]);
+            let wall = &world.get::<WallFlagCloth>(entity).unwrap().0;
+            assert_eq!(&wall[0..8], &a.to_le_bytes());
+            assert_eq!(&wall[8..16], &b.to_le_bytes());
+            assert_eq!(&wall[16..20], &wall_tag.to_le_bytes());
+            assert_eq!(state.entities_of(43), Some([entity].as_slice()));
+        }
+    }
+
+    #[test]
+    fn real_solid_builds_emit_the_same_canonical_nonzero_selector() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::drawable::NaniSolidTexture as CanonicalSelector;
+        assert_eq!(core::any::TypeId::of::<pending_core::NaniSolidTexture>(),
+            core::any::TypeId::of::<CanonicalSelector>());
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for (name, kind, code) in [
+            ("nani_clutter_SolidAlbedoMap", GpuWorldSubsetKind::SolidAlbedoMap, 2),
+            ("nani_clutter_SolidAlbedoMapEmissive", GpuWorldSubsetKind::SolidAlbedoMapEmissive, 8),
+        ] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(Vec3::new(1.0, 2.0, 3.0),
+                Quat::IDENTITY, 37);
+            builder.nani_name = name;
+            builder.mesh_name = "selector_test_mesh"; // CPU producer boundary, no asset/GPU claim
+            builder.solid_texture = Some(code);
+            let entity = builder.build(&mut Commands::new(&mut queue, &world), 37,
+                &meshes, &shaders, &mut state);
+            queue.apply(&mut world);
+            assert_eq!(world.get::<CanonicalSelector>(entity).unwrap().encoded(), code);
+            assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind, kind);
+            assert_eq!(world.get::<Transform>(entity).unwrap().translation, Vec3::new(1.0, 2.0, 3.0));
+            assert_eq!(state.entities_of(37), Some([entity].as_slice()));
+            if kind == GpuWorldSubsetKind::SolidAlbedoMap {
+                assert!(world.get::<InstanceDataMarker<SolidAlbedoMapInstanceData>>(entity).is_some());
+            } else {
+                assert!(world.get::<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>(entity).is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn real_solid_builds_reject_none_and_invalid_codes_before_spawn() {
+        use bevy_ecs::world::{CommandQueue, World};
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        for name in ["nani_clutter_SolidAlbedoMap", "nani_clutter_SolidAlbedoMapEmissive"] {
+            for code in [None, Some(9), Some(255)] {
+                let mut world = World::new();
+                let mut queue = CommandQueue::default();
+                let mut state = DecoratorTransientVisualState::default();
+                let mut builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, 37);
+                builder.nani_name = name;
+                builder.solid_texture = code;
+                assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    builder.build(&mut Commands::new(&mut queue, &world), 37,
+                        &meshes, &shaders, &mut state);
+                })).is_err());
+                queue.apply(&mut world);
+                assert_eq!(world.entities().len(), 0);
+                assert!(state.entities.is_empty());
+            }
+        }
+    }
+
+    /// O：无 normal_offset / 无 scale 覆盖时 transform 原样。
+    #[test]
+    fn transform_passthrough() {
+        let mut b =
+            WindowVisualEntityBuilder::new(Vec3::new(1.0, 2.0, 3.0), Quat::from_rotation_z(0.5), 7);
+        b.scale = Vec3::new(2.0, 2.0, 2.0);
+        let t = b.compute_transform();
+        assert_eq!(t.translation, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(t.rotation, Quat::from_rotation_z(0.5));
+        assert_eq!(t.scale, Vec3::new(2.0, 2.0, 2.0));
+    }
+
+    /// O（0x1412ab3aa）：+0x30==1 时 scale 取 +0x34..0x40。
+    #[test]
+    fn scale_override_wins() {
+        let mut b = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, 0);
+        b.scale = Vec3::ONE;
+        b.scale_override = Some(Vec3::splat(3.0));
+        assert_eq!(b.compute_transform().scale, Vec3::splat(3.0));
+    }
+
+    /// O（0x1412ab2db..0x1412ab3a6）：法线偏移按 rotation 旋转后加到 translation。
+    #[test]
+    fn normal_offset_is_rotated_into_translation() {
+        let mut b = VisualBuilderHelper::quarter_turn();
+        b.normal_offset = Vec3::X;
+        let t = b.compute_transform();
+        assert!((t.translation - Vec3::Y).length() < 1e-6);
+    }
+
+    #[test]
+    fn zero_normal_offset_is_skipped() {
+        let mut b = WindowVisualEntityBuilder::new(Vec3::new(1.0, 0.0, 0.0), Quat::IDENTITY, 0);
+        b.normal_offset = Vec3::ZERO;
+        assert_eq!(b.compute_transform().translation, Vec3::new(1.0, 0.0, 0.0));
+    }
+
+    struct VisualBuilderHelper;
+
+    impl VisualBuilderHelper {
+        fn quarter_turn() -> WindowVisualEntityBuilder {
+            WindowVisualEntityBuilder::new(
+                Vec3::ZERO,
+                Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+                0,
+            )
+        }
+    }
+}
+
+#[cfg(test)]
+mod canonical_window_light_tests {
+    use super::*;
+    use bevy_ecs::{prelude::*, world::CommandQueue};
+    use country_core::resources::{events::LightWindowCmd,
+        session::{ActiveSession, SessionId, SessionMeta}, time::GameTime,
+        time_of_day::TimeOfDay,
+        window_lights::{GlobalWindowLightsControl, WindowLight as CanonicalWindowLight}};
+
+    #[test]
+    fn actual_builder_emits_the_component_consumed_by_the_real_light_system() {
+        assert_eq!(core::any::TypeId::of::<pending_core::WindowLight>(),
+            core::any::TypeId::of::<CanonicalWindowLight>());
+        let mut world = World::new(); let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut builder = WindowVisualEntityBuilder::new(Vec3::new(2.0, 3.0, 4.0),
+            Quat::from_rotation_y(0.37), 71);
+        builder.mesh_name = "actual glass component CPU fixture";
+        builder.nani_name = "nani_solid_vertex_color_window_glass";
+        builder.window_light = Some(0x1_0000_0061);
+        let entity = builder.build(&mut Commands::new(&mut queue, &world), 71,
+            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+        queue.apply(&mut world);
+        assert_eq!(*world.get::<CanonicalWindowLight>(entity).unwrap(),
+            CanonicalWindowLight { key: 0x1_0000_0061, decorator_id: 71 });
+        assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind,
+            GpuWorldSubsetKind::SolidVertexColorWindowGlass);
+        assert!(world.get::<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>(entity).is_some());
+        world.init_resource::<GlobalWindowLightsControl>();
+        world.init_resource::<Events<LightWindowCmd>>();
+        world.insert_resource(TimeOfDay { time_of_day: 0.6, ..Default::default() });
+        world.insert_resource(GameTime { delta: 0.25, ..Default::default() });
+        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+        let mut schedule = Schedule::default(); schedule.add_systems(crate::window_lights::window_lights);
+        schedule.run(&mut world);
+        let light = world.resource::<GlobalWindowLightsControl>().lights[&0x1_0000_0061];
+        assert_eq!((light.actual_on, light.target_on), (1, 1));
+        assert!(light.brightness > 0.0 && light.brightness < 1.0);
+        world.despawn(entity); schedule.run(&mut world);
+        assert!(world.resource::<GlobalWindowLightsControl>().lights.is_empty());
+    }
+    #[test]
+    fn brick_payloads_enter_canonical_components_with_all_words_and_float_bits_preserved() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::{
+            BrickColor as CoreBrick, GothicWindowBrickDeformation as CoreDef,
+        };
+        assert_eq!(
+            core::any::TypeId::of::<pending_core::BrickColor>(),
+            core::any::TypeId::of::<CoreBrick>()
+        );
+        assert_eq!(
+            core::any::TypeId::of::<pending_core::GothicWindowBrickDeformation>(),
+            core::any::TypeId::of::<CoreDef>()
+        );
+        let brick = [
+            0xdead_beef,
+            42,
+            0x8000_0000,
+            0x7fc0_0123,
+            0xff80_0000,
+            0xaabb_cc01_u32,
+        ];
+        let deformation = [
+            0x8000_0000,
+            0x7fc0_0123,
+            0xff80_0000,
+            0x3f80_0000,
+            0x4000_0000,
+            0x4040_0000,
+            0x4080_0000,
+            0x40a0_0000,
+            0x40c0_0000,
+            0x40e0_0000,
+            0x4100_0000,
+            0x4110_0000,
+            0x4120_0000,
+            0x4130_0000,
+            0x4140_0000_u32,
+        ];
+        let mut world = World::new();
+        let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut builder = WindowVisualEntityBuilder::new(Vec3::ONE, Quat::IDENTITY, 71);
+        builder.mesh_name = "decorators/window_gothic_2x1_hat";
+        builder.nani_name = "nani_gothic_window_bricks";
+        builder.brick_color = Some(brick.map(u32::to_le_bytes).concat().try_into().unwrap());
+        builder.gothic_window_brick_deformation = Some(
+            deformation
+                .map(u32::to_le_bytes)
+                .concat()
+                .try_into()
+                .unwrap(),
+        );
+        let entity = builder.build(
+            &mut Commands::new(&mut queue, &world),
+            71,
+            &AssetMeshLibrary::new(),
+            &AssetShaderLibrary::new(),
+            &mut state,
+        );
+        assert!(world.get::<CoreBrick>(entity).is_none());
+        queue.apply(&mut world);
+        assert_eq!(world.get::<CoreBrick>(entity).unwrap().words(), brick);
+        assert_eq!(world.get::<CoreDef>(entity).unwrap().words(), deformation);
+        assert!(world
+            .get::<InstanceDataMarker<GothicWindowBricksInstanceData>>(entity)
+            .is_some());
+        let count = world.query::<(&CoreBrick, &CoreDef)>().iter(&world).count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn original_brick_niche_two_and_absent_deformation_are_not_inserted_by_builder() {
+        use bevy_ecs::world::{CommandQueue, World};
+        use country_core::components::{
+            BrickColor as CoreBrick, GothicWindowBrickDeformation as CoreDef,
+        };
+        for payload in [None, Some([0, 0, 0, 0, 0, 2_u32])] {
+            let mut world = World::new();
+            let mut queue = CommandQueue::default();
+            let mut state = DecoratorTransientVisualState::default();
+            let mut builder = WindowVisualEntityBuilder::new(Vec3::ZERO, Quat::IDENTITY, 73);
+            builder.nani_name = "nani_solid_vertex_color_bricks";
+            builder.brick_color =
+                payload.map(|words| words.map(u32::to_le_bytes).concat().try_into().unwrap());
+            let entity = builder.build(
+                &mut Commands::new(&mut queue, &world),
+                73,
+                &AssetMeshLibrary::new(),
+                &AssetShaderLibrary::new(),
+                &mut state,
+            );
+            queue.apply(&mut world);
+            assert!(world.get::<CoreBrick>(entity).is_none());
+            assert!(world.get::<CoreDef>(entity).is_none());
+        }
+    }
+
+    #[test]
+    fn real_builder_canonical_bricks_reach_the_same_world_owned_nani_rows() {
+        use bevy_ecs::{
+            schedule::{ApplyDeferred, IntoScheduleConfigs, Schedule},
+            world::{CommandQueue, World},
+        };
+        use country_core::{
+            render::{
+                mesh::Mesh,
+                nani::{
+                    gpu_world::{
+                        GpuWorld, GpuWorldSubset, InstanceDataBuffer, InstanceKey, OwnedGpuWorldSubset,
+                    },
+                    systems::{
+                        nani_maintain_instances_ecs, nani_update_gothic_window_bricks_ecs,
+                        nani_update_solid_vertex_color_bricks_ecs,
+                    },
+                },
+            },
+            resources::render::mesh_atlas_library::MeshAtlasLibrary,
+        };
+        let device = country_core::render::test_device::TestDevice(73);
+        let mut gpu = GpuWorld::new(&device);
+        gpu.assign_subset(
+            GpuWorldSubsetKind::SolidVertexColorBricks,
+            GpuWorldSubset::Owned(
+                OwnedGpuWorldSubset::new::<SolidVertexColorBricksInstanceData>(
+                    &device,
+                    GpuWorldSubsetKind::SolidVertexColorBricks,
+                ),
+            ),
+        );
+        gpu.assign_subset(
+            GpuWorldSubsetKind::GothicWindowBricks,
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<GothicWindowBricksInstanceData>(
+                &device,
+                GpuWorldSubsetKind::GothicWindowBricks,
+            )),
+        );
+        let mut atlas = MeshAtlasLibrary::default();
+        let mut mesh = Mesh::new("同World砖窗三角形夹具");
+        mesh.set_attribute(
+            country_core::render::mesh::ATTR_POSITION,
+            vec![Vec3::X, Vec3::Y, Vec3::Z],
+        );
+        mesh.set_indices(vec![0, 1, 2]);
+        atlas.add(
+            GpuWorldSubsetKind::SolidVertexColorBricks,
+            "decorators/window_gothic_1x1_hat",
+            &mesh,
+        );
+        atlas.add(
+            GpuWorldSubsetKind::GothicWindowBricks,
+            "decorators/window_gothic_2x1_hat",
+            &mesh,
+        );
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(atlas);
+        let brick = [
+            0xdead_beef,
+            42,
+            1.0_f32.to_bits(),
+            2.0_f32.to_bits(),
+            0x3fbf_3e03,
+            0xaabb_cc01_u32,
+        ];
+        let deformation = [
+            1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0,
+        ];
+        let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut entities = Vec::new();
+        for gothic in [false, true] {
+            let mut builder =
+                WindowVisualEntityBuilder::new(Vec3::new(3.0, 4.0, 5.0), Quat::IDENTITY, 79);
+            builder.mesh_name = if gothic {
+                "decorators/window_gothic_2x1_hat"
+            } else {
+                "decorators/window_gothic_1x1_hat"
+            };
+            builder.nani_name = if gothic {
+                "nani_gothic_window_bricks"
+            } else {
+                "nani_solid_vertex_color_bricks"
+            };
+            builder.brick_color = Some(brick.map(u32::to_le_bytes).concat().try_into().unwrap());
+            if gothic {
+                builder.gothic_window_brick_deformation = Some(
+                    deformation
+                        .map(f32::to_le_bytes)
+                        .concat()
+                        .try_into()
+                        .unwrap(),
+                );
+            }
+            entities.push(builder.build(
+                &mut Commands::new(&mut queue, &world),
+                79,
+                &AssetMeshLibrary::new(),
+                &AssetShaderLibrary::new(),
+                &mut state,
+            ));
+        }
+        queue.apply(&mut world);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(
+            (
+                nani_maintain_instances_ecs,
+                ApplyDeferred,
+                (
+                    nani_update_solid_vertex_color_bricks_ecs,
+                    nani_update_gothic_window_bricks_ecs,
+                ),
+            )
+                .chain_ignore_deferred(),
+        );
+        schedule.run(&mut world);
+        let solid_key = *world.get::<InstanceKey>(entities[0]).unwrap();
+        let gothic_key = *world.get::<InstanceKey>(entities[1]).unwrap();
+        let gpu = world.resource::<GpuWorld>();
+        let solid = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorBricks);
+        let raw = solid
+            .data()
+            .as_any()
+            .downcast_ref::<InstanceDataBuffer<SolidVertexColorBricksInstanceData>>()
+            .unwrap()
+            .shadow
+            .data[solid_key.index as usize]
+            .raw;
+        assert_eq!(
+            &raw[12..],
+            &[0x4000_3c00, 0xdead_beef, 0x8000_002a, 0x3fbf_3e03]
+        );
+        assert_eq!(solid.instance_count(), 1);
+        drop(solid);
+        let gothic = gpu.owned_subset_mut(GpuWorldSubsetKind::GothicWindowBricks);
+        let raw = gothic
+            .data()
+            .as_any()
+            .downcast_ref::<InstanceDataBuffer<GothicWindowBricksInstanceData>>()
+            .unwrap()
+            .shadow
+            .data[gothic_key.index as usize]
+            .raw;
+        assert_eq!(&raw[12..16], &[0xdead_beef, 42, 0x4000_3c00, 1]);
+        assert_eq!(
+            &raw[16..19],
+            &deformation[6..9]
+                .iter()
+                .map(|v| v.to_bits())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(raw[19], 0x4000_3c00);
+        assert_eq!(
+            &raw[20..23],
+            &deformation[9..12]
+                .iter()
+                .map(|v| v.to_bits())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(raw[23], 0x4400_4200);
+        assert_eq!(
+            &raw[24..27],
+            &deformation[12..15]
+                .iter()
+                .map(|v| v.to_bits())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(raw[27], 0x4600_4500);
+        assert_eq!(gothic.instance_count(), 1);
+        assert_eq!(gpu.total_instance_count, 2);
+    }
+
+}

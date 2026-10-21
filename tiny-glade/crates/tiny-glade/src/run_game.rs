@@ -348,7 +348,11 @@ pub fn run_game_thread(
         );
     }
     // Original first add_to_app tuple @run_game_thread decomp L1248.
-    app.add_plugins((InputPlugin, bevy_time::TimePlugin));
+    app.add_plugins((
+        InputPlugin,
+        bevy_time::TimePlugin,
+        country_core::systems::backend::icc::IccProfilePlugin,
+    ));
     // Aspect-ratio call and constructor are adjacent original instructions
     // @0x14059dba3 and @0x14059dbe3. Never use MainCamera::default's zero buffer.
     let camera = MainCamera::new(window.aspect_ratio());
@@ -1090,7 +1094,11 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
             GameSystemSet(stage).before(GameSystemSet(stage + 1)),
         );
     }
-    app.add_plugins((InputPlugin, bevy_time::TimePlugin));
+    app.add_plugins((
+        InputPlugin,
+        bevy_time::TimePlugin,
+        country_core::systems::backend::icc::IccProfilePlugin,
+    ));
     app.insert_resource(
         source
             .get_resource::<GameConfig>()

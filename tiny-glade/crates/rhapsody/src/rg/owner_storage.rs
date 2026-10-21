@@ -67,6 +67,12 @@ impl ResourceOwners {
             }
         }
     }
+    pub(crate) fn len(&self) -> usize {
+        match &self.storage {
+            Storage::Pooled(list) => list.as_slice().len(),
+            Storage::Local(items) => items.len(),
+        }
+    }
     pub fn is_empty(&self) -> bool {
         match &self.storage {
             Storage::Pooled(list) => list.is_empty(),

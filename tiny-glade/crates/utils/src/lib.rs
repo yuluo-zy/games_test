@@ -84,6 +84,32 @@ pub fn xz_rotation_bad(direction: glam::Vec2) -> glam::Quat {
     glam::Quat::from_mat3(&glam::Mat3::from_cols(right, up, forward))
 }
 
+/// 原140c911d0：忽略输入Y，仅以XZ投影构造本地正Z朝向。
+/// 两次规范化保留原除法与求和次序；倒长度无效时选正X。
+pub fn xz_projective_rotation_bad(direction: glam::Vec3) -> glam::Quat {
+    let reciprocal = 1.0 / (direction.z * direction.z + direction.x * direction.x).sqrt();
+    let forward = if reciprocal > 0.0 && reciprocal.is_finite() {
+        glam::Vec3::new(direction.x * reciprocal, 0.0, direction.z * reciprocal)
+    } else {
+        glam::Vec3::X
+    };
+    let up = glam::Vec3::Y;
+    let right = up.cross(forward);
+    let length = (right.z * right.z + (right.x * right.x + right.y * right.y)).sqrt();
+    let right = right / length;
+    glam::Quat::from_mat3(&glam::Mat3::from_cols(right, up, forward))
+}
+
+/// 原140c913e0：以本地负Z朝向输入，输入无有效倒长度时先选择正X。
+/// 保留原右轴的第二次归一化和整个矩阵转四元数分支，不能先翻转原输入。
+pub fn xz_rotation_from_forward(direction: glam::Vec2) -> glam::Quat {
+    let direction = direction.try_normalize().unwrap_or(glam::Vec2::X);
+    let forward = glam::Vec3::new(direction.x, 0.0, direction.y);
+    let up = glam::Vec3::Y;
+    let right = up.cross(forward).normalize();
+    glam::Quat::from_mat3(&glam::Mat3::from_cols(-right, up, -forward))
+}
+
 #[cfg(test)]
 mod cloth_shared_utils_tests {
     use super::*;
@@ -250,5 +276,112 @@ mod continuous_lerp_tests {
         assert!(time_continuous_lerp(f32::NAN, 1.0, 0.1, 3.0).is_nan());
         assert!(time_continuous_lerp(0.0, 1.0, 0.1, f32::NAN).is_nan());
         assert_eq!(time_continuous_lerp(0.25, 1.0, f32::INFINITY, 3.0), 1.0);
+    }
+}
+
+#[cfg(test)]
+mod forward_rotation_tests {
+    use super::xz_rotation_from_forward;
+    use glam::{Vec2, Vec3};
+
+    #[test]
+    fn original_negative_z_basis_tracks_all_planar_quadrants_and_keeps_up() {
+        for direction in [
+            Vec2::X, -Vec2::X, Vec2::Y, -Vec2::Y,
+            Vec2::new(3.0, 4.0), Vec2::new(-3.0, 4.0),
+            Vec2::new(3.0, -4.0), Vec2::new(-3.0, -4.0),
+            Vec2::new(0.000_01, -0.000_02),
+        ] {
+            let rotation = xz_rotation_from_forward(direction);
+            let expected = direction.normalize();
+            assert!((rotation * Vec3::NEG_Z).abs_diff_eq(
+                Vec3::new(expected.x, 0.0, expected.y), 0.000_001,
+            ));
+            assert!((rotation * Vec3::Y).abs_diff_eq(Vec3::Y, 0.000_001));
+            assert!((rotation.length_squared() - 1.0).abs() < 0.000_001);
+        }
+    }
+
+    #[test]
+    fn original_fallback_precedes_axis_negation_for_zero_and_nonfinite_inputs() {
+        let expected = xz_rotation_from_forward(Vec2::X).to_array().map(f32::to_bits);
+        for direction in [
+            Vec2::ZERO, Vec2::new(-0.0, 0.0), Vec2::new(0.0, -0.0),
+            Vec2::new(f32::NAN, 1.0), Vec2::new(1.0, f32::NAN),
+            Vec2::new(f32::INFINITY, 1.0), Vec2::new(1.0, f32::NEG_INFINITY),
+            Vec2::splat(f32::MAX), Vec2::splat(f32::MIN_POSITIVE),
+        ] {
+            assert_eq!(xz_rotation_from_forward(direction).to_array().map(f32::to_bits), expected);
+        }
+        assert!((xz_rotation_from_forward(Vec2::ZERO) * Vec3::NEG_Z)
+            .abs_diff_eq(Vec3::X, 0.000_001));
+    }
+
+    #[test]
+    fn original_matrix_branch_keeps_the_y_and_w_component_sign_choice() {
+        let positive_x = xz_rotation_from_forward(Vec2::X);
+        assert!(positive_x.y > 0.0 && positive_x.w < 0.0);
+        let negative_x = xz_rotation_from_forward(-Vec2::X);
+        assert!(negative_x.y > 0.0 && negative_x.w > 0.0);
+        let positive_z = xz_rotation_from_forward(Vec2::Y);
+        assert_eq!(positive_z.y, 1.0);
+        let negative_z = xz_rotation_from_forward(-Vec2::Y);
+        assert_eq!(negative_z.w, 1.0);
+    }
+}
+
+#[cfg(test)]
+mod projective_rotation_tests {
+    use super::xz_projective_rotation_bad;
+    use glam::Vec3;
+
+    #[test]
+    fn projective_rotation_uses_positive_z_and_all_planar_quadrants() {
+        for direction in [
+            Vec3::X, -Vec3::X, Vec3::Z, -Vec3::Z,
+            Vec3::new(3.0, 9.0, 4.0), Vec3::new(-3.0, 9.0, 4.0),
+            Vec3::new(3.0, 9.0, -4.0), Vec3::new(-3.0, 9.0, -4.0),
+            Vec3::new(1e-18, 9.0, -2e-18), Vec3::new(1e18, 9.0, -2e18),
+        ] {
+            let rotation = xz_projective_rotation_bad(direction);
+            let expected = Vec3::new(direction.x, 0.0, direction.z).normalize();
+            assert!((rotation * Vec3::Z - expected).length() < 2e-6, "{direction:?}: {rotation:?}");
+            assert!((rotation * Vec3::Y - Vec3::Y).length() < 2e-6);
+            assert!((rotation.length_squared() - 1.0).abs() < 2e-6);
+        }
+    }
+
+    #[test]
+    fn projective_rotation_does_not_read_y_even_when_nonfinite() {
+        for (x, z) in [(3.0, -4.0), (-3.0, 4.0), (0.0, 0.0), (f32::MAX, 1.0)] {
+            let expected = xz_projective_rotation_bad(Vec3::new(x, 0.0, z)).to_array().map(f32::to_bits);
+            for y in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, f32::MAX] {
+                assert_eq!(xz_projective_rotation_bad(Vec3::new(x, y, z)).to_array().map(f32::to_bits), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn projective_rotation_falls_back_for_invalid_reciprocal_including_square_range() {
+        let expected = xz_projective_rotation_bad(Vec3::X).to_array().map(f32::to_bits);
+        for direction in [
+            Vec3::ZERO, Vec3::new(-0.0, 0.0, -0.0),
+            Vec3::new(f32::NAN, 0.0, 1.0), Vec3::new(1.0, 0.0, f32::NAN),
+            Vec3::new(f32::INFINITY, 0.0, 1.0), Vec3::new(1.0, 0.0, f32::NEG_INFINITY),
+            Vec3::new(f32::MAX, 0.0, 1.0), Vec3::new(1e-30, 0.0, -1e-30),
+            Vec3::new(f32::MIN_POSITIVE, 0.0, 0.0),
+        ] {
+            assert_eq!(xz_projective_rotation_bad(direction).to_array().map(f32::to_bits), expected, "{direction:?}");
+        }
+    }
+
+    #[test]
+    fn projective_rotation_keeps_original_quaternion_sign_choices() {
+        let positive_x = xz_projective_rotation_bad(Vec3::X);
+        assert!(positive_x.y > 0.0 && positive_x.w > 0.0);
+        let negative_x = xz_projective_rotation_bad(-Vec3::X);
+        assert!(negative_x.y > 0.0 && negative_x.w < 0.0);
+        assert_eq!(xz_projective_rotation_bad(Vec3::Z).w, 1.0);
+        assert_eq!(xz_projective_rotation_bad(-Vec3::Z).y, 1.0);
     }
 }

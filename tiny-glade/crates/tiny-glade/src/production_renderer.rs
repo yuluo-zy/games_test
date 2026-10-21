@@ -695,6 +695,8 @@ impl ProductionRenderer {
             )
         }?)
         .clone();
+        #[cfg(target_os = "macos")]
+        platform.trace_color_space(&swapchain)?;
         let compiled_shader_root = compiled_shader_root.as_ref().to_path_buf();
         let ApplicationGpu {
             bridge,
@@ -1577,6 +1579,40 @@ mod macos {
             let surface = Self { layer, view };
             surface.update(window)?;
             Ok(surface)
+        }
+        /// 仅显式诊断时读取驱动已设置的 layer 色彩身份；不修改颜色空间。
+        pub fn trace_color_space(&self, swapchain: &Swapchain) -> Result<()> {
+            static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+            if !*ENABLED.get_or_init(|| std::env::var_os("TG_COLOR_SPACE_DIAGNOSTIC").is_some()) {
+                return Ok(());
+            }
+            use core_foundation::base::{CFType, TCFType};
+            use core_graphics::color_space::{CGColorSpace, kCGColorSpaceSRGB};
+            use foreign_types::ForeignType;
+
+            let selected = swapchain.surface_format()
+                .context("color diagnostic requires a successfully created native swapchain")?;
+            // colorspace 是 CAMetalLayer 的 Get 属性。layer 在调用期间强持有；
+            // 按 CF Get 规则 retain，局部 RAII drop 不转移或释放 layer 的引用。
+            let raw: *const std::ffi::c_void = unsafe {
+                (&**self.layer).send_message(Sel::register("colorspace"), ())
+            }?;
+            let actual = if raw.is_null() {
+                None
+            } else {
+                Some(unsafe { CFType::wrap_under_get_rule(raw) })
+            };
+            // 使用框架创建的真正 sRGB 身份并由 CFEqual 比较，不用裸指针或描述字符串猜测。
+            let srgb = CGColorSpace::create_with_name(unsafe { kCGColorSpaceSRGB })
+                .context("CoreGraphics cannot create the sRGB color space")?;
+            let srgb_identity = unsafe { CFType::wrap_under_get_rule(srgb.as_ptr().cast()) };
+            let actual_is_color_space = actual.as_ref()
+                .is_some_and(|actual| actual.type_of() == CGColorSpace::type_id());
+            let actual_is_srgb = actual.as_ref().is_some_and(|actual| actual == &srgb_identity);
+            eprintln!("TG_COLOR_SPACE_DIAGNOSTIC format={} color_space={} layer_present={} layer_is_color_space={} layer_is_srgb={}",
+                selected.format.as_raw(), selected.color_space.as_raw(), actual.is_some(),
+                actual_is_color_space, actual_is_srgb);
+            Ok(())
         }
         pub fn update(&self, window: &winit::window::Window) -> Result<()> {
             let size = window.inner_size();

@@ -1,0 +1,45 @@
+{
+  "scope": "B OS monitor/ICC dirty setter complete callback bounded check; no Windows runtime execution",
+  "retained_callback": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-40ff43c62ef8791c53/oschain-20261018/os-callback.asm",
+  "retained_callback_sha256": "edac33631f9125dc15356bea4fac00fd33e6fa2ae132a4c1762a27bc56c5cadf",
+  "native_callback_start": "0x140557b50",
+  "native_callback_bytes": 3283,
+  "native_callback_sha256": "52c27ad9b08bb21e02a708d0d2fb82a3c89519ced8ea8ed63c322775af37617c",
+  "independent_retained_instruction_texts_matching_RNE_capstone": 679,
+  "identity": "B f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03 / matching PDB2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "native_facts": [
+    {
+      "pc": "14026e528..540,14026e63c..64e",
+      "behavior": "initial current_monitor -> cached Some actual handle atstack78/80; dirty=true at2e3; closure+28 points cached monitor, closure+30 points dirty."
+    },
+    {
+      "pc": "140557da1..dcb",
+      "behavior": "Moved branch reads actual current_monitor; cached Some same HMONITOR skips all notifications/dirty."
+    },
+    {
+      "pc": "140557dd1..e0e",
+      "behavior": "Changed-or-no cached monitor first sends game OsWindowEvent tag5. send error stops normal path; successfulResult uses niche discriminator0x12, NOT an ICC event tag."
+    },
+    {
+      "pc": "140557e14..e52,1405584a7..4b7",
+      "behavior": "If cached Some, compare actual MonitorHandle::refresh_rate_millihertz Optional values. Only unequal rates replace cached monitor. Equal rates skip replacement while still marking dirty; this causes repeated queries on subsequent Moved if current differs from retained baseline."
+    },
+    {
+      "pc": "140558562..599",
+      "behavior": "After rate change also send tag6 (swapchain stale) then dirty=1 through closure+30. If rates equal or cached absent, direct same dirty setter without tag6."
+    },
+    {
+      "pc": "14026f5ea..613,14026f820..84f",
+      "behavior": "after batch, consume dirty before query; success emits tag17 ICC profile result to game. Failure warns/no profile event. Full callback has only this one dirty write; no separately recovered same-monitor profile-hotchange event."
+    }
+  ],
+  "required_candidate_boundary": [
+    "V1 last-actual-monitor identity throttle is not complete original producer: it suppresses repeated native moved queries when cached monitor intentionally remains old for equal refresh rates.",
+    "Restore explicit moved notification -> same original cached-monitor and optional-refresh-rate policy -> batch dirty consumption. AppWeak identity forcing a fresh current-App texture namespace is separate engineering adaptation, not a substitute for native dirty.",
+    "No arbitrary every-Moved query, no fabricated same-monitor hotchange event. Initialize baseline using actual window monitor, retain old baseline in exact original equal-rate branch.",
+    "Window owner is not currently editing MonitorChanged match; lifetime may submit a narrow delegated hunk there with explicit callback API. Main-loop resolution packet will not overwrite this match."
+  ],
+  "verdict": "V1 tracker initial/identity subset only; full source admission pending dirty-policy correction",
+  "production_written": false,
+  "cargo_gpu_run": false
+}

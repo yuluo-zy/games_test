@@ -1,0 +1,47 @@
+{
+  "scope": "optional macOS chosen swapchain/layer color identity diagnostic only",
+  "manifest_sha256": "005f7509fa3023adf96e41623bd3a58bae202212baef63a8f21a61ffd799144f",
+  "source_checks": [
+    {
+      "source": "tiny-glade/crates/rhapsody/src/raw/swapchain.rs",
+      "before_sha256": "c21b1c716b90a82479f4a44da6c4066662056f551efbe91106d53682410bb0bc",
+      "after_sha256": "8f7a0a50e895fd6b79cd73d34ab79378345e737c52b933bacdab77281d6e1866"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/production_renderer.rs",
+      "before_sha256": "b0aac913dde5659f4375c4c963cde1111a3a869928e08cb83ca71f462f494657",
+      "after_sha256": "8f13e4d56cb0e30bd425f3dbb436476757f5fd2e5c752ab67e5e0c1c54c9fd69"
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/Cargo.toml",
+      "before_sha256": "3c554a33162a97f3b360f22eea35ced823a53b5793079c12e6d969d135c5fa69",
+      "after_sha256": "dab7122987fcba7d703ef6dd4df30230ae3fc991acef04e3fc50bc328e82aacd"
+    }
+  ],
+  "patch_sha256": "0d75db25afe12b8513990d2edf97aeecb38e1b5e43a279e327784e6565d075e1",
+  "conclusions": [
+    "Swapchain colorSpace starts None and is assigned alongside actual format only after successful native create/images/views. It reads the format actually supplied to VkSwapchainCreateInfoKHR, not an enumerated supported format.",
+    "Construction-only env guard is cached; disabled path performs no ObjC/CF color calls. Enabled path requires an actual created chain and reads CAMetalLayer.colorspace without modifying it.",
+    "Get-rule CFType retain/drop balances both borrowed layer property and separately owned CGColorSpace. Actual CF type and CFEqual(sRGB framework object) are checked, not pointer equality or a string guess. Pinned core-graphics0.23.1 exposes the exact type_id/create_with_name APIs and foreign-types0.5 trait used by candidate.",
+    "Existing resize/suspend/shutdown/present policies and native descriptor creation parameters are unchanged by this diagnostic."
+  ],
+  "verdict": "F0 source_ready_for_root_compile_and_optional_real_mac_observation",
+  "official_sources": [
+    {
+      "url": "https://raw.githubusercontent.com/KhronosGroup/MoltenVK/v1.4.2/MoltenVK/MoltenVK/GPUObjects/MVKSwapchain.mm",
+      "claim": "Official tag lines474..478 assigns kCGColorSpaceSRGB for SRGB_NONLINEAR; reviewer browsed exact primary source. It is not installed dylib commit identity proof."
+    },
+    {
+      "url": "https://developer.apple.com/documentation/quartzcore/cametallayer/colorspace",
+      "claim": "Referenced platform contract; reviewer web view required JavaScript and its Markdown click failed, so this report does not add an independently fetched Apple-body quotation."
+    }
+  ],
+  "limitations": [
+    "Actual chosen format/layer identity has not been executed by reviewer. Must record emitted values from preserved root binary.",
+    "Only construction is sampled; no inference about resize/recreate/resume, other displays or OS compositor scanout.",
+    "If no successful native chain exists (e.g. zero startup extent), enabled diagnostic explicitly errors rather than inventing a colorSpace; default off behavior unchanged.",
+    "This read-only probe alone does not implement or validate an automatic ICC transform and is not proof all driver versions behave alike."
+  ],
+  "production_written": false,
+  "cargo_gpu_executed": false
+}

@@ -1,0 +1,25 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs
+@@ -284,12 +284,20 @@
+                         _ => anyhow::bail!("出现空世界或 diagnostic minimal 图"),
+                     }
+                 }
+-                if mode != WindowValidationMode::Gameplay && loading_frames > 0 && !close_requested {
+-                    // 确认真实 loading 已呈现且 worker owner 仍在，再测试关闭控制路径。
++                let lifecycle_loading_presented = game.frame_observation().is_some_and(|frame| {
++                    matches!(&frame.kind, ProductionGraphKind::Loading)
++                        && frame.present_point.is_some()
++                        && frame.present_generation.is_some()
++                }) && game.native_present_success_count() > native_before_frame;
++                if mode != WindowValidationMode::Gameplay && lifecycle_loading_presented && !close_requested {
++                    // 确认本次真实 loading 原生 present 成功且待交接 owner 仍在。
++                    // pending 不表示 worker 一定仍在执行；已发布的结果同样必须 join/释放。
+                     preparation_pending_at_close = game.gameplay_preparation_pending();
+                     anyhow::ensure!(preparation_pending_at_close,
+                         "生命周期关闭尚未注入，真实 gameplay preparation 已经结束");
+                     close_requested = true;
++                    eprintln!("WINDOW_LIFECYCLE mode={mode:?} loading={loading_frames} native_successes={} preparation_pending={preparation_pending_at_close}",
++                        game.native_present_success_count());
+                     if mode == WindowValidationMode::SuspendedClose {
+                         game.main_loop(Event::Suspended, target)?;
+                     }

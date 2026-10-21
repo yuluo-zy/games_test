@@ -1,0 +1,220 @@
+   1	
+   2	void __cdecl toolbar::menu::welcome::ui(void)
+   3	
+   4	{
+   5	  byte *pbVar1;
+   6	  longlong lVar2;
+   7	  byte bVar3;
+   8	  byte bVar4;
+   9	  byte bVar5;
+  10	  undefined4 uVar6;
+  11	  undefined4 *puVar7;
+  12	  int *piVar8;
+  13	  code *pcVar9;
+  14	  bool bVar10;
+  15	  char extraout_AL;
+  16	  char cVar11;
+  17	  char extraout_AL_00;
+  18	  uint uVar12;
+  19	  longlong extraout_RAX;
+  20	  longlong extraout_RAX_00;
+  21	  longlong *extraout_RAX_01;
+  22	  longlong *extraout_RAX_02;
+  23	  undefined8 *extraout_RAX_03;
+  24	  undefined8 uVar13;
+  25	  longlong *extraout_RAX_04;
+  26	  longlong *extraout_RAX_05;
+  27	  longlong *extraout_RAX_06;
+  28	  longlong extraout_RAX_07;
+  29	  longlong *extraout_RAX_08;
+  30	  longlong extraout_RAX_09;
+  31	  longlong extraout_RAX_10;
+  32	  longlong lVar14;
+  33	  longlong in_RCX;
+  34	  longlong *plVar15;
+  35	  undefined8 *in_RDX;
+  36	  undefined8 *puVar16;
+  37	  undefined *puVar17;
+  38	  longlong *in_R9;
+  39	  float fVar18;
+  40	  float fVar19;
+  41	  undefined8 *in_stack_00000028;
+  42	  longlong *in_stack_00000030;
+  43	  longlong *in_stack_00000038;
+  44	  longlong *in_stack_00000040;
+  45	  longlong *in_stack_00000048;
+  46	  longlong *in_stack_00000050;
+  47	  longlong *local_70;
+  48	  
+  49	  puVar16 = in_RDX;
+  50	  puffin::are_scopes_on();
+  51	  if (extraout_AL == '\0') {
+  52	    bVar10 = false;
+  53	  }
+  54	  else {
+  55	    core::str::impl$0::rfind<ref_<str_>_>();
+  56	    if (extraout_RAX == 1) {
+  57	      if (puVar16 != (undefined8 *)0x0) {
+  58	        if (&DAT_00000019 < puVar16) {
+  59	          if (puVar16 != (undefined8 *)&DAT_0000001a) goto LAB_141ebe1b2;
+  60	        }
+  61	        else if (*(char *)(puVar16 + 0x285f35db) < -0x40) {
+  62	LAB_141ebe1b2:
+  63	                    /* WARNING: Subroutine does not return */
+  64	          core::str::slice_error_fail();
+  65	        }
+  66	      }
+  67	      core::str::impl$0::rfind<ref_<str_>_>();
+  68	      if ((extraout_RAX_00 == 1) && (puVar16 != (undefined8 *)0xfffffffffffffffe)) {
+  69	        if ((undefined1 *)((longlong)puVar16 + 2) < (undefined1 *)0x1a) {
+  70	          if (*(char *)((longlong)puVar16 + 0x142f9aeda) < -0x40) {
+  71	LAB_141ebe206:
+  72	                    /* WARNING: Subroutine does not return */
+  73	            core::str::slice_error_fail();
+  74	          }
+  75	        }
+  76	        else if ((undefined1 *)((longlong)puVar16 + 2) != (undefined1 *)0x1a) goto LAB_141ebe206;
+  77	      }
+  78	    }
+  79	    puVar17 = &DAT_142f9afea;
+  80	    do {
+  81	      bVar3 = puVar17[-1];
+  82	      uVar12 = (uint)(char)bVar3;
+  83	      if ((char)bVar3 < '\0') {
+  84	        bVar4 = puVar17[-2];
+  85	        if ((char)bVar4 < -0x40) {
+  86	          bVar5 = puVar17[-3];
+  87	          if ((char)bVar5 < -0x40) {
+  88	            pbVar1 = puVar17 + -4;
+  89	            puVar17 = puVar17 + -4;
+  90	            uVar12 = bVar5 & 0x3f | (*pbVar1 & 7) << 6;
+  91	          }
+  92	          else {
+  93	            puVar17 = puVar17 + -3;
+  94	            uVar12 = bVar5 & 0xf;
+  95	          }
+  96	          uVar12 = bVar4 & 0x3f | uVar12 << 6;
+  97	        }
+  98	        else {
+  99	          puVar17 = puVar17 + -2;
+ 100	          uVar12 = bVar4 & 0x1f;
+ 101	        }
+ 102	        uVar12 = (uint)(bVar3 & 0x3f) | uVar12 << 6;
+ 103	        if (uVar12 != 0x5c) goto LAB_141ebe2c4;
+ 104	LAB_141ebe2d5:
+ 105	        if (puVar17 == &UNK_142f9afbf) break;
+ 106	        if (puVar17 + -0x142f9afbf < (undefined *)0x2a) {
+ 107	          if (-0x41 < (char)puVar17[1]) break;
+ 108	        }
+ 109	        else if (puVar17 + -0x142f9afbf == (undefined *)0x2a) break;
+ 110	                    /* WARNING: Subroutine does not return */
+ 111	        core::str::slice_error_fail();
+ 112	      }
+ 113	      puVar17 = puVar17 + -1;
+ 114	      if (uVar12 == 0x5c) goto LAB_141ebe2d5;
+ 115	LAB_141ebe2c4:
+ 116	      if (uVar12 == 0x2f) goto LAB_141ebe2d5;
+ 117	    } while (puVar17 != &DAT_142f9afc0);
+ 118	    puffin::impl$6::call::THREAD_PROFILER::constant$0::closure$0::VAL();
+ 119	    if (*extraout_RAX_01 == 1) {
+ 120	      plVar15 = extraout_RAX_01 + 1;
+ 121	    }
+ 122	    else if ((*extraout_RAX_01 != 0) ||
+ 123	            (std::sys::thread_local::native::lazy::Storage::
+ 124	             initialize<core::cell::RefCell<puffin::ThreadProfiler>,tuple_<>,core::cell::RefCell<puffin::ThreadProfiler>_(*)()>
+ 125	                       (), plVar15 = extraout_RAX_06, extraout_RAX_06 == (longlong *)0x0))
+ 126	    goto LAB_141ebe74e;
+ 127	    if (*plVar15 != 0) goto LAB_141ebe859;
+ 128	    *plVar15 = -1;
+ 129	    puffin::ThreadProfiler::begin_scope();
+ 130	    *plVar15 = *plVar15 + 1;
+ 131	    bVar10 = true;
+ 132	  }
+ 133	  if ((*(char *)(*in_stack_00000030 + 0xe5) != '\0') ||
+ 134	     (lVar14 = *in_stack_00000038, *(char *)(lVar14 + 0x206) != '\0')) {
+ 135	    *(undefined4 *)in_RDX[2] = *(undefined4 *)((longlong)in_RDX + 0x1c);
+ 136	    *(undefined4 *)*in_RDX = 2;
+ 137	    goto LAB_141ebe3c6;
+ 138	  }
+ 139	  if (*in_stack_00000048 == 0) {
+ 140	    cVar11 = '\0';
+ 141	  }
+ 142	  else {
+ 143	    mei::widgets::tweaker::TweakerView::as_inner_mut();
+ 144	    uVar13 = SteamAPI_SteamUtils_v010();
+ 145	    plVar15 = (longlong *)*extraout_RAX_03;
+ 146	    LOCK();
+ 147	    lVar2 = *plVar15;
+ 148	    *plVar15 = *plVar15 + 1;
+ 149	    UNLOCK();
+ 150	    if (*plVar15 == 0 || SCARRY8(lVar2,1) != *plVar15 < 0) {
+ 151	                    /* WARNING: Does not return */
+ 152	      pcVar9 = (code *)invalidInstructionException();
+ 153	      (*pcVar9)();
+ 154	    }
+ 155	    cVar11 = SteamAPI_ISteamUtils_IsSteamRunningOnSteamDeck(uVar13);
+ 156	    LOCK();
+ 157	    *plVar15 = *plVar15 + -1;
+ 158	    UNLOCK();
+ 159	    if (*plVar15 == 0) {
+ 160	      alloc::sync::Arc::drop_slow<steamworks::Inner<steamworks::ClientManager>,alloc::alloc::Global>
+ 161	                ();
+ 162	    }
+ 163	  }
+ 164	  uVar6 = *(undefined4 *)((longlong)in_RDX + 0x1c);
+ 165	  puVar7 = (undefined4 *)in_RDX[2];
+ 166	  *puVar7 = uVar6;
+ 167	  piVar8 = (int *)*in_RDX;
+ 168	  if (*piVar8 == 0) {
+ 169	    if (*(int *)*in_stack_00000028 == 2) {
+ 170	      piVar8[0] = 1;
+ 171	      piVar8[1] = 0;
+ 172	    }
+ 173	  }
+ 174	  else if (*piVar8 == 1) {
+ 175	    country_core::systems::render_loop::vermeer::VermeerState::is_active();
+ 176	    if (extraout_AL_00 == '\0') {
+ 177	      if (*(int *)*in_stack_00000028 == 2) {
+ 178	        if (cVar11 == '\0') {
+ 179	          **(undefined4 **)(in_RCX + 0x10) = *(undefined4 *)(in_RCX + 0x1c);
+ 180	          mei::core::MeiContext::safe_frame<ref_<str_>_>();
+ 181	          mei::config::impl$18::template_with_id<u64>();
+ 182	          fVar19 = *(float *)(*in_R9 + 0x28) + (float)piVar8[1];
+ 183	          piVar8[1] = (int)fVar19;
+ 184	          mei::config::TemplateView::node_mut();
+ 185	          fVar19 = fVar19 / 0.3;
+ 186	          fVar18 = 0.0;
+ 187	          if (0.0 <= fVar19) {
+ 188	            fVar18 = fVar19;
+ 189	          }
+ 190	          fVar19 = 1.0;
+ 191	          if (fVar18 <= 1.0) {
+ 192	            fVar19 = fVar18;
+ 193	          }
+ 194	          *(float *)(extraout_RAX_07 + 0xb0) = (3.0 - (fVar19 + fVar19)) * fVar19 * fVar19;
+ 195	          mei::config::TemplateView::
+ 196	          with_slot<toolbar::menu::welcome::ui::closure_env_2,ref_<str_>_>();
+ 197	        }
+ 198	        else {
+ 199	          **(undefined4 **)(in_RCX + 0x10) = *(undefined4 *)(in_RCX + 0x1c);
+ 200	          mei::core::MeiContext::safe_frame<ref_<str_>_>();
+ 201	          if ((*in_stack_00000050 != 0) && (*in_stack_00000050 != 1)) {
+ 202	                    /* WARNING: Subroutine does not return */
+ 203	            core::panicking::panic();
+ 204	          }
+ 205	          mei::config::impl$18::template_with_id<u64>();
+ 206	          if (*in_stack_00000050 == 0) {
+ 207	            fVar19 = *(float *)(*in_R9 + 0x28) + (float)piVar8[1];
+ 208	            piVar8[1] = (int)fVar19;
+ 209	            mei::config::TemplateView::node_mut();
+ 210	            fVar19 = fVar19 / 0.3;
+ 211	            fVar18 = 0.0;
+ 212	            if (0.0 <= fVar19) {
+ 213	              fVar18 = fVar19;
+ 214	            }
+ 215	            fVar19 = 1.0;
+ 216	            if (fVar18 <= 1.0) {
+ 217	              fVar19 = fVar18;
+ 218	            }
+ 219	            fVar18 = (3.0 - (fVar19 + fVar19)) * fVar19 * fVar19;
+ 220	            lVar14 = extraout_RAX_10;

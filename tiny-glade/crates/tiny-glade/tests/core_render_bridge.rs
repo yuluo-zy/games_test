@@ -477,3 +477,41 @@ fn completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks()
     assert_eq!(&buffers.mapped_slice_mut(&target).unwrap()[..8], expected);
     GraphicsDevice::release_buffer(canonical.device(), &target);
 }
+
+#[test]
+fn new_readback_host_initializes_undefined_bytes_once_and_keeps_gpu_and_explicit_data() {
+    let Some(mut bridge) = bridge() else { return };
+    let buffers = bridge.hosts().buffers.clone();
+    let desc = BufferDesc::new(16, 0x23, 4);
+    let target = buffers.create_buffer(&desc, "首次读回定义值", None).unwrap();
+    let owner = buffers.managed_buffer(&target).unwrap();
+    let mut observed = [0xa5; 16];
+    owner.read_bytes(0, &mut observed).unwrap();
+    assert_eq!(observed, [0; 16]);
+    owner.fill_mapped_bytes_unsynchronized(0, 16, 0xa5).unwrap();
+    bridge.render_frame(|frame| {
+        let imported = frame.import_buffer(&target, 0)?;
+        frame.with_compute(|compute| rg_buffer_copy_from_slice_u32(
+            compute, imported.raw(), 16, &[21, 22, 23, 24], UploadContentVersion::Unknown,
+        ))?;
+        // 真实主机读取是图的导出，上传必须连接到这个 consumer 才能保留。
+        frame.with_graph(|graph| {
+            graph.export(imported, 0x26)?;
+            Ok(())
+        })
+    }).unwrap();
+    bridge.wait_submits_done(10_000_000_000).unwrap();
+    let same = buffers.managed_buffer(&target).unwrap();
+    same.read_bytes(0, &mut observed).unwrap();
+    assert_eq!(observed.chunks_exact(4).map(|word| u32::from_ne_bytes(word.try_into().unwrap())).collect::<Vec<_>>(), &[21, 22, 23, 24]);
+    assert!(same.fill_mapped_bytes_unsynchronized(15, 2, 0).is_err());
+    assert!(same.fill_mapped_bytes_unsynchronized(u64::MAX, 1, 0).is_err());
+    same.read_bytes(0, &mut observed).unwrap();
+    assert_eq!(observed.chunks_exact(4).map(|word| u32::from_ne_bytes(word.try_into().unwrap())).collect::<Vec<_>>(), &[21, 22, 23, 24]);
+    let explicit = [0x3c; 16];
+    let initialized = buffers.create_buffer(&desc, "显式读回数据", Some(&explicit)).unwrap();
+    buffers.managed_buffer(&initialized).unwrap().read_bytes(0, &mut observed).unwrap();
+    assert_eq!(observed, explicit);
+    assert!(buffers.release(&target));
+    assert!(buffers.managed_buffer(&target).is_none());
+}

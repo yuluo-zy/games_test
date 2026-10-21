@@ -1,0 +1,87 @@
+--- a/tiny-glade/crates/country-core/src/resources/rt.rs
++++ b/tiny-glade/crates/country-core/src/resources/rt.rs
+@@ -338,6 +338,17 @@
+     pub fn remove_mesh(&mut self, handle: &RtMeshHandle) -> Option<DirtyCow<RtMesh>> {
+         self.topology_dirty = true;
+         self.meshes.remove(handle)
++    }
++
++    /// 原楼梯失效 0x140b37a1a..37a57：仅命中时消费实际网格，先析构再置拓扑脏。
++    /// 旧 `remove_mesh` 的调用方保留原有无条件置脏语义。
++    pub fn remove_mesh_if_present(&mut self, handle: &RtMeshHandle) -> bool {
++        let Some(mesh) = self.meshes.remove(handle) else {
++            return false;
++        };
++        drop(mesh);
++        self.topology_dirty = true;
++        true
+     }
+ 
+     /// 批量移除（`update_rt_world` 的两段变更切片）。
+@@ -888,4 +899,65 @@
+         rt.remove_meshes([&h]);
+         assert!(rt.meshes.is_empty());
+     }
+-}
++
++    #[test]
++    fn consume_missing_mesh_preserves_clean_topology_pending_upload_and_counter() {
++        let mut rt = RtWorld::default();
++        let other = RtMeshHandle::from_handle(4);
++        let entry = DirtyCow::new(RtMesh::default());
++        let owner = Arc::clone(&entry.inner);
++        rt.meshes.insert(other, entry);
++        rt.pending_upload = Some(RtUploadData::default());
++        rt.next_prefab_handle = 19;
++        assert!(!rt.remove_mesh_if_present(&RtMeshHandle::from_handle(9)));
++        assert!(!rt.topology_dirty);
++        assert!(!rt.has_pending_changes());
++        assert!(rt.pending_upload.is_some());
++        assert_eq!(rt.next_prefab_handle, 19);
++        assert_eq!(rt.meshes.len(), 1);
++        assert!(Arc::ptr_eq(&rt.meshes[&other].inner, &owner));
++    }
++
++    #[test]
++    fn consume_existing_mesh_drops_last_owner_before_return_and_marks_topology() {
++        let mut rt = RtWorld::default();
++        let handle = RtMeshHandle::from_handle(9);
++        let entry = DirtyCow::new(RtMesh::default());
++        let weak = Arc::downgrade(&entry.inner);
++        rt.meshes.insert(handle, entry);
++        assert!(weak.upgrade().is_some());
++        assert!(rt.remove_mesh_if_present(&handle));
++        assert!(weak.upgrade().is_none());
++        assert!(!rt.meshes.contains_key(&handle));
++        assert!(rt.topology_dirty);
++        assert!(rt.has_pending_changes());
++    }
++
++    #[test]
++    fn consume_mesh_uses_complete_tagged_identity() {
++        let mut rt = RtWorld::default();
++        let target = RtMeshHandle::from_handle(9);
++        let wall = RtMeshHandle::from_wall_id(crate::resources::walls::WallId(9));
++        let prefab = RtMeshHandle::from_prefab(9);
++        let other_edge = RtMeshHandle::from_handle(10);
++        for handle in [target, wall, prefab, other_edge] {
++            rt.meshes.insert(handle, DirtyCow::new(RtMesh::default()));
++        }
++        assert!(rt.remove_mesh_if_present(&target));
++        assert_eq!(rt.meshes.len(), 3);
++        assert!([wall, prefab, other_edge].iter().all(|key| rt.meshes.contains_key(key)));
++    }
++
++    #[test]
++    fn consume_missing_preserves_existing_dirty_and_legacy_remove_semantics() {
++        let mut rt = RtWorld::default();
++        let missing = RtMeshHandle::from_handle(7);
++        rt.topology_dirty = true;
++        assert!(!rt.remove_mesh_if_present(&missing));
++        assert!(rt.topology_dirty);
++        let mut legacy = RtWorld::default();
++        assert!(legacy.remove_mesh(&missing).is_none());
++        assert!(legacy.topology_dirty);
++    }
++
++}

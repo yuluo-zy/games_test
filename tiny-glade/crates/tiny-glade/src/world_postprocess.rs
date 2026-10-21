@@ -1128,6 +1128,38 @@ pub fn build_world_tail(
         .get_raster_handle_by_name("final_post")
         .map(|handle| DrawHandle(ManagedHandle(handle.id().raw()), core::marker::PhantomData))
         .ok_or_else(|| tail_missing("final_post shader (loaded by startup load_shaders)"))?;
+    let active_icc = world
+        .get_resource::<country_core::systems::backend::icc::ActiveIccProfile>()
+        .ok_or_else(|| tail_missing("ActiveIccProfile (IccProfilePlugin)"))?;
+    let custom_lut = if let Some((texture, owner)) = active_icc.texture_and_device() {
+        let frame_owner: std::sync::Arc<
+            dyn country_core::render::load_texture::boundary::TextureDevice + Send + Sync,
+        > = frame.hosts().textures.clone();
+        if !std::sync::Arc::ptr_eq(owner, &frame_owner) {
+            return Err(rhapsody::Error::invalid_usage(
+                "ICC LUT belongs to another App's texture namespace",
+            ));
+        }
+        let native = frame.hosts().textures.get(texture)
+            .ok_or_else(|| tail_missing("active ICC LUT texture owner"))?;
+        if native.desc.kind != rhapsody::resource::TextureKind::D3
+            || [native.desc.width, native.desc.height, native.desc.depth] != [32; 3]
+            || native.desc.format.as_raw() != 0x5b
+            || native.desc.sample_count != 1
+            || !native.desc.usage.contains(ash::vk::ImageUsageFlags::SAMPLED)
+        {
+            return Err(rhapsody::Error::invalid_usage("active ICC LUT has an invalid texture description"));
+        }
+        // Raw 路径保真实物理 owner；RasterPassHost 在声明期导入采样访问和 descriptor lease。
+        Some((ManagedHandle(texture.id), AttachmentTexture {
+            id: 0,
+            extent: (native.desc.width, native.desc.height),
+            format: native.desc.format.as_raw() as u32,
+            sample_count: native.desc.sample_count,
+        }))
+    } else {
+        None
+    };
     let args = final_post::FinalPostArgs {
         out_extent: (out_extent[0], out_extent[1]),
         src0: attachment(*taa),
@@ -1142,7 +1174,7 @@ pub fn build_world_tail(
         cfg: grading_config(&formation),
         // TypeId c2b8... is AppMode, independently proved by registration.
         theme: mode,
-        custom_lut: None, // no custom LUT texture producer is recovered (U)
+        custom_lut,
     };
     let elapsed = world
         .get_resource::<bevy_time::Time>()

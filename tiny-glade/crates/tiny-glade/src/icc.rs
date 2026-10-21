@@ -13,6 +13,7 @@
 //! if GetICMProfileA(hdc, &size, buf) == 0:
 //!     err = anyhow!("Failed to obtain the monitor's ICC profile: {}", last_os_error)
 //!     DeleteDC(hdc); return Err(err)
+//! buf.truncate(size as usize)                  // O: 0x1403ac625..644, min(size, capacity)
 //! path = CString::from_vec_with_nul(buf)          // context: "The ICC profile could not be obtained"
 //! path = path.into_string()                       // context: "Invalid ICC profile path"
 //! DeleteDC(hdc)
@@ -33,7 +34,6 @@
 pub fn get_monitor_icc_profile(
     monitor: &winit::monitor::MonitorHandle,
 ) -> anyhow::Result<String> {
-    use anyhow::Context;
     use std::ffi::CString;
     use winapi::um::wingdi::{CreateICA, DeleteDC, GetICMProfileA};
 
@@ -61,9 +61,7 @@ pub fn get_monitor_icc_profile(
             return Err(err);
         }
         // 原版错误路径不释放 DC（保持原行为）。
-        let cstr =
-            CString::from_vec_with_nul(buf).context("The ICC profile could not be obtained")?;
-        let path = cstr.into_string().context("Invalid ICC profile path")?;
+        let path = decode_monitor_profile_path(buf, size)?;
         DeleteDC(hdc);
         Ok(path)
     }
@@ -75,4 +73,48 @@ pub fn get_monitor_icc_profile(
     _monitor: &winit::monitor::MonitorHandle,
 ) -> anyhow::Result<String> {
     anyhow::bail!("monitor ICC profiles are only available on Windows (platform glue)")
+}
+
+/// 原 GetICMProfileA 的输出长度包含结尾 NUL；原版先按返回长度截断，不能解码整块零缓冲。
+#[cfg(any(windows, test))]
+fn decode_monitor_profile_path(mut buffer: Vec<u8>, returned_len: u32) -> anyhow::Result<String> {
+    use anyhow::Context;
+    // Vec::truncate 与原 min(returned_len, 0x800) 一致；超出容量不能扩充或读越界。
+    buffer.truncate(returned_len as usize);
+    let path = std::ffi::CString::from_vec_with_nul(buffer)
+        .context("The ICC profile could not be obtained")?;
+    path.into_string().context("Invalid ICC profile path")
+}
+
+#[cfg(test)]
+mod profile_length_tests {
+    use super::decode_monitor_profile_path;
+
+    #[test]
+    fn icc_profile_uses_returned_length_instead_of_zero_filled_capacity() {
+        let path = b"C:\\Windows\\System32\\spool\\drivers\\color\\display.icm\0";
+        let mut buffer = vec![0; 0x800];
+        buffer[..path.len()].copy_from_slice(path);
+        assert!(std::ffi::CString::from_vec_with_nul(buffer.clone()).is_err());
+        assert_eq!(decode_monitor_profile_path(buffer, path.len() as u32).unwrap().as_bytes(), &path[..path.len() - 1]);
+    }
+
+    #[test]
+    fn icc_profile_length_keeps_original_missing_nul_and_interior_nul_errors() {
+        for (bytes, len) in [(b"abc\0".to_vec(), 3), (b"a\0b\0".to_vec(), 4), (b"abc\0".to_vec(), 0)] {
+            let error = decode_monitor_profile_path(bytes, len).unwrap_err();
+            assert_eq!(error.to_string(), "The ICC profile could not be obtained");
+        }
+    }
+
+    #[test]
+    fn icc_profile_over_capacity_length_is_clamped_without_reading_out_of_bounds() {
+        assert_eq!(decode_monitor_profile_path(b"profile.icm\0".to_vec(), u32::MAX).unwrap(), "profile.icm");
+    }
+
+    #[test]
+    fn icc_profile_invalid_utf8_keeps_path_error_context() {
+        let error = decode_monitor_profile_path(vec![0xff, 0], 2).unwrap_err();
+        assert_eq!(error.to_string(), "Invalid ICC profile path");
+    }
 }

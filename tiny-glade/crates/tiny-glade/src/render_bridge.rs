@@ -196,6 +196,10 @@ impl CoreRenderBridge {
         world.init_resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
         world.init_resource::<country_core::geometry::runtime::WallBrickUploadStatus>();
         world.insert_resource(textures);
+        // 原 ICC 创建复用此 App 的同一 TextureHost，不能建立第二纹理命名空间。
+        world.insert_resource(country_core::systems::backend::icc::IccTextureDevice(
+            self.tables.textures.clone(),
+        ));
         world.insert_resource(AssetLibraryRuntime::new(
             self.tables.buffers.clone(),
             self.tables.textures.clone(),

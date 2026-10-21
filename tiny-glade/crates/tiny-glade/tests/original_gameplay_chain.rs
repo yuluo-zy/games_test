@@ -111,6 +111,23 @@ fn canonicalize_original_history_aliases(value: &mut serde_json::Value) {
     }
 }
 
+/// 原TerrainAttachment的pos_xz为Vec2<f32>，yaw_radians为f32。
+/// 只准入auxiliary差分内该确切schema；其它数字、字段和数组不受影响。
+fn is_native_terrain_attachment_f32_path(path: &str) -> bool {
+    let Some((_, suffix)) = path.split_once("/decorators/diffs/") else {
+        return false;
+    };
+    let parts: Vec<_> = suffix.split('/').collect();
+    let (row, phase, id) = match parts.as_slice() {
+        [row, "1", phase, id, "dst", "Terrain", "pos_xz", "0" | "1"]
+        | [row, "1", phase, id, "dst", "Terrain", "yaw_radians"] => (*row, *phase, *id),
+        _ => return false,
+    };
+    row.parse::<usize>().is_ok()
+        && matches!(phase, "before" | "after")
+        && id.parse::<u32>().is_ok()
+}
+
 fn assert_original_fields_retained(
     original: &serde_json::Value,
     saved: &serde_json::Value,
@@ -131,7 +148,118 @@ fn assert_original_fields_retained(
                 assert_original_fields_retained(original, saved, &format!("{path}/{index}"));
             }
         }
+        (Value::Number(_), Value::Number(_)) if is_native_terrain_attachment_f32_path(path) => {
+            // Value先把f32扩为f64，默认JSON解析还可能再偏移一个f64 ULP。
+            // 这里比较原字段的全部32位，绝不使用epsilon或把整数一并降精度。
+            let original: f32 = serde_json::from_value(original.clone())
+                .unwrap_or_else(|error| panic!("original f32 at {path}: {error}"));
+            let saved: f32 = serde_json::from_value(saved.clone())
+                .unwrap_or_else(|error| panic!("saved f32 at {path}: {error}"));
+            assert!(original.is_finite() && saved.is_finite(), "finite f32 at {path}");
+            assert_eq!(original.to_bits(), saved.to_bits(), "original f32 payload at {path}");
+        }
         _ => assert_eq!(original, saved, "original payload at {path}"),
+    }
+}
+
+#[test]
+fn original_terrain_attachment_preserves_exact_f32_bits_across_value_and_compact_wire() -> Result<()>
+{
+    use country_core::resources::{
+        history::serialized::SavedMultiEdit,
+        walls::{decorator::DecoratorId, decorator_storage::DecoratorStorageAddr},
+    };
+    // 原03-halftimber-roof entry53的真实装饰物；保留原数字文本。
+    let original: serde_json::Value = serde_json::from_str(
+        r#"{
+        "edits":[{"DecoratorV5":{"Place":{}}}],
+        "decorators":{"diffs":[["Terrain",{"before":{},"after":{"0":{
+            "dst":{"Terrain":{"pos_xz":[3.9437943,-5.4331703],"yaw_radians":2.5964363}},
+            "ty":"Stairs","rank":{"x":1},"color_id":100003,"seed":0,"clv":5,
+            "allow_connection":false,"stair_width":1.5
+        }}}]]}
+    }"#,
+    )?;
+    let entry: SavedMultiEdit = serde_json::from_value(original.clone())?;
+    let source = entry
+        .0
+        .auxiliary
+        .decorator_diff
+        .as_ref()
+        .unwrap()
+        .get(&DecoratorStorageAddr::Terrain)
+        .unwrap()
+        .after
+        .states
+        .get(&DecoratorId(0))
+        .unwrap();
+    assert_eq!(source.dst_wall as u32, 0x407c_6720);
+    let middle = serde_json::to_value(&entry)?;
+    let saved: serde_json::Value = serde_json::from_slice(&serde_json::to_vec(&entry)?)?;
+    let pointer = "/decorators/diffs/0/1/after/0/dst/Terrain/pos_xz/0";
+    assert_eq!(
+        middle.pointer(pointer).unwrap().as_f64().unwrap().to_bits(),
+        0x400f_8ce4_0000_0000
+    );
+    // 当前锁定serde_json1.0.85/default解析分支的实际数值合同。
+    assert_eq!(
+        saved.pointer(pointer).unwrap().as_f64().unwrap().to_bits(),
+        0x400f_8ce4_0000_0001
+    );
+    assert_ne!(original.pointer(pointer), saved.pointer(pointer));
+    assert_original_fields_retained(&original, &saved, "fixture entry53");
+    let restored: SavedMultiEdit = serde_json::from_value(saved)?;
+    assert_eq!(restored.0.auxiliary, entry.0.auxiliary);
+    Ok(())
+}
+
+#[test]
+fn terrain_numeric_comparison_rejects_one_f32_bit_change_and_signed_zero_loss() {
+    use serde_json::Value;
+    let path = "fixture/decorators/diffs/0/1/after/0/dst/Terrain/pos_xz/0";
+    for (original, corrupted) in [
+        (f32::from_bits(0x407c_6720), f32::from_bits(0x407c_6721)),
+        (-0.0_f32, 0.0_f32),
+    ] {
+        let failure = std::panic::catch_unwind(|| {
+            assert_original_fields_retained(&Value::from(original), &Value::from(corrupted), path);
+        });
+        assert!(failure.is_err(), "不能放过实际f32位变化");
+    }
+}
+
+#[test]
+fn terrain_numeric_scope_keeps_ids_unknown_fields_and_other_domains_strict() {
+    use serde_json::json;
+    let a: serde_json::Value = serde_json::from_str("3.9437943").unwrap();
+    let b = serde_json::to_value(f32::from_bits(0x407c_6720)).unwrap();
+    for path in [
+        "fixture/decorators/diffs/0/1/after/0/seed",
+        "fixture/decorators/diffs/0/1/after/0/dst/Terrain/unknown",
+        "fixture/decorators/diffs/0/1/after/0/dst/Terrain/pos_xz/2",
+        "fixture/decorators/diffs/0/1/after/0/dst/Roof/mesh_uv/0",
+        "fixture/other/dst/Terrain/pos_xz/0",
+    ] {
+        assert!(!is_native_terrain_attachment_f32_path(path));
+        let failure = std::panic::catch_unwind(|| assert_original_fields_retained(&a, &b, path));
+        assert!(failure.is_err(), "未知字段仍必须精确相等：{path}");
+    }
+    let failure = std::panic::catch_unwind(|| {
+        assert_original_fields_retained(
+            &json!(16_777_216_u32),
+            &json!(16_777_217_u32),
+            "fixture/decorators/diffs/0/1/after/0/seed",
+        );
+    });
+    assert!(failure.is_err(), "不能将u32 ID降为f32后误判相等");
+    for suffix in [
+        "before/0/dst/Terrain/pos_xz/0",
+        "after/42/dst/Terrain/pos_xz/1",
+        "after/0/dst/Terrain/yaw_radians",
+    ] {
+        let path = format!("fixture/decorators/diffs/0/1/{suffix}");
+        assert!(is_native_terrain_attachment_f32_path(&path));
+        assert_original_fields_retained(&a, &b, &path);
     }
 }
 
@@ -164,9 +292,19 @@ fn all_shipped_histories_keep_saved_aux_and_bidirectional_replay_commands() -> R
             for (index, entry) in entries.into_iter().enumerate() {
                 decorator_aux += usize::from(entry.0.auxiliary.decorator_diff.is_some());
                 stairs_aux += usize::from(entry.0.auxiliary.stairs_diff.is_some());
-                let mut saved = serde_json::to_value(&entry)?;
+                // 原 Value 序列化先将 f32 扩为 f64，独立验证该中间表示的往返。
+                let mut value = serde_json::to_value(&entry)?;
+                let value_loaded: SavedMultiEdit = serde_json::from_value(value.clone())?;
+                let mut value_resaved = serde_json::to_value(value_loaded)?;
+                canonicalize_decorator_diff_map(&mut value);
+                canonicalize_decorator_diff_map(&mut value_resaved);
+                assert_eq!(value_resaved, value, "{}", path.display());
+                // 原资产文本及实际 SerializedJson::new 调用使用 CompactFormatter。
+                let mut saved: serde_json::Value =
+                    serde_json::from_slice(&serde_json::to_vec(&entry)?)?;
                 let loaded: SavedMultiEdit = serde_json::from_value(saved.clone())?;
-                let mut resaved = serde_json::to_value(&loaded)?;
+                let mut resaved: serde_json::Value =
+                    serde_json::from_slice(&serde_json::to_vec(&loaded)?)?;
                 canonicalize_decorator_diff_map(&mut saved);
                 canonicalize_decorator_diff_map(&mut resaved);
                 assert_eq!(resaved, saved, "{}", path.display());
@@ -610,6 +748,14 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     let captured: std::sync::Arc<parking_lot::Mutex<Vec<(usize, u32, u32, Vec<u8>)>>> =
         Default::default();
     let out_dir = std::env::var_os("TG_MULTIFRAME_OUT").map(PathBuf::from);
+    let gpu_timing = std::env::var_os("TG_GPU_TIMING").is_some_and(|value| value == "1");
+    let mut gpu_samples = Vec::<serde_json::Value>::new();
+    if gpu_timing {
+        anyhow::ensure!(out_dir.is_some(), "TG_GPU_TIMING 需要 TG_MULTIFRAME_OUT 保存真实计时证据");
+        bridge.with_session(|session| session.backend.configure_gpu_timing(Some(
+            rhapsody::rg::GpuTimingConfig::default(),
+        )))?;
+    }
     let mut rows: Vec<FrameRow> = Vec::new();
     let mut in_flight = std::collections::VecDeque::<u64>::new();
     for index in 0..FRAMES {
@@ -710,6 +856,14 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
         });
         drop(frame);
         bridge.collect_completed_frames()?;
+        if gpu_timing {
+            let (stats, samples) = bridge.with_session(|session| {
+                let stats = session.backend.poll_gpu_timings()?;
+                let samples = session.backend.drain_gpu_timings().collect::<Vec<_>>();
+                Ok::<_, rhapsody::Error>((stats, samples))
+            })?;
+            gpu_samples.push(serde_json::json!({"observed_after_frame": index, "stats": stats, "samples": samples}));
+        }
         if let (Some(dir), true) = (&out_dir, index == 5 || index == FRAMES - 1) {
             let mut by_name = std::collections::BTreeMap::<String, (u64, u64)>::new();
             for record in device.allocator_stats().report().allocations {
@@ -733,6 +887,18 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
     bridge.wait_submits_done(10_000_000_000)?;
     diagnose_completed_retirement(&device, "thirty-world-complete")?;
+    if gpu_timing {
+        let (stats, samples) = bridge.with_session(|session| {
+            let stats = session.backend.poll_gpu_timings()?;
+            let samples = session.backend.drain_gpu_timings().collect::<Vec<_>>();
+            Ok::<_, rhapsody::Error>((stats, samples))
+        })?;
+        gpu_samples.push(serde_json::json!({"observed_after_frame": FRAMES, "stats": stats, "samples": samples}));
+        let dir = out_dir.as_ref().expect("计时启动前已检查证据目录");
+        std::fs::create_dir_all(dir)?;
+        // 每项是同一物理队列上单 command 的时间跨度，不能相加当作跨队列帧延迟。
+        std::fs::write(dir.join("gpu-command-timings.json"), serde_json::to_vec_pretty(&gpu_samples)?)?;
+    }
 
     // 先保存真实回读证据；后面的任一稳定性断言失败也不能丢失世界图像。
     // 所有原断言与阈值仍在下方执行。

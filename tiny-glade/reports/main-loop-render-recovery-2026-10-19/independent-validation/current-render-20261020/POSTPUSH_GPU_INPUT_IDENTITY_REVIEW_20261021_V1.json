@@ -1,0 +1,36 @@
+{
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "kind": "post-push actual validation inputs; no runtime result yet",
+  "head": "08ecee0011d9449ebe79dffcd2f9388c490d2f53",
+  "worktree_boundary": "当时git status仅startup_sheep.rs为保留用户修改；不能把实际工作树泛称纯HEAD，reviewer不读改/覆盖该文件。其hash仅绑定运行epoch。",
+  "binary_manifest": "/private/tmp/tg-postpush-gpu-binaries-20261021.json",
+  "binary_manifest_sha256": "91c55f7d391ffe0594afca0dc7d8a06ff9d6459277de7d3dd534a211ed3fc390",
+  "actual_binaries": {
+    "original_loading_present": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_loading_present-aa2d3a324627a9b4",
+      "declared_sha256": "69aab1b5cf0a1a59346e51ae398f397b91d9013fc8ca9874321d1e30b07eadf7",
+      "independent_actual_sha256": "69aab1b5cf0a1a59346e51ae398f397b91d9013fc8ca9874321d1e30b07eadf7"
+    },
+    "original_gameplay_chain": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_gameplay_chain-205f7c1acc9fda3a",
+      "declared_sha256": "eeeefe557e18f2ca4d1c638b34436ad55107e810bc13a2d932f529242aebdfba",
+      "independent_actual_sha256": "eeeefe557e18f2ca4d1c638b34436ad55107e810bc13a2d932f529242aebdfba"
+    },
+    "core_render_bridge": {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/core_render_bridge-2760ae9a8849e848",
+      "declared_sha256": "2f8b564b7518749ffaefb77370b76ad4357ab93e5c2300fd26a71ee4bb57a066",
+      "independent_actual_sha256": "2f8b564b7518749ffaefb77370b76ad4357ab93e5c2300fd26a71ee4bb57a066"
+    }
+  },
+  "source_sha256": {
+    "tiny-glade/crates/tiny-glade/src/production_renderer.rs": "b0aac913dde5659f4375c4c963cde1111a3a869928e08cb83ca71f462f494657",
+    "tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs": "14973c06eff451eab10780bf8d9fea2ce81a0204a8a156aaad4fae694a4d1856",
+    "tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs": "e644b65425fbd1c096e60205c8ff8e616a5f62a70a3149ffc077908acabe4697",
+    "tiny-glade/crates/tiny-glade/tests/original_loading_present.rs": "9bd194555d36eae5147763115446fd2f4c7abdcd09a06044094fd34176d4ad9d",
+    "tiny-glade/crates/tiny-glade/src/game_loop.rs": "489b446d29b80f6ca1c74d2cd2a3368bddf6c5e0df075907e2ac94ba7ebe7dac",
+    "tiny-glade/crates/systems/critters/src/startup_sheep.rs": "b504d8977d44877eab4332f6afd7997a0e924077d44da2d7ea68a6736feb3786"
+  },
+  "mechanical_test_revision": "对V2冻结candidate完整diff只有 session.backend.device.clone()→session.backend.device().clone()，现有公开getter clone同Arc；actual test14973c06...。production_renderer仍exact已审V2 b0aac913...；行为/等待/样本不变。",
+  "limits": "no Cargo/GPU by reviewer; no-runtime/pass claim, retain subsequent logs and actual binaries before rebuild"
+}

@@ -1,0 +1,22 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
+@@ -694,7 +694,9 @@
+         let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
+         assert_eq!(requests.requests.len(), 1);
+         let edge = StairGraphEdge::from(requests.requests[0].segment);
+-        let mut visual = StairsVisualState::default(); visual.reset_edge(edge);
++        let mut visual = StairsVisualState::default();
++        // 此处只建立 interpolate 所读的可视缓存条目，不执行网格重建。
++        visual.edges_mut().entry(edge).or_default();
+         world.insert_resource(visual); world.insert_resource(StairsRemovedSupports::default());
+         world.insert_resource(GameTime { delta: 0.25, ..Default::default() });
+         world
+@@ -932,7 +934,7 @@
+             let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+             let edge = StairGraphEdge::from(world.resource::<PlayermadeStairsAssemblyRequests>().requests[0].segment);
+             match gate {
+-                0 => world.resource_mut::<StairsVisualState>().remove_edge(edge),
++                0 => { world.resource_mut::<StairsVisualState>().edges_mut().remove(&edge); }
+                 1 => world.resource_mut::<StairsVisualState>().force_rebuild(edge),
+                 2 => USE_STAIRS_LAZINESS.store(false, Ordering::Relaxed),
+                 _ => unreachable!(),

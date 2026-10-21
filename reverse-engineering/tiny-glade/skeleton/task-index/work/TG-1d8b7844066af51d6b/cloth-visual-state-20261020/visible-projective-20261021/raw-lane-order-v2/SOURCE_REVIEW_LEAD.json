@@ -1,0 +1,24 @@
+{
+  "reviewer": "core_business_lead",
+  "author": "water_activity_chain",
+  "status": "PASS_STATIC_SOURCE_REVIEW_READY_FOR_ROOT_CPU",
+  "source_sha256": "9107aaeef70f205035dbde91e4291ea78a065ca9f3d01716dae51cc1b16d6bb7",
+  "combined_base_sha256": "35ddf39a9f9d3968c2c8b57d01f4081875d62b194c9788c987a0942aff734594",
+  "combined_patch_sha256": "3f7a128c52dfb75ac78a64967198f1665fb54d2201c5c7d52302217a08c90de1",
+  "f0": "patching file 'tiny-glade/crates/utils/src/lib.rs'",
+  "scope": "Only canonical xz_projective_rotation_bad and 4 tests; existing 607 and every other baseline byte preserved",
+  "native_identity": "B RNE f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03 / PDB 2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "native_range": "140c911d0/513B, PDB759:10116",
+  "checked": [
+    "Exact input x/z only; first reciprocal arithmetic z*z+x*x and positive finite reciprocal fallback +X",
+    "Second cross raw lanes audited independently: canonical right=(raw2,raw0,raw1); sum right.z^2+(right.x^2+right.y^2)",
+    "Original basis positive forward, up Y, normalized cross; pinned glam Mat3-to-Quat four-branch path reused",
+    "Corrected v2 used; previous d67 source not accepted as final",
+    "4 tests retain quadrant/orientation, input Y ignored, reciprocal invalid, quaternion sign cases"
+  ],
+  "limits": [
+    "No Cargo or GPU executed by reviewer",
+    "Cross-ISA NaN payload/sign bit equivalence not claimed",
+    "Function alone does not close Gothic main, ECS consumer or host mount"
+  ]
+}

@@ -1,0 +1,7 @@
+# 原三缓冲持锁写域 canonical 适配合同独审
+
+通过源码准入，范围仅同SparseInstanceBuffer的两入口及共享clear_parts，不加buffer/registry/unsafe/新依赖。完整原reset与Magic持锁次序由Tree/Duck真实三SSBO身份锁定；guard生命周期只从Allocation而非buffer返回，可在state guard仍持锁时短借同Brick清Magic，最终两个不同buffer writer再消费已持guard，安全Rust能表达。
+
+当前writer_for先锁再构造字段/设sentinel，候选委派writer_for_locked须保持此顺序及现算术；clear_parts必须逐字保现clear的checked_sub→逐chunk清byte_map/active→free write锁→逆序drain，不改dirty/data、不加preflight/transaction/复制Vec。clear_and_lock只局部cursor且原clear后为sentinel，Magic不改buffer长度和已空statechunks，因此最终恢复writer cursor同原，既不重lock也不额外clear。原guard跨阶段保持，失败由RAII按实际已发生副作用展开。
+
+两个真实buffer/allocation测试验非重入try_lock、锁保留与同buffer其它allocation清理、writer重建及free栈/数据/active/dirty，保护既有clear其余业务。实现后送独立source/F0审，由root实际CPU验收；无生产/Cargo/GPU，未因此证明完整visual/schema/host。

@@ -1,0 +1,56 @@
+{
+  "scope": "ICC two real failing fixture assumptions only; strict independent LCMS2.15 grid oracle",
+  "manifest_sha256": "394e7d9288742fcd3f005e28305e4ce92a2960b110e943496986467c558877b4",
+  "source_before_sha256": "37c3d35fdf3fe9a398ca6dfd0e775496de3a65a2fe881993705a400303041424",
+  "source_after_sha256": "29855112b89509ae0ea232222ea6b52831e6a9a67eeae74b192c7650b9da36c2",
+  "production_prefix_identical": true,
+  "patch_sha256": "c005b208d143f9ef9e9e1a6db885019a4597245dd747c2865e9371a75116e84c",
+  "oracle_output_independent_readback": [
+    {
+      "file": "/private/tmp/tg-lcms215-oracle-v1-output/memory-to-serialized.rgba16le",
+      "sha256": "af4e70f3ba257b9587da245715b113f7d828c5d9ecb2d06691e2f5405ae9e695",
+      "fnv1a64_le": "a4368867549a25f2",
+      "changed_rgb_channels": 34819,
+      "per_channel_max": [
+        31,
+        11,
+        13
+      ],
+      "sample31": [
+        65535,
+        0,
+        6,
+        255
+      ]
+    },
+    {
+      "file": "/private/tmp/tg-lcms215-oracle-v1-output/memory-to-memory.rgba16le",
+      "sha256": "bdad11c4db13797d491f8a85ca7b4240b2318e9bb586ab770332c5b9b3195bf2",
+      "fnv1a64_le": "7129997588855b45",
+      "changed_rgb_channels": 0,
+      "per_channel_max": [
+        0,
+        0,
+        0
+      ],
+      "sample31": [
+        65535,
+        0,
+        0,
+        255
+      ]
+    }
+  ],
+  "findings": [
+    "Independent C source uses cmsCreate_sRGBProfileTHR(NULL), exact TYPE_RGBA_16/Perceptual/flags0 and cmsDoTransform in-place on full R-fastest integer grid. It separately compares memory profile and serialized/reopened profile; this is the same dependency API, not a replacement production algorithm.",
+    "Actual root log records CMM2150. Reviewer independently rehashed all oracle artifacts and recomputed FNV/32768 full RGB maxima/changed channel counts/sample31. They match frozen test expectations exactly.",
+    "Old tolerance<=1 and pure-red serialized sample assumptions are invalid because serialized XYZ/TRC tag quantization differs from memory profile. Candidate now requires strict memory identity and strict serialized full-grid fingerprint plus exact statistics; no tolerance enlargement or production change."
+  ],
+  "verdict": "F0 fixture_only_source_ready_for_root_actual_rerun",
+  "limits": [
+    "Reviewer did not compile/run C/Rust/GPU. Actual oracle execution belongs to root; library archive/header source identity remains bound by root RUN_ARGS/build evidence.",
+    "This numerical dependency oracle is not an original game execution nor complete color pipeline/GPU/OS verification."
+  ],
+  "production_written": false,
+  "cargo_gpu_executed": false
+}

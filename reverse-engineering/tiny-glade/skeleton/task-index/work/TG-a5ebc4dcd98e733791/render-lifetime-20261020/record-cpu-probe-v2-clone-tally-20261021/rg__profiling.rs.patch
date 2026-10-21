@@ -1,0 +1,154 @@
+--- tiny-glade/crates/rhapsody/src/rg/profiling.rs
++++ tiny-glade/crates/rhapsody/src/rg/profiling.rs
+@@ -732,7 +732,7 @@
+ pub(crate) struct RecordTally {
+     id: u64,
+     fields: [RecordCount; 2],
+-    counts: [u64; 2],
++    counts: [std::cell::Cell<u64>; 2],
+     _not_send: std::marker::PhantomData<std::rc::Rc<()>>,
+ }
+ impl RecordTally {
+@@ -740,14 +740,14 @@
+         Self {
+             id: RECORD_ACTIVE.with(std::cell::Cell::get),
+             fields,
+-            counts: [0; 2],
++            counts: [std::cell::Cell::new(0), std::cell::Cell::new(0)],
+             _not_send: std::marker::PhantomData,
+         }
+     }
+     #[inline]
+-    pub(crate) fn add(&mut self, field: usize) {
++    pub(crate) fn add(&self, field: usize) {
+         if self.id != 0 {
+-            self.counts[field] = self.counts[field].saturating_add(1);
++            self.counts[field].set(self.counts[field].get().saturating_add(1));
+         }
+     }
+ }
+@@ -758,8 +758,9 @@
+         }
+         RECORD_NUMBERS.with(|numbers| {
+             let mut next = numbers.get();
+-            for (field, count) in self.fields.into_iter().zip(self.counts) {
+-                next.counts[field as usize] = next.counts[field as usize].saturating_add(count);
++            for (field, count) in self.fields.into_iter().zip(&self.counts) {
++                next.counts[field as usize] =
++                    next.counts[field as usize].saturating_add(count.get());
+             }
+             numbers.set(next);
+         });
+@@ -778,6 +779,15 @@
+         let span = RecordSpan::new(RecordPhase::Finish);
+         assert!(span.active.is_none());
+         record_count(RecordCount::GroupAttempts, 7);
++        let tally = RecordTally::new([
++            RecordCount::CoverageAccesses,
++            RecordCount::CoverageSemantics,
++        ]);
++        tally.add(0);
++        tally.add(1);
++        assert_eq!(tally.counts[0].get(), 0);
++        assert_eq!(tally.counts[1].get(), 0);
++        drop(tally);
+         scope.complete(false);
+         drop(span);
+         drop(scope);
+@@ -828,7 +838,7 @@
+             .map(|count| {
+                 std::thread::spawn(move || {
+                     let scope = RecordScope::begin(true, 1, count, count as u64, "parallel", false);
+-                    let mut tally = RecordTally::new([
++                    let tally = RecordTally::new([
+                         RecordCount::CoverageAccesses,
+                         RecordCount::CoverageSemantics,
+                     ]);
+@@ -861,4 +871,87 @@
+             );
+         }
+     }
++    #[test]
++    fn cloned_coverage_iterators_share_local_counts_and_remain_lazy() {
++        use crate::rg::{
++            graph::{BufferDesc, Descriptor},
++            resource::AccessRange,
++        };
++        let scope = RecordScope::begin(true, 1, 2, 3, "cloned coverage", false);
++        let descriptor = Descriptor::Buffer(BufferDesc {
++            word_at_00: 8,
++            word_at_08: 0,
++            bytes_at_0c_through_0e: [0; 3],
++        });
++        let writes = [
++            (AccessRange::Buffer { offset: 0, size: 4 }, 1u8),
++            (AccessRange::Buffer { offset: 4, size: 4 }, 2u8),
++        ];
++        let semantics = [0u8, 1, 2];
++        let tally = RecordTally::new([
++            RecordCount::CoverageAccesses,
++            RecordCount::CoverageSemantics,
++        ]);
++        let ranges = writes
++            .iter()
++            .filter(|(_, code)| {
++                tally.add(0);
++                semantics
++                    .iter()
++                    .find(|expected| {
++                        tally.add(1);
++                        **expected == *code
++                    })
++                    .is_some()
++            })
++            .map(|(range, _)| *range);
++        assert!(
++            crate::rg::resource_contracts::covers_iter(
++                ranges,
++                AccessRange::Buffer { offset: 0, size: 8 },
++                descriptor,
++            )
++            .unwrap()
++        );
++        // 首轮 contains 扫描2项，区间并集两轮各再扫描2项；同两Cell累加所有clone。
++        assert_eq!(tally.counts[0].get(), 6);
++        assert_eq!(tally.counts[1].get(), 15);
++        drop(tally);
++        let short = RecordTally::new([
++            RecordCount::CoverageAccesses,
++            RecordCount::CoverageSemantics,
++        ]);
++        let ranges = writes
++            .iter()
++            .filter(|(_, code)| {
++                short.add(0);
++                semantics
++                    .iter()
++                    .find(|expected| {
++                        short.add(1);
++                        **expected == *code
++                    })
++                    .is_some()
++            })
++            .map(|(range, _)| *range);
++        assert!(
++            crate::rg::resource_contracts::covers_iter(
++                ranges,
++                AccessRange::Buffer { offset: 0, size: 4 },
++                descriptor,
++            )
++            .unwrap()
++        );
++        assert_eq!(
++            short.counts[0].get(),
++            1,
++            "首项包含即可返回，不提前消费剩余范围"
++        );
++        assert_eq!(short.counts[1].get(), 2);
++        drop(short);
++        let numbers = RECORD_NUMBERS.with(std::cell::Cell::get);
++        assert_eq!(numbers.counts[RecordCount::CoverageAccesses as usize], 7);
++        assert_eq!(numbers.counts[RecordCount::CoverageSemantics as usize], 17);
++        drop(scope);
++    }
+ }

@@ -77,6 +77,12 @@ pub fn frame_egui_input_enabled(world: &World) -> bool {
         .is_some_and(|debug| debug.enabled || debug.experimental_window)
 }
 
+/// B 1404dc863..971 读取当前 FrameRenderConfig.extent_0，而非另一份 WindowSize。
+fn frame_waits_for_window_extent(world: &World) -> bool {
+    world.resource::<country_core::render::render_config::FrameRenderConfig>()
+        .extent_0.contains(&0)
+}
+
 fn apply_menu_fps_limit(fps: f32, menu_limits: bool, profiling: bool) -> f32 {
     if menu_limits && !profiling {
         if fps > 0.0 { fps.min(60.0) } else { 60.0 }
@@ -845,12 +851,7 @@ impl GameLoop {
         }
         // B @1404dc952..971 skips both simulation and rendering while either
         // dimension is zero. Keep input edges for the next actual update.
-        let window = self
-            .driver
-            .app
-            .world()
-            .resource::<country_core::resources::window::WindowSize>();
-        if window.width == 0 || window.height == 0 {
+        if frame_waits_for_window_extent(self.driver.app.world()) {
             // Main-thread host adaptation: an actual OS close may stop a zero-
             // sized window without simulating, rendering or inventing the game
             // shutdown marker. Sender disconnect still joins the real saver.
@@ -858,6 +859,9 @@ impl GameLoop {
                 return Ok(false);
             }
             std::thread::sleep(std::time::Duration::from_millis(1));
+            // 原 dc971 跳到公共 de84d，再处理 de8c5 视频设置；否则零尺寸可能永远
+            // 无法应用恢复设置。此尾段不 update App、消耗输入边沿或推进帧计数。
+            self.apply_pending_video_settings()?;
             return Ok(true);
         }
         // B 1404ddf28..3c: real OS egui input is consumed only while the
@@ -1109,6 +1113,24 @@ fn gather_video_setting_events(
 mod frame_tests {
     use super::*;
     use country_core::{game_config::GameConfig, resources::gui::EscMenuState};
+
+    #[test]
+    fn zero_extent_gate_uses_the_actual_frame_config_even_when_window_size_differs() {
+        use country_core::render::render_config::{FrameRenderConfig, VideoSettings};
+        use country_core::resources::window::WindowSize;
+        let mut world = World::new();
+        world.insert_resource(WindowSize::new(0, 0));
+        world.insert_resource(FrameRenderConfig::at_startup(
+            WindowSize::new(1280, 720), &VideoSettings::default()));
+        assert!(!frame_waits_for_window_extent(&world));
+        world.resource_mut::<WindowSize>().set(1280, 720);
+        for extent in [[0, 720], [1280, 0], [0, 0]] {
+            world.resource_mut::<FrameRenderConfig>().extent_0 = extent;
+            assert!(frame_waits_for_window_extent(&world));
+        }
+        world.resource_mut::<FrameRenderConfig>().extent_0 = [1280, 720];
+        assert!(!frame_waits_for_window_extent(&world));
+    }
 
     #[test]
     fn gameplay_catalog_requirement_is_independent_of_loading_state_and_camera() {

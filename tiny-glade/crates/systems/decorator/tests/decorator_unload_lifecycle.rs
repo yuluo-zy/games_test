@@ -179,7 +179,7 @@ fn populated_owners_reset_without_despawning_or_sending_audio_and_remove_mesh_is
         .resource_mut::<StairsVisualState>()
         .reset_edge(StairGraphEdge::new(1, 2));
     world.resource_mut::<StairsStructuralGraph>().upsert_span(
-        StairGraphEdge::new(1, 2),
+        (StairGraphEdge::new(1, 2), 0),
         StairColliderHandle::new(3, 4, 5),
         2.,
     );

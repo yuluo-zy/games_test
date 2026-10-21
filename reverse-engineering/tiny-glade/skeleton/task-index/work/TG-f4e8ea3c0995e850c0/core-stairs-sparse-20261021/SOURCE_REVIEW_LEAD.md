@@ -1,0 +1,9 @@
+# 三buffer必要安全写域源码独审
+
+通过，允许root实际CPU/type验收。source严格实现已审两API及唯一clear_parts：原writer_for仍先allocation锁后按原len-1算术拼writer，委派新writer_for_locked无重新lock/clear/allocation；clear_and_lock只短借同buffer，返回guard只绑定allocation。所有Rust引用/guard均由类型系统表达，没有unsafe重叠引用或拷贝buffer。
+
+原clear的checked_sub哨兵→按allocation顺序清byte_map/active→free write锁→逆序drain原业务体移到唯一private函数，Writer::clear与新入口复用；data/dirty不额外触碰，Vec容量保留，partial panic无新预校验或回滚。原GPU flush/OwnedSparseBuffer等现已恢复体未动。重建writer时同len/sentinel，不受Magic归还其它chunk影响。
+
+两实际Sparse buffer/多allocation测试覆盖guard不重入/原state锁跨同bufferMagic清理/旧分配可继续push及真实data/active/dirty/free尾栈、多chunk逆序归还和capacity。不是fake容器/仅镜像实现；未运行测试，编译与CPU由root真实验证。
+
+独立重核beforea6f4/candidate6a5c/patchd635，scratch -F0无offset/fuzz精确重放，生产未写，未Cargo/rustc/GPU。此为已恢复业务在安全借用架构的必要最窄适配，不证明visual owner/完整mesh/宿主已闭合。

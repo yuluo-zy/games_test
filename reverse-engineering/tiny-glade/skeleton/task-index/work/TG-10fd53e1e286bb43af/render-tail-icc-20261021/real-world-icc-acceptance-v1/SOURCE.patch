@@ -1,0 +1,217 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
+@@ -1034,3 +1034,203 @@
+     }
+     Ok(())
+ }
++
++/// ICC使用真实已加载世界、原final_post和原截图读回；原30帧验收与阈值保持不变。
++mod icc_acceptance {
++    use super::*;
++    use std::sync::Arc;
++    use country_core::systems::backend::icc::{ActiveIccProfile, IccProfileChanged};
++    use tiny_glade::screenshot::{ScreenshotPurpose, ScreenshotRequest, ScreenshotSink};
++    use tiny_glade::production_renderer::HeadlessGameplayFrame;
++
++    type Pixels = (u32, u32, Vec<u8>);
++
++    fn write_profile(path: &std::path::Path, linear: bool) -> Result<()> {
++        let profile = if linear {
++            let xy = |x, y| lcms2::CIExyY { x, y, Y: 1.0 };
++            let primaries = lcms2::CIExyYTRIPLE {
++                Red: xy(0.64, 0.33), Green: xy(0.30, 0.60), Blue: xy(0.15, 0.06),
++            };
++            let curve = lcms2::ToneCurve::new(1.0);
++            lcms2::Profile::new_rgb(&xy(0.3127, 0.3290), &primaries, &[&curve; 3])?
++        } else {
++            lcms2::Profile::new_srgb()
++        };
++        std::fs::write(path, profile.icc()?)?;
++        Ok(())
++    }
++
++    fn queue_capture_and_render(
++        driver: &mut tiny_glade::game_loop::GameFrameDriver,
++        context: &egui::Context,
++        bridge: &mut CoreRenderBridge,
++    ) -> Result<(HeadlessGameplayFrame, std::sync::mpsc::Receiver<Pixels>)> {
++        // dt=0仍运行完整真实App，用其实际ICC事件消费者；不手改Active资源或省略系统。
++        context.begin_frame(egui::RawInput::default());
++        driver.app_mut().update();
++        let _ = context.end_frame();
++        let world = driver.app_mut().world_mut();
++        let (sender, receiver) = std::sync::mpsc::channel();
++        tiny_glade::screenshot::gather_screenshot_requests(world, [ScreenshotRequest {
++            purpose: ScreenshotPurpose::MenuBackground,
++            dimensions: None,
++            sink: ScreenshotSink::Rgba(Arc::new(move |w, h, bytes| {
++                let _ = sender.send((w, h, bytes));
++            })),
++            completion: None,
++        }])?;
++        let frame = tiny_glade::production_renderer::render_headless_gameplay_frame(bridge, world)?;
++        world.resource_mut::<country_core::render::RenderTemporalState>().frame_render_returned();
++        Ok((frame, receiver))
++    }
++
++    fn finish_capture(
++        world: &mut bevy_ecs::world::World,
++        receiver: std::sync::mpsc::Receiver<Pixels>,
++    ) -> Result<Pixels> {
++        // 原remaining=3；第四次finish真实read_bytes等待对应GPU写入，再交实际writer线程。
++        for _ in 0..4 { tiny_glade::screenshot::shared_texture_capture::finish(world)?; }
++        receiver.recv_timeout(Duration::from_secs(30)).context("ICC original screenshot did not deliver pixels")
++    }
++
++    fn assert_final_post_reads_actual_icc(
++        bridge: &mut CoreRenderBridge,
++        frame: &HeadlessGameplayFrame,
++        texture: &rhapsody::resource::ManagedTexture,
++    ) -> Result<()> {
++        let snapshot = &frame.receipt.snapshot;
++        let pass = snapshot.pass_order.iter().position(|name| {
++            name == country_core::systems::render_loop::draw_passes::final_post::FINAL_BLIT_PASS_NAME
++        }).context("actual world omitted Final blit")?;
++        let range = snapshot.pass_ranges.get(pass).context("Final blit has no access span")?;
++        let native = texture.shared();
++        let logicals = bridge.with_session(|session| {
++            snapshot.physical_mapping.iter().filter_map(|mapping| {
++                let token = mapping.token?;
++                match session.backend.resource_clone(token) {
++                    Some(rhapsody::rg::GpuResource::Image(actual)) if Arc::ptr_eq(&actual, &native) => Some(mapping.logical),
++                    _ => None,
++                }
++            }).collect::<Vec<_>>()
++        });
++        anyhow::ensure!(!logicals.is_empty(), "ICC native owner is absent from the actual world graph");
++        anyhow::ensure!(snapshot.accesses[range.clone()].iter().any(|access| {
++            logicals.contains(&access.resource_index)
++                && access.access_code == country_core::render::pass_builder::draw_builder::ACCESS_SAMPLED_IMAGE
++        }), "Final blit did not sample the exact active ICC texture owner");
++        Ok(())
++    }
++
++    fn rgb_delta(a: &Pixels, b: &Pixels) -> Result<f64> {
++        anyhow::ensure!((a.0, a.1, a.2.len()) == (b.0, b.1, b.2.len()), "ICC captures have different dimensions");
++        Ok(a.2.chunks_exact(4).zip(b.2.chunks_exact(4)).map(|(a, b)| {
++            (0..3).map(|i| f64::from(a[i].abs_diff(b[i]))).sum::<f64>()
++        }).sum::<f64>() / (f64::from(a.0) * f64::from(a.1) * 3.0))
++    }
++
++    #[test]
++    fn shipped_session_icc_some_replacement_cancel_and_final_post_pixels() -> Result<()> {
++        assert_eq!(lcms2::version(), 2150, "ICC acceptance must use the pinned native algorithm");
++        let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } = boot_shipped_session()?;
++        // 隔离ICC对像素的影响：真实App继续更新，只有时间步长归零，不删除业务系统。
++        driver.app_mut().insert_resource(bevy_time::TimeUpdateStrategy::ManualDuration(Duration::ZERO));
++        let inputs = tempfile::tempdir()?;
++        let linear_path = inputs.path().join("linear-display.icc");
++        // 存盘sRGB含ICC固定点量化，属于恢复参考，不假设与内存sRGB逐位恒等。
++        let identity_path = inputs.path().join("serialized-srgb-display.icc");
++        write_profile(&linear_path, true)?;
++        write_profile(&identity_path, false)?;
++        let mut old_native = None::<std::sync::Weak<rhapsody::resource::Texture>>;
++        let outcome = (|| -> Result<()> {
++            let world = driver.app_mut().world_mut();
++            anyhow::ensure!(world.resource::<ActiveIccProfile>().texture_and_device().is_none(), "default ICC was fabricated");
++            tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
++            bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
++
++            let (baseline_frame, receiver) = queue_capture_and_render(&mut driver, &context, &mut bridge)?;
++            let baseline = finish_capture(driver.app_mut().world_mut(), receiver)?;
++            bridge.wait_submits_done(30_000_000_000)?;
++            drop(baseline_frame);
++
++            driver.app_mut().world_mut().send_event(IccProfileChanged(linear_path.clone()));
++            let (linear_frame, receiver) = queue_capture_and_render(&mut driver, &context, &mut bridge)?;
++            let old_handle = driver.app().world().resource::<ActiveIccProfile>()
++                .texture_and_device().context("linear profile did not create a real ICC LUT")?.0.clone();
++            let managed = bridge.hosts().textures.get(&old_handle).context("linear ICC host owner missing")?;
++            assert_final_post_reads_actual_icc(&mut bridge, &linear_frame, &managed)?;
++            old_native = Some(Arc::downgrade(&managed.shared()));
++            drop(managed);
++
++            // 在线性帧已提交但尚未finish/collect时切换；旧slot注销不等于可以销毁图持有的资源。
++            driver.app_mut().world_mut().send_event(IccProfileChanged(identity_path.clone()));
++            context.begin_frame(egui::RawInput::default());
++            driver.app_mut().update();
++            let _ = context.end_frame();
++            let new_handle = driver.app().world().resource::<ActiveIccProfile>()
++                .texture_and_device().context("replacement ICC profile missing")?.0.clone();
++            anyhow::ensure!(new_handle.id != old_handle.id, "ICC replacement reused a live host identity");
++            anyhow::ensure!(bridge.hosts().textures.get(&old_handle).is_none(), "old ICC host slot was not released");
++            anyhow::ensure!(old_native.as_ref().unwrap().upgrade().is_some(), "submitted frame lost the old native ICC owner");
++            let linear = finish_capture(driver.app_mut().world_mut(), receiver)?;
++            bridge.wait_submits_done(30_000_000_000)?;
++            drop(linear_frame);
++
++            let submitted_before = device.retirement_stats().submitted;
++            let (_, built) = bridge.build_frame(|frame| {
++                let imported = frame.import_texture(&new_handle, 0x1d)?;
++                frame.with_graph(|graph| { graph.export(imported, 0x1d)?; Ok(()) })
++            })?;
++            let compiled = bridge.compile_built(built)?;
++            drop(compiled); // 真实cancel_prepared；不能提交空替代帧或改Active。
++            anyhow::ensure!(device.retirement_stats().submitted == submitted_before, "ICC cancellation submitted GPU work");
++            anyhow::ensure!(driver.app().world().resource::<ActiveIccProfile>()
++                .texture_and_device().is_some_and(|(texture, _)| texture.id == new_handle.id),
++                "cancelled graph removed the active ICC profile");
++            anyhow::ensure!(bridge.hosts().textures.get(&new_handle).is_some(), "cancelled graph destroyed the active host owner");
++
++            let (restored_frame, receiver) = queue_capture_and_render(&mut driver, &context, &mut bridge)?;
++            let current = bridge.hosts().textures.get(&new_handle).context("restored ICC host owner missing")?;
++            assert_final_post_reads_actual_icc(&mut bridge, &restored_frame, &current)?;
++            drop(current);
++            let restored = finish_capture(driver.app_mut().world_mut(), receiver)?;
++            bridge.wait_submits_done(30_000_000_000)?;
++            drop(restored_frame);
++            bridge.collect_completed_frames()?;
++
++            let linear_delta = rgb_delta(&baseline, &linear)?;
++            let restored_delta = rgb_delta(&baseline, &restored)?;
++            eprintln!("ICC_WORLD_PIXELS extent={}x{} nonidentity_rgb_mad={linear_delta:.6} restored_serialized_srgb_rgb_mad={restored_delta:.6}", baseline.0, baseline.1);
++            if let Some(directory) = std::env::var_os("TG_ICC_OUT").map(PathBuf::from) {
++                std::fs::create_dir_all(&directory)?;
++                std::fs::copy(&linear_path, directory.join("linear-display.icc"))?;
++                std::fs::copy(&identity_path, directory.join("srgb-display.icc"))?;
++                for (name, pixels) in [("default.png", &baseline), ("linear.png", &linear), ("restored.png", &restored)] {
++                    let written = std::cell::RefCell::new(None);
++                    tiny_glade::screenshot::write_image_with_callback_impl(&directory.join(name), pixels.0, pixels.1, &pixels.2, 90,
++                        &|result| *written.borrow_mut() = Some(result));
++                    written.into_inner().context("screenshot writer omitted its callback")?
++                        .map_err(anyhow::Error::msg)?;
++                }
++            }
++            anyhow::ensure!(linear_delta > 10.0, "nonidentity ICC did not materially change the actual world color");
++            anyhow::ensure!(restored_delta < linear_delta * 0.25, "serialized-sRGB replacement did not restore original world colors");
++            Ok(())
++        })();
++        // 失败先保留，再执行真实GPU/截图/保存线程清理；cleanup不能把失败转换成通过。
++        let cleanup = bridge.wait_submits_done(30_000_000_000);
++        let screenshots = tiny_glade::screenshot::shared_texture_capture::shutdown(driver.app_mut().world_mut());
++        let save = country_core::systems::save::save_thread::shutdown_save_thread(driver.app_mut().world_mut());
++        drop(driver);
++        drop(bridge);
++        drop(shaders);
++        drop(context);
++        outcome?;
++        cleanup?;
++        screenshots?;
++        save?;
++        anyhow::ensure!(old_native.as_ref().is_some_and(|owner| owner.upgrade().is_none()),
++            "old ICC native owner remained after both App and graph/cache owners were dropped");
++        eprintln!("PASS: actual shipped world ICC Some, nonidentity color, replacement, compiled cancellation and owner teardown");
++        Ok(())
++    }
++}
+--- a/tiny-glade/crates/tiny-glade/Cargo.toml
++++ b/tiny-glade/crates/tiny-glade/Cargo.toml
+@@ -93,6 +93,8 @@
+ native-audio = ["country-core/native-audio"]
+ 
+ [dev-dependencies]
++# ICC验收输入使用与原业务相同的锁定LCMS 2.15，不依赖主机系统版本。
++lcms2 = { version = "=5.6.0", features = ["static"] }
+ rspirv.workspace = true
+ country-core = { workspace = true, features = ["test-support"] }
+ # Lets tests/main_chain_audit.rs record every failed system instead of panicking on the first.

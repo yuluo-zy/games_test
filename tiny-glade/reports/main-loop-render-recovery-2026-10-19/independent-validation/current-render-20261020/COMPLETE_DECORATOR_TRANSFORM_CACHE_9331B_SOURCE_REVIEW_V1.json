@@ -1,0 +1,136 @@
+{
+  "review": "COMPLETE_DECORATOR_TRANSFORM_CACHE_9331B_SOURCE",
+  "reviewer": "/root/render_reviewer",
+  "verdict": "静态无阻断，可由root实际编译并跑候选15测试；不计楼梯完整可见链、GPU或上游Info63 producer完成。",
+  "inputs": {
+    "delivery": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6613bc651182fe9b77/core-duck-building-20261021/visible-cache-20261021/delivery.json",
+    "delivery_sha256": "c75a9d0848641a653dedd8e8afd29060d4d8eac02fdc3dbc08c514dd06369101",
+    "before_sha256": "f67cb1d369f3789f1a4ce0a9057e1f9838189b0d5b29da1dc3acff968e3315c5",
+    "candidate_sha256": "509478f1cc0bc462b81d2064ac49e6ae7bee5bef6480ac216dc322ecabfcc2dc",
+    "patch_sha256": "19a4a239ae99fc9deed35bd328ea5ec7b99665af33bf620f8c47849f17a4d020",
+    "dependency_utils_sha256": "35ddf39a9f9d3968c2c8b57d01f4081875d62b194c9788c987a0942aff734594",
+    "contracts": [
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6613bc651182fe9b77/core-duck-building-20261021/readonly-water-contract/CACHE_FULL_BUSINESS_CONTRACT.md",
+        "sha256": "d19e369a0c198f98057381e6a331b35792f3f058ed5411171b72f60cf5067e84"
+      },
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6613bc651182fe9b77/core-duck-building-20261021/readonly-water-contract/MODE3_AND_WEIGHTED_ORDER_ADDENDUM.md",
+        "sha256": "40d804cd65541f053d89dd9d948c9f9b748efff51c4c7634a60739a72244238f"
+      },
+      {
+        "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6613bc651182fe9b77/core-duck-building-20261021/visible-cache-20261021/SCOPE_AND_DEPENDENCIES.md",
+        "sha256": "bf334504fce459c5ef57af78182968bf6aced0001800079f6e74cbee17a2d33b"
+      }
+    ]
+  },
+  "identity": "before与审查时生产逐SHA一致；candidate/patch逐SHA和delivery一致；607共享leaf当前生产35ddf39a...与声明依赖精确匹配，不复写该leaf。",
+  "independent_native": {
+    "artifact": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "artifact_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_identity": "既有匹配B PDB2d9686b8...；本次llvm-symbolizer实际符号化主入口/真实wrapper call PC/dirty与梯端helper。",
+    "main_range": "0x1408153d0..0x140817843 exclusive",
+    "bytes": 9331,
+    "instruction_count": 1926,
+    "body_sha256": "7f9400af9019b34dc0ed0f2bb08048b7faf03c5e024cee944a132327a13ac215",
+    "asm": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6613bc651182fe9b77/core-duck-building-20261021/native-pack/cache-decorator-transforms-full.asm.txt",
+    "asm_sha256": "122276b654d684a41767e7150da59f73f4174ec186b4d25a36537aa79154b199",
+    "byte_verification": "独立解析每条asm的原字节，逐条与原PE读值一致且连续覆盖完整9331B，无overhang。完整边界由匹配PDB size9331锁定；工具pack boundary_verified=false不改写成true。",
+    "wrapper": "0x1400c552b真实call主函数，与9参数typed-wrapper合同绑定；主PDB=system_decorator::cache_decorator_transforms，源line34。",
+    "selected_callees": "0x140a1b1e0符号确为DecoratorMaybeMut::get_mut；0x1407d8fe0确为calculate_adjusted_ladder_positions。"
+  },
+  "checked_paths": [
+    {
+      "source_lines": [
+        30,
+        43,
+        69,
+        96,
+        113
+      ],
+      "native_pc": [
+        "0x1408156af",
+        "0x14081600b",
+        "0x140816792",
+        "0x140816761",
+        "0x14081676d",
+        "0x140817189",
+        "0x140817195"
+      ],
+      "finding": "同current/Local previous交换再clear current，保双buffer分配；墙域直insert不新增dirty比较。地形/楼梯先顶层get_mut immutable门，即使桶缺失仍检查；逐项计算→previous epsilon全Transform比较→插old完整bits或new→仅成功new立即标id，后项panic不丢前项dirty。无changed Vec batch/整帧事务回滚。"
+    },
+    {
+      "source_lines": [
+        48,
+        160,
+        202,
+        220,
+        251
+      ],
+      "native_pc": [
+        "0x140815875..0x14081589e",
+        "0x1408158c2",
+        "0x140815edc..0x140815ee8",
+        "0x140815ef4..0x140815f16"
+      ],
+      "finding": "raw3/4在墙域失败，其余wall归类保原；PublicWalls只wall分支required查询，roof关联缺失/UV失败保旧或原(-100全轴,ONE)，关联实体缺Roof/volume仍panic。roof63首Outgoing同图requirededge，bad方向直接替换base；仅flat63读取extraheight，非flat不读extra。wall/roof不套terrain dirty尾部。"
+    },
+    {
+      "source_lines": [
+        263,
+        271,
+        278
+      ],
+      "native_pc": [
+        "0x140816180",
+        "0x1408161fc..0x14081624a",
+        "0x140816660..0x1408166ab"
+      ],
+      "finding": "地形先physical采高、yaw，再63 required extra高度和同adjusted graph首Outgoing；方向使用已独审607 from_forward替换，不能用roof bad。其它clutter原几何内核复用，不新造默认地形/mesh。"
+    },
+    {
+      "source_lines": [
+        325,
+        331,
+        343,
+        345,
+        349,
+        363,
+        368
+      ],
+      "native_pc": [
+        "0x1408168c3..0x140816963",
+        "0x14081696d..0x140816a5d"
+      ],
+      "finding": "原Info目的pair按request Vec首个有序segment.nodes匹配，未命中在U校验之前写(-0,-100,-0)/identity/ZERO原哨兵。匹配后CurveU→真实Curve2坐标→累计subsegments并仅末索引夹取、start不回退→tangent i/i+1→真实OptionCurve3/points。无数组默认/排序pair/从其它Vec合成曲线。"
+    },
+    {
+      "source_lines": [
+        372,
+        378,
+        397,
+        416,
+        429
+      ],
+      "native_pc": [
+        "0x140816b4e..0x140816b82",
+        "0x140816bc2..0x140816cda",
+        "0x140816cdf..0x140817006",
+        "0x140817016..0x1408170c7"
+      ],
+      "finding": "weighted点按P1*t+P0*(1-t)，z保w0*P0.z顺序；kind2真实points_u和length、.5步长round饱和usize、min/max numeric/tie-left和原NaN源选择、ceil高度量化；kind3先两点assert/真实梯端helper+同previous子段，再有序signed高度step、下坡归一化与整Vec3*.2 shift，distance保z²+(y²+x²)。其它kind仍预读通用几何。最后requiredwidths、差分lerp*.5*lateral、早先normal侧移及canonical旋转/offset。"
+    }
+  ],
+  "tests_source_scope": {
+    "total": 15,
+    "executed": false,
+    "meaningful_cases": "同World真实九资源/Query/typed requests；type63 outgoing/height懒读、old exactbits+删除、partial failure dirty、immutable空桶、屋顶fallback、dst4 ordered/no-match非法U哨兵、全kind数值、首request、累计start、required失败顺序、下降signedstep、minmax NaN/±0。",
+    "limits": "测试ClutterMeshes仅作为未读取分支的真实类型fixture，不验证真实clutter资源加载；没有原程序运行oracle，也不声称跨ISA任意NaN payload逐bit等价。"
+  },
+  "remaining_business_gates": [
+    "Info.ty63的真正上游producer未在本源闭合；不得用raw transport tag或默认StairExtra补值。",
+    "stairs assemble长主函数与构梯mesh、Commands/Drawable/Nani/RT生命周期不属于本包完成，现相关长装配/几何缺口仍需继续恢复。",
+    "本源可调用和CPU通过不等于已挂载原完整Plugin；需要既有原schedule/cache→derive/flush同owner可达与真实world渲染验证。"
+  ],
+  "execution": "独立只读原PE/PDB/源码与hash审查；未Cargo/rustc/GPU/游戏/生产改动。"
+}

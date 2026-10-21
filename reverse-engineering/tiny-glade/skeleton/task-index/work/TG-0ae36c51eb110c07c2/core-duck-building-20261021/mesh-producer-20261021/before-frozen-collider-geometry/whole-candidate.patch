@@ -1,0 +1,306 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs
+@@ -28,22 +28,36 @@
+ /// 移除类；I 枚举面）。
+ const STAIR_KIND_REMOVE: u8 = 0x11;
+ 
+-/// 0x1407de800：梯支撑判定（**结构面，主体 U**）。
+-///
+-/// 4 参面 {a: {f32@4}, b: {f32@4}, segments: &[0x20B {u32@0, f32@4, u8@0x18}],
+-/// flag: {+0x14/+0 字节}} → u8 {0,1,2,3,4}。原字节可见：比较 a/b 高度选取两个
+-/// 0x20B 段（b<=a → 段1，否则段2）与后续逐段校验分支；段阈值常量与 flag 语义
+-/// 未闭合，返回 0 为显式未恢复值（不是“全文恢复”）。
++/// B 0x1407de800/167B：按两端锚点、邻接度与低端对齐种类决定梯支撑。
++/// 返回原五种判别值；相等或无序高度都将第二端作为低端。
+ pub fn determine_ladder_support(
+-    a: f32,
+-    b: f32,
+-    _segments: &[(u32, f32, u8)],
+-    _flag: u8,
++    from: Vec3,
++    to: Vec3,
++    nodes: &[(StairNodeAnchor, u8); 2],
++    alignments: &[country_core::resources::stairs::stairs_assembly_params::AlignKind; 2],
+ ) -> u8 {
+-    // O 数学：edx = (b<=a) ? 0x20 : 0；eax = (b>a) ? 0x20 : 0；逐段校验 + 返回
+-    // 分支。U：段数组/flag 精确语义 → 恒 0 为显式未恢复面。
+-    let _ = (a, b);
+-    0
++    let (lower, higher) = if to.y > from.y { (0, 1) } else { (1, 0) };
++    let near_ground = |anchor: &StairNodeAnchor| match anchor {
++        StairNodeAnchor::Terrain { height } | StairNodeAnchor::Roof { height } =>
++            *height <= f32::from_bits(0x3e05_1eb8),
++        StairNodeAnchor::Wall(_) => false,
++    };
++    let lower_supported = nodes[lower].1 != 1 || match &nodes[lower].0 {
++        StairNodeAnchor::Wall(_) => alignments[lower].tag == 0,
++        anchor => near_ground(anchor),
++    };
++    let higher_supported = nodes[higher].1 != 1 || match &nodes[higher].0 {
++        StairNodeAnchor::Wall(_) => true,
++        anchor => near_ground(anchor),
++    };
++    if !lower_supported {
++        return 4 - u8::from(higher_supported);
++    }
++    if higher_supported {
++        return 0;
++    }
++    // 原最后一次锚点高度检查不受邻接度门控制，不能复用 lower_supported。
++    if near_ground(&nodes[lower].0) { 1 } else { 2 }
+ }
+ 
+ /// 0x1407d4990（O，944B）：结构图订阅（事件回调注册）。
+@@ -317,13 +331,60 @@
+     Vec::new() // U。
+ }
+ 
+-/// 0x1407de8b0（O 结构，10 参面）：生成梯碰撞 + 实时几何
+-/// （配置数组 {2,3,6,...} + 碰撞生成器链）。
++/// B 0x1407de8b0及141fe5f70：将真实梯路径窗口追加到碰撞与两路渲染几何。
++/// 三路输出各由调用者原 owner 持有；凸包失败仍保留先写入的RT和俯视几何。
++#[allow(clippy::too_many_arguments)]
+ pub fn gen_stairs_collider_and_rt_geo(
+-    _config: &[u64],
+-    _p2: u64,
++    positions: &[Vec3],
++    tangents: &[Vec2],
++    widths: &[f32],
++    stride: usize,
++    colliders: &mut Vec<country_core::systems::collision::world::RaycastMeshData>,
++    rt_points: &mut Vec<Vec3>,
++    floor_points: &mut Vec<glam::Vec4>,
+ ) {
+-    // U。
++    assert!(stride != 0, "assertion failed: step != 0");
++    const RT_INDICES: [usize; 24] = [
++        0, 4, 1, 1, 4, 5, 2, 3, 6, 3, 7, 6,
++        0, 2, 4, 2, 6, 4, 1, 5, 3, 3, 5, 7,
++    ];
++    const FLOOR_INDICES: [usize; 6] = [2, 3, 6, 3, 7, 6];
++    let mut samples = positions.iter().zip(tangents).zip(widths).step_by(stride);
++    let Some(mut previous) = samples.next() else { return; };
++    for current in samples {
++        let points = stair_collider_prism(
++            [*previous.0.0, *current.0.0],
++            [*previous.0.1, *current.0.1],
++            [*previous.1, *current.1],
++        );
++        rt_points.extend(RT_INDICES.into_iter().map(|index| points[index]));
++        floor_points.extend(FLOOR_INDICES.into_iter().map(|index| points[index].extend(1.0)));
++        if let Some(collider) = country_core::systems::collision::world::RaycastMeshData::new_convex(&points) {
++            colliders.push(collider);
++        }
++        previous = current;
++    }
++}
++
++/// 原游戏回调的八顶点构造；保留宽度乘法、左右Y关联与显式+0。
++fn stair_collider_prism(positions: [Vec3; 2], tangents: [Vec2; 2], widths: [f32; 2]) -> [Vec3; 8] {
++    let mut points = [Vec3::ZERO; 8];
++    for index in 0..2 {
++        let position = positions[index];
++        let tangent = tangents[index];
++        let width = widths[index];
++        let dx = (-tangent.y * width) * 0.5;
++        let dy = (0.0 * width) * 0.5;
++        let dz = (tangent.x * width) * 0.5;
++        let base_y = if index == 0 { position.y + -0.375 } else { -0.375 + position.y };
++        let left = Vec3::new(position.x - dx, base_y - dy, position.z - dz);
++        let right = Vec3::new(position.x + dx, dy + base_y, position.z + dz);
++        points[index * 4] = Vec3::new(left.x, left.y + -0.5, left.z);
++        points[index * 4 + 1] = Vec3::new(right.x, -0.5 + right.y, right.z);
++        points[index * 4 + 2] = Vec3::new(left.x + 0.0, left.y + 0.5, left.z + 0.0);
++        points[index * 4 + 3] = Vec3::new(right.x + 0.0, right.y + 0.5, right.z + 0.0);
++    }
++    points
+ }
+ 
+ /// B 1407dec90/955B: construct the eight original structural hull vertices,
+@@ -915,3 +976,186 @@
+         assert!(owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+     }
+ }
++
++#[cfg(test)]
++mod ladder_support_tests {
++    use super::*;
++    use country_core::resources::stairs::stairs_assembly_params::{AlignKind, StairWallAnchor};
++    use country_core::resources::walls::WallId;
++
++    fn terrain(height: f32, degree: u8) -> (StairNodeAnchor, u8) {
++        (StairNodeAnchor::Terrain { height }, degree)
++    }
++    fn roof(height: f32, degree: u8) -> (StairNodeAnchor, u8) {
++        (StairNodeAnchor::Roof { height }, degree)
++    }
++    fn wall(degree: u8) -> (StairNodeAnchor, u8) {
++        (StairNodeAnchor::Wall(StairWallAnchor::new(WallId(7), 0.0)), degree)
++    }
++    fn support(nodes: [(StairNodeAnchor, u8); 2], tags: [u8; 2]) -> u8 {
++        determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes,
++            &tags.map(|tag| AlignKind { tag, ..Default::default() }))
++    }
++
++    #[test]
++    fn all_five_native_support_results_use_actual_anchors() {
++        assert_eq!(support([terrain(0.0, 1), roof(0.0, 1)], [0, 0]), 0);
++        assert_eq!(support([terrain(0.0, 1), roof(1.0, 1)], [0, 0]), 1);
++        assert_eq!(support([wall(1), roof(1.0, 1)], [0, 0]), 2);
++        assert_eq!(support([terrain(1.0, 1), roof(0.0, 1)], [0, 0]), 3);
++        assert_eq!(support([terrain(1.0, 1), roof(1.0, 1)], [0, 0]), 4);
++    }
++
++    #[test]
++    fn reversing_both_real_endpoints_preserves_the_support_result() {
++        let nodes = [wall(1), roof(1.0, 1)];
++        let aligns = [AlignKind::default(), AlignKind { tag: 1, ..Default::default() }];
++        assert_eq!(determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes, &aligns), 2);
++        assert_eq!(determine_ladder_support(Vec3::Y, Vec3::ZERO,
++            &[nodes[1], nodes[0]], &[aligns[1], aligns[0]]), 2);
++    }
++
++    #[test]
++    fn equal_and_unordered_position_heights_choose_the_second_lower_endpoint() {
++        let nodes = [roof(1.0, 1), wall(1)];
++        let aligns = [AlignKind::default(), AlignKind { tag: 1, ..Default::default() }];
++        assert_eq!(determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes, &aligns), 3);
++        for (from, to) in [(Vec3::ZERO, Vec3::ZERO),
++            (Vec3::new(0.0, f32::NAN, 0.0), Vec3::ZERO),
++            (Vec3::ZERO, Vec3::new(0.0, f32::NAN, 0.0))] {
++            assert_eq!(determine_ladder_support(from, to, &nodes, &aligns), 4);
++        }
++    }
++
++    #[test]
++    fn ground_height_threshold_is_inclusive_and_nan_is_unsupported() {
++        let threshold = f32::from_bits(0x3e05_1eb8);
++        let above = f32::from_bits(threshold.to_bits() + 1);
++        assert_eq!(support([terrain(threshold, 1), roof(threshold, 1)], [0, 0]), 0);
++        assert_eq!(support([terrain(above, 1), roof(0.0, 1)], [0, 0]), 3);
++        assert_eq!(support([terrain(0.0, 1), roof(above, 1)], [0, 0]), 1);
++        assert_eq!(support([terrain(f32::NAN, 1), roof(0.0, 1)], [0, 0]), 3);
++        assert_eq!(support([terrain(0.0, 1), roof(f32::NAN, 1)], [0, 0]), 1);
++        assert_eq!(support([terrain(f32::NEG_INFINITY, 1), roof(0.0, 1)], [0, 0]), 0);
++    }
++
++    #[test]
++    fn lower_wall_checks_tag_only_and_higher_wall_has_no_alignment_gate() {
++        let nodes = [wall(1), wall(1)];
++        let aligns = [AlignKind { tag: 0, flag: 1, byte_2: 1, ..Default::default() },
++            AlignKind { tag: 1, ..Default::default() }];
++        assert_eq!(determine_ladder_support(Vec3::ZERO, Vec3::Y, &nodes, &aligns), 0);
++        assert_eq!(support(nodes, [1, 0]), 3);
++        assert_eq!(support([terrain(0.0, 1), wall(1)], [0, 2]), 0);
++    }
++
++    #[test]
++    fn final_lower_height_check_is_independent_of_the_degree_gate() {
++        for degree in [0, 2, u8::MAX] {
++            assert_eq!(support([terrain(0.0, degree), roof(1.0, 1)], [0, 0]), 1);
++            assert_eq!(support([terrain(1.0, degree), roof(1.0, 1)], [0, 0]), 2);
++            assert_eq!(support([terrain(f32::NAN, degree), roof(1.0, 1)], [0, 0]), 2);
++            assert_eq!(support([wall(degree), roof(0.0, 1)], [1, 0]), 0);
++        }
++    }
++}
++
++#[cfg(test)]
++mod stair_collider_geometry_tests {
++    use super::*;
++    use country_core::systems::collision::world::RaycastMeshData;
++    use glam::Vec4;
++
++    #[test]
++    fn actual_convex_and_both_ordered_render_streams_preserve_existing_prefixes() {
++        let positions = [Vec3::new(0.0, 1.0, 0.0), Vec3::new(0.0, 2.0, 2.0)];
++        let mut colliders = Vec::new();
++        let mut rt = vec![Vec3::splat(99.0)];
++        let mut floors = vec![Vec4::splat(88.0)];
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 2], &[2.0; 2], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!(colliders.len(), 1);
++        let shape = colliders[0].shape.as_ref().expect("原八点应构成真实凸包");
++        let bounds = shape.compute_local_aabb();
++        assert_eq!([bounds.mins.x, bounds.mins.y, bounds.mins.z], [-1.0, 0.125, 0.0]);
++        assert_eq!([bounds.maxs.x, bounds.maxs.y, bounds.maxs.z], [1.0, 2.125, 2.0]);
++        let corners = [
++            Vec3::new(1.0, 0.125, 0.0), Vec3::new(-1.0, 0.125, 0.0),
++            Vec3::new(1.0, 1.125, 0.0), Vec3::new(-1.0, 1.125, 0.0),
++            Vec3::new(1.0, 1.125, 2.0), Vec3::new(-1.0, 1.125, 2.0),
++            Vec3::new(1.0, 2.125, 2.0), Vec3::new(-1.0, 2.125, 2.0),
++        ];
++        assert_eq!(rt[0], Vec3::splat(99.0));
++        let expected = [0, 4, 1, 1, 4, 5, 2, 3, 6, 3, 7, 6, 0, 2, 4, 2, 6, 4, 1, 5, 3, 3, 5, 7]
++            .map(|index| corners[index]);
++        assert_eq!(&rt[1..], &expected);
++        assert_eq!(floors[0], Vec4::splat(88.0));
++        assert_eq!(&floors[1..], &[corners[2].extend(1.0), corners[3].extend(1.0),
++            corners[6].extend(1.0), corners[3].extend(1.0), corners[7].extend(1.0), corners[6].extend(1.0)]);
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 2], &[2.0; 2], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (2, 49, 13));
++    }
++
++    #[test]
++    fn zip_uses_shortest_source_and_stride_does_not_append_an_unsampled_tail() {
++        let positions: Vec<_> = (0..6).map(|z| Vec3::new(0.0, 1.0, z as f32)).collect();
++        let mut colliders = Vec::new(); let mut rt = Vec::new(); let mut floors = Vec::new();
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 4], &[2.0; 5], 2,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (1, 24, 6));
++        assert_eq!(floors.iter().map(|point| point.z).fold(f32::NEG_INFINITY, f32::max), 2.0);
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 6], &[2.0; 6], 4,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (2, 48, 12));
++        assert_eq!(floors[6..].iter().map(|point| point.z).fold(f32::NEG_INFINITY, f32::max), 4.0);
++        gen_stairs_collider_and_rt_geo(&positions, &[Vec2::Y; 1], &[2.0; 6], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert_eq!((colliders.len(), rt.len(), floors.len()), (2, 48, 12));
++    }
++
++    #[test]
++    fn zero_stride_panics_before_touching_any_output_even_for_empty_input() {
++        let mut colliders: Vec<RaycastMeshData> = Vec::new();
++        let mut rt = vec![Vec3::X]; let mut floors = vec![Vec4::ONE];
++        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
++            gen_stairs_collider_and_rt_geo(&[], &[], &[], 0, &mut colliders, &mut rt, &mut floors)));
++        assert!(panic.is_err());
++        assert!(colliders.is_empty()); assert_eq!(rt, vec![Vec3::X]); assert_eq!(floors, vec![Vec4::ONE]);
++    }
++
++    #[test]
++    fn degenerate_convex_failure_preserves_the_preceding_two_real_writes() {
++        let mut colliders = Vec::new(); let mut rt = vec![Vec3::X]; let mut floors = vec![Vec4::ONE];
++        gen_stairs_collider_and_rt_geo(&[Vec3::ZERO; 2], &[Vec2::X; 2], &[0.0; 2], 1,
++            &mut colliders, &mut rt, &mut floors);
++        assert!(colliders.is_empty());
++        assert_eq!((rt.len(), floors.len()), (25, 7));
++        assert_eq!(rt[0], Vec3::X); assert_eq!(floors[0], Vec4::ONE);
++        assert!(floors[1..].iter().all(|point| point.w == 1.0));
++    }
++
++    #[test]
++    fn turning_and_negative_widths_keep_each_original_endpoint_geometry() {
++        let positions = [Vec3::new(2.0, 4.0, 6.0), Vec3::new(-3.0, 7.0, 9.0)];
++        let corners = stair_collider_prism(positions, [Vec2::X, Vec2::Y], [4.0, -2.0]);
++        assert_eq!(corners[0], Vec3::new(2.0, 3.125, 4.0));
++        assert_eq!(corners[1], Vec3::new(2.0, 3.125, 8.0));
++        assert_eq!(corners[2], Vec3::new(2.0, 4.125, 4.0));
++        assert_eq!(corners[4], Vec3::new(-4.0, 6.125, 9.0));
++        assert_eq!(corners[5], Vec3::new(-2.0, 6.125, 9.0));
++        assert_eq!(corners[7], Vec3::new(-2.0, 7.125, 9.0));
++    }
++
++    #[test]
++    fn raw_nonfinite_width_and_explicit_positive_zero_are_not_erased() {
++        let points = stair_collider_prism([Vec3::ZERO; 2], [Vec2::X; 2], [f32::INFINITY, f32::NAN]);
++        assert!(points.iter().all(|point| point.y.is_nan()));
++        assert!(points[0].x.is_nan()); assert!(points[1].x.is_nan());
++        let zeros = stair_collider_prism([Vec3::new(-0.0, 0.0, -0.0); 2], [Vec2::ZERO; 2], [0.0; 2]);
++        assert_eq!(zeros[1].x.to_bits(), (-0.0_f32).to_bits());
++        assert_eq!(zeros[3].x.to_bits(), 0.0_f32.to_bits());
++        assert_eq!(zeros[1].z.to_bits(), 0.0_f32.to_bits());
++        assert_eq!(zeros[3].z.to_bits(), 0.0_f32.to_bits());
++    }
++}

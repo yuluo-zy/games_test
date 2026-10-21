@@ -890,6 +890,19 @@ impl Buffer {
             std::ptr::copy_nonoverlapping(bytes.as_ptr(), base.add(offset as usize), bytes.len())
         })
     }
+    /// 以单次主机范围事务填充字节；在飞的重叠 GPU 使用返回 Timeout。
+    /// 复用写入的所有权、版本登记与非 coherent flush，不分配临时零缓冲。
+    pub fn fill_mapped_bytes_unsynchronized(&self, offset: u64, len: u64, value: u8) -> Result<()> {
+        let start = usize::try_from(offset)
+            .map_err(|_| Error::invalid_usage("映射偏移超过主机地址范围"))?;
+        let count = usize::try_from(len)
+            .map_err(|_| Error::invalid_usage("映射长度超过主机地址范围"))?;
+        self.host_access(offset, len, true, None, |base| unsafe {
+            // SAFETY: host_access 已检查范围、映射、同步和所有权。
+            std::ptr::write_bytes(base.add(start), value, count)
+        })
+    }
+
     fn read_impl(&self, offset: u64, bytes: &mut [u8], wait_ns: Option<u64>) -> Result<()> {
         let len = bytes.len();
         self.host_access(offset, len as u64, false, wait_ns, |base| unsafe {

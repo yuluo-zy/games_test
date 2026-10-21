@@ -1,13 +1,6 @@
-//! `structural_graph.rs` — 楼梯支撑碰撞体图（B `resources/stairs/structural_graph.rs`，
-//! 7 业务 + 1 胶水）。
-//!
-//! 证据：`chapters/resources/stairs/structural_graph.rs.md` + `collision-eco/ALGORITHMS.md`
-//! §3.4（机器码 O）+ `collision-eco/decomp/decomp-0x140869{a30,d20,f90,ff0}a{260,320,4c0}.txt`。
-//! 表分布（复核）：+0x90 collider→span、+0xc0 span→collider、+0xf0 collider→height、
-//! +0x150 connections；GraphMap 节点 = 碰撞体句柄。
-//! 未决（U）：+0x48 边索引表与 +0x120/+0x180 两附加表语义、碰撞体句柄在 upsert/remove
-//! 面的字节宽（decomp 8B 读 vs add_edge_by_collider 12B 排序）——本实现统一用
-//! [`StairColliderHandle`]（= `SubworldColliderHandle` 的 {index, generation, slot}）。
+//! 楼梯支撑碰撞体图；原 B 140869a30..14086a4c0 的七个业务入口。
+//! span 身份包含边和采样索引，连接的一位权重区分永久与临时支撑。
+//! 原完整证据与字段合同见 TG-d1ffc27432f3d739f8/core-stair-structure-20261021。
 use crate::{
     resources::stairs::stairs_state::StairGraphEdge,
     systems::collision::world::SubworldColliderHandle,
@@ -15,7 +8,10 @@ use crate::{
 use bevy_ecs::resource::Resource;
 use hashbrown::{HashMap, HashSet};
 use petgraph::graphmap::UnGraphMap;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::hash_map::RandomState,
+    hash::{Hash, Hasher},
+};
 
 /// 楼梯碰撞体句柄（= `SubworldColliderHandle` 三字段；排序键 = {slot, index, generation}，
 /// O：`add_edge_by_collider` 0x14086a260 按 byte2/slot → u32[0]/index → u32[1]/generation）。
@@ -68,63 +64,76 @@ impl Hash for StairColliderHandle {
     }
 }
 
-/// `StairsStructuralGraph`（B 0x140869a30..0x14086a4c0；Resource）。
+/// 原 span 为 `(StairGraphEdge, u32)`；同一边的不同采样不可互相覆盖。
+pub type StructuralStairSpan = (StairGraphEdge, u32);
+
+/// 原连接仅有一位业务值；false 的永久支撑不会被临时连接覆盖。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StructuralGraphConnection {
+    pub transient: bool,
+}
+
+impl StructuralGraphConnection {
+    pub const fn new(transient: bool) -> Self {
+        Self { transient }
+    }
+}
+
+pub type StructuralGraphMap = UnGraphMap<StairColliderHandle, StructuralGraphConnection>;
+pub type StructuralMap<K, V> = HashMap<K, V, RandomState>;
+pub type StructuralColliderSet = HashSet<StairColliderHandle, RandomState>;
+
+/// 图和六张业务表共用同一个 owner；没有额外的边索引镜像。
 #[derive(Resource, Clone, Debug, Default)]
 pub struct StairsStructuralGraph {
-    /// GraphMap（节点 = 碰撞体句柄）。
-    graph: UnGraphMap<StairColliderHandle, ()>,
-    /// +0x90：collider → span。
-    collider_to_span: HashMap<StairColliderHandle, StairGraphEdge>,
-    /// +0xc0：span → collider。
-    span_to_collider: HashMap<StairGraphEdge, StairColliderHandle>,
-    /// +0xf0：collider → 支撑高。
-    collider_to_height: HashMap<StairColliderHandle, f32>,
-    /// +0x150：连接集合（装配的支撑结构）。
-    connections: HashSet<StairColliderHandle>,
-    /// +0x48：边索引表（装配侧"写 0"标记；精确类型 IndexMap 语义 U）。
-    edge_index: HashMap<(StairColliderHandle, StairColliderHandle), u8>,
+    graph: StructuralGraphMap,
+    collider_to_span: StructuralMap<StairColliderHandle, StructuralStairSpan>,
+    span_to_collider: StructuralMap<StructuralStairSpan, StairColliderHandle>,
+    collider_to_height: StructuralMap<StairColliderHandle, f32>,
+    working_heights: StructuralMap<StairColliderHandle, f32>,
+    connections: StructuralColliderSet,
+    segment_counts: StructuralMap<StairGraphEdge, u32>,
+}
+
+/// 装配阶段对同一 owner 分字段借用；不会克隆、分配或建立第二份图。
+pub struct StairsStructuralGraphParts<'a> {
+    pub graph: &'a mut StructuralGraphMap,
+    pub collider_to_span: &'a mut StructuralMap<StairColliderHandle, StructuralStairSpan>,
+    pub span_to_collider: &'a mut StructuralMap<StructuralStairSpan, StairColliderHandle>,
+    pub collider_to_height: &'a mut StructuralMap<StairColliderHandle, f32>,
+    pub working_heights: &'a mut StructuralMap<StairColliderHandle, f32>,
+    pub connections: &'a mut StructuralColliderSet,
+    pub segment_counts: &'a mut StructuralMap<StairGraphEdge, u32>,
 }
 
 impl StairsStructuralGraph {
-    /// `clear`（0x140869a30，fresh 2026-10-17）：清空整张结构图。
-    ///
-    /// **地址判定**：0x140869a30 的 Ghidra 符号=`StairsStructuralGraph::clear`，函数体=
-    /// 8 张 hashbrown 表的 `memset(ctrl,0xff)+items/growth 归零`（表头
-    /// +0x18/+0x60/+0x90/+0xc0/+0xf0/+0x120/+0x150/+0x180）+ 一个 0x30-stride 条目 Vec
-    /// （+0x08 data / +0x10 len，逐条 `dealloc(size<<4)`）+ 标量 +0x58=0。
-    /// （LOGIC §5 / 任务说明里的"0x140869a30=MagicSupports::clear"经 fresh 反编译驳回；
-    /// MagicSupports::clear 唯一地址 0x140aa8210。）
-    ///
-    /// 本实现清 6 个建模集合：petgraph `UnGraphMap`（内部 = 2 张 IndexMap 表 + 2 个
-    /// Bucket Vec，对应 +0x18/+0x60 与 +0x08/+0x58）+ 4 个显式映射
-    /// （+0x90/+0xc0/+0xf0/+0x150）+ `edge_index`。**U 登记**：+0x120/+0x180 两张未建模表
-    /// 的语义，以及 `edge_index` 的原生落点（+0x48 未见独立表头）。
+    /// 原 140869a30：先清图，再按原字段顺序清六张表，保留容器容量。
     pub fn clear(&mut self) {
         self.graph.clear();
         self.collider_to_span.clear();
         self.span_to_collider.clear();
         self.collider_to_height.clear();
+        self.working_heights.clear();
         self.connections.clear();
-        self.edge_index.clear();
+        self.segment_counts.clear();
     }
 
-    /// `upsert_span`（0x140869d20，O 全解）：
-    /// 旧 span 已有 collider → 先解绑（邻边入 connections、逆映射移除、`graph.remove_node(prev)`
-    /// 断言、高表移除），再挂接新 collider（节点确保 + 三表插入 + connections）。
+    /// 原 140869d20：先移除旧身份，再逐邻居标记；断言失败前的副作用必须保留。
     pub fn upsert_span(
         &mut self,
-        span: StairGraphEdge,
+        span: StructuralStairSpan,
         collider: StairColliderHandle,
         height: f32,
     ) {
-        if let Some(old) = self.span_to_collider.get(&span).copied() {
-            let neighbors: Vec<_> = self.graph.neighbors(old).collect();
-            for neighbor in neighbors {
+        if let Some(old) = self.span_to_collider.remove(&span) {
+            self.collider_to_span.remove(&old);
+            for neighbor in self.graph.neighbors(old) {
                 self.connections.insert(neighbor);
             }
-            self.collider_to_span.remove(&old);
-            let removed = self.graph.remove_node(old);
-            assert!(removed, "assertion failed: self.graph.remove_node(prev)");
+            assert!(
+                self.graph.remove_node(old),
+                "assertion failed: self.graph.remove_node(prev)"
+            );
             self.collider_to_height.remove(&old);
         }
         self.graph.add_node(collider);
@@ -134,195 +143,349 @@ impl StairsStructuralGraph {
         self.connections.insert(collider);
     }
 
-    /// `upsert_support_source_collider`（0x140869f90；Ghidra varnode 失败，合同语义）：
-    /// 只加节点/高/visited（无 span 双向映射）。
-    pub fn upsert_support_source_collider(&mut self, collider: StairColliderHandle, height: f32) {
+    /// 原 140869f90：源支撑固定写入正零高度，不接收外部高度参数。
+    pub fn upsert_support_source_collider(&mut self, collider: StairColliderHandle) {
         self.graph.add_node(collider);
-        self.collider_to_height.insert(collider, height);
+        self.collider_to_height.insert(collider, 0.0);
         self.connections.insert(collider);
     }
 
-    /// `add_edge_by_span`（0x140869ff0，O 结构）：两 span 的 collider 间加边；
-    /// 边已存在 → 早退（索引写 0 语义）；否则边索引表命中写 0，未命中 panic。
-    pub fn add_edge_by_span(&mut self, span_a: StairGraphEdge, span_b: StairGraphEdge, weight: ()) {
-        let collider_a = *self.span_to_collider.get(&span_a).expect("span_a has collider");
-        let collider_b = *self.span_to_collider.get(&span_b).expect("span_b has collider");
-        if self.graph.add_edge(collider_a, collider_b, weight).is_some() {
+    /// 原 140869ff0：任一 span 尚未注册时返回；永久连接保持永久属性。
+    pub fn add_edge_by_span(
+        &mut self,
+        span_a: StructuralStairSpan,
+        span_b: StructuralStairSpan,
+        connection: StructuralGraphConnection,
+    ) {
+        let Some(&a) = self.span_to_collider.get(&span_a) else {
             return;
+        };
+        let Some(&b) = self.span_to_collider.get(&span_b) else {
+            return;
+        };
+        self.insert_connection(a, b, connection);
+    }
+
+    /// 原 14086a260：使用 GraphMap 自有边表，不能要求消费者预置另一份索引。
+    pub fn add_edge_by_collider(
+        &mut self,
+        a: StairColliderHandle,
+        b: StairColliderHandle,
+        connection: StructuralGraphConnection,
+    ) {
+        self.insert_connection(a, b, connection);
+    }
+
+    fn insert_connection(
+        &mut self,
+        a: StairColliderHandle,
+        b: StairColliderHandle,
+        connection: StructuralGraphConnection,
+    ) {
+        if let Some(previous) = self.graph.add_edge(a, b, connection) {
+            if !previous.transient {
+                self.graph
+                    .edge_weight_mut(a, b)
+                    .expect("edge index entry exists")
+                    .transient = false;
+            }
         }
-        let (a, b) = ordered_pair(collider_a, collider_b);
-        let entry = self
-            .edge_index()
-            .get_mut(&(a, b))
-            .expect("edge index entry exists");
-        *entry = 0;
     }
 
-    /// `add_edge_by_collider`（0x14086a260，O 结构）：直接加边 + 边索引写 0
-    /// （键先排序 {slot, index, generation}）。
-    pub fn add_edge_by_collider(&mut self, a: StairColliderHandle, b: StairColliderHandle) {
-        self.graph.add_edge(a, b, ());
-        let (a, b) = ordered_pair(a, b);
-        let entry = self
-            .edge_index()
-            .get_mut(&(a, b))
-            .expect("edge index entry exists");
-        *entry = 0;
-    }
-
-    /// `remove_node_by_collider`（0x14086a320，O）：删邻边入 connections + `remove_node`
-    /// 断言；逆映射清理（collider→span 移除后，span→collider 移除断言）。
+    /// 原 14086a320：先移除高度，再通知邻居、删节点，最后清双向 span 映射。
     pub fn remove_node_by_collider(&mut self, collider: StairColliderHandle) {
         if self.collider_to_height.remove(&collider).is_some() {
-            let neighbors: Vec<_> = self.graph.neighbors(collider).collect();
-            for neighbor in neighbors {
+            for neighbor in self.graph.neighbors(collider) {
                 self.connections.insert(neighbor);
             }
-            let removed = self.graph.remove_node(collider);
             assert!(
-                removed,
+                self.graph.remove_node(collider),
                 "assertion failed: self.graph.remove_node(collider)"
             );
         }
         if let Some(span) = self.collider_to_span.remove(&collider) {
-            let removed = self.span_to_collider.remove(&span);
             assert!(
-                removed.is_some(),
+                self.span_to_collider.remove(&span).is_some(),
                 "assertion failed: self.span_to_collider_handle.remove(&span).is_some()"
             );
         }
     }
 
-    /// `disconnect_node_by_collider`（0x14086a4c0，O）：枚举邻边移除（保留节点），
-    /// 每条边只往 connections 插**一个**端点 = **邻接端点 b**（fresh 机器码 0x14086a58e..a5a8：
-    /// petgraph `EdgeMap::edges(node)` 输出 `(a=node, b, &w)`，`[RBP-0x2c]` = b，
-    /// `HashMap::insert<SubworldColliderHandle,()>` 插入 b；Vec 收集 `(node,b)` 后逐边
-    /// `remove_edge(node,b)`）。边权重字节==0 的邻边跳过（机器码 `*edge_weight != '\0'`；
-    /// `StructuralGraphConnection` 未建模，`()` 恒过）。
+    /// 原 14086a4c0：只断临时边；每条边先通知邻接端，再增长待删向量。
     pub fn disconnect_node_by_collider(&mut self, collider: StairColliderHandle) {
-        let incident: Vec<_> = self
-            .graph
-            .edges(collider)
-            .map(|(a, b, _)| (a, b))
-            .collect();
-        for (_a, b) in &incident {
-            // 机器码：每邻边插邻接端点 b（`[R13]` = 边迭代输出第二分量）。
-            self.connections.insert(*b);
+        let mut incident = Vec::new();
+        for (a, b, connection) in self.graph.edges(collider) {
+            if connection.transient {
+                self.connections.insert(b);
+                incident.push((a, b));
+            }
         }
         for (a, b) in incident {
             self.graph.remove_edge(a, b);
         }
     }
 
-    /// 边索引表登记（O 语义：`add_edge_by_span`/`add_edge_by_collider` 命中写 0、
-    /// 未命中 panic @0x142a96bd0）。**填充源 U**——原始为碰撞体注册面（+0x48 IndexMap），
-    /// 本方法供消费端装配前预置；精确类型/来源待取证。
-    pub fn register_edge_index(&mut self, a: StairColliderHandle, b: StairColliderHandle) {
-        let (a, b) = ordered_pair(a, b);
-        self.edge_index.insert((a, b), 1);
-    }
-
-    /// 只读访问（供装配/失效系统消费）。
-    pub fn graph(&self) -> &UnGraphMap<StairColliderHandle, ()> {
+    pub fn graph(&self) -> &StructuralGraphMap {
         &self.graph
     }
-    pub fn collider_to_span(&self) -> &HashMap<StairColliderHandle, StairGraphEdge> {
+    pub fn collider_to_span(&self) -> &StructuralMap<StairColliderHandle, StructuralStairSpan> {
         &self.collider_to_span
     }
-    pub fn span_to_collider(&self) -> &HashMap<StairGraphEdge, StairColliderHandle> {
+    pub fn span_to_collider(&self) -> &StructuralMap<StructuralStairSpan, StairColliderHandle> {
         &self.span_to_collider
     }
-    pub fn collider_to_height(&self) -> &HashMap<StairColliderHandle, f32> {
+    pub fn collider_to_height(&self) -> &StructuralMap<StairColliderHandle, f32> {
         &self.collider_to_height
     }
-    pub fn connections(&self) -> &HashSet<StairColliderHandle> {
+    pub fn working_heights(&self) -> &StructuralMap<StairColliderHandle, f32> {
+        &self.working_heights
+    }
+    pub fn connections(&self) -> &StructuralColliderSet {
         &self.connections
     }
-
-    /// +0x48 边索引表（写 0 语义：装配侧标记；精确类型 IndexMap U）。
-    fn edge_index(&mut self) -> &mut HashMap<(StairColliderHandle, StairColliderHandle), u8> {
-        &mut self.edge_index
+    pub fn segment_counts(&self) -> &StructuralMap<StairGraphEdge, u32> {
+        &self.segment_counts
     }
 
-    /// 测试辅助：清空 connections，以便验证 disconnect 插入的端点来源。
-    #[cfg(test)]
-    pub(crate) fn clear_connections_for_test(&mut self) {
-        self.connections.clear();
+    pub fn parts_mut(&mut self) -> StairsStructuralGraphParts<'_> {
+        StairsStructuralGraphParts {
+            graph: &mut self.graph,
+            collider_to_span: &mut self.collider_to_span,
+            span_to_collider: &mut self.span_to_collider,
+            collider_to_height: &mut self.collider_to_height,
+            working_heights: &mut self.working_heights,
+            connections: &mut self.connections,
+            segment_counts: &mut self.segment_counts,
+        }
     }
-}
-
-fn ordered_pair(
-    a: StairColliderHandle,
-    b: StairColliderHandle,
-) -> (StairColliderHandle, StairColliderHandle) {
-    if a > b { (b, a) } else { (a, b) }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
 
     fn collider(index: u32) -> StairColliderHandle {
         StairColliderHandle::new(index, 1, 3)
+    }
+    fn span(a: u32, b: u32, sample: u32) -> StructuralStairSpan {
+        (StairGraphEdge::new(a, b), sample)
+    }
+    fn connection(transient: bool) -> StructuralGraphConnection {
+        StructuralGraphConnection::new(transient)
     }
 
     #[test]
     fn upsert_binds_maps_and_connections() {
         let mut graph = StairsStructuralGraph::default();
-        let span = StairGraphEdge::new(1, 2);
-        let collider = collider(5);
-        graph.upsert_span(span, collider, 2.5);
-        assert_eq!(graph.span_to_collider()[&span], collider);
-        assert_eq!(graph.collider_to_span()[&collider], span);
-        assert!((graph.collider_to_height()[&collider] - 2.5).abs() < 1e-6);
-        assert!(graph.connections().contains(&collider));
-        assert!(graph.graph().contains_node(collider));
+        let s = span(1, 2, 7);
+        graph.upsert_span(s, collider(5), 2.5);
+        assert_eq!(graph.span_to_collider()[&s], collider(5));
+        assert_eq!(graph.collider_to_span()[&collider(5)], s);
+        assert_eq!(
+            graph.collider_to_height()[&collider(5)].to_bits(),
+            2.5_f32.to_bits()
+        );
+        assert!(graph.connections().contains(&collider(5)));
+        assert!(graph.graph().contains_node(collider(5)));
     }
 
     #[test]
     fn upsert_same_span_unbinds_old_collider() {
         let mut graph = StairsStructuralGraph::default();
-        let span = StairGraphEdge::new(1, 2);
-        graph.upsert_span(span, collider(5), 2.5);
-        graph.upsert_span(span, collider(9), 4.0);
+        let s = span(1, 2, 7);
+        graph.upsert_span(s, collider(5), 2.5);
+        graph.add_edge_by_collider(collider(5), collider(6), connection(false));
+        graph.connections.clear();
+        graph.upsert_span(s, collider(9), 4.0);
         assert!(!graph.graph().contains_node(collider(5)));
-        assert!(graph.graph().contains_node(collider(9)));
-        assert_eq!(graph.span_to_collider()[&span], collider(9));
-        assert!(graph.connections().contains(&collider(5)));
+        assert!(!graph.collider_to_span.contains_key(&collider(5)));
+        assert!(!graph.collider_to_height.contains_key(&collider(5)));
+        assert_eq!(graph.span_to_collider()[&s], collider(9));
+        assert!(graph.connections().contains(&collider(6)));
+        assert!(graph.connections().contains(&collider(9)));
+    }
+
+    #[test]
+    fn different_samples_of_same_edge_remain_independent() {
+        let mut graph = StairsStructuralGraph::default();
+        graph.upsert_span(span(1, 2, 0), collider(1), -0.0);
+        graph.upsert_span(span(1, 2, 1), collider(2), 7.0);
+        assert_eq!(graph.span_to_collider.len(), 2);
+        assert_eq!(
+            graph.collider_to_height[&collider(1)].to_bits(),
+            (-0.0_f32).to_bits()
+        );
+        graph.upsert_span(span(1, 2, 0), collider(3), f32::from_bits(0x7fc00041));
+        assert!(graph.graph.contains_node(collider(2)));
+        assert_eq!(graph.span_to_collider[&span(1, 2, 1)], collider(2));
+        assert_eq!(graph.collider_to_height[&collider(3)].to_bits(), 0x7fc00041);
+    }
+
+    #[test]
+    fn support_source_records_positive_zero_without_a_span() {
+        let mut graph = StairsStructuralGraph::default();
+        graph.upsert_support_source_collider(collider(1));
+        assert_eq!(graph.collider_to_height[&collider(1)].to_bits(), 0);
+        assert!(graph.collider_to_span.is_empty() && graph.span_to_collider.is_empty());
+        assert!(graph.graph.contains_node(collider(1)) && graph.connections.contains(&collider(1)));
+    }
+
+    #[test]
+    fn missing_span_returns_without_creating_edges() {
+        let mut graph = StairsStructuralGraph::default();
+        graph.upsert_span(span(1, 2, 0), collider(1), 1.0);
+        graph.add_edge_by_span(span(3, 4, 0), span(1, 2, 0), connection(false));
+        graph.add_edge_by_span(span(1, 2, 0), span(3, 4, 0), connection(false));
+        assert_eq!(graph.graph.node_count(), 1);
+        assert_eq!(graph.graph.edge_count(), 0);
+    }
+
+    #[test]
+    fn new_edges_need_no_parallel_registry() {
+        let mut graph = StairsStructuralGraph::default();
+        graph.upsert_span(span(1, 2, 0), collider(1), 1.0);
+        graph.upsert_span(span(3, 4, 0), collider(2), 2.0);
+        graph.add_edge_by_span(span(1, 2, 0), span(3, 4, 0), connection(true));
+        assert_eq!(
+            graph.graph.edge_weight(collider(1), collider(2)),
+            Some(&connection(true))
+        );
+        graph.add_edge_by_collider(collider(3), collider(4), connection(false));
+        assert!(graph.graph.contains_edge(collider(3), collider(4)));
+    }
+
+    #[test]
+    fn permanent_edge_is_sticky_through_both_entrypoints() {
+        let mut graph = StairsStructuralGraph::default();
+        graph.upsert_span(span(1, 2, 0), collider(1), 1.0);
+        graph.upsert_span(span(3, 4, 0), collider(2), 2.0);
+        graph.add_edge_by_span(span(1, 2, 0), span(3, 4, 0), connection(false));
+        graph.add_edge_by_collider(collider(2), collider(1), connection(true));
+        assert_eq!(
+            graph.graph.edge_weight(collider(1), collider(2)),
+            Some(&connection(false))
+        );
+        graph.add_edge_by_span(span(3, 4, 0), span(1, 2, 0), connection(true));
+        assert_eq!(
+            graph.graph.edge_weight(collider(2), collider(1)),
+            Some(&connection(false))
+        );
+    }
+
+    #[test]
+    fn transient_edge_uses_new_weight_including_self_loop() {
+        let mut graph = StairsStructuralGraph::default();
+        graph.add_edge_by_collider(collider(1), collider(1), connection(true));
+        graph.add_edge_by_collider(collider(1), collider(1), connection(false));
+        graph.add_edge_by_collider(collider(1), collider(1), connection(true));
+        assert_eq!(
+            graph.graph.edge_weight(collider(1), collider(1)),
+            Some(&connection(false))
+        );
+        graph.add_edge_by_collider(collider(2), collider(3), connection(true));
+        graph.add_edge_by_collider(collider(2), collider(3), connection(true));
+        assert_eq!(
+            graph.graph.edge_weight(collider(2), collider(3)),
+            Some(&connection(true))
+        );
     }
 
     #[test]
     fn remove_node_cleans_reverse_maps() {
         let mut graph = StairsStructuralGraph::default();
-        let span = StairGraphEdge::new(1, 2);
-        graph.upsert_span(span, collider(5), 2.5);
+        graph.upsert_span(span(1, 2, 0), collider(5), 2.5);
         graph.remove_node_by_collider(collider(5));
-        assert!(!graph.graph().contains_node(collider(5)));
-        assert!(graph.span_to_collider().is_empty());
-        assert!(graph.collider_to_span().is_empty());
-        assert!(graph.collider_to_height().is_empty());
+        assert!(!graph.graph.contains_node(collider(5)));
+        assert!(
+            graph.span_to_collider.is_empty()
+                && graph.collider_to_span.is_empty()
+                && graph.collider_to_height.is_empty()
+        );
     }
 
     #[test]
-    fn disconnect_keeps_node_removes_edges() {
+    fn disconnect_keeps_node_and_permanent_edges_marks_only_transient_neighbor() {
         let mut graph = StairsStructuralGraph::default();
-        graph.upsert_span(StairGraphEdge::new(1, 2), collider(5), 2.5);
-        graph.upsert_span(StairGraphEdge::new(3, 4), collider(9), 2.5);
-        // 原版 add_edge_by_span 对新边做边索引"命中写 0"；索引须由装配面预置。
-        graph.register_edge_index(collider(5), collider(9));
-        graph.add_edge_by_span(
-            StairGraphEdge::new(1, 2),
-            StairGraphEdge::new(3, 4),
-            (),
+        graph.add_edge_by_collider(collider(1), collider(2), connection(true));
+        graph.add_edge_by_collider(collider(1), collider(3), connection(false));
+        graph.connections.clear();
+        graph.disconnect_node_by_collider(collider(1));
+        assert!(!graph.graph.contains_edge(collider(1), collider(2)));
+        assert!(graph.graph.contains_edge(collider(1), collider(3)));
+        assert!(graph.graph.contains_node(collider(1)) && graph.graph.contains_node(collider(2)));
+        assert_eq!(
+            graph.connections.iter().copied().collect::<Vec<_>>(),
+            vec![collider(2)]
         );
-        assert!(graph.graph().contains_edge(collider(5), collider(9)));
-        // 清空 connections 后断开节点 5：机器码只插入邻接端点 9（单端点，非查询节点）。
-        graph.clear_connections_for_test();
-        graph.disconnect_node_by_collider(collider(5));
-        assert!(!graph.graph().contains_edge(collider(5), collider(9)));
-        assert!(graph.graph().contains_node(collider(5)));
-        assert!(graph.graph().contains_node(collider(9)));
-        assert!(graph.connections().contains(&collider(9)));
-        assert!(!graph.connections().contains(&collider(5)));
+    }
+
+    #[test]
+    fn upsert_failure_keeps_original_partial_unbinding_order() {
+        let mut graph = StairsStructuralGraph::default();
+        let s = span(1, 2, 0);
+        graph.upsert_span(s, collider(1), 2.5);
+        graph.graph.remove_node(collider(1));
+        assert!(catch_unwind(AssertUnwindSafe(|| graph.upsert_span(s, collider(2), 3.0))).is_err());
+        assert!(!graph.span_to_collider.contains_key(&s));
+        assert!(!graph.collider_to_span.contains_key(&collider(1)));
+        assert_eq!(graph.collider_to_height[&collider(1)], 2.5);
+        assert!(!graph.graph.contains_node(collider(2)));
+    }
+
+    #[test]
+    fn remove_failure_keeps_height_removal_before_required_node() {
+        let mut graph = StairsStructuralGraph::default();
+        let s = span(1, 2, 0);
+        graph.upsert_span(s, collider(1), 2.5);
+        graph.graph.remove_node(collider(1));
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || graph.remove_node_by_collider(collider(1))
+            ))
+            .is_err()
+        );
+        assert!(!graph.collider_to_height.contains_key(&collider(1)));
+        assert_eq!(graph.collider_to_span[&collider(1)], s);
+        assert_eq!(graph.span_to_collider[&s], collider(1));
+    }
+
+    #[test]
+    fn missing_reverse_mapping_panics_after_node_and_primary_mapping_removal() {
+        let mut graph = StairsStructuralGraph::default();
+        graph.upsert_span(span(1, 2, 0), collider(1), 2.5);
+        graph.span_to_collider.clear();
+        assert!(
+            catch_unwind(AssertUnwindSafe(
+                || graph.remove_node_by_collider(collider(1))
+            ))
+            .is_err()
+        );
+        assert!(!graph.graph.contains_node(collider(1)));
+        assert!(graph.collider_to_span.is_empty() && graph.collider_to_height.is_empty());
+    }
+
+    #[test]
+    fn clear_resets_all_six_tables_and_graph() {
+        let mut graph = StairsStructuralGraph::default();
+        let edge = StairGraphEdge::new(1, 2);
+        {
+            let parts = graph.parts_mut();
+            parts
+                .graph
+                .add_edge(collider(1), collider(2), connection(false));
+            parts.collider_to_span.insert(collider(1), (edge, 5));
+            parts.span_to_collider.insert((edge, 5), collider(1));
+            parts.collider_to_height.insert(collider(1), 2.0);
+            parts.working_heights.insert(collider(2), 3.0);
+            parts.connections.insert(collider(2));
+            parts.segment_counts.insert(edge, 7);
+        }
+        graph.clear();
+        assert_eq!(graph.graph.node_count(), 0);
+        assert_eq!(graph.graph.edge_count(), 0);
+        assert!(graph.collider_to_span.is_empty() && graph.span_to_collider.is_empty());
+        assert!(graph.collider_to_height.is_empty() && graph.working_heights.is_empty());
+        assert!(graph.connections.is_empty() && graph.segment_counts.is_empty());
     }
 }

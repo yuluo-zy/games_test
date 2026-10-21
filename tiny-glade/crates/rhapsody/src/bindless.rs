@@ -2,6 +2,7 @@
 //! changing a resource allocates a different slot. Its slot returns to the free
 //! list only after every registered GPU use completes. See the Vulkan
 //! [descriptor binding rules](https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html).
+use crate::rg::profiling::{RecordCount, RecordPhase, RecordSpan, RecordTally, record_count};
 use crate::{
     Error, Result,
     device::{Device, FeatureSet},
@@ -125,7 +126,10 @@ impl PoolCounters {
         }
     }
     fn add_page(&self, page: BindlessStats) -> Result<()> {
+        let counter_wait = RecordSpan::new(RecordPhase::CounterLockWait);
         let mut state = self.state.lock();
+        drop(counter_wait);
+        let _counter_update = RecordSpan::new(RecordPhase::CounterUpdate);
         let mut next = *state;
         let add = |a: usize, b: usize| a.checked_add(b).ok_or(Error::OutOfHostMemory);
         next.capacity = add(next.capacity, page.capacity)?;
@@ -145,7 +149,10 @@ impl PoolCounters {
         Ok(())
     }
     fn remove_page(&self, page: BindlessStats) {
+        let counter_wait = RecordSpan::new(RecordPhase::CounterLockWait);
         let mut state = self.state.lock();
+        drop(counter_wait);
+        let _counter_update = RecordSpan::new(RecordPhase::CounterUpdate);
         state.capacity -= page.capacity;
         state.live -= page.live;
         state.retiring -= page.retiring;
@@ -160,7 +167,10 @@ impl PoolCounters {
         // 注销只撤销当前占用，已经实际发生的高水位不能回退。
     }
     fn record(&self, event: PoolSlotEvent) {
+        let counter_wait = RecordSpan::new(RecordPhase::CounterLockWait);
         let mut state = self.state.lock();
+        drop(counter_wait);
+        let _counter_update = RecordSpan::new(RecordPhase::CounterUpdate);
         match event {
             PoolSlotEvent::Allocated(kind) => {
                 state.live += 1;
@@ -728,6 +738,9 @@ impl BindlessHeap {
         self.slots.lock().statistics()
     }
     fn reserve(self: &Arc<Self>, kind: DescriptorKind, owner: Owner) -> Result<Arc<BindlessLease>> {
+        let _trace = RecordSpan::new(RecordPhase::DescriptorReserve);
+        record_count(RecordCount::DescriptorReserveCalls, 1);
+
         if !self.slots.lock().has_free(kind) {
             self.collect()?;
         }
@@ -826,10 +839,16 @@ impl BindlessHeap {
             .dst_array_element(lease.index.index)
             .descriptor_type(vk::DescriptorType::STORAGE_BUFFER)
             .buffer_info(&info)];
+        let update_wait = RecordSpan::new(RecordPhase::UpdateLockWait);
         let _update = self.slots.lock();
-        unsafe {
-            self.device.core.device.update_descriptor_sets(&write, &[]);
+        drop(update_wait);
+        {
+            let _update_driver = RecordSpan::new(RecordPhase::UpdateDriver);
+            unsafe {
+                self.device.core.device.update_descriptor_sets(&write, &[]);
+            }
         }
+        record_count(RecordCount::StorageBufferWrites, 1);
         Ok(lease)
     }
     pub fn sampled_image(
@@ -883,10 +902,23 @@ impl BindlessHeap {
             .dst_array_element(lease.index.index)
             .descriptor_type(kind.ty())
             .image_info(&info)];
+        let update_wait = RecordSpan::new(RecordPhase::UpdateLockWait);
         let _update = self.slots.lock();
-        unsafe {
-            self.device.core.device.update_descriptor_sets(&write, &[]);
+        drop(update_wait);
+        {
+            let _update_driver = RecordSpan::new(RecordPhase::UpdateDriver);
+            unsafe {
+                self.device.core.device.update_descriptor_sets(&write, &[]);
+            }
         }
+        record_count(
+            if kind == DescriptorKind::SampledImage {
+                RecordCount::SampledImageWrites
+            } else {
+                RecordCount::StorageImageWrites
+            },
+            1,
+        );
         Ok(lease)
     }
     pub fn sampler(self: &Arc<Self>, sampler: Arc<Sampler>) -> Result<Arc<BindlessLease>> {
@@ -906,10 +938,16 @@ impl BindlessHeap {
             .dst_array_element(lease.index.index)
             .descriptor_type(vk::DescriptorType::SAMPLER)
             .image_info(&info)];
+        let update_wait = RecordSpan::new(RecordPhase::UpdateLockWait);
         let _update = self.slots.lock();
-        unsafe {
-            self.device.core.device.update_descriptor_sets(&write, &[]);
+        drop(update_wait);
+        {
+            let _update_driver = RecordSpan::new(RecordPhase::UpdateDriver);
+            unsafe {
+                self.device.core.device.update_descriptor_sets(&write, &[]);
+            }
         }
+        record_count(RecordCount::SamplerWrites, 1);
         Ok(lease)
     }
     fn validate_binding(
@@ -918,6 +956,10 @@ impl BindlessHeap {
         set: u32,
         leases: &[Arc<BindlessLease>],
     ) -> Result<()> {
+        let _trace = RecordSpan::new(RecordPhase::ManagedValidate);
+        record_count(RecordCount::BindingChecks, 1);
+        record_count(RecordCount::BindingLeaseInputs, leases.len());
+
         if self.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
@@ -957,8 +999,11 @@ impl BindlessHeap {
         }
         // The heap and pipeline contain no native image/buffer accesses. Every
         // lease is checked independently against this command's actual patches.
+        let retain_trace = RecordSpan::new(RecordPhase::Retain);
         command.retain_object(self.clone())?;
+        record_count(RecordCount::RetainSuccesses, 1);
         command.retain_object(pipeline.clone())?;
+        record_count(RecordCount::RetainSuccesses, 1);
         for lease in leases {
             if let Owner::Buffer {
                 buffer,
@@ -968,9 +1013,11 @@ impl BindlessHeap {
             } = &lease.owner
             {
                 command.retain_upload_read(buffer.clone(), *offset, *size, Self::upload_scope())?;
+                record_count(RecordCount::RetainSuccesses, 1);
                 // SAFETY: the formal upload intent covers this immutable ring range.
                 unsafe {
                     command.retain_recorded(lease.clone())?;
+                    record_count(RecordCount::RetainSuccesses, 1);
                 }
                 continue;
             }
@@ -1006,11 +1053,15 @@ impl BindlessHeap {
             if known {
                 unsafe {
                     command.retain_recorded(lease.clone())?;
+                    record_count(RecordCount::RetainSuccesses, 1);
                 }
             } else {
                 command.retain_opaque(lease.clone())?;
+                record_count(RecordCount::RetainSuccesses, 1);
             }
         }
+        drop(retain_trace);
+        let _native_bind = RecordSpan::new(RecordPhase::NativeBind);
         unsafe {
             self.device.core.device.cmd_bind_descriptor_sets(
                 command.handle,
@@ -1021,6 +1072,7 @@ impl BindlessHeap {
                 &[],
             );
         }
+        record_count(RecordCount::NativeBindCalls, 1);
         Ok(())
     }
     /// # Safety
@@ -1044,8 +1096,11 @@ impl BindlessHeap {
         for lease in leases {
             Self::validate_pass_lease(context, lease)?;
         }
+        let retain_trace = RecordSpan::new(RecordPhase::Retain);
         context.retain_object(self.clone())?;
+        record_count(RecordCount::RetainSuccesses, 1);
         context.retain_object(pipeline.clone())?;
+        record_count(RecordCount::RetainSuccesses, 1);
         for lease in leases {
             if let Owner::Buffer {
                 buffer,
@@ -1055,12 +1110,16 @@ impl BindlessHeap {
             } = &lease.owner
             {
                 context.retain_upload_read(buffer.clone(), *offset, *size, Self::upload_scope())?;
+                record_count(RecordCount::RetainSuccesses, 1);
             }
             // SAFETY: validate_pass_lease checked every memory range and role.
             unsafe {
                 context.retain_recorded(lease.clone())?;
+                record_count(RecordCount::RetainSuccesses, 1);
             }
         }
+        drop(retain_trace);
+        let _native_bind = RecordSpan::new(RecordPhase::NativeBind);
         unsafe {
             self.device.core.device.cmd_bind_descriptor_sets(
                 vk::CommandBuffer::from_raw(context.command.handle()),
@@ -1071,6 +1130,7 @@ impl BindlessHeap {
                 &[],
             );
         }
+        record_count(RecordCount::NativeBindCalls, 1);
         Ok(())
     }
     fn is_shader_memory_access(access: vk::AccessFlags) -> bool {
@@ -1094,6 +1154,9 @@ impl BindlessHeap {
         context: &crate::rg::executor::PassContext<'_>,
         lease: &BindlessLease,
     ) -> Result<()> {
+        let _trace = RecordSpan::new(RecordPhase::ManagedValidate);
+        record_count(RecordCount::PassLeaseChecks, 1);
+
         use crate::rg::{resource::AccessRange, vulkan::ResourceSpec};
         let (range, descriptor) = match &lease.owner {
             Owner::Sampler(_)
@@ -1135,13 +1198,21 @@ impl BindlessHeap {
             .get(context.pass_index)
             .ok_or_else(|| Error::invalid_usage("bindless pass index is invalid"))?;
         let semantics = &context.compiled.plan.definition.access_semantics;
+        let coverage = RecordTally::new([
+            RecordCount::CoverageAccesses,
+            RecordCount::CoverageSemantics,
+        ]);
         let ranges =
             pass.accesses
                 .iter()
                 .filter(|access| {
+                    coverage.add(0);
                     let Some(native) = semantics
                         .iter()
-                        .find(|entry| entry.code == access.access_code)
+                        .find(|entry| {
+                            coverage.add(1);
+                            entry.code == access.access_code
+                        })
                     else {
                         return false;
                     };
@@ -1208,6 +1279,8 @@ impl GroupReservation<'_> {
     /// 所有页 writer 都在同一互斥事务内；准入后其他 writer 不能抢占空槽。
     /// 需求必须包含本次缺失缓存、实际新增资源和不可变参数块。
     pub fn require_slots(&self, required: [usize; 4]) -> GroupPreparationResult<()> {
+        let _trace = RecordSpan::new(RecordPhase::RequireSlots);
+
         let check = || {
             let slots = self.heap.slots.lock();
             let capacity = std::array::from_fn(|kind| slots.entries[kind].len());
@@ -1322,23 +1395,35 @@ impl BindlessPageCursor {
             &GroupReservation<'_>,
         ) -> GroupPreparationResult<PreparedBindlessParameters>,
     ) -> Result<PreparedBindlessParameters> {
+        let _trace = RecordSpan::new(RecordPhase::CompleteGroup);
+        record_count(RecordCount::CompleteGroupCalls, 1);
+
         let mut excluded = Vec::new();
         let mut created = false;
         loop {
+            record_count(RecordCount::GroupAttempts, 1);
             let page = if let Some(current) = self.current.take() {
+                record_count(RecordCount::CurrentPageReuse, 1);
                 current
-            } else if let Some(page) = self.pool.available(&excluded) {
+            } else if let Some(page) = {
+                record_count(RecordCount::PageSearches, 1);
+                self.pool.available(&excluded)
+            } {
                 page
             } else if !created {
                 created = true;
-                self.pool.append_page()?
+                let page = self.pool.append_page()?;
+                record_count(RecordCount::PagesCreated, 1);
+                page
             } else {
                 return Err(Error::invalid_usage(
                     "fresh bindless page did not satisfy the admitted group",
                 ));
             };
             let result = {
+                let group_wait = RecordSpan::new(RecordPhase::GroupLockWait);
                 let _guard = page.group.lock();
+                drop(group_wait);
                 build(&GroupReservation { heap: &page.heap })
             };
             match result {
@@ -1347,6 +1432,7 @@ impl BindlessPageCursor {
                     return Ok(prepared);
                 }
                 Err(GroupPreparationError::InsufficientSlots { .. }) => {
+                    record_count(RecordCount::InsufficientRetries, 1);
                     excluded
                         .try_reserve(1)
                         .map_err(|_| Error::OutOfHostMemory)?;

@@ -1,0 +1,122 @@
+{
+  "original_B_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "status": "partial layout contract; tail flags and full consumers not complete; no source candidate",
+  "task": "TG-b2fb979f9d6d3fa02d",
+  "live_owner": null,
+  "source": "crates/country-core/src/resources/stairs_walls.rs",
+  "canonical_types_missing": true,
+  "arch": {
+    "native_size": 160,
+    "owning_container": "Vec<StairsArchSupportAssemblyParams>",
+    "push_sites": [
+      "14000c252..14000c278"
+    ],
+    "fields": [
+      {
+        "offset": "0",
+        "type": "Curve<Vec3,3D>",
+        "evidence": "56B copy + drop Vec3 stride12, coords stride4"
+      },
+      {
+        "offset": "38",
+        "type": "Vec<Vec2>",
+        "meaning": "tangents",
+        "evidence": "drop cap<<3 align4; actual copied from Params.tangents current slice"
+      },
+      {
+        "offset": "50",
+        "type": "Vec<f32>",
+        "meaning": "widths",
+        "evidence": "actual Params.widths current slice copy and drop4"
+      },
+      {
+        "offset": "68",
+        "type": "Vec<f32>",
+        "meaning": "heights",
+        "evidence": "actual Params heights/result curve heights; drop4"
+      },
+      {
+        "offset": "80",
+        "type": "StairGraphEdgeIdentity",
+        "meaning": "packed receipt high-first",
+        "evidence": "main rbp438 from140959e70→c1f3"
+      },
+      {
+        "offset": "88",
+        "type": "StairSegment",
+        "meaning": "actual two u32 stored order",
+        "evidence": "Params+128 qword→c21a; read two IDs postloop10635/1063b"
+      },
+      {
+        "offset": "90",
+        "type": "u32",
+        "meaning": "info.u28 or explicit default100003",
+        "evidence": "9435/943a→c20a"
+      },
+      {
+        "offset": "94..9b",
+        "type": "unknown exact original tail fields",
+        "meaning": "multiple endpoint flags/option-byte; cannot default or reinterpret as8bool"
+      }
+    ],
+    "history_effect": {
+      "call": "14001065a",
+      "kind": "Kind1",
+      "loop": "all queued arch records, identity from ordered stored endpoints@88"
+    }
+  },
+  "bracket": {
+    "native_size": 168,
+    "owning_container": "Vec<StairsBracketAssemblyParams>",
+    "push_sites": [
+      "14000d026..14000d04b"
+    ],
+    "fields": [
+      {
+        "offset": "0",
+        "type": "Curve<Vec3,3D>"
+      },
+      {
+        "offset": "38",
+        "type": "Vec<Vec2>",
+        "meaning": "tangents"
+      },
+      {
+        "offset": "50",
+        "type": "Vec<f32>",
+        "meaning": "widths"
+      },
+      {
+        "offset": "68",
+        "type": "Vec<f32>",
+        "meaning": "heights"
+      },
+      {
+        "offset": "80",
+        "type": "Option<Vec<4B POD>>",
+        "meaning": "f32 likely but not yet complete consumer-bound",
+        "evidence": "d001..d00b MIN niche None; drop@607ac7..7af3 dealloc cap*4 whenSome"
+      },
+      {
+        "offset": "98",
+        "type": "StairSegment",
+        "evidence": "read10685/1068b"
+      },
+      {
+        "offset": "a0",
+        "type": "u32",
+        "meaning": "info.u28 or default100003"
+      },
+      {
+        "offset": "a4/a5",
+        "type": "u8 observed endpoint flags",
+        "meaning": "each gate closure24/25 fallback arch requests in main after first history publishing"
+      }
+    ],
+    "history_effect": {
+      "call": "1400106aa",
+      "kind": "Kind0",
+      "loop": "all queued bracket records before fallbacks append arch records"
+    }
+  }
+}

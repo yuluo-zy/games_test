@@ -1,0 +1,87 @@
+{
+  "status": "readonly-root-cause-confirmed-no-production-serializer-change",
+  "running_binary": {
+    "path": "/private/tmp/tg-preserved-run-binaries-20261021/original_gameplay_chain-sampler-catalog-v3",
+    "sha256": "eb3dc986cb7a8cc11b6086317fcb56c15df695cce064829d569d9da4ebaf597c",
+    "f32_value_machine": "10116b458 fcvt d0,s0; bl serialize_f64"
+  },
+  "build_json": {
+    "path": "/private/tmp/tg-sampler-tree-host-build-20261021.jsonl",
+    "sha256": "f28c1c810f67b6411dc08b8c29f1f1a35da21a746fced902b2906ed0cceb16f0",
+    "artifacts": [
+      {
+        "package_id": "registry+https://github.com/rust-lang/crates.io-index#serde_json@1.0.85",
+        "target": {
+          "kind": [
+            "lib"
+          ],
+          "crate_types": [
+            "lib"
+          ],
+          "name": "serde_json",
+          "src_path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.85/src/lib.rs",
+          "edition": "2018",
+          "doc": true,
+          "doctest": true,
+          "test": true
+        },
+        "features": [
+          "default",
+          "std"
+        ],
+        "filenames": [
+          "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/libserde_json-0d3d1a1521b0bf2f.rlib",
+          "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/libserde_json-0d3d1a1521b0bf2f.rmeta"
+        ],
+        "executable": null,
+        "fresh": true
+      },
+      {
+        "package_id": "path+file:///Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade#0.1.0",
+        "target": {
+          "kind": [
+            "test"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "name": "original_gameplay_chain",
+          "src_path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs",
+          "edition": "2024",
+          "doc": false,
+          "doctest": false,
+          "test": true
+        },
+        "features": [],
+        "filenames": [
+          "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_gameplay_chain-205f7c1acc9fda3a"
+        ],
+        "executable": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_gameplay_chain-205f7c1acc9fda3a",
+        "fresh": false
+      }
+    ]
+  },
+  "raw_asset": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/assets/starting-builds/full/03-halftimber-roof/history.json",
+    "sha256": "1ae8c329993ad59e7b3c2a69ac1d85f299c5c3cd0daf2c804beb9a68cba5e9a3",
+    "position": [
+      25.744875,
+      0.0,
+      42.42129
+    ]
+  },
+  "assertion_order": {
+    "source": "tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs:134",
+    "left": "original asset Value (25.744875)",
+    "right": "current saved Value (25.744874954223633)"
+  },
+  "native_byte_audit": {
+    "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-ab197f381ed7615ce6/boot-leaf-20261018/delegated-tree-save-defaults-20261021/PRECISION_NATIVE_BYTES.json",
+    "sha256": "db66a1de2cce677a22f17e1178a796fd642d4977aee608f78fb708e566634cb2"
+  },
+  "production_callers": {
+    "compact": "load_game.rs:1016 -> SerializedJson::new -> save_game.rs:55 serde_json::to_string(value)",
+    "value_then_text": "save_game.rs:138..139 serde_json::to_value(edit) -> to_string(value)"
+  },
+  "proposal": "test-only compact-to-Value boundary for raw shipped text assertions; separate existing Value roundtrip; no tolerances, no count changes, no numeric payload edits; root must run corpus"
+}

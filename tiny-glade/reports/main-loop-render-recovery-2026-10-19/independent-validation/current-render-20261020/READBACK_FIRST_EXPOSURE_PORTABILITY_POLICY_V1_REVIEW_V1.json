@@ -1,0 +1,79 @@
+{
+  "review": "READBACK_FIRST_EXPOSURE_PORTABILITY_POLICY_V1",
+  "reviewer": "/root/render_reviewer",
+  "source_head": "08ecee0011d9449ebe79dffcd2f9388c490d2f53",
+  "verdict": "静态无阻断；仅认可显式工程可移植性策略，等待 root 实际编译、严格 GPU 和原 GameLoop WSI 验收。不是原作零初始化恢复证明。",
+  "inputs": {
+    "manifest": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6b43449ef07afe08ea/core-bush-cpu-20261018/postpush-wsi-first-read-20261021/readback-policy-v1/MANIFEST.json",
+    "manifest_sha256": "865add6bcd23cb53cc44d6b8d3b334d8131bd18e532eb18743dafe2171523c37",
+    "patch_sha256": "ddf20f9d6121a48ea7d57cc7e0c29630344391b21bebfde7d6efddf6e3f75848",
+    "files": [
+      {
+        "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/buffer.rs",
+        "before": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6b43449ef07afe08ea/core-bush-cpu-20261018/postpush-wsi-first-read-20261021/readback-policy-v1/before/tiny-glade/crates/rhapsody/src/raw/buffer.rs",
+        "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6b43449ef07afe08ea/core-bush-cpu-20261018/postpush-wsi-first-read-20261021/readback-policy-v1/candidate/tiny-glade/crates/rhapsody/src/raw/buffer.rs",
+        "before_sha256": "c65431ef57a83d5ae639428c9f005f80741b83743426366fc766f8d5eb067831",
+        "after_sha256": "4aafbcc967db762ffb896258b993f842c8b8f2b5075f9ad6eb4771730f711b44"
+      },
+      {
+        "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+        "before": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6b43449ef07afe08ea/core-bush-cpu-20261018/postpush-wsi-first-read-20261021/readback-policy-v1/before/tiny-glade/crates/tiny-glade/src/render_host.rs",
+        "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6b43449ef07afe08ea/core-bush-cpu-20261018/postpush-wsi-first-read-20261021/readback-policy-v1/candidate/tiny-glade/crates/tiny-glade/src/render_host.rs",
+        "before_sha256": "c69837d9dee6f634bb72ddb4426b82b70c781b75d807fe29999f29af43d58779",
+        "after_sha256": "6da9c537d13f2946b8b003f43ec1027472064e2dd286cb4638c7a5026aab9183"
+      },
+      {
+        "source": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs",
+        "before": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6b43449ef07afe08ea/core-bush-cpu-20261018/postpush-wsi-first-read-20261021/readback-policy-v1/before/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs",
+        "candidate": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-6b43449ef07afe08ea/core-bush-cpu-20261018/postpush-wsi-first-read-20261021/readback-policy-v1/candidate/tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs",
+        "before_sha256": "14973c06eff451eab10780bf8d9fea2ce81a0204a8a156aaad4fae694a4d1856",
+        "after_sha256": "4bc1e1765b25276453d320f433b16ea1ee1e2f476ba1cb02605e29d7df590c33"
+      }
+    ]
+  },
+  "identity_check": "独立逐 SHA 核对三个 before、三个 candidate 与审查时生产，全部和冻结 manifest 匹配。",
+  "native_scope": {
+    "original_claim": "原 None 无 payload 上传；没有原版内存初值必须为零的证据。原 ctor 和 reader 不在补丁中。原 allocator 首值/先行 producer 由 root 另行调查，不能以本策略替代该原证结论。",
+    "schema": "GpuToCpu 原边界码 4、BufferDesc.size 与实际 managed.size；未改变 canonical ctor 的 None、原 count 越界 panic 和 SSBO 大小。",
+    "engineering": "只在游戏 BufferHost::create_buffer 内，新 native buffer 成功创建后、core slot 发布前，对 GpuToCpu && data.is_none() 定义整个新对象的初值为零。此策略比单 Bush buffer 更广，适用于该 Host 新创建的所有无 payload 读回缓冲。",
+    "vulkan_reference": "Vulkan 未使用 ZERO_INITIALIZE 分配标记时，新分配字节值不保证为零；这不能证明 Windows 原作一定依赖零值，也不能将 Mac 初值差异算作原算法。",
+    "primary_sources": [
+      "https://docs.vulkan.org/spec/latest/appendices/memorymodel.html",
+      "https://docs.vulkan.org/features/latest/features/proposals/VK_EXT_zero_initialize_device_memory.html"
+    ]
+  },
+  "checked_source": [
+    {
+      "path": "crates/rhapsody/src/raw/buffer.rs",
+      "candidate_line": 895,
+      "finding": "fill_mapped_bytes_unsynchronized 先进行 offset/len→usize 转换，复用 host_access 的 checked offset+len、host-visible、共享瞬态拒绝、非 coherent 原子范围及在途重叠判断。None 等待界限表示有重叠先 poll 一次仍未完成则 Timeout，无自行 wait/idle。write_bytes closure 换成 write_bytes memset；无临时零 Vec。"
+    },
+    {
+      "path": "crates/rhapsody/src/raw/buffer.rs",
+      "source_lines": [
+        707,
+        813,
+        841,
+        849,
+        867
+      ],
+      "finding": "原 host_access 先锁 host_access→submission gate，prepare_buffer_host_range 成功后才写；非 coherent flush 复用原流程；CPU 写已发生但 flush 失败仍通过 HostRangeState Drop 保守发布 revision，写前失败 cancel。新 helper 不绕过这些状态。"
+    },
+    {
+      "path": "crates/tiny-glade/src/render_host.rs",
+      "candidate_line": 134,
+      "finding": "新对象尚为局部 owner、尚未可通过 slot 查询。fill 任一错误直接返回，managed Drop，未发布 core 句柄。Some 包括 Some(empty)、GpuOnly/CpuToGpu、generic Device::create_buffer(None)、managed_buffer/lookup/import、旧 GPU 内容均不经过新分支。初始化自身可能触发 host-range budget/flush 错误，不能宣称保持原无初始化成本或完全相同错误集合。"
+    },
+    {
+      "path": "crates/tiny-glade/tests/core_render_bridge.rs",
+      "candidate_line": 482,
+      "finding": "新测试使用真实桥接 Device，先读新对象零值，poison A5 后通过 rg_buffer_copy_from_slice_u32 登记 Buffer memcpy 实际 staging/copy pass，等待真实 submits，再重新 lookup 验证 21..24；越界/溢出调用返回错误后内容保持，Some(3c) 不覆写，release 后 lookup 失效。该测试源不能等同已执行或完整 shader 写回测试。"
+    }
+  ],
+  "cost_and_limits": [
+    "每次符合策略的新对象增加 O(byte_size) CPU 写与一次 host 范围事务，非 coherent 还需 flush；只在构造而非逐 frame/lookup。无额外 O(byte_size) 临时分配。",
+    "首读 count 从未定义值变为 0 属于明确宿主初始化语义选择；没有据此修改原读取长度、count clamp、更新顺序、业务 gate 或算法。",
+    "实际 CPU/GPU/WSI 结果需另绑二进制与日志；即便 WSI 通过，也不能以本报告认定编辑保存重启闭环或任意读回同步已验收。"
+  ],
+  "execution": "本审查未运行 Cargo、rustc、GPU、游戏或修改生产；仅源码/冻结 hash 独立审。root 为唯一实际验证 owner。"
+}

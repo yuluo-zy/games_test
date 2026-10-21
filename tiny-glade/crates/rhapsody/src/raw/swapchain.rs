@@ -424,6 +424,8 @@ pub struct Swapchain {
     pub surface: Arc<Surface>,
     pub(crate) handle: vk::SwapchainKHR,
     pub format: vk::Format,
+    // 真实创建所用的颜色空间；创建成功前不能以默认枚举值冒充已选择值。
+    color_space: Option<vk::ColorSpaceKHR>,
     pub extent: vk::Extent2D,
     /// Actual mode selected after querying the surface; recorded for performance runs.
     pub present_mode: vk::PresentModeKHR,
@@ -708,6 +710,7 @@ impl Swapchain {
             surface,
             handle: vk::SwapchainKHR::null(),
             format: vk::Format::UNDEFINED,
+            color_space: None,
             extent,
             present_mode: vk::PresentModeKHR::FIFO,
             images: Vec::new(),
@@ -923,6 +926,7 @@ impl Swapchain {
         self.images = images;
         self.views = views;
         self.format = format.format;
+        self.color_space = Some(format.color_space);
         self.extent = extent;
         self.present_mode = present_mode;
         self.pre_transform = caps.current_transform;
@@ -1114,6 +1118,13 @@ impl Swapchain {
     }
     pub fn format(&self) -> vk::Format {
         self.format
+    }
+    /// 当前原生交换链实际创建使用的格式与颜色空间，不是表面支持列表。
+    pub fn surface_format(&self) -> Option<vk::SurfaceFormatKHR> {
+        self.color_space.map(|color_space| vk::SurfaceFormatKHR {
+            format: self.format,
+            color_space,
+        })
     }
     pub fn mark_stale(&self) {
         self.inner.write().stale = true;

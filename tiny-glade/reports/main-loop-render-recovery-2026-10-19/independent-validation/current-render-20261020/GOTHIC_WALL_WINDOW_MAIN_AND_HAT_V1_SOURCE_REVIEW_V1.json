@@ -1,0 +1,71 @@
+{
+  "review": "GOTHIC_WALL_WINDOW_COMPLETE_MAIN_AND_HAT_V1",
+  "reviewer": "/root/render_reviewer",
+  "verdict": "冻结单源静态无阻断，可root实际编译/10测试；本包mount=false，不等于完整gothic到Nani已可达。",
+  "input_identity": {
+    "delivery": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73d8f60997815a3b36/scene-clutter-producer-20261020/gothic-main-chain-20261021/delivery-v1.json",
+    "delivery_sha256": "2eb65c5396df7b11e315ad53d45222b79217be99f0fcff2ee44aa3392e5e00e6",
+    "source_before": "4ed2f8bc6027b2fdcbe9ee9c875f8df02fa3b03249bc67ebd254d781b8806df7",
+    "candidate": "c426a4f917892f757a68e02ddab2a236a55ef7a30b4d08cddd3aa90bbc173d6c",
+    "patch": "20f2c8fa4fc30fba493a3e247cb707ce2bc8e7be62f034a9b0d92bbe33f7c4d5",
+    "shared_projective_513_actual_utils_sha256": "9107aaeef70f205035dbde91e4291ea78a065ca9f3d01716dae51cc1b16d6bb7"
+  },
+  "independent_native": {
+    "B_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "verified_ranges": [
+      {
+        "va": "1407e87b0",
+        "bytes": 10658,
+        "instructions": 1984,
+        "range_sha256": "fd8783fa019f2c25b43d3fc9874d8039d9d54be15ff379240a711d12ce494bdc"
+      },
+      {
+        "va": "1407eb500",
+        "bytes": 1182,
+        "instructions": 244,
+        "range_sha256": "eacf2840331fc442866546f60191251f4611454cd81be189e80d3601ccb977a9"
+      },
+      {
+        "va": "140b25c90",
+        "bytes": 5,
+        "instructions": 3,
+        "range_sha256": "b3b8d9f802cc747931054830457a8e68a91cb89af8515fc1c271670282a8a112"
+      },
+      {
+        "va": "140c911d0",
+        "bytes": 513,
+        "instructions": 133,
+        "range_sha256": "e5be91f3c2749f71ad8f06674d0b684ff2a6a8b51ccb51160738b1a2e41a4847"
+      },
+      {
+        "va": "140c90ed0",
+        "bytes": 253,
+        "instructions": 64,
+        "range_sha256": "a81f95a79794735fd5d8422b1f5e2dfd85bd2f1022260e724e541317026574a8"
+      }
+    ],
+    "method": "独立逐条解析5完整asm的指令字节、连续性与原RNE同VA读值匹配；16常量/15字符串直接重读原PE全部匹配。llvm-symbolizer实际绑定main line33/gethat line352/Rectangle3d extent/DormerHoleSsbo gothic；ICF别名不依其主名称替代真实指令语义。",
+    "wallid_projection": "0x1400885d0=488b01c3，实际mov rax,[rcx];ret；后EDX传参取低32，不能被ICF显示cmsPipelineGetPtrToFirstStage误导。"
+  },
+  "checked_contract": [
+    "主函数仅Derived/Storage/PublicWalls/Blueprints四输入，同owner iter_modified首required subtype；mask&1e==6且Info+22 dst_tag<=1，Info state只blueprint flags/semi，不拒state2。先wall/initialcollision lookup，再rank改局部bounds.size.x，再dst_as_wall/hat/513rotation，最后才insert blueprint。",
+    "独核8d15相对bucket_end-26且Info起点bucket_end-48，确为dst_tag；8e7c局部bounds+10写rank宽；91d6实际reorder为side4,edge2,first3,center3,second3，candidate60B payload保持该顺序，不memcpy帽结构。",
+    "gethat1182B真实rank/circle宽调整、inverse_lerp及clamp、零乘项，project两端→world两端→first/second approximate/clamp/coord requiredpair→centerworld/pair；三对normal同真实curve，无伪几何。SIMD side为first和center normal、edge为second normal，原选段/失败顺序保留。",
+    "姿态使用真实513projective，midpoint second*.5+first*.5；帽先push，subtype7或halftimber选full，rank1普通bricks/rank2-3gothicdeformation。Brick firstword是Info+2c而不是modifiedid，wall低32，其余真实u/width/lowflag，frameflag清0。",
+    "shape<2才WindowExtra required/NameHash，然后玻璃forward .14位移延续给frame/collider/transform/Dormer，帽不位移；光key用modifiedid+1000rank。freeform不读extra/不玻璃/不偏移；color999只改frame shader。",
+    "视觉发布后先collision Arc再interaction Arc required，再取initial局部collision bounds深度/finite colliders/set cached transform，缺后项不回滚已发visual。三张原洞表顺序append且重新读dst坐标；最后subtype7/shape<2/rank覆盖后extent.x>0有序门才Dormer，以真实midY/forward/WallId低32/原两尾表形成。"
+  ],
+  "source_and_tests": {
+    "identity": "before与审查时生产4ed2...相同，candidatec426.../patch20f2...匹配delivery；sharedutils实际9107...满足513依赖。",
+    "new_test_functions": 10,
+    "executed": false,
+    "scope": "真实World/PublicWalls发布/Storage/Derived/blueprints、mesh sameArc、rank/subtype/style、bitmask和state门、弯折中心normal、三洞27word、fallback缺key/extra/interaction的部分副作用、Dormer宽覆盖与尾表。",
+    "numeric_limit": "没有原程序运行oracle；不声称任意NaN payload/ISA/libm/allocator OOM的全部位或时序等价。原常量洞Vec替数组节省分配，业务append阶段仍保留。"
+  },
+  "unresolved": [
+    "独立calc_gothic_half_dormer_profile_ws仍旧简式，非本main callee，需另完整恢复，不能因本main通过而报全文件完整。",
+    "现pending_core BrickColor与GothicWindowBrickDeformation仍待唯一canonical ECS/Nani adapters闭合，由corelead负责；本包不造第二组件/实例库。",
+    "完整set10/set25 App可达、cache9331、长stairs/mesh与完整unload未齐前不得mount旧半Plugin。"
+  ],
+  "execution": "独立只读原PE/PDB/源码/hash，无Cargo/rustc/原程序/GPU/生产修改。"
+}

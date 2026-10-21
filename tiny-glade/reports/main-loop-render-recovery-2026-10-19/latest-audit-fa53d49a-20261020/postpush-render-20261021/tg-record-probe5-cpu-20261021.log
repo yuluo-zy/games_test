@@ -1,0 +1,17 @@
+   Compiling rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.85s
+     Running unittests src/lib.rs (target/debug/deps/rhapsody-fcb740fc2e73f071)
+
+running 5 tests
+test rg::profiling::record_trace_tests::off_scope_does_not_activate_or_touch_numbers ... ok
+
+thread 'rg::profiling::record_trace_tests::false_and_unwind_restore_tls_before_next_callback' (27046688) panicked at crates/rhapsody/src/rg/profiling.rs:825:13:
+test callback panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test rg::profiling::record_trace_tests::nested_scope_restores_parent_and_discards_foreign_spans ... ok
+test rg::profiling::record_trace_tests::cloned_coverage_iterators_share_local_counts_and_remain_lazy ... ok
+test rg::profiling::record_trace_tests::false_and_unwind_restore_tls_before_next_callback ... ok
+test rg::profiling::record_trace_tests::parallel_workers_keep_distinct_scope_and_tally ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 407 filtered out; finished in 0.00s
+

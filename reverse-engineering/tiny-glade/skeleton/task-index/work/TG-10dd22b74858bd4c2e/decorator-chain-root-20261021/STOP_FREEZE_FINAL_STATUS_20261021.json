@@ -1,0 +1,55 @@
+{
+  "status": "frozen_by_user_stop_no_further_analysis_or_source_changes",
+  "agent": "/root/decorator_chain",
+  "date": "2026-10-21",
+  "scope": "本文件只冻结当前小审、候选导航与未完成边界；不宣称主游戏可进入或完整宿主已挂载。",
+  "history_numeric": {
+    "delivery": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10dd22b74858bd4c2e/decorator-chain-root-20261021/history-wire-numeric-review-v1/delivery.json",
+    "delivery_sha256": "2ca052fb02a12620efa16efdebc34a4495c8825d2d32480ff4cd8f519f1d0804",
+    "contract": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10dd22b74858bd4c2e/decorator-chain-root-20261021/history-wire-numeric-review-v1/TYPE_AND_NUMERIC_CONTRACT_V1.md",
+    "actual_failure_log": "/private/tmp/tg-original-histories-wire-v3-20261021.log",
+    "actual_direction": "left 原 compact 3.9437943；right saved 3.9437942504882817。",
+    "native_field": "Terrain.pos_xz 为 Vec2<f32>；yaw 为 f32；原数值及 saved 值归入相同 f32 bits 0x407c6720。",
+    "candidate_boundary": "仅三个已证 Terrain f32 叶子按有限 f32 位合同比较，保其余字段与结构严格断言；未由本 agent 执行 Cargo。ICC/root 正改同测试，禁止 whole-file 覆盖。"
+  },
+  "menu_entry": {
+    "delivery": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-700584f34568812faf/decorator-menu-entry-20261021/ENTRY_CONTRACT_DELIVERY_V1.json",
+    "delivery_sha256": "73ba242cfe3cf91f001780471c7e61fed7068a239ee309639846feab933401e0",
+    "contract": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-700584f34568812faf/decorator-menu-entry-20261021/MENU_ENTRY_HARD_GAPS_CONTRACT_V1.md",
+    "findings": "当前 welcome/new_session 真实业务消费者及 canonical onboarding 状态缺失；Menu.New 只写 NextEscMenuState，后续 dedicated 消费者未挂。原 New UI 会创建 NextSession 并请求 Reload；当前模板安全所有权表达尚未闭合。",
+    "native_sources": {
+      "welcome": "TG-700584f34568812faf；B 141ebe130/2158B",
+      "new_session": "TG-036ffc7cc830b9722f；B 141eb9690/16011B"
+    },
+    "boundary": "正常 claim 保留 owner decorator-menu-entry-20261021；仅合同和原证，无 Rust 候选。用户确认卡在厂商 Logo，因此后续菜单实现已暂停，未把此缺口当当前 Logo 原因。"
+  },
+  "full_entry_logo": {
+    "logs": [
+      "/private/tmp/tg-full-process-entry-v2-20261021.log",
+      "/private/tmp/tg-full-process-unbounded-v3-20261021.log"
+    ],
+    "observed": "600 加载帧 exit0/gameplay0 不构成成功。无帧数上限 v3 先继续加载帧，14:19:24 已进入 glade 初始化；截至4470帧 gameplay_frames/submissions/presents 全0，无 world frame stats，最终 exit1。",
+    "observed_warning": "v3 中记录75次 VK_FORMAT_R32G32_UINT 不支持 blend 的 MoltenVK 警告；警告与阻断关系未证。",
+    "logo_gate": "GameplayPreparation 等 LoadingGameComplete，再执行真实 graph warm_up；仅 worker 成功返回并被 poll 接收后 finish_wait，Logo 动画结束后才移交 gameplay App。不得强制消退绕过。",
+    "configuration_difference": "两个 production bin 无条件写 MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=1；original_loading_present 直接 GameLoop fixture 未显式写该变量。该差异是待验证候选，未证因果。",
+    "fixture_difference": "通过的 WSI fixture 用临时账户、480x270 隐藏窗口并直接构建 GameLoop；真实入口经 standalone_main/setup_window/账号配置。两者都复用生产双 App 链。",
+    "diagnostic_limit": "world frame stats 只在 build/prewarm/compile/execute 全完成后记录；缺此日志不能进一步断言卡在具体子阶段。prewarm 当前180秒、GPU完成等待120秒；本轮未修改。",
+    "confirmed_secondary_failure": "root 确认首次 Err 后 shutdown/target.exit 又收到 Redraw，render_frame:303 closed renderer unwrap panic 掩盖首次错误。按用户停止指令，该问题未修；首次错误根因未保留下来，仍未定位。",
+    "proposed_observation_not_implemented": "保首次 Err；分段记录 worker update/LoadingGameComplete/build/prewarm/compile/execute/GPU-completion 进入与退出，附 pipeline 身份/队列统计；终态停止接收 Redraw。不得新增成功标志或扩大超时冒充修复。"
+  },
+  "previous_business": {
+    "gothic": "完整 main/get_hat 已冻结且独审通过（review SHA 6e5aea320c0971215f49c95570a2d52e5c0f5b0e58ea2f7cadbc9167d28c6ba9）；两次实际失败判定为 Rectangle fixture 起边错误，fixture-only 修复已独审交 root，全部原期望/容差/生产算法保留。",
+    "canonical": "BrickColor/Gothic canonical component→同 Nani/GpuWorld 三源原子包已独审交 root，9新增测试；本 agent 无执行结果，不能代报运行通过。",
+    "host_unload_delivery": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10dd22b74858bd4c2e/decorator-chain-root-20261021/visual-host-unload-20261021/delivery-v1.json",
+    "host_unload_delivery_sha256": "73268408ef7b1e6a9d300cea647db94957704720ef4efc14bac0d2f058e4992c",
+    "mount_boundary": "set10/set25 尚有 cache/stairs/roof 等真实生产者及完整生命周期前提；不挂旧半实现宿主、不用 resource_exists/假几何补门。"
+  },
+  "tool_state": {
+    "agent_running_tools": [],
+    "agent_spawned_new_workers": false,
+    "agent_production_changes": false,
+    "agent_cargo_gpu_git_runs": false,
+    "root_owned_run": "root session2418 由 root 管理，root 已报告 v3 exit1；本 agent 未接管或操作。",
+    "after_freeze": "本文件写毕不再写候选或报告，由 root 统一验收/提交/推送。"
+  }
+}

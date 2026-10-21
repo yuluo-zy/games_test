@@ -1,0 +1,7 @@
+# 原旧存档 TreeData 缺字段策略源码独审
+
+通过两属性窄修及3个同源测试，交root重跑真实原语料，禁止修改语料计数断言。审者独读完整3402B元数据绑定及实际1415b6f32..711c原关键控制流：四必需字段仍按原门缺失失败，prefab缺失分配复制真实24字节MISSING_TREE_PREFAB_NAME，显式String保原，is_preplaced的None niche2 &1为false；不是alias，也不允许假选Oak等真实prefab。
+
+生产唯一改动为prefab_name的serde default=missing_prefab与is_preplaced的default；已有serialize六字段/variant与外部unique index、required字段、null/类型/duplicate错误和unknown ignore政策仍由依赖derive保留。现完整旧Version18真实树反例、分别缺省与显式值、required/invalid/duplicate/unknown测试有意义，不以通篇默认盖缺口。
+
+live show保旧owner boot-leaf；实际before7401、candidate1ecc、patch00cb重hash，独立scratch -F0无offset/fuzz精确重放；除两serde行外cfg(test)前生产前缀逐字一致。未改生产、未Cargo/rustc/GPU。此为原属性迁移遗漏修复，不计依赖visitor新业务恢复；root实际33/2120/408/63资产回归仍须通过。

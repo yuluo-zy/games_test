@@ -1,0 +1,9 @@
+# 补充A：禁用成本与当前实现顺序
+
+实现阶段暂后置于真实sampler增长根因修复；合同和本补充保留，未写探针生产候选。
+
+开关只在executor每真实callback的scope入口读一次原SubmitTrace缓存值。nested span读取const thread_local Cell<u64> ACTIVE_ID，0即disabled，直接返回None；不反复读OnceLock、不新增每descriptor原子/Mutex。stats固定数组另存TLS，off不复制stats、不取Instant、不格式化、不分配、不借RefCell。Span Drop为None时也不读TLS。
+
+启用scope保存旧ACTIVE_ID及固定stats、设置on-only唯一record_id。Drop先恢复旧stats与id再打印。!Send guard不能换线程析构。serial/parallel各自真实callback归属GraphId/pass/command；匿名adapter由record_id区分。coverage细循环若需计数，用本地固定整数累加、函数退出再一次写TLS，不能每次semantics比较复制大数组。
+
+提交与记录探针同由RHAPSODY_SUBMIT_TRACE=1开启；记录独立前缀和inclusive字段，原SubmitTrace日志语义不变。原PGO timer/GPU timestamp次序不变，原duration写入后才drop记录scope输出。

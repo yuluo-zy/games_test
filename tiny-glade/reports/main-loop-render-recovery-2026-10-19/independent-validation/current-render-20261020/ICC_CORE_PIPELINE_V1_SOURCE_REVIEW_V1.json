@@ -1,0 +1,97 @@
+{
+  "scope": "ICC V1 six-source original B CPU transform / per-App GPU owner / actual FinalPost custom-lut consumer; source review only",
+  "manifest_sha256": "241581e17e323f2f2a3db206c204ff90599ad7062b94ba6059f64e76af46754a",
+  "patch_sha256": "29be6bbc47b07d0e7e9ea0fbfd6770df0cf2b53f3ce86d5021e1e5de9b45a665",
+  "source_identity": [
+    {
+      "source": "tiny-glade/crates/country-core/src/systems/backend/icc.rs",
+      "after_sha256": "37c3d35fdf3fe9a398ca6dfd0e775496de3a65a2fe881993705a400303041424",
+      "current_matches_before": true
+    },
+    {
+      "source": "tiny-glade/crates/country-core/src/systems/backend/mod.rs",
+      "after_sha256": "31fb0c22fa21ddd957f6780ba8cda70269b1052198c77f18564a5a0e8ecd92a5",
+      "current_matches_before": true
+    },
+    {
+      "source": "tiny-glade/crates/country-core/Cargo.toml",
+      "after_sha256": "25614babe2f83a7d0bebee23ba821fd16fb00e349a0960909bb2f08629213bbe",
+      "current_matches_before": true
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/render_bridge.rs",
+      "after_sha256": "0d6d2d4242ea2ffd3fc0a357b3e94755b390a359f094701231a1a343f6f9b44b",
+      "current_matches_before": true
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "after_sha256": "a3285239030e42ba8226594402ea09406d3ffce06dd5734836207aba42d82e2a",
+      "current_matches_before": true
+    },
+    {
+      "source": "tiny-glade/crates/tiny-glade/src/world_postprocess.rs",
+      "after_sha256": "b4466c46666097a312a86ae15ef062f982df4df284622766c264591224ea7bd2",
+      "current_matches_before": true
+    }
+  ],
+  "independent_native_byte_checks": [
+    {
+      "file": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10fd53e1e286bb43af/render-tail-icc-20261021/native-pack/icc-grid.asm.txt",
+      "start": "0x1413036c0",
+      "bytes": 1690,
+      "instructions_or_prefix_rows": 414,
+      "body_sha256": "2e0738f03a131471e2cb23b414c34acce3c67474a4dc2c7470e0ed0f9d07fb4a",
+      "continuous_and_rne_equal": true
+    },
+    {
+      "file": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10fd53e1e286bb43af/render-tail-icc-20261021/native-pack/icc-monitor-event.asm.txt",
+      "start": "0x14026f820",
+      "bytes": 80,
+      "instructions_or_prefix_rows": 13,
+      "body_sha256": "4311532aa7a4d97acea1eb76fc6ad78031d8e0ae3bcc9c168bdf7d87007d8402",
+      "continuous_and_rne_equal": true
+    },
+    {
+      "file": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10fd53e1e286bb43af/render-tail-icc-20261021/native-pack/icc-monitor-query-call.asm.txt",
+      "start": "0x14026f5ea",
+      "bytes": 147,
+      "instructions_or_prefix_rows": 26,
+      "body_sha256": "465b607eb9fd120ed455fdb5e2cfa7a9551ae89f039a68ebd2179a1666a68753",
+      "continuous_and_rne_equal": true
+    },
+    {
+      "file": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10fd53e1e286bb43af/render-tail-icc-20261021/native-pack/icc-plugin-build.asm.txt",
+      "start": "0x140a58440",
+      "bytes": 8,
+      "instructions_or_prefix_rows": 2,
+      "body_sha256": "0bf2e6ca4cace30e06a124d1a5cbdaef85daad64091eb8dc54f5811446eb54cd",
+      "continuous_and_rne_equal": true
+    },
+    {
+      "file": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-10fd53e1e286bb43af/render-tail-icc-20261021/native-pack/icc-update-pdb-range.asm.txt",
+      "start": "0x14093d830",
+      "bytes": 3290,
+      "instructions_or_prefix_rows": 841,
+      "body_sha256": "ec043b3bd1540682890f31c0ffb775fcd404759418480880a03b749b6bf56913",
+      "continuous_and_rne_equal": true
+    }
+  ],
+  "findings": [
+    "Original event last() is mirrored, previous active slot is released before parsing. delivered invalid path clears previous profile; OS query failure must remain a separate no-event producer path.",
+    "RGBA_16 0x4009a input/output and Perceptual0/flags0 verified against original14093da61..8e; pinned lcms2::Transform::new calls new_flags with Flags::default=0. Real transform_in_place calls cmsDoTransform on original full buffer, not a substitute matrix.",
+    "Full 32^3/R-fastest/G/B order, integer channel i*65535/31, alpha255 retained. Native grid rows and cleanup-inclusive 3290B update verified directly against RNE. Exact LCMS2.15 ABI build and numeric tests remain root runtime obligations.",
+    "OwnedIccLut keeps same strong TextureHost trait owner and releases only its CPU slot. Existing TextureHost generation invalidation cannot destroy ManagedTexture Arc still retained by graph/view/descriptor. Both App constructors install plugin; bridge injects current App host.",
+    "FinalPost compares actual Arc trait owner before numeric-id lookup, validates D3/32^3/0x5b/sample1/SAMPLED, then binds existing Raw path. Current DrawBuilder::bind_texture Raw enforces readonly/no view; existing RasterPassHost imports actual ManagedTexture, preserving sampled synchronization and in-flight Arc owner. Borrow of ActiveIccProfile is immutable and ends before mutable frame.with_raster access; no extra parallel texture namespace.",
+    "No-event CPU-only App is valid; real event without same-App device fails explicitly. Default None keeps existing LUT fallback, not fabricated profile. name allocation after creation is guarded by OwnedIccLut RAII."
+  ],
+  "verdict": "F0 source_ready_for_root_compile_CPU_and_explicit_profile_GPU_validation; no static blocker found in this bounded six-source core",
+  "unverified": [
+    "Child ran no Cargo/CPU tests/GPU. Eight tests are source-written only.",
+    "Windows OS tracker/hook is not part of core manifest; automatic profile changes not yet reachable through this packet alone.",
+    "Mac actual chosen swapchain colorSpace/CAMetalLayer ColorSync diagnostic and no-double-conversion policy need separate real platform evidence.",
+    "Actual finalpost sampling/color pixel difference, replacement while old graph in flight, and cancellation/retry not proved by mock owner tests.",
+    "This does not certify complete render tail or all screenshot/window lifecycle branches."
+  ],
+  "production_written": false,
+  "cargo_gpu_executed": false
+}

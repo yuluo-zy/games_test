@@ -1,0 +1,71 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140275590: 56                          	pushq	%rsi
+140275591: 57                          	pushq	%rdi
+140275592: 48 81 ec 08 02 00 00        	subq	$0x208, %rsp            # imm = 0x208
+140275599: bf 01 00 00 00              	movl	$0x1, %edi
+14027559e: f0                          	lock
+14027559f: 0f c1 ba b0 05 00 00        	xaddl	%edi, 0x5b0(%rdx)
+1402755a6: f6 01 01                    	testb	$0x1, (%rcx)
+1402755a9: 0f 84 4b 01 00 00           	je	0x1402756fa <.text+0x2746fa>
+1402755af: 49 89 d1                    	movq	%rdx, %r9
+1402755b2: 48 89 ce                    	movq	%rcx, %rsi
+1402755b5: 48 8d 51 08                 	leaq	0x8(%rcx), %rdx
+1402755b9: 4c 8d 41 48                 	leaq	0x48(%rcx), %r8
+1402755bd: 89 7c 24 20                 	movl	%edi, 0x20(%rsp)
+1402755c1: 48 8d 8c 24 28 01 00 00     	leaq	0x128(%rsp), %rcx
+1402755c9: e8 c2 f4 ff ff              	callq	0x140274a90 <.text+0x273a90>
+1402755ce: 0f 10 84 24 28 01 00 00     	movups	0x128(%rsp), %xmm0
+1402755d6: 0f 10 8c 24 38 01 00 00     	movups	0x138(%rsp), %xmm1
+1402755de: 0f 10 94 24 48 01 00 00     	movups	0x148(%rsp), %xmm2
+1402755e6: 0f 10 9c 24 58 01 00 00     	movups	0x158(%rsp), %xmm3
+1402755ee: 0f 29 4c 24 50              	movaps	%xmm1, 0x50(%rsp)
+1402755f3: 0f 29 44 24 40              	movaps	%xmm0, 0x40(%rsp)
+1402755f8: 48 8d 54 24 60              	leaq	0x60(%rsp), %rdx
+1402755fd: 0f 29 54 24 60              	movaps	%xmm2, 0x60(%rsp)
+140275602: 0f 29 5c 24 70              	movaps	%xmm3, 0x70(%rsp)
+140275607: 4c 8d 84 24 80 00 00 00     	leaq	0x80(%rsp), %r8
+14027560f: 0f 10 84 24 68 01 00 00     	movups	0x168(%rsp), %xmm0
+140275617: 0f 29 84 24 80 00 00 00     	movaps	%xmm0, 0x80(%rsp)
+14027561f: 0f 10 84 24 78 01 00 00     	movups	0x178(%rsp), %xmm0
+140275627: 0f 29 84 24 90 00 00 00     	movaps	%xmm0, 0x90(%rsp)
+14027562f: 4c 8d 8c 24 a0 00 00 00     	leaq	0xa0(%rsp), %r9
+140275637: 0f 10 84 24 88 01 00 00     	movups	0x188(%rsp), %xmm0
+14027563f: 0f 29 84 24 a0 00 00 00     	movaps	%xmm0, 0xa0(%rsp)
+140275647: 0f 10 84 24 98 01 00 00     	movups	0x198(%rsp), %xmm0
+14027564f: 0f 29 84 24 b0 00 00 00     	movaps	%xmm0, 0xb0(%rsp)
+140275657: 48 8d 84 24 c0 00 00 00     	leaq	0xc0(%rsp), %rax
+14027565f: 0f 10 84 24 b8 01 00 00     	movups	0x1b8(%rsp), %xmm0
+140275667: 0f 29 84 24 d0 00 00 00     	movaps	%xmm0, 0xd0(%rsp)
+14027566f: 0f 10 84 24 a8 01 00 00     	movups	0x1a8(%rsp), %xmm0
+140275677: 0f 29 84 24 c0 00 00 00     	movaps	%xmm0, 0xc0(%rsp)
+14027567f: 48 8d 8c 24 e0 00 00 00     	leaq	0xe0(%rsp), %rcx
+140275687: 0f 10 84 24 c8 01 00 00     	movups	0x1c8(%rsp), %xmm0
+14027568f: 0f 10 8c 24 d8 01 00 00     	movups	0x1d8(%rsp), %xmm1
+140275697: 0f 10 94 24 e8 01 00 00     	movups	0x1e8(%rsp), %xmm2
+14027569f: 0f 10 9c 24 f8 01 00 00     	movups	0x1f8(%rsp), %xmm3
+1402756a7: 0f 29 8c 24 f0 00 00 00     	movaps	%xmm1, 0xf0(%rsp)
+1402756af: 0f 29 84 24 e0 00 00 00     	movaps	%xmm0, 0xe0(%rsp)
+1402756b7: 0f 29 94 24 00 01 00 00     	movaps	%xmm2, 0x100(%rsp)
+1402756bf: 0f 29 9c 24 10 01 00 00     	movaps	%xmm3, 0x110(%rsp)
+1402756c7: 4c 8b 94 24 00 01 00 00     	movq	0x100(%rsp), %r10
+1402756cf: 4c 89 54 24 30              	movq	%r10, 0x30(%rsp)
+1402756d4: 48 89 4c 24 28              	movq	%rcx, 0x28(%rsp)
+1402756d9: 48 89 44 24 20              	movq	%rax, 0x20(%rsp)
+1402756de: 48 8d 4c 24 40              	leaq	0x40(%rsp), %rcx
+1402756e3: e8 98 17 00 00              	callq	0x140276e80 <.text+0x275e80>
+1402756e8: 89 be 78 01 00 00           	movl	%edi, 0x178(%rsi)
+1402756ee: 31 c0                       	xorl	%eax, %eax
+1402756f0: 48 81 c4 08 02 00 00        	addq	$0x208, %rsp            # imm = 0x208
+1402756f7: 5f                          	popq	%rdi
+1402756f8: 5e                          	popq	%rsi
+1402756f9: c3                          	retq
+1402756fa: 48 8d 0d cf 3f 73 02        	leaq	0x2733fcf(%rip), %rcx   # 0x1429a96d0
+140275701: 4c 8d 05 28 40 73 02        	leaq	0x2734028(%rip), %r8    # 0x1429a9730
+140275708: ba 59 00 00 00              	movl	$0x59, %edx
+14027570d: e8 1e 3c 66 02              	callq	0x1428d9330 <.text+0x28d8330>
+140275712: cc                          	int3

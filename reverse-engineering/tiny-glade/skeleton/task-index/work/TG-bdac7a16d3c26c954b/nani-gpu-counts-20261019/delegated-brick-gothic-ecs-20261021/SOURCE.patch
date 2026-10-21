@@ -1,0 +1,277 @@
+--- a/tiny-glade/crates/country-core/src/render/nani/systems.rs
++++ b/tiny-glade/crates/country-core/src/render/nani/systems.rs
+@@ -642,7 +642,7 @@
+ };
+ use crate::{
+     asset_libraries::{ssbo_library::AssetSsboLibrary, texture_library::AssetTextureLibrary},
+-    components::{FlatLighting, NormalMap, SemiTransparent,
++    components::{BrickColor, GothicWindowBrickDeformation, FlatLighting, NormalMap, SemiTransparent,
+         drawable::{AlbedoMap, ClothlineCloth, PrevTransform, NaniSolidTexture}},
+     render::{device::GraphicsDeviceResource, nani::gpu_world::{InstanceDataMarker, OwnedGpuWorldSubset}},
+     resources::{color_id::ColorId, roofs::{Roof, RoofAnimation},
+@@ -664,15 +664,18 @@
+     Has<InstanceDataMarker<StoneFloorInstanceData>>,
+     Has<InstanceDataMarker<ClothInstanceData>>,
+     Has<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>,
++    Has<InstanceDataMarker<SolidVertexColorBricksInstanceData>>,
++    Has<InstanceDataMarker<GothicWindowBricksInstanceData>>,
+ );
+ 
+-type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
++type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
+ type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>,
+-    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>, Has<WindowLight>);
++    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>, Has<WindowLight>,
++    Has<BrickColor>, Has<GothicWindowBrickDeformation>);
+ fn require_mapped_nani_payload(
+     kind: GpuWorldSubsetKind,
+-    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal, has_light):
+-        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool, bool),
++    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal, has_light, has_brick, has_deformation):
++        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool),
+ ) {
+     let mapped = match kind {
+         GpuWorldSubsetKind::SolidVertexColor => markers.0,
+@@ -689,10 +692,12 @@
+         GpuWorldSubsetKind::RoofFloor => markers.9 && has_roof,
+         GpuWorldSubsetKind::Cloth => markers.10 && has_cloth && has_normal,
+         GpuWorldSubsetKind::SolidVertexColorWindowGlass => markers.11 && has_color && has_light,
++        GpuWorldSubsetKind::SolidVertexColorBricks => markers.12 && has_brick,
++        GpuWorldSubsetKind::GothicWindowBricks => markers.13 && has_brick && has_deformation,
+         _ => false,
+     };
+     let marker_count = [markers.0, markers.1, markers.2, markers.3,
+-        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10, markers.11]
++        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10, markers.11, markers.12, markers.13]
+         .into_iter().filter(|present| *present).count();
+     assert!(mapped && has_transform && marker_count == 1,
+         "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
+@@ -926,6 +931,36 @@
+     }
+ }
+ 
++/// 原142076230：读取构建器的同一 BrickColor，空查询也先锁定真实 kind6。
++pub fn nani_update_solid_vertex_color_bricks_ecs(
++    mut rows: Query<(&mut InstanceKey, &Transform, &BrickColor),
++        With<InstanceDataMarker<SolidVertexColorBricksInstanceData>>>,
++    gpu: Res<GpuWorld>,
++) {
++    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorBricks);
++    for (mut key, transform, brick) in &mut rows {
++        let (p, r, s) = trs(transform);
++        write_mapped_update(&mut subset, key.bypass_change_detection(),
++            build_solid_vertex_color_bricks(p, r, s, brick.words()),
++            |raw| SolidVertexColorBricksInstanceData { raw });
++    }
++}
++
++/// 原142076e40：使用主 producer 已重排的十五标量，不复制 gethat 布局。
++pub fn nani_update_gothic_window_bricks_ecs(
++    mut rows: Query<(&mut InstanceKey, &Transform, &BrickColor, &GothicWindowBrickDeformation),
++        With<InstanceDataMarker<GothicWindowBricksInstanceData>>>,
++    gpu: Res<GpuWorld>,
++) {
++    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::GothicWindowBricks);
++    for (mut key, transform, brick, deformation) in &mut rows {
++        let (p, r, s) = trs(transform);
++        write_mapped_update(&mut subset, key.bypass_change_detection(),
++            build_gothic_window_bricks(r, p, s, brick.words(), deformation.words()),
++            |raw| GothicWindowBricksInstanceData { raw });
++    }
++}
++
+ pub fn nani_update_uber_ecs(
+     mut rows: Query<(&mut InstanceKey, &Transform, Option<&SemiTransparent>, Option<&AlbedoMap>),
+         With<InstanceDataMarker<UberInstanceData>>>,
+@@ -967,7 +1002,7 @@
+ 
+ /// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
+ /// unordered20-update tuple -> flush, outer chain_ignore_deferred.
+-/// 当前保留九类既有映射、Cloth 与限定 Roof-bearing kind9 分支，新增共享窗灯玻璃。
++/// 共享窗灯玻璃、砖与哥特窗均使用构建器写入的 canonical 组件。
+ /// Floor-only 及其他未闭合输入继续明确失败；绑定不代表独立场景生产者已可达。
+ pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
+     schedule.add_systems((
+@@ -983,6 +1018,8 @@
+          nani_update_balcony_door_ecs,
+          nani_update_cloth_ecs,
+          nani_update_solid_vertex_color_window_glass_ecs,
++         nani_update_solid_vertex_color_bricks_ecs,
++         nani_update_gothic_window_bricks_ecs,
+          nani_update_uber_ecs,
+          nani_update_velocity_only_ecs),
+         nani_flush_instance_updates_ecs,
+@@ -1937,3 +1974,173 @@
+         assert_eq!(gpu.previous_instance_count(), 5);
+     }
+ }
++
++
++#[cfg(test)]
++mod brick_ecs_tests {
++    use super::*;
++    use crate::{components::drawable::NaniBundle, render::{mesh::{Mesh, ATTR_POSITION},
++        nani::gpu_world::{GpuWorldSubset, InstanceDataBuffer}, ssbo::tests::MockDevice}};
++    use bevy_ecs::world::World;
++    use glam::Vec3;
++
++    fn world(dev: &MockDevice) -> World {
++        let mut gpu = GpuWorld::new(dev);
++        gpu.assign_subset(GpuWorldSubsetKind::SolidVertexColorBricks, GpuWorldSubset::Owned(
++            OwnedGpuWorldSubset::new::<SolidVertexColorBricksInstanceData>(dev, GpuWorldSubsetKind::SolidVertexColorBricks)));
++        gpu.assign_subset(GpuWorldSubsetKind::GothicWindowBricks, GpuWorldSubset::Owned(
++            OwnedGpuWorldSubset::new::<GothicWindowBricksInstanceData>(dev, GpuWorldSubsetKind::GothicWindowBricks)));
++        let mut atlas = MeshAtlasLibrary::default();
++        let mut mesh = Mesh::new("真实砖实例 CPU 三角形");
++        mesh.set_attribute(ATTR_POSITION, vec![Vec3::ZERO, Vec3::X, Vec3::Y]);
++        mesh.set_indices(vec![0, 1, 2]);
++        atlas.add(GpuWorldSubsetKind::SolidVertexColorBricks, "brick_ecs_cpu", &mesh);
++        atlas.add(GpuWorldSubsetKind::GothicWindowBricks, "brick_ecs_cpu", &mesh);
++        let mut world = World::new();
++        world.insert_resource(gpu);
++        world.insert_resource(atlas);
++        world
++    }
++
++    fn brick() -> BrickColor {
++        BrickColor::from_words([0x1234, 0x10203, 1f32.to_bits(), 2f32.to_bits(), 3f32.to_bits(), 0xaabbcc01])
++    }
++
++    fn deformation() -> GothicWindowBrickDeformation {
++        GothicWindowBrickDeformation::from_words(std::array::from_fn(|i| ((i + 1) as f32).to_bits()))
++    }
++
++    fn spawn(world: &mut World, gothic: bool) -> Entity {
++        let transform = Transform { translation: Vec3::new(2., 3., 4.),
++            rotation: Quat::IDENTITY, scale: Vec3::ONE };
++        let mesh = NaniMeshSelector::Named(NameHash::compute("brick_ecs_cpu"));
++        if gothic {
++            world.spawn((NaniBundle::<GothicWindowBricksInstanceData> {
++                desc: NaniInstanceDesc { mesh, subset_kind: GpuWorldSubsetKind::GothicWindowBricks },
++                transform, marker: InstanceDataMarker::default(),
++            }, brick(), deformation())).id()
++        } else {
++            world.spawn((NaniBundle::<SolidVertexColorBricksInstanceData> {
++                desc: NaniInstanceDesc { mesh, subset_kind: GpuWorldSubsetKind::SolidVertexColorBricks },
++                transform, marker: InstanceDataMarker::default(),
++            }, brick())).id()
++        }
++    }
++
++    fn payload<const N: usize>(world: &World, entity: Entity) -> Vec<u32> {
++        let key = world.get::<InstanceKey>(entity).unwrap();
++        let gpu = world.resource::<GpuWorld>();
++        let subset = gpu.owned_subset_mut(key.kind);
++        if N == 16 {
++            subset.data().as_any().downcast_ref::<InstanceDataBuffer<SolidVertexColorBricksInstanceData>>()
++                .unwrap().shadow.data[key.index as usize].raw.to_vec()
++        } else {
++            subset.data().as_any().downcast_ref::<InstanceDataBuffer<GothicWindowBricksInstanceData>>()
++                .unwrap().shadow.data[key.index as usize].raw.to_vec()
++        }
++    }
++
++    fn schedule() -> Schedule {
++        let mut schedule = Schedule::default();
++        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
++            (nani_update_solid_vertex_color_bricks_ecs, nani_update_gothic_window_bricks_ecs))
++            .chain_ignore_deferred());
++        schedule
++    }
++
++    #[test]
++    fn actual_brick_queries_publish_canonical_words_flush_and_remove_same_owned_instances() {
++        let dev = MockDevice::default();
++        let mut world = world(&dev);
++        let solid = spawn(&mut world, false);
++        let gothic = spawn(&mut world, true);
++        let mut schedule = schedule();
++        schedule.run(&mut world);
++        assert_eq!(&payload::<16>(&world, solid)[12..], &[0x40003c00, 0x1234, 0x80010203, 3f32.to_bits()]);
++        assert_eq!(&payload::<28>(&world, gothic)[12..], &[
++            0x1234, 0x10203, 0x40003c00, 1,
++            7f32.to_bits(), 8f32.to_bits(), 9f32.to_bits(), 0x40003c00,
++            10f32.to_bits(), 11f32.to_bits(), 12f32.to_bits(), 0x44004200,
++            13f32.to_bits(), 14f32.to_bits(), 15f32.to_bits(), 0x46004500]);
++        let solid_key = *world.get::<InstanceKey>(solid).unwrap();
++        let gothic_key = *world.get::<InstanceKey>(gothic).unwrap();
++        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
++        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)| ranges == &[0..64] && *offset == 0 && *bytes == 64));
++        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)| ranges == &[0..112] && *offset == 0 && *bytes == 112));
++        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 2);
++        world.clear_trackers();
++        world.entity_mut(solid).insert(BrickColor::from_words([9, 8, 2f32.to_bits(), 1f32.to_bits(), (-0f32).to_bits(), 0]));
++        world.get_mut::<GothicWindowBrickDeformation>(gothic).unwrap().first[0] = -0.;
++        schedule.run(&mut world);
++        assert_eq!(&payload::<16>(&world, solid)[12..], &[0x3c004000, 9, 8, 0x80000000]);
++        assert_eq!(payload::<28>(&world, gothic)[16], 0x80000000);
++        assert_eq!(world.get::<InstanceKey>(solid).unwrap().id, solid_key.id);
++        assert_eq!(world.get::<InstanceKey>(gothic).unwrap().id, gothic_key.id);
++        assert_eq!(world.query_filtered::<Entity, Changed<InstanceKey>>().iter(&world).count(), 0);
++        world.clear_trackers();
++        world.despawn(solid);
++        world.despawn(gothic);
++        schedule.run(&mut world);
++        let gpu = world.resource::<GpuWorld>();
++        assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorBricks).instance_count(), 0);
++        assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::GothicWindowBricks).instance_count(), 0);
++    }
++
++    #[test]
++    fn brick_updates_keep_original_with_only_domain_without_descriptor() {
++        let dev = MockDevice::default();
++        let mut world = world(&dev);
++        let solid = spawn(&mut world, false);
++        let gothic = spawn(&mut world, true);
++        let mut schedule = schedule();
++        schedule.run(&mut world);
++        world.entity_mut(solid).remove::<NaniInstanceDesc>();
++        world.entity_mut(gothic).remove::<NaniInstanceDesc>();
++        world.entity_mut(solid).insert(BrickColor::from_words([31, 32, 0, 0, 0, 0]));
++        world.entity_mut(gothic).insert(BrickColor::from_words([41, 42, 0, 0, 0, 1]));
++        schedule.run(&mut world);
++        assert_eq!(payload::<16>(&world, solid)[13], 31);
++        assert_eq!(payload::<28>(&world, gothic)[12], 41);
++    }
++
++    #[test]
++    fn missing_canonical_brick_inputs_fail_before_key_publication() {
++        for gothic in [false, true] {
++            for missing in ["brick", "deformation", "transform", "marker", "ambiguous"] {
++                if !gothic && missing == "deformation" { continue; }
++                let dev = MockDevice::default();
++                let mut world = world(&dev);
++                let entity = spawn(&mut world, gothic);
++                match missing {
++                    "brick" => { world.entity_mut(entity).remove::<BrickColor>(); }
++                    "deformation" => { world.entity_mut(entity).remove::<GothicWindowBrickDeformation>(); }
++                    "transform" => { world.entity_mut(entity).remove::<Transform>(); }
++                    "marker" if gothic => { world.entity_mut(entity).remove::<InstanceDataMarker<GothicWindowBricksInstanceData>>(); }
++                    "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<SolidVertexColorBricksInstanceData>>(); }
++                    _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); }
++                }
++                let mut schedule = Schedule::default();
++                schedule.add_systems(nani_maintain_instances_ecs);
++                assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world))).is_err(), "{gothic}/{missing}");
++                assert!(world.get::<InstanceKey>(entity).is_none());
++                assert_eq!(world.resource::<GpuWorld>().total_instance_count, 0);
++            }
++        }
++    }
++
++    #[test]
++    fn empty_brick_queries_still_acquire_the_required_owned_subsets() {
++        let dev = MockDevice::default();
++        let mut world = world(&dev);
++        let mut solid = Schedule::default();
++        solid.add_systems(nani_update_solid_vertex_color_bricks_ecs);
++        let mut gothic = Schedule::default();
++        gothic.add_systems(nani_update_gothic_window_bricks_ecs);
++        solid.run(&mut world);
++        gothic.run(&mut world);
++        assert!(dev.writes.borrow().is_empty());
++        world.insert_resource(GpuWorld::new(&dev));
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| solid.run(&mut world))).is_err());
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| gothic.run(&mut world))).is_err());
++    }
++}

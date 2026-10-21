@@ -1,0 +1,25 @@
+{
+  "status": "no_static_blockers",
+  "reviewer": "/root/render_lifetime",
+  "author": "/root/render_reviewer",
+  "candidate_sha256": "fa7a6878cc0343f17754f17fb459cba3d462229a8d179ba560d446bf95ccf2a7",
+  "all_manifest_fingerprints_verified": true,
+  "original_bytecheck": {
+    "resize-publisher.asm": 30,
+    "zero-extent-gate.asm": 56,
+    "common-loop-tail.asm": 54
+  },
+  "native_original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "checks": [
+    "Independent retained assembly reads confirm FrameRenderConfig TypeId a4c02661e67b048b/eae761e6aa2a67ec, first packed extent, width/height conjunction, sleep1ms then jump1404de84d and settings flags at1404de8c5. Retained three ASM actual bytes all checked against original RNE.",
+    "Actual runtime helper requires canonical FrameRenderConfig; does not synthesize from WindowSize or default. Deliberately contradictory World CPU test locks authority difference.",
+    "Existing zero-close immediate exit retains priority; ordinary zero branch sleeps then invokes exactly existing settings consumer before return, without App update/egui/render/input clear/frame counter advancement.",
+    "Actual settings callee retains current flags take, vsync/display error propagation and config write event handling; errors reach existing cleanup rather than falsely recovering.",
+    "Normal nonzero call sequence, renderer lifecycle code and ICC hooks are not overwritten; integration must apply current narrow hunks because ICC tracker independently modifies adjacent code."
+  ],
+  "limits": [
+    "No Cargo/GPU/OS run by child.",
+    "CPU resource authority test does not exercise actual zero-window settings recovery.",
+    "Full dc980 adaptive/VRAM/resolution algorithm remains separate; this does not claim complete main-loop restoration."
+  ]
+}

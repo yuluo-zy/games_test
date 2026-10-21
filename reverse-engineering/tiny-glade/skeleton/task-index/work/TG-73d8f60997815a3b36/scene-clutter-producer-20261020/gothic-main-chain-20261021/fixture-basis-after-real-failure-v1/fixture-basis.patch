@@ -1,0 +1,27 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_wall_window.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_wall_window.rs
+@@ -514,11 +514,23 @@
+ 
+     fn producer_world(subtype: u8, rank: u8, shape: u32, style: u8, state: u8) -> World {
+         let rectangle = utils::geometry::Rectangle2d::new_centered_axis_aligned(Vec2::splat(8.0));
++        let corners = rectangle.as_points2();
++        // 原Rectangle角点先沿左竖边；本夹具的坐标oracle明确要求u=4落底横边。
++        // 显式构造同一真实闭矩形的底边起点与+X方向，不修改原几何算法或期望。
+         let walls = published_wall(
+-            rectangle.as_points2().map(|p| p.to_array()).to_vec(),
++            [corners[0], corners[3], corners[2], corners[1]]
++                .map(|p| p.to_array())
++                .to_vec(),
+             true,
+             shape,
+             style,
++        );
++        let curve = walls.get(WALL).unwrap().simplified_curve_2d();
++        assert_eq!(curve.points[0], [-4.0, -4.0]);
++        assert_eq!(curve.points[1], [4.0, -4.0]);
++        assert_eq!(
++            WallSpaceCoord::new_unchecked(4.0, 2.0).to_world_space(curve),
++            Vec3::new(0.0, 2.0, -4.0),
+         );
+         let mut info = DecoratorInfo {
+             rank,

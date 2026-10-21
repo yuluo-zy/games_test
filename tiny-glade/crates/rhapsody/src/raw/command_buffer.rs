@@ -22,13 +22,15 @@ struct SubmitTraceActive {
     count_count: usize,
 }
 impl SubmitTrace {
-    pub(crate) fn new(scope: &'static str) -> Self {
+    pub(crate) fn configured() -> bool {
         static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-        let enabled = *ENABLED.get_or_init(|| {
+        *ENABLED.get_or_init(|| {
             std::env::var_os("RHAPSODY_SUBMIT_TRACE").is_some_and(|value| value == "1")
-        });
+        })
+    }
+    pub(crate) fn new(scope: &'static str) -> Self {
         Self {
-            active: enabled.then(|| {
+            active: Self::configured().then(|| {
                 let now = std::time::Instant::now();
                 SubmitTraceActive {
                     scope,

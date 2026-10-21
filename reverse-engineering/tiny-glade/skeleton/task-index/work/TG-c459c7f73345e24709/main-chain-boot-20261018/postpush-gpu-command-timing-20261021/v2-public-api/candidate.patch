@@ -1,0 +1,51 @@
+--- a/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
++++ b/tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs
+@@ -610,6 +610,14 @@
+     let captured: std::sync::Arc<parking_lot::Mutex<Vec<(usize, u32, u32, Vec<u8>)>>> =
+         Default::default();
+     let out_dir = std::env::var_os("TG_MULTIFRAME_OUT").map(PathBuf::from);
++    let gpu_timing = std::env::var_os("TG_GPU_TIMING").is_some_and(|value| value == "1");
++    let mut gpu_samples = Vec::<serde_json::Value>::new();
++    if gpu_timing {
++        anyhow::ensure!(out_dir.is_some(), "TG_GPU_TIMING 需要 TG_MULTIFRAME_OUT 保存真实计时证据");
++        bridge.with_session(|session| session.backend.configure_gpu_timing(Some(
++            rhapsody::rg::GpuTimingConfig::default(),
++        )))?;
++    }
+     let mut rows: Vec<FrameRow> = Vec::new();
+     let mut in_flight = std::collections::VecDeque::<u64>::new();
+     for index in 0..FRAMES {
+@@ -710,6 +718,14 @@
+         });
+         drop(frame);
+         bridge.collect_completed_frames()?;
++        if gpu_timing {
++            let (stats, samples) = bridge.with_session(|session| {
++                let stats = session.backend.poll_gpu_timings()?;
++                let samples = session.backend.drain_gpu_timings().collect::<Vec<_>>();
++                Ok::<_, rhapsody::Error>((stats, samples))
++            })?;
++            gpu_samples.push(serde_json::json!({"observed_after_frame": index, "stats": stats, "samples": samples}));
++        }
+         if let (Some(dir), true) = (&out_dir, index == 5 || index == FRAMES - 1) {
+             let mut by_name = std::collections::BTreeMap::<String, (u64, u64)>::new();
+             for record in device.allocator_stats().report().allocations {
+@@ -733,6 +749,18 @@
+     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
+     bridge.wait_submits_done(10_000_000_000)?;
+     diagnose_completed_retirement(&device, "thirty-world-complete")?;
++    if gpu_timing {
++        let (stats, samples) = bridge.with_session(|session| {
++            let stats = session.backend.poll_gpu_timings()?;
++            let samples = session.backend.drain_gpu_timings().collect::<Vec<_>>();
++            Ok::<_, rhapsody::Error>((stats, samples))
++        })?;
++        gpu_samples.push(serde_json::json!({"observed_after_frame": FRAMES, "stats": stats, "samples": samples}));
++        let dir = out_dir.as_ref().expect("计时启动前已检查证据目录");
++        std::fs::create_dir_all(dir)?;
++        // 每项是同一物理队列上单 command 的时间跨度，不能相加当作跨队列帧延迟。
++        std::fs::write(dir.join("gpu-command-timings.json"), serde_json::to_vec_pretty(&gpu_samples)?)?;
++    }
+ 
+     // 先保存真实回读证据；后面的任一稳定性断言失败也不能丢失世界图像。
+     // 所有原断言与阈值仍在下方执行。

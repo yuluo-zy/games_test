@@ -1,0 +1,11 @@
+--- tiny-glade/crates/rhapsody/src/bindless.rs
++++ tiny-glade/crates/rhapsody/src/bindless.rs
+@@ -1198,7 +1198,7 @@
+             .get(context.pass_index)
+             .ok_or_else(|| Error::invalid_usage("bindless pass index is invalid"))?;
+         let semantics = &context.compiled.plan.definition.access_semantics;
+-        let mut coverage = RecordTally::new([
++        let coverage = RecordTally::new([
+             RecordCount::CoverageAccesses,
+             RecordCount::CoverageSemantics,
+         ]);

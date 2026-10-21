@@ -1,0 +1,24 @@
+{
+  "status": "no_static_blockers",
+  "reviewer": "/root/render_lifetime",
+  "author": "/root/render_reviewer",
+  "candidate_manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-40ff43c62ef8791c53/oschain-20261018/delegated-window-lifecycle-20261021/suspended-close-v1/MANIFEST.json",
+  "candidate_sha256": "0611875bd89e739f3c8b08e4fac4e7fed0c1107d1d82e0eb40a3b92db9543026",
+  "original_b_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "source_before_current_verified": true,
+  "single_hunk_verified": true,
+  "scope": "existing main-thread platform suspended CloseRequested adaptation; not original B Suspended semantics",
+  "observations": [
+    "Suspended disables frame execution in both AboutToWait/redraw. Original queued CloseRequested has no consumer until Resumed, so direct dispatch/shutdown is a real liveness repair.",
+    "Dispatch sends existing ShutdownGameCmd to current App and requests redraw; no App update or synthetic ShutdownGame is performed. Ordinary CloseRequested queue unchanged.",
+    "Existing shut_down first takes/cancels/joins preparation before renderer cleanup. GameplayPreparation::cancel_and_join drains both received and pending SubApps and disposes their actual save owners. Current App save shutdown, screenshot hurry and renderer shutdown all execute even if preparation reports failure.",
+    "Existing first error aggregation is preserved; failed dispatch/shut_down returns to run wrapper which records first error, retries cleanup and exits. Direct harness callers must likewise retain error and cleanup, not interpret lack of target.exit as success.",
+    "Successful shut_down sets shutdown_done, so later LoopExiting is idempotent. Failure does not set it, preserving retry. New branch sets target.exit only after successful shutdown.",
+    "Save close is real stop/join/drain of already queued writes; this source review does not infer a fresh simulation save snapshot without App update."
+  ],
+  "validation_limits": [
+    "No Cargo, GPU or OS execution by reviewer.",
+    "Harness must prove actual loading worker pending before Suspended→Close, no Resumed, shutdown/exit and no hidden fallback; normal Close and cleanup-failure cases remain execution obligations.",
+    "Reuses author retained original B main-loop evidence for context; new change explicitly engineering platform liveness adaptation, no new original instruction extraction required."
+  ]
+}

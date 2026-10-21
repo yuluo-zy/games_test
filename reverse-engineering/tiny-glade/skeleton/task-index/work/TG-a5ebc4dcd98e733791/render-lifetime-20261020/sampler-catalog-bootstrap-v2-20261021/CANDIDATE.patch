@@ -1,0 +1,806 @@
+--- tiny-glade/crates/tiny-glade/src/render_host.rs
++++ tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -746,7 +746,7 @@
+         if table.len() >= 256 {
+             return Err(rhapsody::Error::Timeout);
+         }
+-        table.push(Arc::new(entry));
++        table.push(entry);
+         let id = table.len() as u64;
+         by_desc.insert(*desc, id);
+         Ok(id)
+@@ -816,7 +816,7 @@
+         if table.len() >= 256 {
+             return Err(rhapsody::Error::Timeout);
+         }
+-        table.push(Arc::new(entry));
++        table.push(entry);
+         Ok(table.len() as u64)
+     }
+ 
+@@ -856,6 +856,11 @@
+ struct SamplerBinding {
+     location: BindingLocation,
+     element: u32,
++    name: Arc<str>,
++    sampler: Arc<Sampler>,
++}
++#[derive(Clone)]
++struct CatalogSampler {
+     name: Arc<str>,
+     sampler: Arc<Sampler>,
+ }
+@@ -864,13 +869,28 @@
+     sampler: Arc<Sampler>,
+     lease: Arc<BindlessLease>,
+ }
++#[derive(Default)]
++struct SamplerPageCache {
++    leases: Vec<CachedSampler>,
++    catalog: Option<Arc<Vec<CatalogSampler>>>,
++    epoch: u64,
++}
+ struct SamplerPage {
+     heap: Arc<BindlessHeap>,
+-    leases: Mutex<Vec<CachedSampler>>,
++    leases: Mutex<SamplerPageCache>,
+ }
+ #[derive(Default)]
++struct SamplerPagesState {
++    pages: Vec<Arc<SamplerPage>>,
++    // 仅来自本 App 已安装管线的实际反射，保留同名不同 owner 的冻结版本。
++    catalog: Option<Arc<Vec<CatalogSampler>>>,
++    catalog_disabled: bool,
++    #[cfg(test)]
++    fail_next_registration: bool,
++}
++#[derive(Default)]
+ struct SamplerPages {
+-    pages: Mutex<Vec<Arc<SamplerPage>>>,
++    state: Mutex<SamplerPagesState>,
+ }
+ struct PendingSampler {
+     name: Arc<str>,
+@@ -881,45 +901,142 @@
+ struct SamplerPreparation {
+     page: Arc<SamplerPage>,
+     values: Vec<PendingSampler>,
++    catalog: Option<Arc<Vec<CatalogSampler>>>,
++    publish_catalog: bool,
++    epoch: u64,
+ }
++fn same_sampler(
++    left_name: &str,
++    left: &Arc<Sampler>,
++    right_name: &str,
++    right: &Arc<Sampler>,
++) -> bool {
++    left_name == right_name && Arc::ptr_eq(left, right)
++}
+ impl SamplerPages {
++    /// 管线表已准入；目录只是可选缓存，元数据不足不能拒绝原本可安装的 entry。
++    fn register(&self, bindings: &[SamplerBinding]) {
++        let previous = {
++            let mut state = self.state.lock();
++            if state.catalog_disabled {
++                return;
++            }
++            let next = (|| -> rhapsody::Result<Option<Vec<CatalogSampler>>> {
++                #[cfg(test)]
++                if std::mem::take(&mut state.fail_next_registration) {
++                    return Err(rhapsody::Error::OutOfHostMemory);
++                }
++                let old = state.catalog.as_deref().map(Vec::as_slice).unwrap_or(&[]);
++                let missing = bindings
++                    .iter()
++                    .enumerate()
++                    .filter(|(index, binding)| {
++                        !old.iter().any(|value| {
++                            same_sampler(
++                                &value.name,
++                                &value.sampler,
++                                &binding.name,
++                                &binding.sampler,
++                            )
++                        }) && !bindings[..*index].iter().any(|prior| {
++                            same_sampler(
++                                &prior.name,
++                                &prior.sampler,
++                                &binding.name,
++                                &binding.sampler,
++                            )
++                        })
++                    })
++                    .count();
++                if missing == 0 {
++                    return Ok(None);
++                }
++                let mut next = Vec::new();
++                next.try_reserve(
++                    old.len()
++                        .checked_add(missing)
++                        .ok_or(rhapsody::Error::OutOfHostMemory)?,
++                )
++                .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++                next.extend(old.iter().cloned());
++                for binding in bindings {
++                    if !next.iter().any(|value| {
++                        same_sampler(&value.name, &value.sampler, &binding.name, &binding.sampler)
++                    }) {
++                        next.push(CatalogSampler {
++                            name: binding.name.clone(),
++                            sampler: binding.sampler.clone(),
++                        });
++                    }
++                }
++                Ok(Some(next))
++            })();
++            match next {
++                Ok(Some(next)) => state.catalog.replace(Arc::new(next)),
++                Ok(None) => return,
++                Err(_) => {
++                    // 遗漏登记后不能再假称目录完整；本 App 退回原逐组缓存路径。
++                    state.catalog_disabled = true;
++                    state.catalog.take()
++                }
++            }
++        };
++        drop(previous);
++    }
+     fn prepare(
+         &self,
+         heap: &Arc<BindlessHeap>,
+         bindings: &[SamplerBinding],
+     ) -> rhapsody::Result<SamplerPreparation> {
+-        let page = {
+-            let mut pages = self.pages.lock();
+-            if let Some(page) = pages.iter().find(|page| Arc::ptr_eq(&page.heap, heap)) {
++        let (page, mut catalog) = {
++            let mut state = self.state.lock();
++            let page = if let Some(page) = state
++                .pages
++                .iter()
++                .find(|page| Arc::ptr_eq(&page.heap, heap))
++            {
+                 page.clone()
+             } else {
+-                pages
++                state
++                    .pages
+                     .try_reserve(1)
+                     .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+                 let page = Arc::new(SamplerPage {
+                     heap: heap.clone(),
+-                    leases: Mutex::new(Vec::new()),
++                    leases: Mutex::new(SamplerPageCache::default()),
+                 });
+-                pages.push(page.clone());
++                state.pages.push(page.clone());
+                 page
+-            }
++            };
++            (page, state.catalog.clone())
+         };
+         let mut values: Vec<PendingSampler> = Vec::new();
+         values
+             .try_reserve(bindings.len())
+             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++        let epoch;
+         {
+             let mut cached = page.leases.lock();
++            epoch = cached.epoch;
++            if catalog.as_ref().is_some_and(|current| {
++                cached
++                    .catalog
++                    .as_ref()
++                    .is_some_and(|old| Arc::ptr_eq(old, current))
++            }) {
++                catalog = None;
++            }
+             for binding in bindings {
+                 if values.iter().any(|value| {
+-                    value.name == binding.name && Arc::ptr_eq(&value.sampler, &binding.sampler)
++                    same_sampler(&value.name, &value.sampler, &binding.name, &binding.sampler)
+                 }) {
+                     continue;
+                 }
+                 let lease = cached
++                    .leases
+                     .iter()
+                     .find(|value| {
+-                        value.name == binding.name && Arc::ptr_eq(&value.sampler, &binding.sampler)
++                        same_sampler(&value.name, &value.sampler, &binding.name, &binding.sampler)
+                     })
+                     .map(|value| value.lease.clone());
+                 values.push(PendingSampler {
+@@ -930,24 +1047,44 @@
+                 });
+             }
+             let missing = values.iter().filter(|value| value.changed).count();
+-            // 同页 group guard 保护后续 commit；只预留元数据，不提前发布租约。
++            // 实际组仍只按原需求预留；目录额外资源不得先占其预算。
+             cached
++                .leases
+                 .try_reserve(missing)
+                 .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+         }
+-        Ok(SamplerPreparation { page, values })
++        Ok(SamplerPreparation {
++            page,
++            values,
++            catalog,
++            publish_catalog: false,
++            epoch,
++        })
+     }
+     fn invalidate(&self, name: &str) {
+-        let pages: Vec<_> = self.pages.lock().iter().cloned().collect();
++        let pages: Vec<_> = self.state.lock().pages.iter().cloned().collect();
+         for page in pages {
+-            let old = {
+-                let mut leases = page.leases.lock();
+-                leases
+-                    .iter()
+-                    .position(|value| value.name.as_ref() == name)
+-                    .map(|index| leases.swap_remove(index))
++            let previous = {
++                let mut cached = page.leases.lock();
++                // 达到极限后不再发布 stamp，禁止环绕使旧准备误命中。
++                cached.epoch = cached.epoch.saturating_add(1);
++                cached.catalog.take()
+             };
+-            drop(old);
++            drop(previous);
++            loop {
++                let old = {
++                    let mut cached = page.leases.lock();
++                    cached
++                        .leases
++                        .iter()
++                        .position(|value| value.name.as_ref() == name)
++                        .map(|index| cached.leases.swap_remove(index))
++                };
++                match old {
++                    Some(old) => drop(old),
++                    None => break,
++                }
++            }
+         }
+     }
+ }
+@@ -955,22 +1092,26 @@
+     fn missing(&self) -> usize {
+         self.values.iter().filter(|value| value.changed).count()
+     }
+-    fn write(
+-        &mut self,
+-        bindings: &[SamplerBinding],
+-        parameters: &mut BindlessParameters,
+-    ) -> rhapsody::Result<()> {
++    fn materialize(&mut self) -> rhapsody::Result<()> {
+         for value in &mut self.values {
+             if value.lease.is_none() {
+                 value.lease = Some(self.page.heap.sampler(value.sampler.clone())?);
+             }
+         }
++        Ok(())
++    }
++    fn write(
++        &mut self,
++        bindings: &[SamplerBinding],
++        parameters: &mut BindlessParameters,
++    ) -> rhapsody::Result<()> {
++        self.materialize()?;
+         for binding in bindings {
+             let value = self
+                 .values
+                 .iter()
+                 .find(|value| {
+-                    value.name == binding.name && Arc::ptr_eq(&value.sampler, &binding.sampler)
++                    same_sampler(&value.name, &value.sampler, &binding.name, &binding.sampler)
+                 })
+                 .expect("prepared sampler metadata");
+             parameters.write_lease(
+@@ -981,6 +1122,98 @@
+         }
+         Ok(())
+     }
++    /// 仅在实际参数 finish 成功后、同页 guard 内调用；不再写实际参数或分配动态块。
++    fn try_catalog_extras(
++        &mut self,
++        admit: impl FnOnce([usize; 4]) -> rhapsody::bindless::GroupPreparationResult<()>,
++    ) -> rhapsody::Result<()> {
++        let Some(catalog) = self.catalog.as_ref() else {
++            return Ok(());
++        };
++        let capacity = self
++            .page
++            .heap
++            .layout
++            .plan()
++            .bindings
++            .iter()
++            .find(|binding| {
++                binding.binding == 3
++                    && binding.descriptor_type == vk::DescriptorType::SAMPLER.as_raw()
++            })
++            .map_or(0, |binding| binding.descriptor_count as usize);
++        let actual_extra = self
++            .values
++            .iter()
++            .filter(|value| {
++                !catalog.iter().any(|entry| {
++                    same_sampler(&entry.name, &entry.sampler, &value.name, &value.sampler)
++                })
++            })
++            .count();
++        if !catalog
++            .len()
++            .checked_add(actual_extra)
++            .is_some_and(|total| total <= capacity)
++            || catalog
++                .iter()
++                .any(|value| !Arc::ptr_eq(value.sampler.device(), self.page.heap.layout.device()))
++        {
++            return Ok(());
++        }
++        let mut extras = Vec::new();
++        if extras.try_reserve(catalog.len()).is_err() {
++            return Ok(());
++        }
++        {
++            let mut cached = self.page.leases.lock();
++            for value in catalog.iter() {
++                if self.values.iter().any(|actual| {
++                    same_sampler(&actual.name, &actual.sampler, &value.name, &value.sampler)
++                }) || cached
++                    .leases
++                    .iter()
++                    .any(|old| same_sampler(&old.name, &old.sampler, &value.name, &value.sampler))
++                {
++                    continue;
++                }
++                extras.push(PendingSampler {
++                    name: value.name.clone(),
++                    sampler: value.sampler.clone(),
++                    lease: None,
++                    changed: true,
++                });
++            }
++            let Some(wanted) = self.missing().checked_add(extras.len()) else {
++                return Ok(());
++            };
++            if self.values.try_reserve(extras.len()).is_err()
++                || cached.leases.try_reserve(wanted).is_err()
++            {
++                return Ok(());
++            }
++        }
++        if !extras.is_empty() {
++            match admit([0, 0, 0, extras.len()]) {
++                Ok(()) => {}
++                Err(rhapsody::bindless::GroupPreparationError::InsufficientSlots { .. }) => {
++                    return Ok(());
++                }
++                Err(rhapsody::bindless::GroupPreparationError::Error(error)) => return Err(error),
++            }
++            for value in &mut extras {
++                match self.page.heap.sampler(value.sampler.clone()) {
++                    Ok(lease) => value.lease = Some(lease),
++                    Err(error) if optional_sampler_budget_error(&error) => return Ok(()),
++                    Err(error) => return Err(error),
++                }
++            }
++        }
++        // 全部额外租约成功才合并；取消时本地 extras 归还未提交的新槽。
++        self.values.extend(extras);
++        self.publish_catalog = true;
++        Ok(())
++    }
+     fn commit(self) {
+         for value in self.values.into_iter().filter(|value| value.changed) {
+             let new = CachedSampler {
+@@ -988,19 +1221,41 @@
+                 sampler: value.sampler,
+                 lease: value.lease.expect("complete sampler group"),
+             };
+-            let old = {
++            let old =
++                {
++                    let mut cached = self.page.leases.lock();
++                    if let Some(index) = cached.leases.iter().position(|old| {
++                        same_sampler(&old.name, &old.sampler, &new.name, &new.sampler)
++                    }) {
++                        Some(std::mem::replace(&mut cached.leases[index], new))
++                    } else {
++                        cached.leases.push(new);
++                        None
++                    }
++                };
++            drop(old);
++        }
++        if let Some(catalog) = self.catalog.filter(|_| self.publish_catalog) {
++            let previous = {
+                 let mut cached = self.page.leases.lock();
+-                if let Some(index) = cached.iter().position(|old| old.name == new.name) {
+-                    Some(std::mem::replace(&mut cached[index], new))
++                if cached.epoch == self.epoch && self.epoch != u64::MAX {
++                    cached.catalog.replace(catalog)
+                 } else {
+-                    cached.push(new);
+                     None
+                 }
+             };
+-            drop(old);
++            drop(previous);
+         }
+     }
+ }
++fn optional_sampler_budget_error(error: &rhapsody::Error) -> bool {
++    matches!(
++        error,
++        rhapsody::Error::OutOfHostMemory
++            | rhapsody::Error::OutOfDeviceMemory
++            | rhapsody::Error::Exhausted(_)
++    )
++}
+ /// 覆盖规则已在实际资源收集端执行；declared 保留 UniformBytes 的正式图访问角色。
+ pub struct ShaderResourceBinding {
+     pub location: BindingLocation,
+@@ -1094,7 +1349,8 @@
+                     }
+                 }
+                 let prepared = parameters.finish(&mut constants.lock())?;
+-                // 所有 fallible 操作已完成，两个缓存槽均预先存在；不发布半个绑定组。
++                samplers.try_catalog_extras(|required| group.require_slots(required))?;
++                // 实际组和可选目录准备均已完成；不发布半个绑定组或半个目录。
+                 if let Some(publication) = publication {
+                     publication.commit();
+                 }
+@@ -1598,6 +1854,7 @@
+         table
+             .try_reserve(1)
+             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++        self.sampler_leases.register(entry.bindings.samplers.as_slice());
+         table.push(entry);
+         Ok(ComputePipeline {
+             id: table.len() as u64,
+@@ -1706,6 +1963,7 @@
+         table
+             .try_reserve(1)
+             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
++        self.sampler_leases.register(entry.bindings.samplers.as_slice());
+         table.push(entry);
+         Ok(RasterPipeline {
+             id: table.len() as u64,
+@@ -3854,6 +4112,330 @@
+         );
+         assert!(
+             validate_image_binding_layout(BindingKind::Sampler, vk::ImageLayout::GENERAL).is_err()
++        );
++    }
++}
++
++#[cfg(test)]
++mod sampler_catalog_tests {
++    use super::*;
++    use rhapsody::bindless::GroupPreparationError;
++
++    fn device() -> Option<Arc<Device>> {
++        match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
++            Ok(device) => Some(device),
++            Err(error) => {
++                assert!(
++                    !std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|value| value == "1"),
++                    "strict sampler catalog GPU initialization failed: {error}"
++                );
++                eprintln!("SKIP sampler catalog GPU initialization: {error}");
++                None
++            }
++        }
++    }
++    fn heap(device: &Arc<Device>, samplers: u32) -> Arc<BindlessHeap> {
++        BindlessHeap::new(
++            device.clone(),
++            BindlessConfig {
++                sampled_images: 1,
++                storage_images: 1,
++                storage_buffers: 1,
++                samplers,
++            },
++        )
++        .unwrap()
++    }
++    fn binding(device: &Arc<Device>, name: &str, builtin: &str) -> SamplerBinding {
++        SamplerBinding {
++            location: BindingLocation { set: 0, binding: 0 },
++            element: 0,
++            name: Arc::from(name),
++            sampler: device.get_built_in_sampler_by_name(builtin).unwrap(),
++        }
++    }
++    fn actual(
++        pages: &SamplerPages,
++        heap: &Arc<BindlessHeap>,
++        bindings: &[SamplerBinding],
++    ) -> SamplerPreparation {
++        let mut pending = pages.prepare(heap, bindings).unwrap();
++        pending.materialize().unwrap();
++        pending
++    }
++    // 测试独立串行 descriptor 路径；生产由 cursor 的真实同页 guard 和 require_slots 准入。
++    fn extras(pending: &mut SamplerPreparation) -> rhapsody::Result<()> {
++        let heap = pending.page.heap.clone();
++        pending.try_catalog_extras(|required| {
++            if required[3] <= heap.stats().tables[3].free {
++                Ok(())
++            } else {
++                Err(GroupPreparationError::InsufficientSlots { required })
++            }
++        })
++    }
++    fn commit(pages: &SamplerPages, heap: &Arc<BindlessHeap>, bindings: &[SamplerBinding]) {
++        let mut pending = actual(pages, heap, bindings);
++        extras(&mut pending).unwrap();
++        pending.commit();
++    }
++
++    #[test]
++    fn actual_catalog_bootstraps_each_page_once_and_stays_app_local() {
++        let Some(device) = device() else { return };
++        let a = binding(&device, "a", "sampler_nnc");
++        let b = binding(&device, "b", "sampler_default");
++        let pages = SamplerPages::default();
++        pages.register(std::slice::from_ref(&a));
++        pages.register(std::slice::from_ref(&b));
++        let first = heap(&device, 4);
++        let second = first.new_page().unwrap();
++        commit(&pages, &first, std::slice::from_ref(&a));
++        commit(&pages, &second, std::slice::from_ref(&b));
++        assert_eq!(first.stats().tables[3].live, 2);
++        assert_eq!(second.stats().tables[3].live, 2);
++        for requested in [&a, &b, &a, &b] {
++            let pending = pages
++                .prepare(&first, std::slice::from_ref(requested))
++                .unwrap();
++            assert_eq!(pending.missing(), 0, "换 shader 不再给同页补静态目录");
++            assert!(pending.catalog.is_none(), "同目录命中不重建 stamp");
++            drop(pending);
++            commit(&pages, &second, std::slice::from_ref(requested));
++        }
++        assert_eq!(first.stats().tables[3].live, 2);
++        assert_eq!(second.stats().tables[3].live, 2);
++        let other_app = SamplerPages::default();
++        let c = binding(&device, "other app", "sampler_mipmap");
++        other_app.register(std::slice::from_ref(&c));
++        let other_heap = heap(&device, 4);
++        commit(&other_app, &other_heap, std::slice::from_ref(&c));
++        assert_eq!(
++            other_heap.stats().tables[3].live,
++            1,
++            "同设备另 App 不复制此 App 目录"
++        );
++    }
++
++    #[test]
++    fn catalog_larger_than_page_keeps_original_one_sampler_groups_valid() {
++        let Some(device) = device() else { return };
++        let a = binding(&device, "a", "sampler_nnc");
++        let b = binding(&device, "b", "sampler_default");
++        let pages = SamplerPages::default();
++        pages.register(std::slice::from_ref(&a));
++        pages.register(std::slice::from_ref(&b));
++        let first = heap(&device, 1);
++        let second = first.new_page().unwrap();
++        for (heap, requested) in [(&first, &a), (&second, &b)] {
++            let mut pending = actual(&pages, heap, std::slice::from_ref(requested));
++            assert_eq!(pending.values.len(), 1, "实际组不先准备全目录");
++            extras(&mut pending).unwrap();
++            assert!(!pending.publish_catalog, "目录过大只走真实组");
++            pending.commit();
++            assert_eq!(heap.stats().tables[3].live, 1);
++        }
++    }
++
++    #[test]
++    fn named_versions_keep_owners_and_invalidation_cannot_publish_a_stale_stamp() {
++        let Some(device) = device() else { return };
++        let old = binding(&device, "custom", "sampler_nnc");
++        let new = binding(&device, "custom", "sampler_default");
++        let pages = SamplerPages::default();
++        pages.register(std::slice::from_ref(&old));
++        let heap = heap(&device, 4);
++        commit(&pages, &heap, std::slice::from_ref(&old));
++        let page = pages.state.lock().pages[0].clone();
++        let original = page.leases.lock().leases[0].lease.clone();
++        pages.register(std::slice::from_ref(&new));
++        let mut pending = actual(&pages, &heap, std::slice::from_ref(&new));
++        assert_eq!(pending.values.len(), 1, "实际请求只准备新 owner");
++        extras(&mut pending).unwrap();
++        pages.invalidate("custom");
++        assert!(page.leases.lock().leases.is_empty());
++        assert_eq!(
++            heap.stats().tables[3].live,
++            2,
++            "在途准备/旧命令 owner 仍保活原租约"
++        );
++        pending.commit();
++        {
++            let cached = page.leases.lock();
++            assert_eq!(cached.leases.len(), 1, "失效后旧缓存未暗中重发");
++            assert!(Arc::ptr_eq(&cached.leases[0].sampler, &new.sampler));
++            assert!(cached.catalog.is_none(), "旧epoch不能盖掉并发失效");
++        }
++        drop(original);
++        commit(&pages, &heap, std::slice::from_ref(&old));
++        let cached = page.leases.lock();
++        assert_eq!(cached.leases.len(), 2);
++        assert!(cached.catalog.is_some());
++        for wanted in [&old, &new] {
++            assert!(cached.leases.iter().any(|value| same_sampler(
++                &value.name,
++                &value.sampler,
++                &wanted.name,
++                &wanted.sampler
++            )));
++        }
++    }
++
++    #[test]
++    fn optional_partial_host_budget_failure_and_cancel_keep_actual_group_and_old_cache() {
++        let Some(device) = device() else { return };
++        let a = binding(&device, "a", "sampler_nnc");
++        let b = binding(&device, "b", "sampler_default");
++        let c = binding(&device, "c", "sampler_mipmap");
++        let pages = SamplerPages::default();
++        pages.register(std::slice::from_ref(&a));
++        let heap = heap(&device, 4);
++        commit(&pages, &heap, std::slice::from_ref(&a));
++        let page = pages.state.lock().pages[0].clone();
++        let old_stamp = page.leases.lock().catalog.clone().unwrap();
++        let budget = device.allocator_stats();
++        let baseline = budget.cpu_memory_usage().total();
++        let trial = heap.sampler(b.sampler.clone()).unwrap();
++        let one_lease = budget.cpu_memory_usage().total() - baseline;
++        assert!(one_lease > 0);
++        drop(trial);
++        assert_eq!(budget.cpu_memory_usage().total(), baseline);
++        pages.register(std::slice::from_ref(&b));
++        pages.register(std::slice::from_ref(&c));
++        let mut pending = actual(&pages, &heap, std::slice::from_ref(&a));
++        let old_limit = budget.host_budget_limit();
++        budget
++            .set_host_budget(baseline.checked_add(one_lease).unwrap())
++            .unwrap();
++        let result = extras(&mut pending);
++        budget.set_host_budget(old_limit).unwrap();
++        result.unwrap();
++        assert!(!pending.publish_catalog, "部分额外项 OOM 不发布 stamp");
++        assert_eq!(pending.values.len(), 1, "实际组不重放也不混入半目录");
++        assert_eq!(heap.stats().tables[3].live, 1, "取消所有未发布的额外租约");
++        pending.commit();
++        {
++            let cached = page.leases.lock();
++            assert_eq!(cached.leases.len(), 1);
++            assert!(Arc::ptr_eq(cached.catalog.as_ref().unwrap(), &old_stamp));
++            assert!(Arc::ptr_eq(&cached.leases[0].sampler, &a.sampler));
++        }
++        let mut cancelled = actual(&pages, &heap, std::slice::from_ref(&a));
++        extras(&mut cancelled).unwrap();
++        assert_eq!(heap.stats().tables[3].live, 3);
++        drop(cancelled);
++        assert_eq!(
++            heap.stats().tables[3].live,
++            1,
++            "完整 extras 未 commit 也要归还"
+         );
++        assert!(Arc::ptr_eq(
++            page.leases.lock().catalog.as_ref().unwrap(),
++            &old_stamp
++        ));
++        commit(&pages, &heap, std::slice::from_ref(&b));
++        assert_eq!(heap.stats().tables[3].live, 3);
+     }
++
++    #[test]
++    fn optional_admission_shortage_falls_back_but_real_errors_propagate() {
++        let Some(device) = device() else { return };
++        let a = binding(&device, "a", "sampler_nnc");
++        let b = binding(&device, "b", "sampler_default");
++        let pages = SamplerPages::default();
++        pages.register(std::slice::from_ref(&a));
++        pages.register(std::slice::from_ref(&b));
++        let heap = heap(&device, 4);
++        let mut pending = actual(&pages, &heap, std::slice::from_ref(&a));
++        pending
++            .try_catalog_extras(|required| {
++                Err(GroupPreparationError::InsufficientSlots { required })
++            })
++            .unwrap();
++        assert!(!pending.publish_catalog);
++        pending.commit();
++        for error in [
++            rhapsody::Error::DeviceLost,
++            rhapsody::Error::Vulkan(vk::Result::ERROR_INITIALIZATION_FAILED),
++            rhapsody::Error::unsupported("test admission error"),
++            rhapsody::Error::invalid_usage("test admission error"),
++        ] {
++            let expected = error.kind();
++            let mut pending = actual(&pages, &heap, std::slice::from_ref(&a));
++            let actual = pending
++                .try_catalog_extras(|_| Err(GroupPreparationError::Error(error)))
++                .unwrap_err();
++            assert_eq!(actual.kind(), expected);
++            assert!(!pending.publish_catalog);
++            drop(pending);
++            assert_eq!(heap.stats().tables[3].live, 1);
++        }
++        let mut pending = pages.prepare(&heap, std::slice::from_ref(&b)).unwrap();
++        let budget = device.allocator_stats();
++        let old_limit = budget.host_budget_limit();
++        budget
++            .set_host_budget(budget.cpu_memory_usage().total())
++            .unwrap();
++        let actual_error = pending.materialize().unwrap_err();
++        budget.set_host_budget(old_limit).unwrap();
++        assert_eq!(
++            actual_error.kind(),
++            rhapsody::ErrorKind::OutOfMemory,
++            "实际组错误仍然失败"
++        );
++    }
++
++    #[test]
++    fn registration_metadata_failure_disables_optional_catalog_without_failing_actual_groups() {
++        let Some(device) = device() else { return };
++        let a = binding(&device, "a", "sampler_nnc");
++        let b = binding(&device, "b", "sampler_default");
++        let pages = SamplerPages::default();
++        pages.register(std::slice::from_ref(&a));
++        let heap = heap(&device, 4);
++        commit(&pages, &heap, std::slice::from_ref(&a));
++        pages.state.lock().fail_next_registration = true;
++        pages.register(std::slice::from_ref(&b));
++        {
++            let state = pages.state.lock();
++            assert!(state.catalog_disabled);
++            assert!(state.catalog.is_none());
++            assert_eq!(
++                state.pages[0].leases.lock().leases.len(),
++                1,
++                "不清原实际缓存"
++            );
++        }
++        pages.register(std::slice::from_ref(&a));
++        assert!(
++            pages.state.lock().catalog.is_none(),
++            "遗漏登记后不能假标完整"
++        );
++        let pending = actual(&pages, &heap, std::slice::from_ref(&b));
++        assert!(pending.catalog.is_none());
++        pending.commit();
++        assert_eq!(heap.stats().tables[3].live, 2);
++    }
++
++    #[test]
++    fn only_explicit_optional_sampler_budget_errors_can_fall_back() {
++        assert!(optional_sampler_budget_error(
++            &rhapsody::Error::OutOfHostMemory
++        ));
++        assert!(optional_sampler_budget_error(
++            &rhapsody::Error::OutOfDeviceMemory
++        ));
++        assert!(optional_sampler_budget_error(&rhapsody::Error::exhausted(
++            "sampler slots"
++        )));
++        for error in [
++            rhapsody::Error::DeviceLost,
++            rhapsody::Error::Vulkan(vk::Result::ERROR_OUT_OF_DEVICE_MEMORY),
++            rhapsody::Error::Vulkan(vk::Result::ERROR_INITIALIZATION_FAILED),
++            rhapsody::Error::unsupported("not optional"),
++            rhapsody::Error::invalid_usage("not optional"),
++        ] {
++            assert!(!optional_sampler_budget_error(&error));
++        }
++    }
+ }

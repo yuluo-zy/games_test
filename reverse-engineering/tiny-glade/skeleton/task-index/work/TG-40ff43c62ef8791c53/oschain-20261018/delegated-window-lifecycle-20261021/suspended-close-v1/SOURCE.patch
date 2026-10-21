@@ -1,0 +1,20 @@
+--- a/tiny-glade/crates/tiny-glade/src/event_loop.rs
++++ b/tiny-glade/crates/tiny-glade/src/event_loop.rs
+@@ -163,7 +163,16 @@
+                     }
+                     WindowEvent::Moved(_) => self.queue_os_event(OsWindowEvent::MonitorChanged)?,
+                     WindowEvent::CloseRequested => {
+-                        self.queue_os_event(OsWindowEvent::CloseRequested)?
++                        if self.suspended {
++                            // 暂停时没有下一次 frame 消费事件队列；实际 OS 关闭必须
++                            // 直接取消并 join 加载任务、关闭保存和 GPU，不能等待 Resumed。
++                            // 这是主线程宿主适配，不运行暂停中的 App 或伪造关闭标记。
++                            self.dispatch_os_event(OsWindowEvent::CloseRequested, target)?;
++                            self.shut_down()?;
++                            target.exit();
++                        } else {
++                            self.queue_os_event(OsWindowEvent::CloseRequested)?;
++                        }
+                     }
+                     WindowEvent::Focused(focused) => {
+                         self.queue_os_event(OsWindowEvent::Focused(focused))?

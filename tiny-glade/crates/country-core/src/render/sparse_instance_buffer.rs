@@ -281,6 +281,33 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         allocation: &'a Allocation,
     ) -> SparseInstanceBufferWriter<'a, T> {
         let chunks = allocation.chunk_ids.lock();
+        self.writer_for_locked(chunks)
+    }
+
+    /// 原楼梯 reset 的写域适配：只清理并持有分配锁，缓冲借用在返回前结束。
+    /// 调用方可继续清理同缓冲的另一分配，再将原 guard 移入写入器；不重新加锁。
+    pub fn clear_and_lock_allocation<'alloc>(
+        &mut self,
+        allocation: &'alloc Allocation,
+    ) -> MutexGuard<'alloc, Vec<ChunkId>> {
+        let mut chunks = allocation.chunk_ids.lock();
+        let mut current_chunk = 0;
+        clear_parts(
+            &mut current_chunk,
+            &mut self.byte_map,
+            &self.active_bitset,
+            &mut chunks,
+            &self.free_chunks,
+        );
+        chunks
+    }
+
+    /// 消费已持有的同分配 guard；组装原写入器，不重锁、不清理或分配。
+    /// chunk 哨兵的初始化算术与 writer_for 原实现一致。
+    pub fn writer_for_locked<'a>(
+        &'a mut self,
+        chunks: MutexGuard<'a, Vec<ChunkId>>,
+    ) -> SparseInstanceBufferWriter<'a, T> {
         let Self {
             free_chunks,
             byte_map,
@@ -533,14 +560,31 @@ impl<T: SparseSsbo> SparseInstanceBufferWriter<'_, T> {
     /// 该分配的每个 chunk：`byte_map=0`、清 active 位；随后把 chunk 表**逆序**压回空闲栈并清空。
     /// dirty 位不清——之后的 `gpu_flush` 仍会上传这些 chunk。`byte_map` 为空 → `Option::unwrap` panic。
     pub fn clear(&mut self) {
-        self.current_chunk = self.byte_map.len().checked_sub(1).unwrap() as u32;
-        for &id in self.allocation_chunks.iter() {
-            self.byte_map[id as usize] = 0;
-            bitmap_unset(self.active, id as usize);
-        }
-        let mut free = self.free_chunks.write();
-        free.extend(self.allocation_chunks.drain(..).rev());
+        clear_parts(
+            &mut self.current_chunk,
+            self.byte_map,
+            self.active,
+            &mut self.allocation_chunks,
+            self.free_chunks,
+        );
     }
+}
+
+/// 两个公开清理入口共用原业务体，保留哨兵、逐块清理与逆序归还的副作用顺序。
+fn clear_parts(
+    current_chunk: &mut u32,
+    byte_map: &mut [u8],
+    active: &[AtomicUsize],
+    allocation_chunks: &mut Vec<ChunkId>,
+    free_chunks: &RwLock<Vec<ChunkId>>,
+) {
+    *current_chunk = byte_map.len().checked_sub(1).unwrap() as u32;
+    for &id in allocation_chunks.iter() {
+        byte_map[id as usize] = 0;
+        bitmap_unset(active, id as usize);
+    }
+    let mut free = free_chunks.write();
+    free.extend(allocation_chunks.drain(..).rev());
 }
 
 impl<T: SparseSsbo + Send + Sync + 'static> Ssbo for SparseInstanceBuffer<T> {
@@ -633,6 +677,72 @@ mod tests {
         let dev = Rec::default();
         let b = SparseInstanceBuffer::<Elem>::new_storage_buffer(&dev, None);
         (dev, b)
+    }
+
+    #[test]
+    fn held_allocation_lock_allows_same_buffer_magic_clear_before_writer_reassembly() {
+        let (_device, mut buffer) = new_buf();
+        let state = MeshAtlasAllocation::new(&buffer);
+        let magic = MeshAtlasAllocation::new(&buffer);
+        buffer.writer_for(state.allocation()).push(&Elem(11)).unwrap();
+        buffer.writer_for(magic.allocation()).push(&Elem(22)).unwrap();
+        let state_chunk = state.allocation().chunk_ids.lock()[0];
+        let magic_chunk = magic.allocation().chunk_ids.lock()[0];
+        assert_ne!(state_chunk, magic_chunk);
+
+        // guard 仅借分配，同 buffer 的后续清理不制造重叠可变引用。
+        let state_lock = buffer.clear_and_lock_allocation(state.allocation());
+        assert!(state.allocation().chunk_ids.try_lock().is_none());
+        let magic_lock = buffer.clear_and_lock_allocation(magic.allocation());
+        assert!(state_lock.is_empty());
+        assert!(magic_lock.is_empty());
+        assert!(magic.allocation().chunk_ids.try_lock().is_none());
+        assert_eq!(buffer.byte_map[state_chunk as usize], 0);
+        assert_eq!(buffer.byte_map[magic_chunk as usize], 0);
+        drop(magic_lock);
+        assert!(state.allocation().chunk_ids.try_lock().is_none());
+
+        let mut writer = buffer.writer_for_locked(state_lock);
+        assert_eq!(writer.current_chunk, Elem::CHUNK_COUNT as u32);
+        writer.push(&Elem(99)).unwrap();
+        // 原哨兵领新 chunk；Magic 刚归还的尾块可由同 free 栈重新领取。
+        assert_eq!(&*writer.allocation_chunks, &[magic_chunk]);
+        drop(writer);
+        assert!(state.allocation().chunk_ids.try_lock().is_some());
+        assert_eq!(buffer.data[(magic_chunk as usize) << 5], Elem(99));
+        assert_eq!(buffer.byte_map[state_chunk as usize], 0);
+        assert_eq!(buffer.byte_map[magic_chunk as usize], 1);
+        assert_eq!(buffer.active_bitset[0].load(Ordering::Relaxed) & (1 << magic_chunk), 1 << magic_chunk);
+        assert_ne!(buffer.dirty_bitset[0].load(Ordering::Relaxed) & (1 << state_chunk), 0);
+    }
+
+    #[test]
+    fn locked_clear_and_existing_writer_clear_share_multi_chunk_order_and_dirty_state() {
+        let (_first_device, mut first) = new_buf();
+        let (_second_device, mut second) = new_buf();
+        let first_slot = MeshAtlasAllocation::new(&first);
+        let second_slot = MeshAtlasAllocation::new(&second);
+        {
+            let mut first_writer = first.writer_for(first_slot.allocation());
+            let mut second_writer = second.writer_for(second_slot.allocation());
+            for value in 0..70 {
+                first_writer.push(&Elem(value)).unwrap();
+                second_writer.push(&Elem(value)).unwrap();
+            }
+        }
+        let second_capacity = second_slot.allocation().chunk_ids.lock().capacity();
+        first.writer_for(first_slot.allocation()).clear();
+        let second_guard = second.clear_and_lock_allocation(second_slot.allocation());
+        assert!(second_guard.is_empty());
+        assert_eq!(second_guard.capacity(), second_capacity);
+        assert_eq!(first.byte_map, second.byte_map);
+        assert_eq!(*first.free_chunks.read(), *second.free_chunks.read());
+        assert_eq!(first.active_bitset.iter().map(|v| v.load(Ordering::Relaxed)).collect::<Vec<_>>(),
+            second.active_bitset.iter().map(|v| v.load(Ordering::Relaxed)).collect::<Vec<_>>());
+        assert_eq!(first.dirty_bitset.iter().map(|v| v.load(Ordering::Relaxed)).collect::<Vec<_>>(),
+            second.dirty_bitset.iter().map(|v| v.load(Ordering::Relaxed)).collect::<Vec<_>>());
+        assert_ne!(second.dirty_bitset[0].load(Ordering::Relaxed), 0);
+        drop(second_guard);
     }
 
     #[test]

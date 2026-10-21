@@ -1,0 +1,74 @@
+--- a/tiny-glade/crates/utils/src/lib.rs
++++ b/tiny-glade/crates/utils/src/lib.rs
+@@ -84,6 +84,16 @@
+     glam::Quat::from_mat3(&glam::Mat3::from_cols(right, up, forward))
+ }
+ 
++/// 原140c913e0：以本地负Z朝向输入，输入无有效倒长度时先选择正X。
++/// 保留原右轴的第二次归一化和整个矩阵转四元数分支，不能先翻转原输入。
++pub fn xz_rotation_from_forward(direction: glam::Vec2) -> glam::Quat {
++    let direction = direction.try_normalize().unwrap_or(glam::Vec2::X);
++    let forward = glam::Vec3::new(direction.x, 0.0, direction.y);
++    let up = glam::Vec3::Y;
++    let right = up.cross(forward).normalize();
++    glam::Quat::from_mat3(&glam::Mat3::from_cols(-right, up, -forward))
++}
++
+ #[cfg(test)]
+ mod cloth_shared_utils_tests {
+     use super::*;
+@@ -252,3 +262,54 @@
+         assert_eq!(time_continuous_lerp(0.25, 1.0, f32::INFINITY, 3.0), 1.0);
+     }
+ }
++
++#[cfg(test)]
++mod forward_rotation_tests {
++    use super::xz_rotation_from_forward;
++    use glam::{Vec2, Vec3};
++
++    #[test]
++    fn original_negative_z_basis_tracks_all_planar_quadrants_and_keeps_up() {
++        for direction in [
++            Vec2::X, -Vec2::X, Vec2::Y, -Vec2::Y,
++            Vec2::new(3.0, 4.0), Vec2::new(-3.0, 4.0),
++            Vec2::new(3.0, -4.0), Vec2::new(-3.0, -4.0),
++            Vec2::new(0.000_01, -0.000_02),
++        ] {
++            let rotation = xz_rotation_from_forward(direction);
++            let expected = direction.normalize();
++            assert!((rotation * Vec3::NEG_Z).abs_diff_eq(
++                Vec3::new(expected.x, 0.0, expected.y), 0.000_001,
++            ));
++            assert!((rotation * Vec3::Y).abs_diff_eq(Vec3::Y, 0.000_001));
++            assert!((rotation.length_squared() - 1.0).abs() < 0.000_001);
++        }
++    }
++
++    #[test]
++    fn original_fallback_precedes_axis_negation_for_zero_and_nonfinite_inputs() {
++        let expected = xz_rotation_from_forward(Vec2::X).to_array().map(f32::to_bits);
++        for direction in [
++            Vec2::ZERO, Vec2::new(-0.0, 0.0), Vec2::new(0.0, -0.0),
++            Vec2::new(f32::NAN, 1.0), Vec2::new(1.0, f32::NAN),
++            Vec2::new(f32::INFINITY, 1.0), Vec2::new(1.0, f32::NEG_INFINITY),
++            Vec2::splat(f32::MAX), Vec2::splat(f32::MIN_POSITIVE),
++        ] {
++            assert_eq!(xz_rotation_from_forward(direction).to_array().map(f32::to_bits), expected);
++        }
++        assert!((xz_rotation_from_forward(Vec2::ZERO) * Vec3::NEG_Z)
++            .abs_diff_eq(Vec3::X, 0.000_001));
++    }
++
++    #[test]
++    fn original_matrix_branch_keeps_the_y_and_w_component_sign_choice() {
++        let positive_x = xz_rotation_from_forward(Vec2::X);
++        assert!(positive_x.y > 0.0 && positive_x.w < 0.0);
++        let negative_x = xz_rotation_from_forward(-Vec2::X);
++        assert!(negative_x.y > 0.0 && negative_x.w > 0.0);
++        let positive_z = xz_rotation_from_forward(Vec2::Y);
++        assert_eq!(positive_z.y, 1.0);
++        let negative_z = xz_rotation_from_forward(-Vec2::Y);
++        assert_eq!(negative_z.w, 1.0);
++    }
++}

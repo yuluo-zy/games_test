@@ -1,0 +1,115 @@
+[package]
+readme = "README.md"
+name = "tiny-glade"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Tiny Glade application and game integration"
+# B `src/main.rs` 是模块源文件（tiny_glade::main::*），不是 Cargo bin 入口。
+# 关闭自动 bin 探测，lib.rs 用 `pub mod main;` 挂载它。
+autobins = false
+
+[[bin]]
+name = "tiny-glade"
+path = "src/bin/tiny-glade.rs"
+
+[[bin]]
+name = "tiny-glade-host"
+path = "src/bin/tiny-glade-host.rs"
+
+# AppKit's real event loop must execute on the process main thread. This is a
+# bounded WSI validation executable, not a substitute gameplay startup path.
+[[test]]
+name = "original_loading_present"
+path = "tests/original_loading_present.rs"
+harness = false
+
+[dependencies]
+glam.workspace = true
+tg-terrain.workspace = true
+tg-history.workspace = true
+tg-text = { path = "../tg-text" }
+bytemuck.workspace = true
+walkdir = "=2.3.2"
+country-core = { workspace = true, features = ["native-physics"] }
+system-roof.workspace = true
+system-tree.workspace = true
+forest.workspace = true
+system-color.workspace = true
+system-wall-constructor.workspace = true
+system-water.workspace = true
+system-glade-border.workspace = true
+system-decorator.workspace = true
+system-clutter.workspace = true
+system-critters.workspace = true
+timberframe.workspace = true
+system-onboarding.workspace = true
+rhapsody.workspace = true
+shader-pipeline.workspace = true
+utils.workspace = true
+paths.workspace = true
+lang-lib.workspace = true
+toolbar.workspace = true
+tg-iced = { path = "../tg-iced" }
+tg-package-integrity = { path = "../tg-package-integrity" }
+ash.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+colored.workspace = true
+fern.workspace = true
+ron.workspace = true
+time.workspace = true
+parking_lot = { workspace = true, features = ["deadlock_detection"] }
+hashbrown.workspace = true
+log.workspace = true
+puffin.workspace = true
+spin_sleep = "=1.1.1"
+once_cell.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+image.workspace = true
+uuid = { version = "=1.15.1", features = ["v4"] }
+tempfile = "=3.20.0"
+crossbeam-channel = "=0.5.6"
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+bevy_time = { version = "=0.16.0", default-features = false, features = ["std"] }
+bevy_state = { version = "=0.16.0", default-features = false, features = ["std", "bevy_app"] }
+bevy_input = "=0.16.0"
+egui = "=0.27.2"
+egui-winit.workspace = true
+rfd.workspace = true
+webbrowser.workspace = true
+winit = "0.29"
+zip = "=0.6.6"
+crc32fast = "=1.3.2"
+backtrace = { version = "=0.3.71", features = ["serialize-serde"] }
+sentry-types = "=0.31.7"
+
+[features]
+# FMOD-backed audio. Always on for Windows (original target); other hosts opt in
+# when libfmod/libfmodstudio are available to link.
+native-audio = ["country-core/native-audio"]
+
+[dev-dependencies]
+rspirv.workspace = true
+country-core = { workspace = true, features = ["test-support"] }
+# Lets tests/main_chain_audit.rs record every failed system instead of panicking on the first.
+bevy_ecs = { version = "=0.16.0", default-features = false, features = ["std", "configurable_error_handler"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+country-core = { workspace = true, features = ["native-audio"] }
+
+# B `icc.rs` 使用 winapi 0.3.9 的 wingdi（original-Cargo.lock）。
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "=0.3.9", features = ["wingdi", "winuser", "winbase", "winnt"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "=0.2.7"
+core-foundation = "=0.9.3"
+core-graphics = "=0.23.1"
+foreign-types = "=0.5.0"
+
+[lints]
+workspace = true

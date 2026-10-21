@@ -1,0 +1,90 @@
+{
+  "review": "SAMPLER_CATALOG_BOOTSTRAP_V3_SOURCE",
+  "reviewer": "/root/render_reviewer",
+  "verdict": "静态无阻断，允许root进入实际编译和严格GPU验证；不等同原30通过或原作分页复现。V1/V2不可整合。",
+  "inputs": {
+    "manifest_path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/sampler-catalog-bootstrap-v3-20261021/MANIFEST.json",
+    "manifest_sha256": "a9ce76547d63cb47476047e459aa88bf25a67fc35547e22cbd3593965a5a4c42",
+    "candidate_sha256": "1035f1f098533e6ec7cad8952c5bd22ab1ec8cab52af12370378cd180af7a708",
+    "before_sha256": "6da9c537d13f2946b8b003f43ec1027472064e2dd286cb4638c7a5026aab9183",
+    "patch_sha256": "5c551274a7f21330353e09fb9d8637e501968487f52456232590243100545466",
+    "v2_addendum_sha256": "fc72c52b0b167780b3e9fd905f2608ad1c43356bb3e0d859d389cf79583572b0",
+    "v3_addendum_sha256": "33ffea4082faec61289b61c97dda1e7464011330356eeb2a9f5d5260df23b65e"
+  },
+  "identity": "独立核对冻结manifest/candidate/baseline、审查时生产before完全匹配；所有sampler声明之前prefix逐字相同，包含root新GpuToCpu初始化策略。diff范围仅sampler私有状态/准备、两pipeline安装register、一个finish后的extras接线、8私有tests；无其它表push变更。",
+  "native_schema_adaptation": {
+    "native": "B固定13启动sampler目录已有原证；本次不重计原证，不由该事实推断原版每页bootstrap。",
+    "schema": "lookup/commit统一(name字符串,真实ArcSampler身份)，不同名字不合并、同名不同owner版本共存；容量读本页实际layout binding3，不改shader/descriptor上限。",
+    "adapter": "目录仅该ShaderHost已成功安装entry实际reflection sampler；App独立目录与cache，无Device全集/新global pool；显式常驻缓存策略。"
+  },
+  "checked_paths": [
+    {
+      "candidate_lines": [
+        918,
+        1018,
+        1855,
+        1874,
+        1965,
+        1983
+      ],
+      "result": "两entry的旧全部fallible构造及table.try_reserve后register再push；register metadata不足禁用可选目录、清目录但不清实际cache且不返回安装错误；旧目录锁外Drop，遗漏项不假称完整。原entry Arc构造时机保留。"
+    },
+    {
+      "candidate_lines": [
+        1017,
+        1054,
+        1318,
+        1369
+      ],
+      "result": "实际组只准备真实请求，complete group guard一次准入并持有到实际parameters.finish；finish之后try_catalog_extras，不二次准备FG/local、参数或DynamicConstants。with_push同页仍原早返，无无关目录工作。"
+    },
+    {
+      "candidate_lines": [
+        1142,
+        1207,
+        1225,
+        1237
+      ],
+      "result": "extras按目录+真实组唯一key容量上限先判；预留metadata、只申请extra sampler空槽。只extra Vec不足/InsufficientSlots/lease明确OOM或Exhausted安全回退；require_slots::Error和其它真实错误原样传播。部分extra局部Drop，不扩Prepared、不发布half stamp；所有fallible结束后才FG commit、sampler commit。"
+    },
+    {
+      "candidate_lines": [
+        1254,
+        1274
+      ],
+      "result": "commit所需Vec容量已reserve；key精确版本匹配；旧owner锁外Drop；完整stamp仅全部extras成功、epoch匹配且非MAX。缓存本身保持强租约，真实Prepared持有独立在途owner。"
+    },
+    {
+      "candidate_lines": [
+        1070,
+        1080,
+        1096
+      ],
+      "result": "V2并发阻断已由V3修复：begin先epoch++/撤stamp；逐名移出旧owner锁外Drop；最终同锁确认没有该name时再次epoch++/撤stamp，避免中间捕获新epoch的准备把将被删除项标完整。MAX饱和禁stamp不环绕。"
+    }
+  ],
+  "minimal_counterexamples_retained": [
+    {
+      "version": "V1",
+      "counterexample": "cap64/catalog9/current组1/只余1预算：实际组原可成功，先预填导致OOM；V2改实际组finish后optional extra解决。"
+    },
+    {
+      "version": "V2 draft",
+      "counterexample": "invalidate begin释放锁后、删除name前，P捕获新epoch借尚在cache的name并commit完整stamp；invalidate后删name却不清新stamp；V3末尾同锁二次失效解决并新增此确切interleave测试。"
+    }
+  ],
+  "tests_scope": {
+    "source_count": 8,
+    "actual_native_descriptor_paths": 7,
+    "pure_error_classification": 1,
+    "author_or_reviewer_execution": false,
+    "covered_source": "双page目录复用/App隔离；小容量原路径；同名多owner与旧epoch；extra中途真实host预算失败和未commit取消；admission短缺与真实错误传播；register故障禁用；invalidate精确interleave；错误分类。",
+    "limit": "私有测试materialize实际native descriptor但其admission是串行helper，不能当作parallel guard或shader采样执行验证；root需实际编译并继续既有ABI/桥接/原30/WSI。"
+  },
+  "cost_limits": [
+    "首次页目录补齐会增加真实descriptor写和常驻owner；extra非预算真实driver错误可新增失败机会，不能宣称全生命周期预算/全部错误行为等价。",
+    "该策略不修改原统计、阈值、steady起点、绘制或资源数，动态安装目录/版本变化仍有合法live增长，不能承诺任意运行输入恒定。",
+    "所有cold warm性能与原30是否收敛需实际日志；root唯一运行owner。"
+  ],
+  "execution": "仅源码/合同/hash独审，无Cargo/rustc/GPU/游戏/生产改动。"
+}

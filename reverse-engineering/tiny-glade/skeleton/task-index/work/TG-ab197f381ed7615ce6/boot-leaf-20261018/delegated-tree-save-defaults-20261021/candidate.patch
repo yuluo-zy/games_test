@@ -1,0 +1,78 @@
+--- a/tiny-glade/crates/country-core/src/resources/history/tree_edit.rs
++++ b/tiny-glade/crates/country-core/src/resources/history/tree_edit.rs
+@@ -36,7 +36,9 @@
+     /// Placement variant ID (source placement+20), independent of the unique
+     /// TreeStorage index carried by the outer TreeEdit. Original serde i32.
+     pub id: i32,
++    #[serde(default = "missing_prefab")]
+     pub prefab_name: String,
++    #[serde(default)]
+     pub is_preplaced: bool,
+     /// **移动前位置**（运行时旧位；O：live TreeEdit payload `+0x14/+0x1c`，
+     /// `replay_tree` Move-undo 0x141bc34f0 与 ui_move_tree History 载荷使用）。
+@@ -427,4 +429,64 @@
+         );
+         assert!(serde_json::from_str::<TreeEdit>(r#"{"Delete":{"tree":{"position":[0,0,0],"scale":1,"rotation_degrees":0,"id":12,"prefab_name":"Oak","is_preplaced":false}}}"#).is_err());
+     }
+-}
++
++    #[test]
++    fn shipped_version18_tree_uses_original_missing_prefab_and_preplaced_defaults() {
++        // 原 full/25-swamp/history.json /History/edit_chain/25/edits/0/Tree。
++        let input = r#"{"Place":{"index":0,"tree":{"id":5,"position":[7.286689758300781,0.0,-2.4316482543945312],"rotation_degrees":359.0250549316406,"scale":0.7239845991134644}}}"#;
++        let decoded: TreeEdit = serde_json::from_str(input).unwrap();
++        assert_eq!(decoded.id(), 0);
++        assert_eq!(decoded.placement_id(), 5);
++        assert_eq!(decoded.prefab_name(), "MISSING_TREE_PREFAB_NAME");
++        assert!(!decoded.is_preplaced());
++        let saved = serde_json::to_value(&decoded).unwrap();
++        let tree = &saved["Place"]["tree"];
++        assert_eq!(tree.as_object().unwrap().len(), 6);
++        assert_eq!(tree["prefab_name"], "MISSING_TREE_PREFAB_NAME");
++        assert_eq!(tree["is_preplaced"], false);
++        assert_eq!(saved["Place"]["index"], 0);
++    }
++
++    #[test]
++    fn tree_serde_defaults_apply_only_to_each_missing_compatibility_field() {
++        let required = serde_json::json!({"position":[1.0,2.0,3.0],"scale":0.75,"rotation_degrees":45.0,"id":-7});
++        let mut only_prefab = required.clone();
++        only_prefab["prefab_name"] = serde_json::json!("ExplicitPrefab");
++        let decoded: TreeEditData = serde_json::from_value(only_prefab).unwrap();
++        assert_eq!(decoded.prefab_name, "ExplicitPrefab");
++        assert!(!decoded.is_preplaced);
++        let mut only_preplaced = required.clone();
++        only_preplaced["is_preplaced"] = serde_json::json!(true);
++        let decoded: TreeEditData = serde_json::from_value(only_preplaced).unwrap();
++        assert_eq!(decoded.prefab_name, missing_prefab());
++        assert!(decoded.is_preplaced);
++        let mut explicit = required;
++        explicit["prefab_name"] = serde_json::json!("");
++        explicit["is_preplaced"] = serde_json::json!(false);
++        let decoded: TreeEditData = serde_json::from_value(explicit).unwrap();
++        assert!(decoded.prefab_name.is_empty());
++        assert!(!decoded.is_preplaced);
++    }
++
++    #[test]
++    fn original_tree_defaults_keep_required_type_duplicate_and_unknown_field_rules() {
++        let input = serde_json::json!({"position":[1.0,2.0,3.0],"scale":0.75,"rotation_degrees":45.0,"id":-7});
++        for field in ["position", "scale", "rotation_degrees", "id"] {
++            let mut missing = input.clone();
++            missing.as_object_mut().unwrap().remove(field);
++            assert!(serde_json::from_value::<TreeEditData>(missing).is_err(), "{field}");
++        }
++        for (field, wrong) in [("prefab_name", serde_json::Value::Null), ("is_preplaced", serde_json::Value::Null), ("is_preplaced", serde_json::json!(1))] {
++            let mut invalid = input.clone();
++            invalid[field] = wrong;
++            assert!(serde_json::from_value::<TreeEditData>(invalid).is_err(), "{field}");
++        }
++        let duplicate = r#"{"position":[1,2,3],"scale":1,"rotation_degrees":0,"id":5,"prefab_name":"First","prefab_name":"Second"}"#;
++        assert!(serde_json::from_str::<TreeEditData>(duplicate).unwrap_err().to_string().contains("duplicate field"));
++        let mut unknown = input;
++        unknown["unknown_legacy_field"] = serde_json::json!({"nested":[1,true,null]});
++        let decoded: TreeEditData = serde_json::from_value(unknown).unwrap();
++        assert_eq!(decoded.prefab_name, missing_prefab());
++        assert!(!decoded.is_preplaced);
++    }
++}

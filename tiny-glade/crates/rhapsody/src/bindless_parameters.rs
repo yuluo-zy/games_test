@@ -1,4 +1,5 @@
 //! Typed resource and parameter bindings for the production shader heap ABI.
+use crate::rg::profiling::{RecordCount, RecordPhase, RecordSpan, RecordTally, record_count};
 use super::{BindlessHeap, BindlessLease, DescriptorKind};
 use crate::{
     Error, Result,
@@ -294,9 +295,17 @@ impl BindlessParameters {
         abi: &BindlessShaderAbi,
         resources: impl IntoIterator<Item = (BindingLocation, u32, &'a BindlessResource)>,
     ) -> Result<[usize; 4]> {
+        let _trace = RecordSpan::new(RecordPhase::Requirements);
+        record_count(RecordCount::RequirementsCalls, 1);
+        let work = RecordTally::new([
+            RecordCount::RequirementResources,
+            RecordCount::RequirementUnique,
+        ]);
+
         let mut keys = SmallVec::<[ResourceKey; 16]>::new();
         let mut counts = [0; 4];
         for (location, element, resource) in resources {
+            work.add(0);
             let slot = abi.slot(location).ok_or_else(|| {
                 Error::invalid_usage("binding is absent from the shader heap ABI")
             })?;
@@ -311,6 +320,7 @@ impl BindlessParameters {
             if !keys.contains(&key) {
                 keys.try_reserve(1).map_err(|_| Error::OutOfHostMemory)?;
                 keys.push(key);
+                work.add(1);
                 counts[resource.kind() as usize] += 1;
             }
         }
@@ -350,8 +360,12 @@ impl BindlessParameters {
             && matches!(&resource, BindlessResource::Buffer {buffer, ..} if buffer.is_dynamic_constants_page());
         let key = resource.key(uniform_upload);
         let lease = match self.cache.iter().find(|(old, _)| *old == key) {
-            Some((_, lease)) => lease.clone(),
+            Some((_, lease)) => {
+                record_count(RecordCount::LocalCacheHits, 1);
+                lease.clone()
+            }
             None => {
+                record_count(RecordCount::LocalCacheMisses, 1);
                 self.cache
                     .try_reserve(1)
                     .map_err(|_| Error::OutOfHostMemory)?;
@@ -398,6 +412,9 @@ impl BindlessParameters {
         mut self,
         constants: &mut DynamicConstants,
     ) -> Result<PreparedBindlessParameters> {
+        let _trace = RecordSpan::new(RecordPhase::Finish);
+        record_count(RecordCount::FinishCalls, 1);
+
         let base = self.abi.original_push_bytes.div_ceil(4) as usize * 4;
         for slot in &self.abi.bindings {
             if matches!(slot.array, BindingArray::Fixed(_))
@@ -453,6 +470,9 @@ impl PreparedBindlessParameters {
         original_push: &[u8],
         constants: &mut DynamicConstants,
     ) -> Result<Self> {
+        let _trace = RecordSpan::new(RecordPhase::WithPush);
+        record_count(RecordCount::WithPushCalls, 1);
+
         let mut next = BindlessParameters::new(self.heap.clone(), self.abi.clone(), original_push)?;
         let base = self.abi.original_push_bytes.div_ceil(4) as usize * 4;
         next.bytes[base..].copy_from_slice(&self.bytes[base..]);
@@ -517,6 +537,8 @@ impl PreparedBindlessParameters {
         Ok(())
     }
     fn push(&self, command: vk::CommandBuffer, pipeline: &VulkanPipeline) {
+        let _trace = RecordSpan::new(RecordPhase::NativePush);
+
         unsafe {
             self.heap.device.core.device.cmd_push_constants(
                 command,
@@ -526,6 +548,7 @@ impl PreparedBindlessParameters {
                 &self.parameter_index.to_le_bytes(),
             );
         }
+        record_count(RecordCount::NativePushCalls, 1);
     }
 }
 use ash::vk::Handle;

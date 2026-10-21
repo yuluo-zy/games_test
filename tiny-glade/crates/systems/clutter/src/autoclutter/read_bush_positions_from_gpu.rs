@@ -94,7 +94,7 @@ pub fn read_bush_positions_from_gpu(
     }
     let count = bush.mapped[0].0[0] as usize;
     if len <= count {
-        panic!("read_bush_positions_from_gpu: slice_end_index_len_fail");
+        panic!("read_bush_positions_from_gpu: slice_end_index_len_fail (count={count}, mapped_len={len})");
     }
 
     // 1. 每格 positions.len 清零（O：`*(u64*)(data + i*0x20 + 0x10)=0`）。
