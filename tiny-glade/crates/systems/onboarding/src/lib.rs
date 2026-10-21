@@ -108,8 +108,8 @@ pub fn configure(world: &mut World, schedule: &mut bevy_ecs::schedule::Schedule)
     world.init_resource::<Events<LingerHintRequest>>();
     world.init_resource::<Events<tutorial_completion::TutorialHintComplete>>();
     world.init_resource::<Events<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>>();
-    // O：`ToolbarUiIsInFocus` 属 toolbar plugin 的注册面（country-core 尚未落该类型）；
-    // 本模块以本地同名事件承接 `hint_orchestrator` 的 reader，故在此注册（接线 U）。
+    // The CPU-only configuration needs the same core-owned event storage as
+    // the toolbar producer. The full App registers it through ToolbarPlugin.
     world.init_resource::<Events<hint_orchestrator::ToolbarUiIsInFocus>>();
     // Current CPU consumer order. The upper host supplies profile/AppMode and
     // the actual core terrain producers; this does not create a core->plugin dependency.

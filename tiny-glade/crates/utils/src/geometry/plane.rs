@@ -8,16 +8,22 @@ pub struct Plane {
 }
 impl Plane {
     pub fn intersect_ray(self, ray: Ray, min_t: f32) -> Option<(f32, Vec3)> {
-        let denominator = self.normal.dot(ray.direction);
-        // Parallel and coplanar rays have no unique intersection.
-        if denominator == 0.0 || !denominator.is_finite() {
-            return None;
-        }
-        let t = self.normal.dot(self.point - ray.origin) / denominator;
-        if t.is_finite() && min_t <= t {
-            Some((t, ray.origin + ray.direction * t))
-        } else {
+        // B 0x141280443..485: retain the two original SIMD reduction orders.
+        let direction = ray.direction;
+        let normal = self.normal;
+        let offset = self.point - ray.origin;
+        let denominator = normal.z * direction.z
+            + (normal.y * direction.y + normal.x * direction.x);
+        let numerator = normal.z * offset.z
+            + (normal.x * offset.x + normal.y * offset.y);
+        let t = numerator / denominator;
+        // Native UCOMISS min_t,t; JA rejects only ordered min_t > t.
+        // Unordered and positive-infinite results retain the original payload;
+        // callers such as PlaneDisc apply their own geometric acceptance.
+        if min_t > t {
             None
+        } else {
+            Some((t, ray.origin + ray.direction * t))
         }
     }
 }

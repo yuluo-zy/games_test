@@ -172,6 +172,21 @@ pub fn run_game(
     cli: crate::app_config::CliArgs,
     steam: Option<Arc<dyn country_core::resources::steam::SteamSdk>>,
 ) -> anyhow::Result<()> {
+    let launch_display = crate::app_config::LaunchDisplayOverride::resolve(
+        &cli,
+        &config.video.display,
+        steam.is_none(),
+        std::env::var_os("TG_FULLSCREEN").is_some(),
+        std::env::var("TG_WINDOW_SIZE").ok().as_deref(),
+    )?;
+    if let Some(policy) = &launch_display {
+        policy.apply(&mut config.video.display);
+        log::info!(
+            "Launch display override: fullscreen={}, windowed_resolution={:?}; saved display preferences retained",
+            config.video.display.fullscreen,
+            config.video.display.windowed_resolution,
+        );
+    }
     let event_loop = winit::event_loop::EventLoop::<()>::new()?;
     let (window, _exclusive_mode) =
         crate::setup::setup_window(&event_loop, &mut config.video.display);
@@ -182,6 +197,9 @@ pub fn run_game(
         &cli,
         WindowSize::new(physical.width, physical.height),
     )?;
+    if let Some(policy) = launch_display {
+        app.insert_resource(policy);
+    }
     if let Some(client) = steam {
         app.insert_resource(
             country_core::resources::platform::RuntimePlatform::from_detection(
@@ -490,6 +508,7 @@ pub fn run_game_thread(
     ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(
         bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
     app.init_resource::<EscMenuState>();
+    app.init_resource::<country_core::resources::onboarding::WelcomeScreenState>();
     app.init_resource::<NextEscMenuState>();
     app.init_resource::<PrevEscMenuState>();
     app.add_event::<country_core::resources::events::EscapeMenuJustOpened>();
@@ -614,6 +633,16 @@ pub fn run_game_thread(
     app.add_systems(
         bevy_app::Update,
         toolbar::menu::load_ui::ui
+            .in_set(GameSystemSet(36))
+            .run_if(bevy_state::condition::in_state(
+                country_core::app_loading_state::AppLoadingState::Game,
+            )),
+    );
+    // Original welcome141ebe130 shares Game/set36 and the canonical MEI,
+    // profile and reveal owners. Its own state machine controls visibility.
+    app.add_systems(
+        bevy_app::Update,
+        toolbar::menu::welcome::ui
             .in_set(GameSystemSet(36))
             .run_if(bevy_state::condition::in_state(
                 country_core::app_loading_state::AppLoadingState::Game,
@@ -1086,6 +1115,11 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
     };
     let source = gameplay.world();
     let mut app = App::new();
+    // The loading and gameplay windows share this per-process launch policy;
+    // never let a handoff restore fullscreen or persist the temporary extent.
+    if let Some(policy) = source.get_resource::<crate::app_config::LaunchDisplayOverride>() {
+        app.insert_resource(policy.clone());
+    }
     // Original loading App @1405a4d93/95 supplies false, independently of gameplay.
     app.insert_resource(country_core::asset_libraries::configwatch::ConfigWatch::new(false));
     for stage in 0..44 {
@@ -1183,7 +1217,7 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
 /// process runner). A failed producer/warmup is returned to the OS owner; it
 /// never becomes a synthetic "ready" application.
 #[derive(Debug)]
-struct GameplayPreparationCancelled;
+pub(crate) struct GameplayPreparationCancelled;
 
 impl std::fmt::Display for GameplayPreparationCancelled {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1263,6 +1297,14 @@ impl GameplayPreparation {
         gameplay: bevy_app::SubApp,
         warm_up: impl FnOnce(&mut World) -> anyhow::Result<()> + Send + 'static,
     ) -> anyhow::Result<Self> {
+        Self::spawn_with_initializer(gameplay, |_, _| Ok(()), warm_up)
+    }
+
+    pub(crate) fn spawn_with_initializer(
+        gameplay: bevy_app::SubApp,
+        initialize: impl FnOnce(&mut World, &std::sync::atomic::AtomicBool) -> anyhow::Result<()> + Send + 'static,
+        warm_up: impl FnOnce(&mut World) -> anyhow::Result<()> + Send + 'static,
+    ) -> anyhow::Result<Self> {
         use std::sync::atomic::{AtomicBool, Ordering};
         let (sender, receiver) = std::sync::mpsc::channel();
         let cancel = Arc::new(AtomicBool::new(false));
@@ -1284,20 +1326,35 @@ impl GameplayPreparation {
                     "B async load @0x1400d7440: original gameplay AppMode/startup producers are not registered");
                 anyhow::ensure!(gameplay.world().contains_resource::<country_core::systems::save::load_game::LoadGameManager>(),
                     "B async load: original session/snapshot loading producer is not registered");
+                if cancelled.load(Ordering::Acquire) { return Err(GameplayPreparationCancelled.into()); }
+                phase = "register gameplay base shader programs";
+                initialize(gameplay.world_mut(), &cancelled)?;
+                if cancelled.load(Ordering::Acquire) { return Err(GameplayPreparationCancelled.into()); }
+                log::info!(target: "tiny_glade::startup", "gameplay preparation: original load update loop begins");
                 loop {
                     if cancelled.load(Ordering::Acquire) { return Err(GameplayPreparationCancelled.into()); }
                     // @1400d76e3 and Events<LoadingGameComplete> native TypeId
                     // 4d00324fb817a8a1/5846f8d25a034525, confirmed register_event
                     // @14151ffb0. It reads both live event buffers.
                     phase = "gameplay SubApp::update";
+                    if update_index == 0 {
+                        log::info!(target: "tiny_glade::startup", "gameplay preparation: first SubApp update begins");
+                    }
                     gameplay.update();
                     update_index += 1;
+                    if update_index == 1 {
+                        log::info!(target: "tiny_glade::startup", "gameplay preparation: first SubApp update returned");
+                    }
                     phase = "verify actual gameplay clutter Startup";
                     crate::gameplay_startup::require_clutter_catalog(gameplay.world())?;
                     phase = "read original LoadingGameComplete";
                     let events = gameplay.world().get_resource::<Events<country_core::systems::save::load_game::LoadingGameComplete>>()
                         .ok_or_else(|| anyhow::anyhow!("B async load: LoadingGameComplete event resource missing"))?;
-                    if !events.is_empty() { break; }
+                    if !events.is_empty() {
+                        log::info!(target: "tiny_glade::startup",
+                            "gameplay preparation: LoadingGameComplete observed after {update_index} updates");
+                        break;
+                    }
                 }
                 // A close request may arrive during the final update. Do not
                 // start another device submission after observing cancellation.
@@ -1305,7 +1362,9 @@ impl GameplayPreparation {
                     return Err(GameplayPreparationCancelled.into());
                 }
                 phase = "original gameplay graph warm-up";
+                log::info!(target: "tiny_glade::startup", "gameplay preparation: original GPU graph warm-up begins");
                 warm_up(gameplay.world_mut())?;
+                log::info!(target: "tiny_glade::startup", "gameplay preparation: original GPU graph warm-up completed");
                 if cancelled.load(Ordering::Acquire) {
                     return Err(GameplayPreparationCancelled.into());
                 }
@@ -1327,9 +1386,17 @@ impl GameplayPreparation {
                 Ok(()) => {
                     if let Err(error) = publish_prepared_app(&sender, gameplay_owner.take()) {
                         log::error!("Prepared gameplay App could not be published: {error:#}");
+                    } else {
+                        log::info!(target: "tiny_glade::startup", "gameplay preparation: prepared SubApp published");
                     }
                 }
                 Err(primary) => {
+                    // Record the originating failure before save/world disposal:
+                    // a later shutdown error must not hide the actual load phase.
+                    if !primary.is::<GameplayPreparationCancelled>() {
+                        log::error!(target: "tiny_glade::startup",
+                            "gameplay preparation failed during {phase} after {update_index} completed updates: {primary:#}");
+                    }
                     let cleanup = gameplay_owner.dispose();
                     // Cancellation is benign only when its real save cleanup
                     // succeeded; never discard a cleanup failure as cancellation.
@@ -1385,11 +1452,10 @@ impl GameplayPreparation {
             keep_first_preparation_failure(completion, joined), pending_cleanup)
     }
 
-    /// Original main_loop polls only at the logo's waiting stage and switches
-    /// only after the final stage. Early errors are surfaced immediately in
-    /// this host, because incomplete producers must not become a hung splash.
-    pub fn poll(&mut self, loading: &mut App) -> anyhow::Result<bool> {
-        use country_core::resources::logo_animation::LogoAnimation;
+    /// Receive actual worker completion/errors without changing Logo or App
+    /// ownership. Optional background decoding must never conceal a failed
+    /// mandatory gameplay producer while its loading frame is suspended.
+    pub(crate) fn poll_completion(&mut self) -> anyhow::Result<()> {
         use std::sync::mpsc::TryRecvError;
         if self.pending.is_none() {
             match self.receiver.try_recv() {
@@ -1397,6 +1463,7 @@ impl GameplayPreparation {
                     let mut app = GameplayAppOwner::new(app);
                     self.join_worker()?;
                     self.pending = Some(app.take());
+                    log::info!(target: "tiny_glade::startup", "loading App: prepared gameplay SubApp received");
                 }
                 Ok(Err(error)) => {
                     if let Err(secondary) = self.join_worker() {
@@ -1411,9 +1478,34 @@ impl GameplayPreparation {
                 }
             }
         }
-        let logo = loading.world_mut().get_resource_mut::<LogoAnimation>();
-        if let Some(mut logo) = logo {
+        Ok(())
+    }
+
+    /// Original main_loop polls only at the logo's waiting stage and switches
+    /// only after the final stage. Early errors are surfaced immediately in
+    /// this host, because incomplete producers must not become a hung splash.
+    pub fn poll(&mut self, loading: &mut App) -> anyhow::Result<bool> {
+        use country_core::resources::logo_animation::LogoAnimation;
+        self.poll_completion()?;
+        if !loading.world().contains_resource::<LogoAnimation>() {
+            // A missing loading producer must not turn into permission to
+            // bypass the logo's waiting/final-stage gates. Dispose any received
+            // gameplay owner through the same save-thread shutdown boundary.
+            if let Some(gameplay) = self.pending.take() {
+                if let Err(secondary) = dispose_gameplay_app(gameplay) {
+                    log::error!("Save shutdown after missing loading LogoAnimation: {secondary:#}");
+                }
+            }
+            anyhow::bail!("loading App: mandatory LogoAnimation producer is missing; gameplay handoff refused");
+        }
+        {
+            let mut logo = loading.world_mut().resource_mut::<LogoAnimation>();
             if self.pending.is_some() && logo.is_waiting() {
+                // finish_wait is intentionally still called by the same native
+                // gate on every waiting frame. Log only its actual transition.
+                if logo.progress[country_core::resources::logo_animation::WAIT_STAGE] != 1.0 {
+                    log::info!(target: "tiny_glade::startup", "loading App: prepared gameplay releases Logo wait stage");
+                }
                 logo.finish_wait();
             }
             if !logo.is_finished() {
@@ -1423,12 +1515,14 @@ impl GameplayPreparation {
         let Some(gameplay) = self.pending.take() else {
             return Ok(false);
         };
+        log::info!(target: "tiny_glade::startup", "loading App: Logo finished; original owner handoff begins");
         let mut gameplay = GameplayAppOwner::new(gameplay);
         transfer_loading_resources(loading.world_mut(), gameplay.app_mut().world_mut())?;
         // Normally the independent loading World owns no save worker. Still
         // close any actual owner before replacing it; all schedules are stopped.
         country_core::systems::save::save_thread::shutdown_save_thread(loading.world_mut())?;
         *loading.main_mut() = gameplay.take();
+        log::info!(target: "tiny_glade::startup", "loading App: gameplay SubApp handoff completed");
         Ok(true)
     }
 }
@@ -1469,6 +1563,9 @@ fn transfer_loading_resources(from: &mut World, to: &mut World) -> anyhow::Resul
         to.insert_resource(value);
         Ok(())
     }
+    // Validate the native reveal-source owner/device before moving any of the
+    // six required resources. A frame-local graph index cannot cross Apps.
+    crate::loading_graph::validate_saved_background_handoff(from, to)?;
     // Required move list, original main_loop @0x1404d9xxx..0x1404dacxx.
     take::<GameConfig>(from, to)?;
     take::<ActiveInputModeTracker>(from, to)?;
@@ -1482,6 +1579,9 @@ fn transfer_loading_resources(from: &mut World, to: &mut World) -> anyhow::Resul
     let vermeer = from
         .remove_resource::<VermeerState>()
         .ok_or_else(|| anyhow::anyhow!("B handoff: VermeerState missing"))?;
+    if let Some(background) = from.remove_resource::<crate::loading_graph::SavedLoadingBackgroundTexture>() {
+        to.insert_resource(background);
+    }
     to.insert_resource(vermeer.into_disable_hold());
     take::<EguiContextResource>(from, to)?;
     Ok(())
@@ -1737,6 +1837,33 @@ mod startup_handoff_integration {
         assert!(from.contains_resource::<EguiContextResource>());
         assert!(!to.contains_resource::<EguiContextResource>());
     }
+
+    #[test]
+    fn missing_saved_background_owner_refuses_handoff_before_any_required_move() {
+        use country_core::systems::render_loop::painterly::TexRef;
+        let mut loading = App::new();
+        six_owners(&mut loading);
+        loading.insert_resource(EguiContextResource(egui::Context::default()));
+        let mut vermeer = VermeerState::default();
+        vermeer.activate(true, true);
+        // A graph-local reference deliberately has no native managed owner.
+        vermeer.background = Some(country_core::systems::render_loop::vermeer::ManagedTexture(TexRef(999)));
+        loading.insert_resource(vermeer);
+        let mut gameplay = App::new();
+        events(&mut gameplay);
+        let error = transfer_loading_resources(loading.world_mut(), gameplay.world_mut()).unwrap_err();
+        assert!(error.to_string().contains("managed texture owner is missing"));
+        assert!(loading.world().contains_resource::<GameConfig>());
+        assert!(loading.world().contains_resource::<ActiveInputModeTracker>());
+        assert!(loading.world().contains_resource::<WindowSize>());
+        assert!(loading.world().contains_resource::<AvailableMonitors>());
+        assert!(loading.world().contains_resource::<FrameRenderConfig>());
+        assert!(loading.world().contains_resource::<AdaptiveRenderState>());
+        assert!(loading.world().contains_resource::<EguiContextResource>());
+        assert!(loading.world().resource::<VermeerState>().background.is_some());
+        assert!(!gameplay.world().contains_resource::<GameConfig>());
+        assert!(gameplay.world().resource::<Events<StartupRevealStarted>>().is_empty());
+    }
 }
 
 #[cfg(test)]
@@ -1866,6 +1993,169 @@ mod save_shutdown_preparation_tests {
     }
 
     #[test]
+    fn shader_initializer_failure_prevents_update_warmup_and_publication() {
+        use std::sync::atomic::AtomicUsize;
+        let updates = Arc::new(AtomicUsize::new(0));
+        let warmups = Arc::new(AtomicUsize::new(0));
+        let mut app = App::new();
+        app.init_resource::<country_core::systems::mode_manager::AppMode>();
+        app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
+        let observed = updates.clone();
+        app.add_systems(bevy_app::Update, move || { observed.fetch_add(1, Ordering::Relaxed); });
+        let flags = attach_save_owner(app.world_mut());
+        let warmed = warmups.clone();
+        let mut preparation = GameplayPreparation::spawn_with_initializer(
+            std::mem::take(app.main_mut()), |_, _| Err(std::io::Error::from(std::io::ErrorKind::NotFound).into()),
+            move |_| { warmed.fetch_add(1, Ordering::Relaxed); Ok(()) }).unwrap();
+        preparation.join_worker().unwrap();
+        let error = preparation.poll_completion().unwrap_err();
+        assert_eq!(error.downcast_ref::<std::io::Error>().unwrap().kind(), std::io::ErrorKind::NotFound);
+        assert_eq!(updates.load(Ordering::Relaxed), 0);
+        assert_eq!(warmups.load(Ordering::Relaxed), 0);
+        assert!(preparation.pending.is_none());
+        assert_saved_before_drop(flags);
+        preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
+    fn shader_initializer_runs_once_before_first_update_without_fabricating_ready() {
+        use std::sync::atomic::AtomicUsize;
+        let initialized = Arc::new(AtomicUsize::new(0));
+        let updates = Arc::new(AtomicUsize::new(0));
+        let mut app = App::new();
+        app.init_resource::<country_core::systems::mode_manager::AppMode>();
+        app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
+        let init_observed = initialized.clone();
+        let update_observed = updates.clone();
+        app.add_systems(bevy_app::Update, move || {
+            assert_eq!(init_observed.load(Ordering::Acquire), 1);
+            update_observed.fetch_add(1, Ordering::Relaxed);
+        });
+        let flags = attach_save_owner(app.world_mut());
+        let initialize = initialized.clone();
+        let mut preparation = GameplayPreparation::spawn_with_initializer(
+            std::mem::take(app.main_mut()), move |_, _| { initialize.fetch_add(1, Ordering::Release); Ok(()) },
+            |_| panic!("the genuine missing catalog must prevent warmup")).unwrap();
+        preparation.join_worker().unwrap();
+        assert!(preparation.poll_completion().unwrap_err().to_string().contains("ClutterMeshes"));
+        assert_eq!(initialized.load(Ordering::Acquire), 1);
+        assert_eq!(updates.load(Ordering::Relaxed), 1);
+        assert!(preparation.pending.is_none());
+        assert_saved_before_drop(flags);
+        preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
+    fn cancellation_during_initializer_prevents_update_and_warmup_and_joins_save() {
+        let mut app = App::new();
+        app.init_resource::<country_core::systems::mode_manager::AppMode>();
+        app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
+        app.add_systems(bevy_app::Update, || panic!("cancelled initializer must not update"));
+        let flags = attach_save_owner(app.world_mut());
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let mut preparation = GameplayPreparation::spawn_with_initializer(
+            std::mem::take(app.main_mut()), move |_, cancelled| {
+                started_tx.send(()).unwrap();
+                release_rx.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+                assert!(cancelled.load(Ordering::Acquire));
+                Ok(())
+            }, |_| panic!("cancelled initializer must not warm up")).unwrap();
+        started_rx.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+        preparation.cancel.store(true, Ordering::Release);
+        release_tx.send(()).unwrap();
+        preparation.cancel_and_join().unwrap();
+        assert!(preparation.pending.is_none());
+        assert_saved_before_drop(flags);
+    }
+
+    #[test]
+    fn completion_poll_surfaces_startup_failure_without_releasing_loading_logo() {
+        use country_core::resources::logo_animation::LogoAnimation;
+        use country_core::systems::save::load_game::StartupRevealStarted;
+
+        let mut loading = App::new();
+        let mut logo = LogoAnimation::default();
+        logo.progress[3] = 0.25;
+        loading.insert_resource(logo);
+        loading.add_event::<StartupRevealStarted>();
+        let loading_id = loading.world().id();
+
+        // A genuinely incomplete gameplay App must fail its production entry
+        // contract; no catalog/device/ready resource is fabricated for this test.
+        let mut gameplay = bevy_app::SubApp::new();
+        let flags = attach_save_owner(gameplay.world_mut());
+        let mut preparation = GameplayPreparation::spawn(gameplay, |_| {
+            panic!("missing AppMode must reject startup before warmup")
+        }).unwrap();
+        preparation.join_worker().unwrap();
+        let error = preparation.poll_completion().unwrap_err();
+        assert!(error.to_string().contains("original gameplay AppMode/startup producers"));
+        assert!(preparation.pending.is_none());
+        assert_eq!(loading.world().id(), loading_id);
+        assert_eq!(*loading.world().resource::<LogoAnimation>(), logo);
+        assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
+        assert_saved_before_drop(flags);
+        preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
+    fn completion_poll_keeps_the_original_typed_error_and_context() {
+        // Exercise the same completion transport with an OS error whose typed
+        // source must survive; a new summary error would lose this diagnostic.
+        let error = anyhow::Error::from(std::io::Error::from_raw_os_error(2))
+            .context("required gameplay asset read");
+        let (sender, receiver) = mpsc::channel();
+        sender.send(Err(error)).unwrap();
+        let mut preparation = GameplayPreparation { receiver, pending: None,
+            cancel: Arc::new(AtomicBool::new(false)), worker: None };
+        let error = preparation.poll_completion().unwrap_err();
+        assert_eq!(error.to_string(), "required gameplay asset read");
+        assert_eq!(error.downcast_ref::<std::io::Error>().unwrap().raw_os_error(), Some(2));
+        assert!(preparation.pending.is_none());
+        preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
+    fn completion_poll_parks_the_same_app_until_cancellation_joins_its_save_owner() {
+        use country_core::resources::logo_animation::LogoAnimation;
+        use country_core::systems::save::load_game::StartupRevealStarted;
+
+        let mut loading = App::new();
+        let mut logo = LogoAnimation::default();
+        logo.progress[3] = 0.5;
+        loading.insert_resource(logo);
+        loading.add_event::<StartupRevealStarted>();
+        let loading_id = loading.world().id();
+        let mut gameplay = bevy_app::SubApp::new();
+        let gameplay_id = gameplay.world().id();
+        let flags = attach_save_owner(gameplay.world_mut());
+        let (sender, receiver) = mpsc::channel();
+        let worker = std::thread::spawn(move || { sender.send(Ok(gameplay)).unwrap(); });
+        let mut preparation = GameplayPreparation { receiver, pending: None,
+            cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
+        preparation.join_worker().unwrap();
+
+        // The background wait can poll repeatedly after the producer closes
+        // its channel. Reception alone must neither hand off nor dispose it.
+        for _ in 0..2 {
+            preparation.poll_completion().unwrap();
+            let pending = preparation.pending.as_ref().unwrap();
+            assert_eq!(pending.world().id(), gameplay_id);
+            assert!(pending.world().contains_resource::<SaveThreadHandle>());
+            assert!(!flags.0.load(Ordering::Acquire));
+            assert!(!flags.1.load(Ordering::Acquire));
+            assert_eq!(loading.world().id(), loading_id);
+            assert_eq!(*loading.world().resource::<LogoAnimation>(), logo);
+            assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
+        }
+        preparation.cancel_and_join().unwrap();
+        assert!(preparation.pending.is_none());
+        assert_saved_before_drop(flags);
+        preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
     fn pending_and_queued_apps_join_save_workers_before_world_drop() {
         for receive_first in [false, true] {
             let mut app = bevy_app::SubApp::new();
@@ -1957,9 +2247,39 @@ mod save_shutdown_preparation_tests {
         let mut preparation = GameplayPreparation { receiver, pending: Some(app),
             cancel: Arc::new(AtomicBool::new(false)), worker: None };
         let mut loading = App::new();
+        let mut logo = country_core::resources::logo_animation::LogoAnimation::default();
+        logo.progress[4] = 1.0;
+        loading.insert_resource(logo);
         assert!(preparation.poll(&mut loading).is_err());
         assert_saved_before_drop(flags);
         preparation.cancel_and_join().unwrap();
+    }
+
+    #[test]
+    fn missing_logo_refuses_handoff_and_stops_received_save_owner() {
+        for receive_first in [false, true] {
+            let mut app = bevy_app::SubApp::new();
+            let flags = attach_save_owner(app.world_mut());
+            let (sender, receiver) = mpsc::channel();
+            sender.send(Ok(app)).unwrap();
+            let mut preparation = GameplayPreparation { receiver, pending: None,
+                cancel: Arc::new(AtomicBool::new(false)), worker: None };
+            if receive_first {
+                preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
+            }
+            let mut loading = App::new();
+            let mut config = GameConfig::default();
+            config.lang_override = Some("loading-owner-retained".to_owned());
+            loading.insert_resource(config);
+
+            let error = preparation.poll(&mut loading).unwrap_err();
+            assert!(error.to_string().contains("mandatory LogoAnimation"));
+            assert!(preparation.pending.is_none());
+            assert_eq!(loading.world().resource::<GameConfig>().lang_override.as_deref(),
+                Some("loading-owner-retained"));
+            assert_saved_before_drop(flags);
+            preparation.cancel_and_join().unwrap();
+        }
     }
 }
 

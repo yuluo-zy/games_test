@@ -578,10 +578,18 @@ pub struct GameProfile {
     /// @+0x205：楼梯提示阶段 5。
     #[serde(skip_serializing, default)]
     pub stairs_stage5_completed: bool,
-    /// @+0x206：复位计数/哨兵字节（O：`reset_hints` 两分支都写；未在
-    /// tutorial_completion 18 路 switch 中，消费面 U）。
+    /// Native +0x206: welcome dismissed for this process. reset_hints also
+    /// resets/sets this byte. Keep the existing field and serde policy: it is
+    /// distinct from the persisted tutorial flag at+0x1f4.
     #[serde(skip_serializing, default)]
     pub hint_reset_flag_206: bool,
+}
+
+impl GameProfile {
+    pub fn welcome_was_dismissed(&self) -> bool { self.hint_reset_flag_206 }
+
+    /// Original welcome confirmation/cancel writes only the canonical+206 byte.
+    pub fn dismiss_welcome(&mut self) { self.hint_reset_flag_206 = true; }
 }
 
 impl Default for GameProfile {

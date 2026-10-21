@@ -141,7 +141,7 @@ pub fn build_world(
     geometry::run_visibility_queries(frame, world, &depth)?;
     geometry::calculate_dof_autofocus(frame, world, &depth)?;
     geometry::mouse_depth_compute(frame, world, &depth)?;
-    SceneRasterHost::new(frame, world, lists)?.late_forward_and_deferred_pass(&targets)?;
+    SceneRasterHost::new(frame, world, lists)?.late_forward_and_deferred_pass(&targets, &attachment(color))?;
 
     let video = &world.get_resource::<GameConfig>().ok_or_else(|| missing("GameConfig"))?.video;
     let history_mode = if video.upscaling_mode == UpscalingMode::Tgsr {

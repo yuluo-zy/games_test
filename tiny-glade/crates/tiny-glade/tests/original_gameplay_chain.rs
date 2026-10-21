@@ -509,7 +509,7 @@ fn boot_shipped_session() -> Result<BootedSession> {
 
 #[test]
 fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()> {
-    let BootedSession { mut driver, context: _context, bridge, shaders, device, _boot } = boot_shipped_session()?;
+    let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } = boot_shipped_session()?;
     let world = driver.app_mut().world_mut();
     assert_eq!(world.resource::<InnerWalls>().wall_ids().count(), 3);
     assert_nonempty_original_walls(world, shaders.as_ref(), &bridge);
@@ -550,6 +550,19 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
         lists.total_len()
     );
     assert!(world.contains_resource::<tiny_glade::loading_graph::LoadingGpuResources>());
+    // The original worker pre-renders 32x32, then transfers its real completed
+    // history owners. Content acceptance belongs to a normal-resolution frame,
+    // not a reduced warmup screenshot with at most 1024 distinct pixels.
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
+        .context("actual production warmup graph compile, execute and exported owner")?;
+    bridge.accept_gameplay_warmup(
+        world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>(),
+    )?;
+    context.begin_frame(egui::RawInput::default());
+    driver.app_mut().update();
+    let _ = context.end_frame();
+    let world = driver.app_mut().world_mut();
+    let display = world.resource::<country_core::render::render_config::FrameRenderConfig>().extent_8;
     // Real pixel consumer on the shipped screenshot owner: the T4 MenuBackground opportunity of the
     // actual world graph reads the world color back through the original capture chain
     // (after final_post, before any overlay). The pixels are checked below, not just the export.
@@ -571,8 +584,12 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
             completion: None,
         }],
     )?;
-    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
-        .context("actual production world graph compile, execute and exported owner")?;
+    let frame = tiny_glade::production_renderer::render_headless_gameplay_frame(&mut bridge, world)
+        .context("actual normal-resolution world graph after warmup adoption")?;
+    world.resource_mut::<country_core::render::RenderTemporalState>().frame_render_returned();
+    bridge.with_session(|session| session.wait_frame(frame.receipt.frame, 120_000_000_000))?;
+    drop(frame);
+    bridge.collect_completed_frames()?;
     // The capture retires after its original frame budget (3); drive the owner past it.
     for _ in 0..8 {
         tiny_glade::screenshot::shared_texture_capture::finish(world)?;
@@ -583,6 +600,7 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
         .lock()
         .take()
         .context("world color capture never delivered pixels")?;
+    assert_eq!([w, h], display, "content capture must use the normal display target");
     anyhow::ensure!(
         rgba.len() == (w * h * 4) as usize,
         "captured pixel buffer does not match {w}x{h}"

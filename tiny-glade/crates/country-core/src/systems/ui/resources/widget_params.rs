@@ -18,45 +18,30 @@
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 
-/// UI 声音播放事件（O：`add_ui` 0x140945c60 `register_event<PlayUiSound>`；
-/// PDB 判别 = `enum2$`，**0x20B 步长事件记录**——2026-10-17 coregap-1 fresh 反编译
-/// `feedback_input_out_of_border` 宿主 0x141be2280：写入 `判别值@+0 (u32)` 与
-/// `id@+0x18 (u64)`；onboarding hint_display_system 登记 tag 0x14/0x15/0x16 族。
-///
-/// 以 `{kind, 载荷区, id}` 承载判别值，避免造未取证的 Rust 枚举变体；audio 域
-/// `UiSounds` 槽位族按 `kind` 分派。
+/// Original PlayUiSound business payload is 24B. UiSounds stores four such
+/// values. Native Events<EventInstance<PlayUiSound>> appends its own 8B EventId;
+/// that counter is not part of the game event and must not be stored here.
 #[repr(C)]
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PlayUiSound {
-    /// 判别值/tag（O：变体 #4 = 4；hint 族 0x14/0x15/0x16）。
     pub kind: u32,
-    /// @+8..0x17：载荷区（变体 #4 不写；U，不造字段）。
-    pub _payload: [u8; 0x10],
-    /// @+0x18：变体 #4 的载荷 id（O：`feedback_input_out_of_border` 的反馈事件 id）。
-    pub id: u64,
+    /// Native +4..24, including nested enum tags at +4. Never drop this word.
+    pub _payload: [u8; 20],
 }
-
 impl PlayUiSound {
-    /// 变体 #4（O：判别值 4 @+0、事件步长 0x20B、id @+0x18）——
-    /// `feedback_input_out_of_border` 上升沿发射。
-    pub fn variant4(id: u64) -> Self {
-        Self {
-            kind: 4,
-            _payload: [0; 0x10],
-            id,
-        }
+    pub fn from_native_slot(slot: [u8; 24]) -> Self {
+        Self { kind: u32::from_le_bytes(slot[..4].try_into().unwrap()),
+            _payload: slot[4..].try_into().unwrap() }
     }
+    pub fn native_slot(self) -> [u8; 24] {
+        let mut slot = [0; 24];
+        slot[..4].copy_from_slice(&self.kind.to_le_bytes());
+        slot[4..].copy_from_slice(&self._payload);
+        slot
+    }
+    pub fn variant4() -> Self { Self { kind: 4, ..Default::default() } }
 }
 
-impl Default for PlayUiSound {
-    fn default() -> Self {
-        Self {
-            kind: 0,
-            _payload: [0; 0x10],
-            id: 0,
-        }
-    }
-}
 
 /// UI 导航状态（O：`add_ui` 0x140945c60 `insert_resource<UiNavState>`）。
 ///
@@ -234,16 +219,68 @@ impl WidgetFlags {
     }
 }
 
+/// Complete native volume discriminants from closure2@140ac3f50's eight-entry
+/// jump table142adfb28. Keep original owned Vec payloads and all scalar fields.
+#[derive(Clone, Debug, PartialEq)]
+pub enum WidgetGeometry {
+    Sphere {
+        center: Vec3,
+        radius: f32,
+    },
+    SphereCloud {
+        centers: Vec<Vec3>,
+        radius: f32,
+    },
+    TriangleMesh(Vec<utils::geometry::intersect::Triangle>),
+    ScreenAabb {
+        min: Vec2,
+        max: Vec2,
+        distance: f32,
+    },
+    WorldCanvas {
+        extent: Vec2,
+        layer: u8,
+    },
+    TerrainCanvas {
+        distance: f32,
+        layer: u8,
+    },
+    PlaneDisc {
+        point: Vec3,
+        normal: Vec3,
+        radius: f32,
+    },
+    Empty,
+}
+
+impl WidgetGeometry {
+    pub fn native_tag(&self) -> u8 {
+        match self {
+            Self::Sphere { .. } => 0,
+            Self::SphereCloud { .. } => 1,
+            Self::TriangleMesh(_) => 2,
+            Self::ScreenAabb { .. } => 3,
+            Self::WorldCanvas { .. } => 4,
+            Self::TerrainCanvas { .. } => 5,
+            Self::PlaneDisc { .. } => 6,
+            Self::Empty => 7,
+        }
+    }
+}
+
 /// 0xb0 B 参数块（O：默认 u32 组 + UiSounds + WidgetVolumeShape + u16@0xa8=0x101 +
 /// flags@0xa9）。
 #[derive(Clone, Debug, PartialEq)]
 pub struct WidgetParams {
+    /// Complete owned geometry for native volume variants.
+    pub geometry: Option<WidgetGeometry>,
     /// 默认 u32 组（@0/8/0x10/0x18/0x20/0x30/0x48/0x60）。
     pub fields: [u32; 8],
     /// 声音槽（@0x18..0x78）。
     pub sounds: UiSounds,
-    /// @0x78..0x88：`new` 第二参数（16 B，O 拷贝面；语义 U——宿主以
-    /// `Option<&str>`/空 16 B 记录传入，字段身份未取证，保持原始 qword）。
+    /// Native +0x78..0x88 brush-preview enum, preserved bit for bit:
+    /// tag0=None, tag1=kind with cursor fallback, tag2=kind plus Vec3 offset.
+    /// ui_update applies the full geometry-specific origin before publication.
     pub extra_78: [u64; 2],
     /// 音量形状（@0x88..0xa8；O：`new` 第一参数 32 B 整块拷入）。
     pub volume: WidgetVolumeShape,
@@ -251,10 +288,7 @@ pub struct WidgetParams {
     pub occlude_by_world: bool,
     /// @0xa9 flags 字节。
     pub flags: WidgetFlags,
-    /// Mesh volume variant (volume tag 2, original `{tag, Vec<Triangle>}` in the
-    /// 0x20 B volume slot @0x88). Only `wall_splitter` (0x140a74c20) produces it:
-    /// two triangles per wall segment. `None` for every other volume variant.
-    pub mesh_volume: Option<Vec<utils::geometry::intersect::Triangle>>,
+
 }
 
 impl Default for WidgetParams {
@@ -264,6 +298,45 @@ impl Default for WidgetParams {
 }
 
 impl WidgetParams {
+    /// Native tag3 stores the complete screen-space min/max rectangle.
+    pub fn screen_aabb(mut self, min: Vec2, max: Vec2, distance: f32) -> Self {
+        self.volume.tag = 3;
+        self.geometry = Some(WidgetGeometry::ScreenAabb { min, max, distance });
+        self
+    }
+
+    pub fn geometry(mut self, geometry: WidgetGeometry) -> Self {
+        self.volume.tag = geometry.native_tag();
+        self.geometry = Some(geometry);
+        self
+    }
+
+    /// Older scalar producers encode complete sphere/canvas variants in their
+    /// existing public fields. Never fabricate a missing Vec/plane/AABB.
+    pub fn resolved_geometry(&self) -> std::borrow::Cow<'_, WidgetGeometry> {
+        if let Some(geometry) = &self.geometry {
+            assert_eq!(self.volume.tag, geometry.native_tag());
+            return std::borrow::Cow::Borrowed(geometry);
+        }
+        std::borrow::Cow::Owned(match self.volume.tag {
+            0 => WidgetGeometry::Sphere {
+                center: self.volume.center,
+                radius: self.volume.size.x,
+            },
+            4 => WidgetGeometry::WorldCanvas {
+                extent: self.volume.size,
+                layer: self.volume.layer,
+            },
+            5 => WidgetGeometry::TerrainCanvas {
+                distance: self.volume.size.x,
+                layer: self.volume.layer,
+            },
+            7 => WidgetGeometry::Empty,
+            tag => panic!("native UI volume tag{tag} requires its full owned payload"),
+        })
+    }
+
+
     /// 0x1409a8e10（O，fresh 机器码）：
     /// - `RCX` = 返回块（0xb0 B）；`[RDX..RDX+0x20]` 整块拷到 `+0x88..0xa8`（volume）；
     ///   `[R8..R8+0x10]` 拷到 `+0x78..0x88`（extra_78）；
@@ -281,7 +354,7 @@ impl WidgetParams {
             volume,
             occlude_by_world: true,
             flags: WidgetFlags(0x01),
-            mesh_volume: None,
+            geometry: None,
         }
     }
 
@@ -291,7 +364,7 @@ impl WidgetParams {
             tag: 2,
             ..WidgetVolumeShape::default()
         };
-        self.mesh_volume = Some(triangles);
+        self.geometry = Some(WidgetGeometry::TriangleMesh(triangles));
         self
     }
 
@@ -319,6 +392,7 @@ impl WidgetParams {
     /// `{tag=5, layer=param_4}`；字节@0x78..0xa8）。
     pub fn volume(mut self, volume: WidgetVolumeShape) -> Self {
         self.volume = volume;
+        self.geometry = None;
         self
     }
 

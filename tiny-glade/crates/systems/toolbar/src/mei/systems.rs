@@ -180,7 +180,8 @@ pub fn mei_pre_update(
             let interactive = (node.flags & NodeFlags::IGNORE_INPUT) == 0
                 && ((node.flags & NodeFlags::FORCE_INTERACTIVE) != 0 || node.content.interactive());
             let min = node.pos * scale;
-            let max = (node.pos + node.size) * scale;
+            // Original two MULPS followed by ADDPS, preserving rounding.
+            let max = node.size * scale + min;
             (
                 node.state_bits,
                 interactive,
@@ -237,8 +238,11 @@ pub fn mei_pre_update(
                 },
                 [0; 2],
             )
+            // Original screen rectangle stores complete bounds and negative z.
+            .screen_aabb(rect_min, rect_max,
+                f32::from_bits(mei.nodes.get(id).unwrap().z.to_bits() ^ 0x8000_0000))
             .no_history_recording()
-            .occlude_by_world(true)
+            .occlude_by_world(false)
             // O L699：`allow_negative_distance()`——原生为带参设置，mei 传 true。
             .allow_negative_distance(true)
             .sounds(UiSounds::empty());

@@ -157,3 +157,86 @@ fn real_setup_builds_eleven_categories_full_menus_parent_links_and_cyclic_nav() 
         assert!(query.iter(&world).all(|component|layout.menus.iter().any(|row|row.parent_entity.to_bits()==component.parent)));
     }
 }
+
+/// Exercise the production state transition and unload consumer together. A
+/// constructor-only count cannot catch references to the previous generation
+/// of toolbar entities after a second OnEnter(Game).
+#[test]
+fn actual_game_reload_rebuilds_all_toolbar_owners_without_stale_entities() {
+    use crate::resouces_and_components::{
+        toolbar_layout::PhotomodeToolbarLayout, undo_redo_layout::UndoRedoLayout,
+        HistoryButton, TaffyNode, UiNav, UiShowIfParentIsInFocus,
+    };
+    use bevy_app::App;
+    use bevy_ecs::prelude::*;
+    use bevy_state::{app::{AppExtStates, StatesPlugin}, prelude::*};
+    use country_core::{app_loading_state::AppLoadingState as Loading,
+        components::KeepOnLevelUnload, game_config::GameConfig};
+    use std::collections::HashSet;
+
+    for demo in [false, true] {
+        let mut app = App::new();
+        let mut config = GameConfig::default();
+        config.dev.demo = demo;
+        app.add_plugins(StatesPlugin)
+            .init_state::<Loading>()
+            .insert_resource(config)
+            .init_resource::<TaffyLayout>()
+            .add_systems(OnEnter(Loading::Game), toolbar_setup)
+            .add_systems(OnExit(Loading::Game),
+                country_core::startup::clearing::despawn_glade_entities);
+        let kept = app.world_mut().spawn(KeepOnLevelUnload).id();
+        app.world_mut().resource_mut::<NextState<Loading>>().set(Loading::Game);
+        app.update();
+        let old: HashSet<Entity> = app.world_mut().query_filtered::<Entity, With<TaffyNode>>()
+            .iter(app.world()).collect();
+        assert!(!old.is_empty());
+        let old_anchor_count = app.world().resource::<TaffyLayout>().anchored.len();
+        // This is mutable session UI state, and must be reconstructed rather
+        // than inherited by the next session's layout owner.
+        app.world_mut().resource_mut::<UndoRedoLayout>().hide_progress = 0.75;
+
+        app.world_mut().resource_mut::<NextState<Loading>>().set(Loading::Reload);
+        app.update();
+        assert!(app.world().get_entity(kept).is_ok());
+        assert!(old.iter().all(|entity| app.world().get_entity(*entity).is_err()));
+        assert_eq!(app.world_mut().query_filtered::<Entity, With<TaffyNode>>()
+            .iter(app.world()).count(), 0);
+
+        app.world_mut().resource_mut::<NextState<Loading>>().set(Loading::Game);
+        app.update();
+        let fresh: HashSet<Entity> = app.world_mut().query_filtered::<Entity, With<TaffyNode>>()
+            .iter(app.world()).collect();
+        assert_eq!(fresh.len(), old.len());
+        assert!(fresh.is_disjoint(&old), "entity generations must not alias the prior session");
+        assert!(app.world().get_entity(kept).is_ok());
+        let taffy = app.world().resource::<TaffyLayout>();
+        assert_eq!(taffy.anchored.len(), old_anchor_count);
+        let undo = app.world().resource::<UndoRedoLayout>();
+        assert_eq!(undo.hide_progress.to_bits(), 0);
+        assert_eq!(taffy.children(undo.buttons).len(), 2);
+        for entity in &fresh {
+            let node = app.world().get::<TaffyNode>(*entity).unwrap();
+            assert!(taffy.taffy.style(node.node).is_ok());
+            if let Some(nav) = app.world().get::<UiNav>(*entity) {
+                for link in nav.links.iter().filter(|link| link.tag == 3) {
+                    assert!(fresh.contains(&Entity::from_bits(link.value)));
+                }
+            }
+            if let Some(parent) = app.world().get::<UiShowIfParentIsInFocus>(*entity) {
+                assert!(fresh.contains(&Entity::from_bits(parent.parent)));
+            }
+        }
+        for menu in &app.world().resource::<ToolbarLayout>().menus {
+            assert!(fresh.contains(&menu.parent_entity));
+        }
+        let photo = app.world().resource::<PhotomodeToolbarLayout>();
+        for menu in &photo.menus {
+            assert!(fresh.contains(&menu.parent_entity));
+        }
+        let mut history_kinds: Vec<_> = app.world_mut().query::<&HistoryButton>()
+            .iter(app.world()).map(|button| button.kind).collect();
+        history_kinds.sort_unstable();
+        assert_eq!(history_kinds, [0, 1], "exactly one live undo and redo button");
+    }
+}

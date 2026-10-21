@@ -133,7 +133,11 @@ impl NodeContext {
     /// original static action→label table and tooltip template, which are not
     /// recovered. Only the byte write (O) is performed here.
     pub fn menu_hotkey(&self, action: u8) -> Self {
-        self.content_mut::<MenuButtonContent>().hotkey = action;
+        let content = self.content_mut::<MenuButtonContent>();
+        // Both source fields project the same original+0x25d byte: the
+        // tooltip identifier and the action read by pre_update14067ea20.
+        content.hotkey = action;
+        content.action = action;
         *self
     }
 

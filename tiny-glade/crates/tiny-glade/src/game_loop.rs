@@ -22,6 +22,93 @@ use crate::egui_backend::EguiBackend;
 use crate::render_loop::{FramePacer, RenderHost, RenderMode};
 use crate::setup::FromWinit;
 
+/// Only an unwinding host can return a panic here. The normal launch installs
+/// panic_reporter::setup_panic_hook, which reports and aborts before unwinding;
+/// this boundary neither overrides that hook nor promises orderly panic exit.
+fn catch_host_callback<T>(label: &str, operation: impl FnOnce() -> anyhow::Result<T>) -> anyhow::Result<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(operation))
+        .unwrap_or_else(|payload| {
+            let message = payload.downcast_ref::<String>().map(String::as_str)
+                .or_else(|| payload.downcast_ref::<&'static str>().copied())
+                .unwrap_or("non-string panic payload");
+            Err(anyhow::anyhow!("{label} panicked: {message}"))
+        })
+}
+
+/// Main-thread host lifecycle. An exit request is terminal even when GPU
+/// cleanup needs another attempt; queued OS callbacks must not use that GPU.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum LoopPhase {
+    #[default]
+    Running,
+    Stopping,
+    Stopped,
+}
+
+#[derive(Default)]
+pub(crate) struct LoopLifecycle {
+    phase: std::cell::Cell<LoopPhase>,
+    cpu_cleanup_started: std::cell::Cell<bool>,
+    first_failure: std::cell::RefCell<Option<anyhow::Error>>,
+}
+
+impl LoopLifecycle {
+    pub(crate) fn is_running(&self) -> bool {
+        self.phase.get() == LoopPhase::Running
+    }
+
+    /// Preserve the original error object, including its typed source chain.
+    pub(crate) fn record_failure(&self, error: anyhow::Error) {
+        self.request_stop();
+        let mut first = self.first_failure.borrow_mut();
+        if first.is_none() {
+            log::error!("event-loop failure: {error:#}");
+            *first = Some(error);
+        } else {
+            log::error!("event-loop cleanup after original failure: {error:#}");
+        }
+    }
+
+    pub(crate) fn take_failure(&self) -> Option<anyhow::Error> {
+        self.first_failure.borrow_mut().take()
+    }
+
+    fn request_stop(&self) {
+        if self.is_running() {
+            self.phase.set(LoopPhase::Stopping);
+        }
+    }
+
+    /// Called before dispatching any event, not just RedrawRequested. Returned
+    /// errors always stop further callbacks. A panic can take this path only
+    /// in hosts whose panic hook permits unwinding, including the test runner.
+    pub(crate) fn dispatch(&self, operation: impl FnOnce() -> anyhow::Result<()>) -> anyhow::Result<()> {
+        if !self.is_running() {
+            return Ok(());
+        }
+        let result = catch_host_callback("event-loop callback", operation);
+        if result.is_err() {
+            self.request_stop();
+        }
+        result
+    }
+
+    /// CPU owners are consumed once. A failed renderer shutdown can be retried
+    /// by LoopExiting/Drop without rerunning screenshot writes or save cleanup.
+    fn begin_cleanup(&self) -> Option<bool> {
+        self.request_stop();
+        if self.phase.get() == LoopPhase::Stopped {
+            None
+        } else {
+            Some(!self.cpu_cleanup_started.replace(true))
+        }
+    }
+
+    fn renderer_stopped(&self) {
+        self.phase.set(LoopPhase::Stopped);
+    }
+}
+
 /// Builds the existing core RenderHost against the world *after* App::update.
 /// The host can borrow that exact World and the EguiBackend for this frame.
 /// Implementations must supply the actual frame/pass/WSI adapter; this trait
@@ -39,6 +126,13 @@ pub trait GameRenderHostFactory {
     fn last_frame_submitted(&self) -> bool;
     /// A successfully queued present is not a proof of scanout completion.
     fn last_frame_present_queued(&self) -> bool;
+}
+
+/// Opt-in wall-clock attribution only. Disabled runs do not sample Instant or
+/// change pacing, render resolution, frame gates, or the original workload.
+pub(crate) fn frame_timing_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var_os("TG_FRAME_TIMING").is_some_and(|value| value == "1"))
 }
 
 /// B 0x1404de6b4..0x1404de7da. An open, throttleable menu limits
@@ -113,6 +207,13 @@ pub struct GameFrameDriver {
     pacer: FramePacer,
     limiter: crate::fps_limiter::FpsLimiter,
     progress: FrameProgress,
+    /// Opt-in evidence through the existing post-UI screenshot owner. Never
+    /// changes the reveal, menu state, resolution, or loading completion gate.
+    startup_ui_capture: Option<std::path::PathBuf>,
+    startup_ui_capture_elapsed: f32,
+    startup_ui_capture_saw_reveal: bool,
+    loading_render_pending_after_update: bool,
+    input_consumed_this_call: bool,
 }
 
 #[derive(bevy_ecs::resource::Resource)]
@@ -177,6 +278,12 @@ impl GameFrameDriver {
             pacer: FramePacer::default(),
             limiter: crate::fps_limiter::FpsLimiter::new(),
             progress: FrameProgress::default(),
+            startup_ui_capture: std::env::var_os("TG_STARTUP_UI_CAPTURE")
+                .filter(|path| !path.is_empty()).map(std::path::PathBuf::from),
+            startup_ui_capture_elapsed: 0.0,
+            startup_ui_capture_saw_reveal: false,
+            loading_render_pending_after_update: false,
+            input_consumed_this_call: false,
         }
     }
 
@@ -189,6 +296,30 @@ impl GameFrameDriver {
 
     pub fn progress(&self) -> FrameProgress {
         self.progress
+    }
+
+    fn update_before_render(
+        &mut self,
+        input: Option<egui::RawInput>,
+        publish_platform_output: impl FnOnce(egui::PlatformOutput),
+    ) -> anyhow::Result<()> {
+        self.input_consumed_this_call = false;
+        if self.loading_render_pending_after_update {
+            return Ok(());
+        }
+        let has_gui_input = input.is_some();
+        if let Some(input) = input {
+            self.egui.context().begin_frame(input);
+        }
+        {
+            puffin::profile_scope!("App update");
+            update_application(&mut self.app)?;
+        }
+        self.input_consumed_this_call = true;
+        if has_gui_input {
+            publish_platform_output(self.egui.end_frame());
+        }
+        Ok(())
     }
 
     /// B begin_frame@0x1404de115 → App::update@0x1404de349 →
@@ -204,31 +335,63 @@ impl GameFrameDriver {
         factory: &mut F,
         publish_platform_output: impl FnOnce(egui::PlatformOutput),
     ) -> anyhow::Result<()> {
-        let has_gui_input = input.is_some();
-        if let Some(input) = input {
-            self.egui.context().begin_frame(input);
-        }
-        {
-            puffin::profile_scope!("App update");
-            update_application(&mut self.app)?;
-        }
-        if has_gui_input {
-            publish_platform_output(self.egui.end_frame());
-        }
+        let timing_start = frame_timing_enabled().then(std::time::Instant::now);
+        self.update_before_render(input, publish_platform_output)?;
+        let update_time = timing_start.map(|start| start.elapsed());
         let mode = frame_render_mode(self.app.world());
+        // Startup has now refreshed the actual saved-session list. Freeze its
+        // optional background choice here and let CPU decoding finish off-thread
+        // before the first loading graph advances the reveal or renders Logo.
+        if mode == RenderMode::LoadingScreen
+            && !crate::loading_graph::poll_background_preparation(self.app.world_mut())?
+        {
+            self.loading_render_pending_after_update = true;
+            return Ok(());
+        }
+        self.loading_render_pending_after_update = false;
         let gameplay_frame = mode == RenderMode::WorldGpuProfiled
             && self.app.world().get_resource::<bevy_state::state::State<
                 country_core::app_loading_state::AppLoadingState,
             >>().is_some_and(|state| {
                 *state.get() == country_core::app_loading_state::AppLoadingState::Game
             });
+        if gameplay_frame && self.startup_ui_capture.is_some() {
+            if let Some(state) = self.app.world().get_resource::<country_core::systems::render_loop::vermeer::VermeerState>() {
+                if state.is_active() {
+                    self.startup_ui_capture_saw_reveal = true;
+                    self.startup_ui_capture_elapsed = 0.0;
+                } else if self.startup_ui_capture_saw_reveal && state.progress >= 1.0 && !state.hold {
+                    self.startup_ui_capture_elapsed += self.app.world()
+                        .get_resource::<bevy_time::Time>().map_or(0.0, |clock| clock.delta_secs().min(1.0 / 30.0));
+                }
+            }
+        }
+        if self.startup_ui_capture.is_some() && self.startup_ui_capture_elapsed >= 0.5 {
+            let path = self.startup_ui_capture.take().expect("checked capture path");
+            log::info!("startup UI capture queued after real reveal completion: {}", path.display());
+            crate::screenshot::gather_screenshot_requests(self.app.world_mut(), [
+                crate::screenshot::ScreenshotRequest {
+                    purpose: crate::screenshot::ScreenshotPurpose::FinalFrame,
+                    dimensions: None,
+                    sink: crate::screenshot::ScreenshotSink::File { path, jpeg_quality: 95 },
+                    completion: Some(std::sync::Arc::new(|result| match result {
+                        Ok(size) => log::info!("startup UI capture completed: {size:?}"),
+                        Err(error) => log::error!("startup UI capture failed: {error}"),
+                    })),
+                },
+            ])?;
+        }
+        let render_start = timing_start.map(|_| std::time::Instant::now());
         let render_result = {
             let mut host = factory.host(self.app.world_mut(), &mut self.egui);
             crate::render_loop::render(&mut host, &mut self.pacer, mode)
         };
+        let render_time = render_start.map(|start| start.elapsed());
         // Drain the adapter even when the graph returns an error, preserving the
         // graph's original cause while still completing host-side error cleanup.
+        let finish_start = timing_start.map(|_| std::time::Instant::now());
         let host_result = factory.finish_render();
+        let finish_time = finish_start.map(|start| start.elapsed());
         render_result?;
         host_result?;
         self.progress.completed_frames = self.progress.completed_frames.wrapping_add(1);
@@ -253,7 +416,23 @@ impl GameFrameDriver {
             temporal.frame_render_returned();
         }
         crate::main::log_time_to_first_frame();
-        self.limiter.frame(frame_target_fps(self.app.world()));
+        let limiter_start = timing_start.map(|_| std::time::Instant::now());
+        let target_fps = frame_target_fps(self.app.world());
+        self.limiter.frame(target_fps);
+        if let Some(start) = timing_start {
+            let limiter_time = limiter_start.expect("timing enabled").elapsed();
+            let total = start.elapsed();
+            let n = if gameplay_frame { self.progress.gameplay_frames } else { self.progress.completed_frames };
+            if n <= 3 || n % 30 == 0 || total.as_secs_f64() >= 1.0 {
+                log::info!(target: "tiny_glade::frame_timing",
+                    "frame n={n} gameplay={gameplay_frame} completed={} update_ms={:.3} render_ms={:.3} finish_ms={:.3} limiter_ms={:.3} total_ms={:.3} target_fps={target_fps}",
+                    self.progress.completed_frames,
+                    update_time.expect("timing enabled").as_secs_f64() * 1000.0,
+                    render_time.expect("timing enabled").as_secs_f64() * 1000.0,
+                    finish_time.expect("timing enabled").as_secs_f64() * 1000.0,
+                    limiter_time.as_secs_f64() * 1000.0, total.as_secs_f64() * 1000.0);
+            }
+        }
         Ok(())
     }
 }
@@ -311,7 +490,8 @@ pub struct GameLoop {
     custom_cursor_buffer: Option<rhapsody::resource::ManagedBuffer>,
     pub(crate) frame_count: u64,
     pub(crate) suspended: bool,
-    pub(crate) shutdown_done: bool,
+    pub(crate) background_poll_deadline: Option<std::time::Instant>,
+    pub(crate) lifecycle: std::rc::Rc<LoopLifecycle>,
     pub(crate) pending_os_events: std::collections::VecDeque<crate::event_loop::OsWindowEvent>,
     preparation: Option<crate::run_game::GameplayPreparation>,
     custom_cursor_events: bevy_ecs::event::EventCursor<
@@ -360,11 +540,16 @@ impl GameLoop {
         app.world_mut()
             .insert_resource(WindowSize::new(size.width, size.height));
         register_settings_application_system(&mut app);
-        let mut renderer = crate::production_renderer::ProductionRenderer::new(
-            window.clone(),
-            &options.compiled_shader_root,
-            shaders,
-        )?;
+        let skip_splash = app.world().resource::<country_core::game_config::GameConfig>().dev.skip_splash;
+        let mut renderer = if skip_splash {
+            crate::production_renderer::ProductionRenderer::new(
+                window.clone(), &options.compiled_shader_root, shaders,
+            )?
+        } else {
+            crate::production_renderer::ProductionRenderer::new_for_async_gameplay_preparation(
+                window.clone(), &options.compiled_shader_root, shaders,
+            )?
+        };
         renderer.activate_application(app.world())?;
         renderer.set_vsync(
             app.world()
@@ -398,12 +583,7 @@ impl GameLoop {
             app.insert_resource(PendingEguiContextResource(shared_gui.clone()));
         }
         let mut preparation = None;
-        if !app
-            .world()
-            .resource::<country_core::game_config::GameConfig>()
-            .dev
-            .skip_splash
-        {
+        if !skip_splash {
             // B owns two different Apps. Their libraries share only the actual
             // graphics device; no MainCamera is removed to fake a loading mode.
             let mut loading = crate::run_game::make_loading_app(&app)?;
@@ -420,9 +600,11 @@ impl GameLoop {
             // renderer keeps these same owners in `other_applications` until
             // publish re-adopts them (render_bridge.rs warm-up contract).
             let owners = renderer.bridge().warmup_owners()?;
+            let initialize_programs = renderer.gameplay_program_initializer()?;
             let gameplay = std::mem::take(app.main_mut());
-            preparation = Some(crate::run_game::GameplayPreparation::spawn(
+            preparation = Some(crate::run_game::GameplayPreparation::spawn_with_initializer(
                 gameplay,
+                initialize_programs,
                 move |world| {
                     crate::production_renderer::warm_up_gameplay(owners, world)
                 },
@@ -523,7 +705,8 @@ impl GameLoop {
             custom_cursor_buffer: None,
             frame_count: 0,
             suspended: false,
-            shutdown_done: false,
+            background_poll_deadline: None,
+            lifecycle: Default::default(),
             pending_os_events: Default::default(),
             preparation,
             custom_cursor_events: Default::default(),
@@ -807,7 +990,18 @@ impl GameLoop {
 
     /// B begin_frame → App::update → end_frame → PlatformOutput → render.
     pub(crate) fn frame(&mut self, target: &EventLoopWindowTarget<()>) -> anyhow::Result<bool> {
+        if !self.lifecycle.is_running() {
+            return Ok(false);
+        }
+        let background_pending = crate::loading_graph::is_background_preparation_pending(
+            self.driver.app.world(),
+        );
         if let Some(preparation) = &mut self.preparation {
+            preparation.poll_completion()?;
+        }
+        if let Some(preparation) = &mut self.preparation
+            && !background_pending
+        {
             // No OS callback can run while poll owns this thread. Withdraw the
             // old writer before poll can swap Worlds; a failed/pending poll
             // cannot accidentally write through another App's pointer.
@@ -849,6 +1043,17 @@ impl GameLoop {
             os_close_requested |= matches!(&event, crate::event_loop::OsWindowEvent::CloseRequested);
             self.dispatch_os_event(event, target)?;
         }
+        if background_pending
+            && !crate::loading_graph::poll_background_preparation(self.driver.app.world_mut())?
+        {
+            // Keep pumping native close/resize events without consuming input
+            // edges, updating Logo, advancing handoff, or counting a frame.
+            if os_close_requested {
+                return Ok(false);
+            }
+            self.apply_pending_video_settings()?;
+            return Ok(true);
+        }
         // B @1404dc952..971 skips both simulation and rendering while either
         // dimension is zero. Keep input edges for the next actual update.
         if frame_waits_for_window_extent(self.driver.app.world()) {
@@ -867,23 +1072,32 @@ impl GameLoop {
         // B 1404ddf28..3c: real OS egui input is consumed only while the
         // debug or experimental window is active. Other frames still begin
         // and end egui with RawInput::default (1404ddf49 -> 140c2c770).
-        let input = if frame_egui_input_enabled(self.driver.app.world()) {
-            self.egui_io.take_egui_input(&self.window)
+        let input = if self.driver.loading_render_pending_after_update {
+            None
+        } else if frame_egui_input_enabled(self.driver.app.world()) {
+            Some(self.egui_io.take_egui_input(&self.window))
         } else {
-            egui::RawInput::default()
+            Some(egui::RawInput::default())
         };
         let egui_io = &self.egui_io;
         let window = &self.window;
+        let previous_completed = self.driver.progress().completed_frames;
         self.driver
-            .frame(Some(input), &mut self.renderer, |output| {
+            .frame(input, &mut self.renderer, |output| {
                 egui_io.handle_platform_output(window, output);
             })?;
         // 本帧消费完成后清除按下和释放边沿，保留仍按住的按钮。
-        if let Some(mut keys) = self.driver.app.world_mut().get_resource_mut::<country_core::systems::backend::input::button_input::KeyButtonInput>() {
-            keys.clear();
+        if self.driver.input_consumed_this_call {
+            if let Some(mut keys) = self.driver.app.world_mut().get_resource_mut::<country_core::systems::backend::input::button_input::KeyButtonInput>() {
+                keys.clear();
+            }
+            if let Some(mut mouse) = self.driver.app.world_mut().get_resource_mut::<country_core::systems::backend::input::button_input::MouseButtonInput>() {
+                mouse.clear();
+            }
         }
-        if let Some(mut mouse) = self.driver.app.world_mut().get_resource_mut::<country_core::systems::backend::input::button_input::MouseButtonInput>() {
-            mouse.clear();
+        if self.driver.progress().completed_frames == previous_completed {
+            self.apply_pending_video_settings()?;
+            return Ok(true);
         }
         self.frame_count = self.frame_count.wrapping_add(1);
         self.apply_pending_video_settings()?;
@@ -898,6 +1112,14 @@ impl GameLoop {
     fn apply_pending_video_settings(&mut self) -> anyhow::Result<()> {
         let flags = std::mem::take(&mut *PENDING_VIDEO_SETTING_FLAGS.lock().unwrap());
         if flags != 0 {
+            // A launch-only windowed request remains authoritative when an
+            // in-game settings event arrives, without persisting that override.
+            if let Some(policy) = self.driver.app.world()
+                .get_resource::<crate::app_config::LaunchDisplayOverride>().cloned()
+            {
+                policy.apply(&mut self.driver.app.world_mut()
+                    .resource_mut::<country_core::game_config::GameConfig>().video.display);
+            }
             let config = &self
                 .driver
                 .app
@@ -931,6 +1153,10 @@ impl GameLoop {
                 .app
                 .world()
                 .resource::<country_core::game_config::GameConfig>();
+            let persisted = self.driver.app.world()
+                .get_resource::<crate::app_config::LaunchDisplayOverride>()
+                .map(|policy| policy.persistence_config(config));
+            let config = persisted.as_ref().unwrap_or(config);
             if let Some(repro) = self
                 .driver
                 .app
@@ -949,46 +1175,62 @@ impl GameLoop {
     /// Fullscreen restoration and native input serialization remain separately
     /// documented original branches; no synthetic file format is emitted here.
     pub(crate) fn shut_down(&mut self) -> anyhow::Result<()> {
-        if self.shutdown_done {
-            return Ok(());
-        }
-        // A worker can still be declaring/executing the gameplay warm-up with
-        // these exact GPU owners. Stop and join it before touching renderer
-        // lifetime, and do not abandon GPU cleanup when it reports an error.
-        let preparation_result = self
-            .preparation
-            .take()
-            .map_or(Ok(()), |mut preparation| preparation.cancel_and_join());
-        let save_result = country_core::systems::save::save_thread::shutdown_save_thread(
-            self.driver.app_mut().world_mut(),
-        );
-        // hurry_active_screenshots_on_shutdown (0x14031eed0): every pending request gets its
-        // hurry flag (+0x50) and its readback/write is completed, then the writer threads are
-        // joined. It needs the live device, so it runs before renderer.shutdown(). The original
-        // registers it as a system (wrappers 0x1402cc875 / 0x14044ee13; schedule not recovered).
-        let screenshot_result = {
-            let world = self.driver.app_mut().world_mut();
-            if crate::screenshot::shared_texture_capture::installed(world) {
-                crate::screenshot::hurry_active_screenshots_on_shutdown(world)
-            } else {
+        let Some(clean_cpu) = self.lifecycle.begin_cleanup() else { return Ok(()); };
+        self.pending_os_events.clear();
+        let mut failure = None;
+        if clean_cpu {
+            // A worker can still be declaring/executing the gameplay warm-up with
+            // these exact GPU owners. Stop and join it before touching renderer
+            // lifetime, and do not abandon GPU cleanup when it reports an error.
+            let preparation_result = catch_host_callback("gameplay preparation cleanup", || {
+                self.preparation.take()
+                    .map_or(Ok(()), |mut preparation| preparation.cancel_and_join())
+            });
+            let save_result = catch_host_callback("save thread cleanup", || {
+                country_core::systems::save::save_thread::shutdown_save_thread(
+                    self.driver.app_mut().world_mut(),
+                )
+            });
+            // hurry_active_screenshots_on_shutdown (0x14031eed0): every pending request gets its
+            // hurry flag (+0x50) and its readback/write is completed, then the writer threads are
+            // joined. It needs the live device, so it runs before renderer.shutdown(). The original
+            // registers it as a system (wrappers 0x1402cc875 / 0x14044ee13; schedule not recovered).
+            let screenshot_result = catch_host_callback("screenshot cleanup", || {
+                let world = self.driver.app_mut().world_mut();
+                if crate::screenshot::shared_texture_capture::installed(world) {
+                    crate::screenshot::hurry_active_screenshots_on_shutdown(world).map_err(Into::into)
+                } else {
+                    Ok(())
+                }
+            });
+            let cursor_result = catch_host_callback("cursor cleanup", || {
+                self.custom_cursor_buffer = None;
+                self.window
+                    .set_cursor_grab(winit::window::CursorGrabMode::None)
+                    .ok();
+                self.window.set_cursor_visible(true);
                 Ok(())
+            });
+            failure = preparation_result.err();
+            for (phase, result) in [
+                ("save thread", save_result),
+                ("screenshot hurry", screenshot_result),
+                ("cursor", cursor_result),
+            ] {
+                if let Err(error) = result {
+                    if failure.is_some() {
+                        log::error!("Additional {phase} shutdown failure: {error:#}");
+                    } else {
+                        failure = Some(error);
+                    }
+                }
             }
-        };
-        self.custom_cursor_buffer = None;
-        self.window
-            .set_cursor_grab(winit::window::CursorGrabMode::None)
-            .ok();
-        self.window.set_cursor_visible(true);
-        let renderer_result = self.renderer.shutdown();
-        let mut failure = preparation_result.err();
-        for (phase, result) in [
-            ("save thread", save_result),
-            ("screenshot hurry", screenshot_result.map_err(anyhow::Error::from)),
-            ("GPU", renderer_result),
-        ] {
-            if let Err(error) = result {
+        }
+        match catch_host_callback("GPU shutdown", || self.renderer.shutdown()) {
+            Ok(()) => self.lifecycle.renderer_stopped(),
+            Err(error) => {
                 if failure.is_some() {
-                    log::error!("Additional {phase} shutdown failure: {error:#}");
+                    log::error!("Additional GPU shutdown failure: {error:#}");
                 } else {
                     failure = Some(error);
                 }
@@ -997,7 +1239,6 @@ impl GameLoop {
         if let Some(error) = failure {
             Err(error)
         } else {
-            self.shutdown_done = true;
             Ok(())
         }
     }
@@ -1024,9 +1265,9 @@ impl Drop for GameLoop {
     fn drop(&mut self) {
         // Also cover a constructed loop whose OS runner returns an error or is
         // never entered: worker fields must not outlive renderer destruction.
-        if !self.shutdown_done {
+        if self.lifecycle.phase.get() != LoopPhase::Stopped {
             if let Err(error) = self.shut_down() {
-                log::error!("game-loop shutdown: {error:#}");
+                self.lifecycle.record_failure(error);
             }
         }
     }
@@ -1115,6 +1356,95 @@ mod frame_tests {
     use country_core::{game_config::GameConfig, resources::gui::EscMenuState};
 
     #[test]
+    fn failed_callback_blocks_every_already_queued_renderer_and_input_callback() {
+        let state = LoopLifecycle::default();
+        let error = state.dispatch(|| Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound, "first actual shader path").into()))
+            .unwrap_err().context("initial world preparation");
+        // This is the same ordering as run(): latch the cause before shutdown.
+        state.record_failure(error);
+        let invoked = std::cell::Cell::new(0);
+        for _queued in ["RedrawRequested", "AboutToWait", "Resumed", "Suspended",
+            "Resized", "Focused", "CloseRequested", "MouseMotion"] {
+            state.dispatch(|| {
+                invoked.set(invoked.get() + 1);
+                Err(anyhow::anyhow!("closed renderer must not be entered"))
+            }).unwrap();
+        }
+        assert_eq!(invoked.get(), 0);
+        state.record_failure(anyhow::anyhow!("secondary GPU cleanup failure"));
+        let first = state.take_failure().unwrap();
+        assert_eq!(first.downcast_ref::<std::io::Error>().unwrap().kind(), std::io::ErrorKind::NotFound);
+        assert!(format!("{first:#}").contains("first actual shader path"));
+        assert!(!format!("{first:#}").contains("secondary GPU"));
+    }
+
+    #[test]
+    fn callback_panic_latches_terminal_before_cleanup_without_removing_assertions() {
+        // Default test-runner hook permits unwinding. Production launch's
+        // reporting/abort hook intentionally cannot reach this recovery path.
+        let state = LoopLifecycle::default();
+        let error = state.dispatch(|| {
+            assert!(!state.is_running(), "device_ready original assertion");
+            Ok(())
+        }).unwrap_err();
+        assert!(error.to_string().contains("device_ready original assertion"));
+        assert!(!state.is_running());
+        state.dispatch(|| panic!("queued redraw after panic")).unwrap();
+    }
+
+    #[test]
+    fn normal_callbacks_run_until_close_and_cleanup_is_idempotent() {
+        let state = LoopLifecycle::default();
+        let mut callbacks = 0;
+        for _ in 0..3 {
+            state.dispatch(|| { callbacks += 1; Ok(()) }).unwrap();
+        }
+        assert_eq!(callbacks, 3);
+        assert_eq!(state.begin_cleanup(), Some(true));
+        assert!(!state.is_running());
+        state.renderer_stopped();
+        for _ in 0..3 {
+            assert_eq!(state.begin_cleanup(), None);
+            state.dispatch(|| { callbacks += 1; Ok(()) }).unwrap();
+        }
+        assert_eq!(callbacks, 3);
+        assert!(state.take_failure().is_none());
+    }
+
+    #[test]
+    fn cleanup_failure_allows_only_gpu_retry_never_cpu_owner_replay_or_resume() {
+        let state = LoopLifecycle::default();
+        assert_eq!(state.begin_cleanup(), Some(true));
+        state.record_failure(anyhow::anyhow!("save failed during shutdown"));
+        state.record_failure(anyhow::anyhow!("GPU wait timed out"));
+        assert_eq!(state.begin_cleanup(), Some(false));
+        state.dispatch(|| panic!("resume while GPU shutdown is pending")).unwrap();
+        state.renderer_stopped();
+        assert_eq!(state.begin_cleanup(), None);
+        assert_eq!(state.take_failure().unwrap().to_string(), "save failed during shutdown");
+    }
+
+    #[test]
+    fn shutdown_callback_panics_are_errors_and_do_not_replace_an_earlier_cause() {
+        // This covers embedding/test hosts that unwind, not normal launch's
+        // process-aborting panic reporter.
+        let state = LoopLifecycle::default();
+        state.record_failure(anyhow::anyhow!("original render failure"));
+        let mut reached = Vec::new();
+        for phase in ["preparation", "save", "screenshot", "GPU"] {
+            let result = catch_host_callback(phase, || -> anyhow::Result<()> {
+                reached.push(phase);
+                if phase == "save" { panic!("save writer panic"); }
+                Ok(())
+            });
+            if let Err(error) = result { state.record_failure(error); }
+        }
+        assert_eq!(reached, ["preparation", "save", "screenshot", "GPU"]);
+        assert_eq!(state.take_failure().unwrap().to_string(), "original render failure");
+    }
+
+    #[test]
     fn zero_extent_gate_uses_the_actual_frame_config_even_when_window_size_differs() {
         use country_core::render::render_config::{FrameRenderConfig, VideoSettings};
         use country_core::resources::window::WindowSize;
@@ -1195,6 +1525,32 @@ mod frame_tests {
             let mut query = app.world_mut().query::<&Handle<Vao>>();
             assert_eq!(query.iter(app.world()).count(), 1);
         }
+    }
+
+    #[test]
+    fn pending_loading_render_resumes_without_consuming_another_update_or_egui_input() {
+        #[derive(bevy_ecs::resource::Resource, Default)]
+        struct UpdateCount(u32);
+        let (mut app, _) = vao_test_app();
+        app.init_resource::<UpdateCount>();
+        app.add_systems(bevy_app::Update, |mut count: bevy_ecs::prelude::ResMut<UpdateCount>| count.0 += 1);
+        let mut driver = GameFrameDriver::new(app, egui::Context::default());
+        let mut outputs = 0;
+        driver.update_before_render(Some(egui::RawInput::default()), |_| outputs += 1).unwrap();
+        assert!(driver.input_consumed_this_call);
+        assert_eq!(driver.app.world().resource::<UpdateCount>().0, 1);
+        driver.loading_render_pending_after_update = true;
+        for _ in 0..3 {
+            driver.update_before_render(Some(egui::RawInput::default()), |_| outputs += 1).unwrap();
+            assert!(!driver.input_consumed_this_call, "new OS input must remain for the next update");
+        }
+        assert_eq!(outputs, 1, "a suspended frame owns exactly one egui begin/end");
+        assert_eq!(driver.app.world().resource::<UpdateCount>().0, 1);
+        assert_eq!(driver.progress().completed_frames, 0);
+        driver.loading_render_pending_after_update = false;
+        driver.update_before_render(None, |_| panic!("no egui input")).unwrap();
+        assert!(driver.input_consumed_this_call);
+        assert_eq!(driver.app.world().resource::<UpdateCount>().0, 2);
     }
 
     #[test]

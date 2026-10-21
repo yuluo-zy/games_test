@@ -14,6 +14,21 @@
 //! their own producer/consumer evidence requires payload. The old event+1 bool
 //! claim for Terrain confused a hint-condition field with event data.
 
+/// Original welcome owner, initialized to state0 by MenuFlowPlugin.
+/// Its elapsed time belongs to the showing state; closing does not open Esc.
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub enum WelcomeScreenState {
+    #[default]
+    Pending,
+    Showing { elapsed: f32 },
+    Closed,
+}
+
+impl WelcomeScreenState {
+    /// Native is_closed1409a9140 compares the state tag with2.
+    pub fn is_closed(&self) -> bool { matches!(self, Self::Closed) }
+}
+
 /// 墙面/屋顶形状编辑已执行通知（O：add_onboarding register_event 顺序 1）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NotifyHintSystemShapeEditWasPerformed;

@@ -65,6 +65,16 @@ pub struct PostProcessControls {
     pub disable_temporal_history: bool,
 }
 
+/// Explicit diagnostic snapshot of the real native UI gate and consumed stream.
+/// Exists only with TG_STARTUP_VISUAL_TRACE=1; never controls rendering.
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug)]
+pub(crate) struct StartupUiVisualTrace {
+    pub graph: rhapsody::rg::GraphId,
+    pub ui_visible: bool,
+    pub ui_elements: Option<[usize; 2]>,
+    pub mei_drawn_prims: Option<u32>,
+}
+
 /// Native render_world returns depth/CoC/TAA, each a real texture. The internal
 /// second DoF tile texture and optional tile buffers remain fully consumed by
 /// the original calc_dof chain before this boundary.
@@ -584,7 +594,7 @@ fn run_vermeer(
     // Original process static143634c9c survives each frame; never recreate
     // prev_active=false before the native temporal-reuse conjunction.
     world.init_resource::<vermeer::VermeerPassLocals>();
-    world.resource_scope(
+    let result = world.resource_scope(
         |world, mut state: bevy_ecs::change_detection::Mut<vermeer::VermeerState>| {
         world.resource_scope(|world, mut locals: bevy_ecs::change_detection::Mut<vermeer::VermeerPassLocals>| {
         use bevy_ecs::change_detection::DetectChangesMut;
@@ -605,6 +615,10 @@ fn run_vermeer(
         // core consumer has transitioned the completed reveal to Disabled.
         // An active but incomplete reveal does not require the event resource.
         let mut declare = |world: &World, finished: Option<&mut Finished>| {
+            let background = if state.background.is_some() {
+                crate::loading_graph::import_saved_background(frame, world)?
+            } else { None };
+            crate::loading_graph::refresh_saved_background_reference(&mut state, background)?;
             let raster = frame.raster_resources();
             let access = FrameWorldAccess::new(
                 FrameLibraries {
@@ -643,6 +657,9 @@ fn run_vermeer(
             if let Some(finished) = finished {
                 effects = effects.with_startup_reveal_finished_events(finished);
             }
+            if let Some(background) = background {
+                effects.register_texture(background);
+            }
             let target = effects.register_texture_with_samples(target, 4);
             let active = vermeer::vermeer_pass(
                 &mut effects,
@@ -671,7 +688,13 @@ fn run_vermeer(
         }
         })
         },
-    )
+    );
+    if result.is_ok() && world.resource::<vermeer::VermeerState>().background.is_none() {
+        // The original consumer drops its managed background on reveal finish
+        // or reset. Submitted graphs retain their own Arc until GPU completion.
+        world.remove_resource::<crate::loading_graph::SavedLoadingBackgroundTexture>();
+    }
+    result
 }
 
 /// Snapshot the native screen-space tuple (stable sort happens in ui_2d_pass)
@@ -844,13 +867,13 @@ fn run_lut_gallery(
         name_hash::NameHash,
         render::pass_builder::{
             draw_builder::{BindTexture, DrawBuilder},
-            draw_stream::DrawPacket,
+            draw_stream::{DrawPacket, RasterPass},
+            framebuffer_binding::ColorAttachment,
         },
         resources::{
             grading_lut::GradingLuts, gui::EscMenuState, texture_presets::TextureFromDisk,
         },
         systems::render_loop::{
-            draw_passes::d_main_support::{ColorSpec, DepthSpec},
             lut_gallery::{self as gallery, LutGalleryState},
         },
     };
@@ -934,12 +957,18 @@ fn run_lut_gallery(
         let shader = ctx
             .shader(gallery::SHADER_NAME)
             .ok_or_else(|| tail_missing("lut_gallery_thumbnail shader"))?;
-        let mut pass = ctx.raster_pass(
+        // B 0x1408b0b13 loads [tag1, 0.18f, 0.18f, 0.18f] from
+        // 0x142a9cc30, then 0x1408b0b23 supplies alpha=1. This gallery
+        // replaces the background with an opaque clear before thumbnail draws.
+        let mut pass = RasterPass::new(
             gallery::PASS_NAME,
-            &[ColorSpec::tag2(target)],
-            DepthSpec::None,
-            target,
-        );
+            &[ColorAttachment::View {
+                view: [0x3e38_51ec, 0x3e38_51ec, 0x3e38_51ec, 0x3f80_0000],
+                texture: target,
+            }],
+            None,
+            ctx.host(),
+        ).with_viewport([target.extent.0, target.extent.1]);
         for (index, ((name, strength), position)) in names.iter().zip(state.positions()).enumerate()
         {
             let u =
@@ -1231,6 +1260,9 @@ pub fn build_world_tail(
 
     // T10: native UI block gate `(vermeer_active & mode != 0x13) == 0`.
     let ui_visible = !vermeer_active || photomode;
+    let trace_visual = crate::production_renderer::startup_visual_trace_enabled();
+    let mut trace_ui_elements = None;
+    let mut trace_mei_prims = None;
     if ui_visible {
         // T11 uses the canonical menu/saved-list/pool and real image host.
         session_preview_host::render(frame, world, msaa_att)?;
@@ -1246,6 +1278,10 @@ pub fn build_world_tail(
         let shadows = world.get_resource::<country_core::resources::gui::EscMenuState>()
             .ok_or_else(|| tail_missing("EscMenuState"))?.cast_ui_shadows();
         let (mei_text, mei_temp) = prepare_mei(frame, world, out_extent, shadows)?;
+        if trace_visual {
+            trace_ui_elements = Some([ui_elements.len(), ui_ws_elements.len()]);
+            trace_mei_prims = Some(mei_text.prim_count);
+        }
         let window = window_dims(world)?;
         let shaders = frame.shader_library();
         frame.with_raster(|host| {
@@ -1274,6 +1310,12 @@ pub fn build_world_tail(
             Ok(())
         })?;
         crate::screenshot::shared_texture_capture::opportunity(frame, world, 4, msaa, 4)?;
+    }
+    if trace_visual {
+        let graph = frame.with_graph(|graph| Ok(graph.graph_id()))?;
+        world.insert_resource(StartupUiVisualTrace {
+            graph, ui_visible, ui_elements: trace_ui_elements, mei_drawn_prims: trace_mei_prims,
+        });
     }
     // T20 is outside the reveal/UI gate (RNE1401634af). The native loading
     // list and caller-owned EguiBackend still render during an active reveal.

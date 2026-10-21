@@ -185,7 +185,7 @@ fn wireframe_pass_matches_the_machine_code_sequence() {
 }
 
 #[test]
-fn ui_and_loading_screen_use_lists_19_and_18_and_are_named_ui() {
+fn ui_and_loading_screen_use_their_lists_and_premultiplied_alpha_state() {
     use super::ui_pass::{loading_screen_pass, ui_pass};
     let rig = Rig::new();
     let mut lists = DrawLists::new();
@@ -198,8 +198,15 @@ fn ui_and_loading_screen_use_lists_19_and_18_and_are_named_ui() {
     let l = rig.log.borrow();
     assert_eq!(l.submissions[0].draws.len(), 2);
     assert_eq!(l.submissions[1].draws.len(), 1);
-    // 无状态改写：状态保持宿主默认值。
-    assert_eq!(l.submissions[0].draws[0].state.0, 0x8000_0080);
+    // Both native passes set only byte3 bits 5..6 to 2, after bind_common and
+    // before each callback. Preserve polygon/depth/stencil/topology bits.
+    for submission in &l.submissions {
+        for draw in &submission.draws {
+            assert_eq!(draw.state.0, 0xc000_0080);
+            assert_eq!(draw.variant, 0);
+            assert_eq!(draw.blend, 1.0);
+        }
+    }
 }
 
 #[test]
@@ -337,19 +344,30 @@ fn late_passes_are_skipped_when_their_list_is_empty() {
     use super::main_pass::late_forward_and_deferred_pass;
     let rig = Rig::new();
     let mut lists = DrawLists::new();
-    run(&rig, |c| late_forward_and_deferred_pass(c, &gbuf(), &lists));
+    let scene_color = tex(13, 640, 360);
+    assert_ne!(gbuf().gbuffer.id, scene_color.id);
+    run(&rig, |c| late_forward_and_deferred_pass(c, &gbuf(), &scene_color, &lists));
     assert!(names(&rig).is_empty());
     lists.list_mut(list::LATE_FORWARD).push(item(1, 0, Some(1)));
-    run(&rig, |c| late_forward_and_deferred_pass(c, &gbuf(), &lists));
+    run(&rig, |c| late_forward_and_deferred_pass(c, &gbuf(), &scene_color, &lists));
     assert_eq!(names(&rig), vec!["Late Forward"]);
+    // B: the empty Deferred branch jumps to 0x140837753 with r14 still holding r9.
+    assert_eq!(rig.log.borrow().submissions[0].colors[0].id, scene_color.id);
+    assert_eq!(rig.log.borrow().submissions[0].colors[0].tag, 0);
     lists
         .list_mut(list::LATE_DEFERRED)
         .push(item(1, 0, Some(1)));
     let rig2 = Rig::new();
     run(&rig2, |c| {
-        late_forward_and_deferred_pass(c, &gbuf(), &lists)
+        late_forward_and_deferred_pass(c, &gbuf(), &scene_color, &lists)
     });
     assert_eq!(names(&rig2), vec!["Late Deferred", "Late Forward"]);
+    // B: 0x14083742f uses r8 for Deferred, 0x14083773e restores original r9 for Forward.
+    let log = rig2.log.borrow();
+    assert_eq!(log.submissions[0].colors[0].id, gbuf().gbuffer.id);
+    assert_eq!(log.submissions[1].colors[0].id, scene_color.id);
+    assert!(log.submissions.iter().all(|s| s.colors[0].tag == 0));
+    assert!(log.created_passes.iter().all(|p| !p.depth.clear_input));
 }
 
 #[test]

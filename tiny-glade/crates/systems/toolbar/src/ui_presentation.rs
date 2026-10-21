@@ -110,8 +110,7 @@ pub fn ui_sounds(
     let mut emit = |kind| {
         sounds.write(PlayUiSound {
             kind,
-            _payload: [0; 0x10],
-            id: 0,
+            _payload: [0; 20],
         });
     };
     for event in focus.read() {

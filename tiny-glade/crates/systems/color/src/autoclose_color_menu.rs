@@ -17,7 +17,7 @@ pub fn autoclose_color_menu(
 ) {
     // Only the latest mode command participates, not any earlier command in
     // this reader batch. A non-Customize mode does not consume escape events.
-    if modes.read().last().is_some_and(|mode| mode.tool != 12) {
+    if modes.read().last().is_some_and(|mode| mode.current.native_tag() != 12) {
         hides.write(HideColorMenuCmd { cancel: true });
         return;
     }

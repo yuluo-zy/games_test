@@ -37,11 +37,11 @@ pub struct FocusedEditHintConditions {
 pub struct FocusSubjectByte(pub u8);
 
 /// hint_focused_edit_condition（O 0x14227da70）：profile 0x1f5!=0 → hint_done=1 返回；
-/// 读 `ModeJustChanged`（0x28B），首事件工具 ∈ {1,2}（`*piVar5-1U<2`）→ hint_done=1；
+/// 读 `ModeJustChanged`（0x28B），末事件当前模式 tag ∈ {1,2}（`*piVar5-1U<2`）→ hint_done=1；
 /// 未 done 且工具不满足 → false；写 TutorialHintComplete(id 1)；焦点实体字节==1 →
 /// PlayUiSound(kind 0x13)。
 /// **重建（2026-10-17，ModeJustChanged + GameProfile 落库）**；分歧点：焦点字节 Query
-/// 组件类型 U（seam `FocusSubjectByte`）、PlayUiSound id U。
+/// 组件类型 U（seam `FocusSubjectByte`）；音效实例 EventId 由 Bevy 管理。
 // O：反编译返回 void（0x14227da70 / 0x141c3d890 全部 `return;`），且原 add_onboarding 经 InfallibleSystemWrapper
 // 以普通系统入链（Out=()）；早先 `-> bool` 属误判，已改为 `()`，各早退路径语义不变。
 pub fn hint_focused_edit_condition(
@@ -56,8 +56,8 @@ pub fn hint_focused_edit_condition(
         state.hint_done = true;
         return;
     }
-    if let Some(first) = mode.read().next() {
-        if matches!(first.tool, 1 | 2) {
+    if let Some(latest) = mode.read().last() {
+        if matches!(latest.current.native_tag(), 1 | 2) {
             state.hint_done = true;
         } else if !state.hint_done {
             return;
@@ -69,8 +69,7 @@ pub fn hint_focused_edit_condition(
     if query.iter().next().is_some_and(|b| b.0 == 1) {
         let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
             kind: 0x13,
-            _payload: [0; 0x10],
-            id: 0,
+            _payload: [0; 20],
         });
     }
 }
@@ -233,5 +232,62 @@ mod tests {
 
         schedule.run(&mut world);
         assert_eq!(world.resource::<FocusedEditHintConditions>().count, 1);
+    }
+}
+
+#[cfg(test)]
+mod canonical_mode_publication_tests {
+    use super::*;
+    use country_core::resources::events::ModeJustChanged;
+    use country_core::systems::mode_manager::{
+        send_mode_just_changed_event, AppMode, EditSubject, PreviousAppMode,
+    };
+    use crate::hint_clutter_focus_edit::{
+        hint_clutter_focused_edit_condition, FocusedClutterHintConditions,
+    };
+    use crate::tutorial_completion::TutorialHintComplete;
+
+    #[test]
+    fn published_latest_mode_controls_both_hint_consumers_and_drains_old_modes() {
+        for (target, expected_hint) in [
+            (AppMode::Editing(EditSubject::Wall(0xfedc_ba98_7654_3210)), 1),
+            (AppMode::Editing(EditSubject::DecoClutter { decorator_id: 0xdead_beef }), 9),
+        ] {
+            let mut world = World::new();
+            world.init_resource::<country_core::game_profile::GameProfile>();
+            world.init_resource::<FocusedEditHintConditions>();
+            world.init_resource::<FocusedClutterHintConditions>();
+            world.init_resource::<PreviousAppMode>();
+            world.init_resource::<Events<ModeJustChanged>>();
+            world.init_resource::<Events<TutorialHintComplete>>();
+            world.init_resource::<Events<country_core::systems::ui::resources::widget_params::PlayUiSound>>();
+            let mut publish = Schedule::default();
+            publish.add_systems(send_mode_just_changed_event);
+            let mut consume = Schedule::default();
+            consume.add_systems((hint_focused_edit_condition, hint_clutter_focused_edit_condition));
+
+            // A qualifying old-buffer mode must not override the newest Path.
+            world.insert_resource(target);
+            publish.run(&mut world);
+            world.resource_mut::<Events<ModeJustChanged>>().update();
+            world.insert_resource(AppMode::Path);
+            publish.run(&mut world);
+            consume.run(&mut world);
+            assert!(!world.resource::<FocusedEditHintConditions>().hint_done);
+            assert!(!world.resource::<FocusedClutterHintConditions>().hint_done);
+            assert_eq!(world.resource::<Events<TutorialHintComplete>>().len(), 0);
+            consume.run(&mut world);
+            assert_eq!(world.resource::<Events<TutorialHintComplete>>().len(), 0);
+
+            // Re-enter through the real publisher; only the latest target qualifies.
+            world.insert_resource(target);
+            publish.run(&mut world);
+            consume.run(&mut world);
+            let completed: Vec<_> = world.resource_mut::<Events<TutorialHintComplete>>()
+                .drain().map(|event| event.id).collect();
+            assert_eq!(completed, vec![expected_hint]);
+            consume.run(&mut world);
+            assert_eq!(world.resource::<Events<TutorialHintComplete>>().len(), 0);
+        }
     }
 }

@@ -86,26 +86,18 @@ pub fn run_event_loop(
 
 impl crate::game_loop::GameLoop {
     pub fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) -> anyhow::Result<()> {
-        use std::{cell::RefCell, rc::Rc};
-        let failure = Rc::new(RefCell::new(None));
-        let event_failure = failure.clone();
+        let lifecycle = self.lifecycle.clone();
         self.refresh_monitors(&event_loop);
         let loop_result = event_loop.run(move |event, target| {
             if let Err(error) = self.main_loop(event, target) {
-                let mut first_error = event_failure.borrow_mut();
-                if first_error.is_none() {
-                    *first_error = Some(error);
-                } else {
-                    log::error!("event-loop cleanup after original failure: {error:#}");
-                }
-                drop(first_error);
+                self.lifecycle.record_failure(error);
                 if let Err(shutdown) = self.shut_down() {
-                    log::error!("GPU shutdown after loop failure: {shutdown:#}");
+                    self.lifecycle.record_failure(shutdown);
                 }
                 target.exit();
             }
         });
-        let error = failure.borrow_mut().take();
+        let error = lifecycle.take_failure();
         match error {
             Some(error) => Err(error),
             None => loop_result.map_err(Into::into),
@@ -119,16 +111,36 @@ impl crate::game_loop::GameLoop {
         event: winit::event::Event<()>,
         target: &winit::event_loop::EventLoopWindowTarget<()>,
     ) -> anyhow::Result<()> {
+        if !self.lifecycle.is_running() {
+            // exit() can leave already queued Redraw/Resumed/AboutToWait events.
+            // They must not touch egui, the App, cursor mappings or the renderer.
+            target.exit();
+            return if matches!(event, winit::event::Event::LoopExiting) {
+                self.shut_down()
+            } else {
+                Ok(())
+            };
+        }
+        let lifecycle = self.lifecycle.clone();
+        lifecycle.dispatch(|| self.dispatch_running_event(event, target))
+    }
+
+    fn dispatch_running_event(
+        &mut self,
+        event: winit::event::Event<()>,
+        target: &winit::event_loop::EventLoopWindowTarget<()>,
+    ) -> anyhow::Result<()> {
         use winit::event::{Event, WindowEvent};
         match event {
             Event::WindowEvent { window_id, event } if window_id == self.window.id() => {
                 if matches!(event, WindowEvent::RedrawRequested) {
                     if !self.suspended {
+                        let previous_frame_count = self.frame_count;
                         let running = self.frame(target)?;
                         if self.renderer.any_present_successful() || self.frame_count > 1 {
                             self.window.set_visible(true);
                         }
-                        if self.frame_count % 30 == 0 {
+                        if self.frame_count != previous_frame_count && self.frame_count % 30 == 0 {
                             log::info!(
                                 "production frame progress: frame_count={} {:?}",
                                 self.frame_count,
@@ -163,7 +175,7 @@ impl crate::game_loop::GameLoop {
                     }
                     WindowEvent::Moved(_) => self.queue_os_event(OsWindowEvent::MonitorChanged)?,
                     WindowEvent::CloseRequested => {
-                        if self.suspended {
+                        if self.suspended || crate::loading_graph::is_background_preparation_pending(self.driver.app().world()) {
                             // 暂停时没有下一次 frame 消费事件队列；实际 OS 关闭必须
                             // 直接取消并 join 加载任务、关闭保存和 GPU，不能等待 Resumed。
                             // 这是主线程宿主适配，不运行暂停中的 App 或伪造关闭标记。
@@ -255,7 +267,26 @@ impl crate::game_loop::GameLoop {
             Event::AboutToWait => {
                 // OS main-thread adapter: redraw drives the same recovered
                 // update/egui/render consumer, without a polling worker thread.
-                target.set_control_flow(winit::event_loop::ControlFlow::Wait);
+                let background_pending = crate::loading_graph::is_background_preparation_pending(
+                    self.driver.app().world(),
+                );
+                if !self.suspended && background_pending {
+                    // A bounded CPU loader has no native event proxy. Poll at
+                    // most once per display tick while allowing OS input/close
+                    // to wake the loop immediately; never spin empty redraws.
+                    let deadline = *self.background_poll_deadline.get_or_insert_with(||
+                        std::time::Instant::now() + std::time::Duration::from_millis(16));
+                    target.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(deadline));
+                } else {
+                    self.background_poll_deadline = None;
+                    target.set_control_flow(winit::event_loop::ControlFlow::Wait);
+                }
+                if !self.suspended && !background_pending {
+                    self.window.request_redraw();
+                }
+            }
+            Event::NewEvents(winit::event::StartCause::ResumeTimeReached { .. }) => {
+                self.background_poll_deadline = None;
                 if !self.suspended {
                     self.window.request_redraw();
                 }
@@ -281,6 +312,9 @@ impl crate::game_loop::GameLoop {
     /// OS producer: retain the batch independently of either App. The mapped
     /// absolute cursor write remains in this callback before confirmation gates.
     pub(crate) fn queue_os_event(&mut self, event: OsWindowEvent) -> anyhow::Result<()> {
+        if !self.lifecycle.is_running() {
+            return Ok(());
+        }
         if let OsWindowEvent::CursorAbsolute(position) = &event {
             self.update_custom_cursor_absolute(*position)?;
         }
@@ -293,6 +327,9 @@ impl crate::game_loop::GameLoop {
         event: OsWindowEvent,
         target: &winit::event_loop::EventLoopWindowTarget<()>,
     ) -> anyhow::Result<()> {
+        if !self.lifecycle.is_running() {
+            return Ok(());
+        }
         use bevy_ecs::entity::Entity;
         use bevy_input::{
             ButtonState,
@@ -371,6 +408,11 @@ impl crate::game_loop::GameLoop {
                 self.window.request_redraw();
             }
             OsWindowEvent::ToggleFullscreen => {
+                if self.app().world().get_resource::<crate::app_config::LaunchDisplayOverride>()
+                    .is_some_and(|policy| policy.force_windowed)
+                {
+                    return Ok(());
+                }
                 let mut config = self.app_mut().world_mut().resource_mut::<GameConfig>();
                 config.video.display.fullscreen = !config.video.display.fullscreen;
                 *crate::game_loop::PENDING_VIDEO_SETTING_FLAGS

@@ -104,9 +104,12 @@ pub struct ClearingCanvasWidget {
 #[derive(Resource)]
 pub struct UiState {
     interaction: UiInteraction,
+    active_params: Option<Arc<WidgetParams>>,
+    hover_intersections: Vec<[u8; 56]>,
+    intersection_payload: [u8; 56],
     /// +0x28: intersection payload discriminant. `is_active` 0x14092e680
-    /// rejects value 2 (`CMP dword ptr [RAX+0x28],2; SETNZ`). The remaining
-    /// intersection bytes are host-owned and not modelled here.
+    /// rejects value 2 (`CMP dword ptr [RAX+0x28],2; SETNZ`). The complete
+    /// intersection_payload above is synchronized with this compatibility view.
     intersection_tag: u32,
     /// +0x4c/+0x50/+0x54: intersection world point read by
     /// `ui_adjust_wall_height_signifier_animation` (0x14085bb50) when the tag
@@ -129,13 +132,16 @@ impl UiState {
             native_phase: DragState::NONE.0,
             widget: WidgetId(0),
         });
-        state.intersection_tag = 2;
+        state.set_intersection_tag(2);
         state
     }
 
     pub fn new(interaction: UiInteraction) -> Self {
         Self {
             interaction,
+            active_params: None,
+            hover_intersections: Vec::new(),
+            intersection_payload: [0; 56],
             intersection_tag: 0,
             intersection_point: glam::Vec3::ZERO,
             clearing_canvases: RwLock::new(HashMap::new()),
@@ -167,6 +173,7 @@ impl UiState {
     /// Writes the +0x28 intersection discriminant (input owner).
     pub fn set_intersection_tag(&mut self, tag: u32) {
         self.intersection_tag = tag;
+        self.intersection_payload[..4].copy_from_slice(&tag.to_le_bytes());
     }
 
     /// +0x4c intersection world point (valid when the tag is not 2).
@@ -177,11 +184,71 @@ impl UiState {
     /// Writes the +0x4c intersection world point (input owner).
     pub fn set_intersection_point(&mut self, point: glam::Vec3) {
         self.intersection_point = point;
+        for (i, value) in point.to_array().into_iter().enumerate() {
+            self.intersection_payload[36+i*4..40+i*4].copy_from_slice(&value.to_le_bytes());
+        }
     }
 
     /// +0x38 active widget id.
     pub fn active_widget(&self) -> WidgetId {
         self.interaction.widget
+    }
+
+    /// Snapshot in the current registry iteration order; arbitration owns
+    /// native distance/layer ordering, not this storage API.
+    pub fn registry_snapshot(&self) -> Vec<(WidgetId, Arc<WidgetParams>)> {
+        self.widgets
+            .read()
+            .iter()
+            .map(|(id, params)| (*id, Arc::clone(params)))
+            .collect()
+    }
+
+    pub fn set_hover_intersections(&mut self, intersections: Vec<[u8; 56]>) {
+        self.hover_intersections = intersections;
+    }
+
+    pub fn hover_intersections(&self) -> &[[u8; 56]] {
+        &self.hover_intersections
+    }
+
+    /// Clear only frame registrations. Active drag retains its own Arc.
+    pub fn clear_widgets(&self) {
+        self.widgets.write().clear();
+        self.clearing_canvases.write().clear();
+    }
+
+    pub fn replace_interaction_full(
+        &mut self,
+        interaction: UiInteraction,
+        params: Option<Arc<WidgetParams>>,
+        payload: [u8; 56],
+    ) {
+        self.interaction = interaction;
+        self.active_params = params;
+        self.replace_intersection(payload);
+    }
+
+    pub fn active_params(&self) -> Option<Arc<WidgetParams>> {
+        self.active_params.as_ref().map(Arc::clone)
+    }
+
+    /// Reuse the original picker cache allocation while retaining the exact
+    /// registry iteration order and strong ownership of every candidate.
+    pub fn fill_widget_snapshot(&self, output: &mut Vec<(WidgetId, Arc<WidgetParams>)>) {
+        output.clear();
+        output.extend(self.widgets.read().iter().map(|(id, params)| (*id, Arc::clone(params))));
+    }
+
+    /// Keep the complete native intersection and the existing typed point API synchronized.
+    pub fn replace_intersection(&mut self, payload: [u8; 56]) {
+        self.intersection_tag = u32::from_le_bytes(payload[..4].try_into().unwrap());
+        self.intersection_point = glam::Vec3::new(
+            f32::from_le_bytes(payload[36..40].try_into().unwrap()),
+            f32::from_le_bytes(payload[40..44].try_into().unwrap()),
+            f32::from_le_bytes(payload[44..48].try_into().unwrap()),
+        );
+        self.intersection_payload = payload;
     }
 
     /// `UiState::add<&str>` @0x1409236d0（O）：名字 → WidgetId::from_name →
@@ -216,7 +283,35 @@ impl UiState {
         argument_79: u8,
         layer: u8,
     ) -> UiWidgetContext<'_> {
+        self.clearing_canvas_with_sounds(
+            name,
+            argument_79,
+            layer,
+            super::widget_params::UiSounds::empty(),
+        )
+    }
+
+    /// Complete native14092df50 caller contract. The original copies all96B
+    /// supplied sounds and writes params+a8/a9=0x00/0x01 at14092e0e2.
+    pub fn clearing_canvas_with_sounds(
+        &self,
+        name: &str,
+        argument_79: u8,
+        layer: u8,
+        sounds: super::widget_params::UiSounds,
+    ) -> UiWidgetContext<'_> {
         let id = WidgetId::clearing_canvas(name);
+        // Same original params entry as any other widget; the additional
+        // compatibility view below must not hide the canvas from real picking.
+        self.add_with_id(
+            id,
+            WidgetParams::new(
+                super::widget_params::WidgetVolumeShape::clearing_canvas(layer),
+                [1 | ((argument_79 as u64) << 8), 0],
+            )
+            .sounds(sounds)
+            .occlude_by_world(false),
+        );
         self.clearing_canvases.write().insert(
             id,
             Arc::new(ClearingCanvasWidget {
@@ -239,6 +334,21 @@ pub struct UiWidgetContext<'a> {
     pub id: WidgetId,
 }
 impl UiWidgetContext<'_> {
+    /// B14092e640 returns the full intersection iff hover!=0 and id matches.
+    /// The None variant writes only tag2; remaining bytes below are safe owned
+    /// unused storage, not a fabricated intersection payload.
+    pub fn intersecting(&self) -> [u8; 56] {
+        let active = self.state.interaction;
+        if active.native_tag != 0 && active.widget == self.id {
+            self.state.intersection_payload
+        } else {
+            let mut none = [0; 56];
+            none[..4].copy_from_slice(&2u32.to_le_bytes());
+            none
+        }
+    }
+
+
     /// `dragged` 0x14092df10（与 `slider3d::impl$1::into_drag_state` 同址 ICF 折叠）：
     /// `byte[state+0x18] >= 2 && qword[state+0x38] == id` → `byte[state+0x19]`，
     /// 否则 `2`（None）。

@@ -7,7 +7,7 @@
 //!   外观/选择进度（公式+字节判别判等，见下）。
 //! - `ui_sounds`（0x14233a7f0，真地址）：**未实现（分歧见模块尾与 RESTORE.md）**。
 //! - `render_taffy_ui_to_widgets`（0x142338990）：焦点交换 / keep 面 / 事件写面
-//!   已按 fresh 判等落库；Signifier 闭包标记与焦点矩形链仍未实现（见函数注释）。
+//!   已恢复实际屏幕矩形与距离、回放输入屏蔽及真实 icon_cross 闭包。
 //!
 //! gap-utils-toolbar（2026-10-17）补落库类型：`UiNav`/`HistoryButton` 组件（见
 //! `resouces_and_components`）；`WindowFocusEvent` 事件已由 country-core
@@ -20,13 +20,11 @@ use bevy_ecs::event::{Event, EventReader, EventWriter};
 use bevy_ecs::prelude::{Commands, Query, Res, ResMut};
 use bevy_time::prelude::Time;
 
-use country_core::systems::ui::resources::widget_params::{
-    UiNavState, UiSounds, WidgetParams, WidgetVolumeShape,
-};
+use country_core::systems::ui::resources::widget_params::{UiNavState, UiSounds, WidgetParams};
 
 use crate::resouces_and_components::{
-    HistoryButton, TaffyNode, UiAnimationState, UiInteractionState, UiLocked, UiMouseInteractable, UiNav,
-    UiPlayLockedAnimation, UiPlaySelectAnimation,
+    HistoryButton, TaffyNode, UiAnimationState, UiInteractionState, UiLocked, UiMouseInteractable,
+    UiNav, UiPlayLockedAnimation, UiPlaySelectAnimation,
 };
 
 /// B 0x14233e960: hide only UiMouseInteractable entities by zeroing size.
@@ -307,17 +305,14 @@ pub use crate::ui_presentation::ui_sounds;
 ///      `nav.focus.is_toolbar() && payload == entity` 置 1。
 ///   5. 有 `HistoryButton`：`into_drag_state()`（is_some→
 ///      `UiHistoryButtonPressed{kind}`；==3→`Commands::entity.insert(
-///      UiPlaySelectAnimation{0.2,0.2,0})`）；无 HistoryButton：非 Photomode 且
-///      active → Signifier 载荷（`icon_size_mult*60`）。
+///      UiPlaySelectAnimation{0.2,0.2,0})`）；无 HistoryButton：Replay 且 active → 实际 icon_cross factory，随后跳过事件尾。
 ///   6. 无焦点且 state==1 的首个 UiNav 按钮接管 Toolbar 焦点（**判等**）。
 ///   7. 所有 widget 共享尾：`clicked()`→`UiClickEvent{entity}`；
 ///      `into_drag_state() != 2`→`UiDragEvent{entity,state}`（**判等**）。
 ///
-/// **未实现/分歧**：
-/// - `SignifierFactory::new` 的 inner/marker（闭包胖指针）未在反编译展开，
-///   载荷已判等但不伪造闭包。
-/// - `WidgetParams::new` 的 volume/`extra_78` 字段身份 U；按
-///   `WidgetVolumeShape{tag=3,layer=interaction.state,size=rect}` 投影（I）。
+/// ScreenAabb and replay-denied factory were rechecked against original
+///1423395cb..637 and1423397b0..884 on2026-10-21. The prior field/tag
+/// projections omitted bounds/depth and confused Replay13 with Photomode19.
 #[allow(clippy::too_many_arguments)]
 pub fn render_taffy_ui_to_widgets(
     mut query: Query<(
@@ -376,7 +371,7 @@ pub fn render_taffy_ui_to_widgets(
     let config_scale = game_config.ui.icon_size_mult;
     let expand = config_scale * 10.0 * size_mult.multiplier;
 
-    for (entity, extent, _interactable, taffy, mut interaction, history, nav) in &mut query {
+    for (entity, extent, interactable, taffy, mut interaction, history, nav) in &mut query {
         // O L494-502：名字 = `format!("toolbar_button_{:?}", node)`。
         let name = format!("toolbar_button_{:?}", taffy.node);
 
@@ -386,20 +381,20 @@ pub fn render_taffy_ui_to_widgets(
         // （fresh 0x142338990：`+0x00` pos Vec2、`+0x08` size Vec2）。
         let rect_size = extent.size + glam::Vec2::splat(expand);
 
-        // O L514-531：`WidgetParams::new` + 4 个 builder + `UiState::add<String>`。
-        let params = WidgetParams::new(
-            WidgetVolumeShape {
-                tag: 3,
-                layer: interaction.state,
-                size: rect_size,
-                ..Default::default()
-            },
-            [0; 2],
-        )
-        .no_history_recording()
-        .occlude_by_world(true)
-        .allow_negative_distance(true)
-        .sounds(UiSounds::empty());
+        // Original1423395cb/5e6: preserve both screen bounds and the
+        // UiMouseInteractable f32 distance. It is not an interaction layer.
+        let half_size = rect_size * 0.5;
+        let params = WidgetParams::default()
+            .screen_aabb(
+                extent.pos - half_size,
+                extent.pos + half_size,
+                f32::from_le_bytes(interactable.bytes),
+            )
+            .no_history_recording()
+            // Original142339637 clears the bool argument before this call.
+            .occlude_by_world(false)
+            .allow_negative_distance(true)
+            .sounds(UiSounds::empty());
         let ctx = ui_state.add(&name, params);
 
         // ------------------------------------------------------------------
@@ -440,34 +435,18 @@ pub fn render_taffy_ui_to_widgets(
                     },
                 );
             }
-        } else {
-            // O L534-557：无 HistoryButton 分支。
-            // `*local_1e8 != 0xd`（AppMode != Photomode）&& `is_active()`。
-            let not_photomode = !matches!(
-                *app_mode,
-                country_core::systems::mode_manager::AppMode::Photomode
-            );
-            if not_photomode && ctx.is_active() {
-                // O L539-555：分配 0x20 B 载荷 `{1u64, 1u64, cursor(Vec2),
-                // f32 = config_scale * 60.0}` → `SignifierFactory::new` →
-                // `UiSignifierStream::write`。
-                // **U**：`inner`/`marker`（闭包胖指针）未在反编译中展开；这里以
-                // null/0 构造 40B 记录并真实写入流（无闭包记录走 5-qword 原始
-                // 视图），不再计算后丢弃。
-                let cursor_bits = cursor.0;
-                let mut payload = [0u8; 0x20];
-                payload[0..8].copy_from_slice(&1u64.to_le_bytes());
-                payload[8..16].copy_from_slice(&1u64.to_le_bytes());
-                payload[16..20].copy_from_slice(&cursor_bits.x.to_le_bytes());
-                payload[20..24].copy_from_slice(&cursor_bits.y.to_le_bytes());
-                payload[24..28].copy_from_slice(&(config_scale * 60.0).to_le_bytes());
-                let factory = country_core::systems::ui::signifiers::SignifierFactory::new(
-                    &payload,
-                    std::ptr::null(),
-                    0,
-                );
-                signifiers.write_factory(&factory);
+        } else if *app_mode == country_core::systems::mode_manager::AppMode::Replay {
+            // Original1423397b7 tests native AppMode13 (Replay), not
+            // Photomode19. Both active and inactive paths continue directly
+            // to the next item: ordinary replay toolbar widgets cannot emit
+            // focus, click or drag events. History controls keep their path.
+            if ctx.is_active() {
+                signifiers.write_factory(&replay::denied_input_signifier(
+                    cursor.0,
+                    config_scale * 60.0,
+                ));
             }
+            continue;
         }
 
         // ------------------------------------------------------------------
@@ -504,9 +483,17 @@ pub fn render_taffy_ui_to_widgets(
     }
 }
 
-
 mod focus;
+mod hide;
 mod ordering;
+mod replay;
+pub use focus::{
+    ui_focus_parent_if_self_in_focus, ui_notify_hints_if_toolbar_in_focus,
+    ui_send_focus_begin_events, ui_show_if_parent_in_focus,
+};
+pub use hide::hide_ui;
 pub use ordering::sort_contextual_buttons_draw_order;
-pub use focus::{ui_focus_parent_if_self_in_focus, ui_show_if_parent_in_focus,
-    ui_send_focus_begin_events, ui_notify_hints_if_toolbar_in_focus};
+
+#[cfg(test)]
+#[path = "ui_interaction/widget_geometry_tests.rs"]
+mod widget_geometry_tests;

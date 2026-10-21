@@ -3,7 +3,9 @@
 //! O（两者共有）：`extent_2d(target)` → `RasterPass::new_impl("UI"(2), [tag0 = target], 无深度, 视口 = target)` →
 //! `CommonDrawParams { time, flag = true }` → 遍历一个 `DrawLists` 列表（`ui_pass` 读 `+0x1d0/+0x1d8` = 第 19 个，
 //! `loading_screen_pass` 读 `+0x1b8/+0x1c0` = 第 18 个）→ `DrawPacket::new` / `DrawBuilder::new(variant 0)` /
-//! `bind_common` / 回调 `item+0x70`，**无状态位改写** → `RasterPass::render`。
+//! `bind_common` → `state.byte3 = (byte3 & 0x9f) | 0x40`（UI 0x140837ee2..eed，
+//! loading 0x140838292..29d）→ 回调 `item+0x70` → `RasterPass::render`。
+//! This enables premultiplied-alpha composition over the existing target.
 //! 两个 pass 的名字都是 "UI"（同一字符串地址 0x142a92be0，长度 2）。
 
 use crate::render::pass_builder::framebuffer_binding::AttachmentTexture;
@@ -23,7 +25,7 @@ fn run(ctx: &mut DrawPassCtx<'_>, target: &AttachmentTexture, lists: &DrawLists,
         depth: DepthSpec::None,
         viewport: *target,
         flag: true,
-        mode: ItemMode::Plain,
+        mode: ItemMode::Ui,
         variant: 0,
         extra: None,
     };

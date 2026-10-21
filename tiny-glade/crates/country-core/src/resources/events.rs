@@ -37,18 +37,11 @@ impl ConstructTimberframeCmd {
     }
 }
 
-/// 模式刚切换事件（0x28B EventInstance = 0x20B 载荷，O：`hint_focused_edit_condition`
-/// 0x14227da70 以 0x28 步长遍历 `ModeJustChanged`、读 `+8` 载荷首 u32 与 `tool-1<2`；
-/// system_color `autoclose_color_menu` 0x142298d30 同样 0x28 步长消费）。
-/// 载荷 = `{tool u32@+8, +0xc..+0x20 U}`。
-#[repr(C)]
-#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ModeJustChanged {
-    /// +0x08：刚切换到的工具 id（u32，O）。
-    pub tool: u32,
-    /// +0x0c..+0x20：其余载荷（U，typed gap 表达以对齐 0x20B 载荷/0x28B 步长）。
-    pub _gap: [u8; 0x1c],
-}
+/// Native publisher 140a875e0 writes current AppMode at +0, previous at
+/// +0x10, then Bevy EventId at +0x20; finally previous := current.
+/// Keep one semantic event identity and both complete AppMode payloads.
+/// The rebuilding compiler's private enum layout is not a native ABI contract.
+pub use crate::systems::mode_manager::AppModeChanged as ModeJustChanged;
 
 /// 菜单刚打开事件（O：`resources::gui::EscapeMenuJustOpened` 族——原模块
 /// `resources::gui`；autoclose_color_menu 消费。载荷语义 U）。

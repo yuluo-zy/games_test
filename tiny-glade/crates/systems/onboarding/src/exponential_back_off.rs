@@ -81,11 +81,11 @@ pub fn exponential_back_off(
         cooldown_b = TutorialCooldowns::DEFAULT_COOLDOWN;
         profile.tutorial_cooldowns.cooldown_b = cooldown_b;
     }
-    // O：B 读者（ModeJustChanged 0x28B）首事件载荷 u32 ∈ {1,2}（`*piVar11-1U<2`）。
+    // O：B 读者（ModeJustChanged 0x28B）末事件当前模式 tag ∈ {1,2}（`*piVar11-1U<2`）。
     let mode_triggered = mode_b
         .read()
-        .next()
-        .is_some_and(|e| (1..=2).contains(&e.tool));
+        .last()
+        .is_some_and(|e| (1..=2).contains(&e.current.native_tag()));
     if mode_triggered {
         profile.tutorial_cooldowns.timer_b = 0.0;
         cooldown_b = (cooldown_b * 1.5).clamp(720.0, 10800.0);
@@ -116,4 +116,51 @@ pub fn has_cooldown_elapsed(profile: &country_core::game_profile::GameProfile) -
 pub fn advance_exp_backoff(profile: &mut country_core::game_profile::GameProfile) {
     let tc = &mut profile.tutorial_cooldowns;
     tc.timer_a = tc.timer_a.clamp(0.0, tc.cooldown_a);
+}
+
+#[cfg(test)]
+mod canonical_mode_backoff_tests {
+    use super::*;
+    use country_core::resources::events::{ModeJustChanged, WriteSettingsFileCmd};
+    use country_core::systems::mode_manager::{
+        send_mode_just_changed_event, AppMode, EditSubject, PreviousAppMode,
+    };
+
+    #[test]
+    fn published_latest_mode_controls_backoff_once_across_both_event_buffers() {
+        let mut world = World::new();
+        world.init_resource::<country_core::game_profile::GameProfile>();
+        world.init_resource::<GameTime>();
+        world.init_resource::<PreviousAppMode>();
+        world.init_resource::<crate::hint_deselect_tool::DeselectToolHintConditions>();
+        world.init_resource::<crate::hint_focused_edit::FocusedEditHintConditions>();
+        world.init_resource::<Events<ModeJustChanged>>();
+        world.init_resource::<Events<WriteSettingsFileCmd>>();
+        world.init_resource::<Events<country_core::resources::window::CursorMovedScreenSpace>>();
+        world.init_resource::<Events<crate::DisplayHintRequest>>();
+        world.resource_mut::<GameTime>().delta = 0.0;
+        world.resource_mut::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b = 800.0;
+        let mut publish = Schedule::default();
+        publish.add_systems(send_mode_just_changed_event);
+        let mut consume = Schedule::default();
+        consume.add_systems(exponential_back_off);
+
+        world.insert_resource(AppMode::Editing(EditSubject::Roof(0x1234_5678_90ab_cdef)));
+        publish.run(&mut world);
+        world.resource_mut::<Events<ModeJustChanged>>().update();
+        world.insert_resource(AppMode::Path);
+        publish.run(&mut world);
+        consume.run(&mut world);
+        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 800.0);
+        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 0);
+
+        world.insert_resource(AppMode::Editing(EditSubject::Wall(0xfeed_dead_beef_1234)));
+        publish.run(&mut world);
+        consume.run(&mut world);
+        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 1200.0);
+        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 1);
+        consume.run(&mut world);
+        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 1200.0);
+        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 1);
+    }
 }

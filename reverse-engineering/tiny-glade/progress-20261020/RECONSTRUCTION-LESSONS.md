@@ -33,3 +33,29 @@
 18. 共用 shader/audio/缓存 owner 使用当前 canonical 类型。遇到缺失 producer，记录缺口，不创建空资源掩盖失败。
 19. 冻结实现后统一 Cargo；新模块文件先落盘再导出。最终 manifest 重新绑定实际源 SHA，旧 probe source snapshot 只代表当时取证版本。
 20. 所有百分比须来自统一清单复审；叶函数数量、原码样本数量和测试数量不能代替业务完整度。用户要求停止测试时立即停止，保留已完成结果与未验收边界。
+
+## 第二阶段补充经验
+
+11. 对照实际布局基址：ExtraInfo+0x30 的 tag 在 Info+0x41，不能把 destination+0x10 的判别混入。逐字段写入必须保留 inactive/padding 字节。
+12. 通过原 System vtable::name 识别注册成员和嵌套 tuple；保持 deferred boundary。宿主已有拆分实现时只接正确的前后顺序，不再添加旧大函数或重复系统。
+13. 原构造器树应实际执行 full/demo 变体，保留父 Entity、FnOnce 释放、按钮 cooldown 与 callback 的先后差异。
+14. 真实 ECS 需覆盖非空 owner、实体 generation 复用、跨帧 Local、删除/失败路径；字段值相等并不能证明 Commands 插入、生命周期和事件次序相等。
+15. 保留 MINSS/MAXSS、NaN、signed zero 与 duration=0 的原算法。数学上相似的 clamp、除法或插值不必然位级等价。
+16. 原码 oracle 的 replacement/hook 逐项标明；原码执行、生产对照、真实 ECS、整机运行分别计数。部分 signifier easing 原码覆盖不等于全部 tag 覆盖。
+17. 清理方法须追到真实调用时点及所有容器；不要把 tracking drain 写成清空 authoritative store，或把 validator 内操作挪到任意帧尾。
+18. 共用 shader/audio/缓存 owner 使用当前 canonical 类型。遇到缺失 producer，记录缺口，不创建空资源掩盖失败。
+19. 冻结实现后统一 Cargo；新模块文件先落盘再导出。最终 manifest 重新绑定实际源 SHA，旧 probe source snapshot 只代表当时取证版本。
+20. 所有百分比须来自统一清单复审；叶函数数量、原码样本数量和测试数量不能代替业务完整度。用户要求停止测试时立即停止，保留已完成结果与未验收边界。
+
+## 第二阶段补充经验
+
+11. 对照实际布局基址：ExtraInfo+0x30 的 tag 在 Info+0x41，不能把 destination+0x10 的判别混入。逐字段写入必须保留 inactive/padding 字节。
+12. 通过原 System vtable::name 识别注册成员和嵌套 tuple；保持 deferred boundary。宿主已有拆分实现时只接正确的前后顺序，不再添加旧大函数或重复系统。
+13. 原构造器树应实际执行 full/demo 变体，保留父 Entity、FnOnce 释放、按钮 cooldown 与 callback 的先后差异。
+14. 真实 ECS 需覆盖非空 owner、实体 generation 复用、跨帧 Local、删除/失败路径；字段值相等并不能证明 Commands 插入、生命周期和事件次序相等。
+15. 保留 MINSS/MAXSS、NaN、signed zero 与 duration=0 的原算法。数学上相似的 clamp、除法或插值不必然位级等价。
+16. 原码 oracle 的 replacement/hook 逐项标明；原码执行、生产对照、真实 ECS、整机运行分别计数。部分 signifier easing 原码覆盖不等于全部 tag 覆盖。
+17. 清理方法须追到真实调用时点及所有容器；不要把 tracking drain 写成清空 authoritative store，或把 validator 内操作挪到任意帧尾。
+18. 共用 shader/audio/缓存 owner 使用当前 canonical 类型。遇到缺失 producer，记录缺口，不创建空资源掩盖失败。
+19. 冻结实现后统一 Cargo；新模块文件先落盘再导出。最终 manifest 重新绑定实际源 SHA，旧 probe source snapshot 只代表当时取证版本。
+20. 所有百分比须来自统一清单复审；叶函数数量、原码样本数量和测试数量不能代替业务完整度。用户要求停止测试时立即停止，保留已完成结果与未验收边界。

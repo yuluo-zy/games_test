@@ -197,6 +197,93 @@ pub struct CliArgs {
     pub print_render_log: Option<PathBuf>,
     #[arg(long = "mock-crash-reporter", value_name = "MOCK_CRASH_REPORTER")]
     pub mock_crash_reporter: Option<String>,
+    /// Local host adapter: keep this launch windowed, including video-setting changes.
+    /// This temporary choice is never written over the saved display preferences.
+    #[arg(long = "windowed")]
+    pub windowed: bool,
+    /// Local host adapter: physical window size; implies --windowed.
+    #[arg(long = "window-size", value_name = "WIDTHxHEIGHT")]
+    pub window_size: Option<LaunchWindowSize>,
+}
+
+/// Explicit host launch size, independent of the original persisted schema.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LaunchWindowSize(pub [u32; 2]);
+
+impl std::str::FromStr for LaunchWindowSize {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let size = value.split_once('x').and_then(|(width, height)| {
+            Some([width.parse::<u32>().ok()?, height.parse::<u32>().ok()?])
+        });
+        match size {
+            Some([width, height]) if width > 0 && height > 0 => Ok(Self([width, height])),
+            _ => Err(format!("window size must be positive WIDTHxHEIGHT, got {value:?}")),
+        }
+    }
+}
+
+/// Per-process display policy. Preserve other settings and monitor changes when
+/// saving, while restoring only the fields temporarily overridden at launch.
+#[derive(Resource, Clone, Debug)]
+pub struct LaunchDisplayOverride {
+    original: country_core::render::render_config::DisplayConfig,
+    resolution: Option<[u32; 2]>,
+    pub force_windowed: bool,
+}
+
+impl LaunchDisplayOverride {
+    /// Explicit CLI takes precedence over legacy standalone environment options.
+    /// --windowed alone uses a bounded 960x540 physical window. Existing
+    /// TG_WINDOW_SIZE remains supported; merely having TG_FULLSCREEN retains
+    /// its historical meaning of disabling the standalone windowed default.
+    pub fn resolve(
+        cli: &CliArgs,
+        display: &country_core::render::render_config::DisplayConfig,
+        standalone: bool,
+        env_fullscreen_present: bool,
+        env_window_size: Option<&str>,
+    ) -> anyhow::Result<Option<Self>> {
+        let explicit = cli.windowed || cli.window_size.is_some();
+        let resolution = if let Some(size) = cli.window_size {
+            Some(size.0)
+        } else if explicit {
+            Some([960, 540])
+        } else if standalone && env_window_size.is_some() {
+            Some(env_window_size.unwrap().parse::<LaunchWindowSize>().map_err(anyhow::Error::msg)?.0)
+        } else {
+            None
+        };
+        let force_windowed = explicit || (standalone && !env_fullscreen_present);
+        Ok((force_windowed || resolution.is_some()).then(|| Self {
+            original: display.clone(),
+            resolution,
+            force_windowed,
+        }))
+    }
+
+    pub fn apply(&self, display: &mut country_core::render::render_config::DisplayConfig) {
+        if self.force_windowed {
+            display.fullscreen = false;
+            display.allow_exclusive_fullscreen = false;
+        }
+        if let Some(size) = self.resolution {
+            display.windowed_resolution = size;
+        }
+    }
+
+    pub fn persistence_config(&self, config: &GameConfig) -> GameConfig {
+        let mut saved = config.clone();
+        if self.force_windowed {
+            saved.video.display.fullscreen = self.original.fullscreen;
+            saved.video.display.allow_exclusive_fullscreen = self.original.allow_exclusive_fullscreen;
+        }
+        if self.resolution.is_some() {
+            saved.video.display.windowed_resolution = self.original.windowed_resolution;
+        }
+        saved
+    }
 }
 
 impl CliArgs {
@@ -351,8 +438,13 @@ pub struct PanicReproStateResource(pub PanicReproState);
 pub fn write_settings_file_system(
     config: Res<GameConfig>,
     panic_repro_state: Res<PanicReproStateResource>,
+    launch_display: Option<Res<LaunchDisplayOverride>>,
 ) {
-    write_settings_file(&config, &panic_repro_state.0);
+    if let Some(policy) = launch_display {
+        write_settings_file(&policy.persistence_config(&config), &panic_repro_state.0);
+    } else {
+        write_settings_file(&config, &panic_repro_state.0);
+    }
 }
 
 /// `VulkanLayerAllowlistDefaults`（`.rdata 0x1429b59ae`：字段 `version`,`add`）。
@@ -450,5 +542,76 @@ mod tests {
             c.to_input_recording_opts(),
             Some(InputRecordingOpts::Record(PathBuf::from("record.bin")))
         );
+    }
+
+    #[test]
+    fn explicit_windowed_overrides_fullscreen_environment_and_large_saved_resolution() {
+        let cli = CliArgs::try_parse_from(["tiny-glade", "--windowed"]).unwrap();
+        let mut config = GameConfig::default();
+        config.video.display.fullscreen = true;
+        config.video.display.allow_exclusive_fullscreen = true;
+        config.video.display.windowed_resolution = [3840, 2160];
+        let policy = LaunchDisplayOverride::resolve(
+            &cli, &config.video.display, false, true, Some("4096x2160"),
+        ).unwrap().unwrap();
+        policy.apply(&mut config.video.display);
+        assert!(!config.video.display.fullscreen);
+        assert!(!config.video.display.allow_exclusive_fullscreen);
+        assert_eq!(config.video.display.windowed_resolution, [960, 540]);
+        // Applying a later video setting must obey the same explicit policy.
+        config.video.display.fullscreen = true;
+        policy.apply(&mut config.video.display);
+        assert!(!config.video.display.fullscreen);
+    }
+
+    #[test]
+    fn launch_size_is_explicit_windowed_and_rejects_invalid_extents() {
+        let cli = CliArgs::try_parse_from(["tiny-glade", "--window-size", "480x270"]).unwrap();
+        let display = country_core::render::render_config::DisplayConfig::default();
+        let policy = LaunchDisplayOverride::resolve(&cli, &display, true, true, Some("bad")).unwrap().unwrap();
+        let mut actual = display;
+        policy.apply(&mut actual);
+        assert!(!actual.fullscreen);
+        assert_eq!(actual.windowed_resolution, [480, 270]);
+        for invalid in ["0x540", "960x0", "-1x540", "960X540", "960x540x1", "4294967296x1"] {
+            assert!(CliArgs::try_parse_from(["tiny-glade", "--window-size", invalid]).is_err());
+        }
+    }
+
+    #[test]
+    fn legacy_standalone_window_size_stays_supported() {
+        let cli = CliArgs::default();
+        let display = country_core::render::render_config::DisplayConfig::default();
+        let policy = LaunchDisplayOverride::resolve(&cli, &display, true, false, Some("480x270")).unwrap().unwrap();
+        let mut actual = display.clone();
+        policy.apply(&mut actual);
+        assert!(!actual.fullscreen);
+        assert_eq!(actual.windowed_resolution, [480, 270]);
+        assert!(LaunchDisplayOverride::resolve(&cli, &display, false, false, Some("bad")).unwrap().is_none());
+        assert!(LaunchDisplayOverride::resolve(&cli, &display, true, false, Some("0x1")).is_err());
+    }
+
+    #[test]
+    fn temporary_display_override_preserves_other_settings_on_save() {
+        let cli = CliArgs::try_parse_from(["tiny-glade", "--window-size", "480x270"]).unwrap();
+        let mut config = GameConfig::default();
+        let original = config.video.display.clone();
+        let policy = LaunchDisplayOverride::resolve(&cli, &original, true, false, None).unwrap().unwrap();
+        policy.apply(&mut config.video.display);
+        config.dev.skip_welcome = true;
+        // A real monitor change and unrelated preferences remain writable.
+        config.video.display.monitor = Some(country_core::render::render_config::MonitorMatch {
+            name: Some("Runtime monitor".to_owned()),
+            physical_position: [960, 0],
+            physical_size: [1920, 1080],
+        });
+        let saved = policy.persistence_config(&config);
+        assert_eq!(saved.video.display.fullscreen, original.fullscreen);
+        assert_eq!(saved.video.display.allow_exclusive_fullscreen, original.allow_exclusive_fullscreen);
+        assert_eq!(saved.video.display.windowed_resolution, original.windowed_resolution);
+        assert_eq!(saved.video.display.monitor, config.video.display.monitor);
+        assert!(saved.dev.skip_welcome);
+        assert_eq!(config.video.display.windowed_resolution, [480, 270]);
+        assert!(!config.video.display.fullscreen);
     }
 }

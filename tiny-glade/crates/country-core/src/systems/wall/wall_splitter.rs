@@ -655,7 +655,10 @@ mod tests {
         assert_eq!(params.volume.tag, 2);
         let points = f.world.resource::<PublicWalls>().get(f.wall).unwrap().geometry.outline.len();
         assert!(points > 2, "the mapped outline is resampled");
-        assert_eq!(params.mesh_volume.as_ref().unwrap().len(), 2 * (points - 1));
+        let geometry = params.resolved_geometry();
+        let crate::systems::ui::resources::widget_params::WidgetGeometry::TriangleMesh(triangles)
+            = geometry.as_ref() else { panic!("splitter must register complete triangle mesh") };
+        assert_eq!(triangles.len(), 2 * (points - 1));
         assert!(!params.occlude_by_world);
         assert_eq!(f.world.resource::<UiSignifierStream>().committed_len(), 0);
         assert!(f.world.resource::<InnerWalls>().contains(f.wall));

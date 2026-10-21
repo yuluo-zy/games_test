@@ -67,10 +67,10 @@ pub fn make_focus_or_camera_binding_hint(
 }
 
 /// hint_clutter_focused_edit_condition（O 0x141c3d890）：profile 0x200!=0 →
-/// hint_done=1 返回；读 `ModeJustChanged`，首事件工具==3 → hint_done=1；未 done 且
+/// hint_done=1 返回；读 `ModeJustChanged`，末事件当前模式 tag==3 → hint_done=1；未 done 且
 /// 工具!=3 → false；写 TutorialHintComplete(id 9)；焦点实体字节==9 → PlayUiSound(kind 0x13)。
 /// **重建（2026-10-17，ModeJustChanged + GameProfile 落库）**；分歧点：焦点字节 Query
-/// 组件类型 U（seam `FocusSubjectByte`）、PlayUiSound id U。
+/// 组件类型 U（seam `FocusSubjectByte`）；音效实例 EventId 由 Bevy 管理。
 // O：反编译返回 void（0x14227da70 / 0x141c3d890 全部 `return;`），且原 add_onboarding 经 InfallibleSystemWrapper
 // 以普通系统入链（Out=()）；早先 `-> bool` 属误判，已改为 `()`，各早退路径语义不变。
 pub fn hint_clutter_focused_edit_condition(
@@ -85,8 +85,8 @@ pub fn hint_clutter_focused_edit_condition(
         state.hint_done = true;
         return;
     }
-    if let Some(first) = mode.read().next() {
-        if first.tool == 3 {
+    if let Some(latest) = mode.read().last() {
+        if latest.current.native_tag() == 3 {
             state.hint_done = true;
         } else if !state.hint_done {
             return;
@@ -98,8 +98,7 @@ pub fn hint_clutter_focused_edit_condition(
     if query.iter().next().is_some_and(|b| b.0 == 9) {
         let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
             kind: 0x13,
-            _payload: [0; 0x10],
-            id: 0,
+            _payload: [0; 20],
         });
     }
 }

@@ -24,7 +24,7 @@
 
 ## 宿主接线与边界
 
-工具栏真实启动入口接 OnEnter(Game)；Update/set7、set8 保留原嵌套 tuple 边界与无 deferred flush 的链顺序。沿用当前 MEI 的文本/Taffy 及已拆分的摄影系统，没有恢复旧的重复实现。正常启动入口调用 ToolbarPlugin build；剩余导航/隐藏/抢占等系统没有放空占位消费者。
+工具栏真实启动入口接 OnEnter(Game)；Update/set7、set8 保留原嵌套 tuple 边界与无 deferred flush 的链顺序。沿用当前 MEI 的文本/Taffy 及已拆分的摄影系统，没有恢复旧的重复实现。正常启动入口调用 ToolbarPlugin build；剩余导航/隐藏/抢占等系统没有放空占位消费者。独立只读审查确认事件维护、Taffy/TextRenderer/EraserSizeMultiplier/BrushSizes 的真实启动路径；PhotomodeScreenshotFolder 尚无宿主 producer，打开截图文件夹分支仍未闭合。
 
 decorator `build_recovered_visual_systems` 为候选接线入口，**尚未在 main 安装**：stair-attached 缓存未恢复时全类型运行仍可能触发 expect。现有 owner 的卸载函数是明确有限范围的实现，不能当成完整原卸载入口。ClutterMeshes/GraphicsDevice 等工程资源条件并非已证明的原作 guard。
 
@@ -44,6 +44,8 @@ decorator `build_recovered_visual_systems` 为候选接线入口，**尚未在 m
 decorator 首次 lib 为 215 通过、1 失败：旧 fixture 用非法 ExtraInfo tag8。窄修 fixture 为 Stair niche0后，整个 lib 216/216 通过，业务断言未弱化。摄影树 fixture 只修 CRLF 比较。同步最新代码后，第一阶段记录的六个缺失 lib fixture 阻断已消除；本轮实际编译 country-core 2740 项 lib tests，只运行列出的过滤目标，**不是 2740 全量执行**。
 
 宿主正常 `cargo check -p tiny-glade --lib --bins` 被本机旧安装路径缺失 `fmod.dll` 阻断。显式 FMOD_LIB_DIR 空目录的 metadata-only 检查随后也失败：system-critters/startup_sheep.rs 的 bare CR doc-comment（11 处诊断）。没有链接、原生音频、GPU 或整游戏通过结论。该类型检查在用户要求停止测试前已结束；收到“先提交别测了”后不再启动任何测试。
+
+提交前只读审查发现旧 camera-only 和完整摄影按钮 consumer 重复消费同一点击。已删除旧 camera-only 注册，把完整按钮与 slider reset 安排在 restore_after_timelapse 后、finish 前。此宿主接线窄修在用户要求停止测试后完成，未重新测试；不能用此前 364 项通过替代其运行验证。
 
 实际命令、返回码、失败与复验摘要见 `validation-results.json`；最终源码身份见 `source-manifest.json`。原码 probe 的 hooks 仅证明对应调用者边界，不能推导物理、渲染或完整游戏等价。第一阶段原报告保留为 `PHASE1-REPORT.md`。
 

@@ -133,6 +133,10 @@ pub struct FinishInputRecordingCmd;
 /// already owned by UiState. Neither a missing widget nor an inactive UI can
 /// create a recording group.
 fn active_widget_records_history(ui: &crate::systems::ui::resources::ui_state::UiState) -> bool {
+    // Original active Arc at UiState+0x20 outlives ui_update's frame-map clear.
+    if let Some(params) = ui.active_params() {
+        return !params.flags.no_history_recording();
+    }
     let id = ui.active_widget();
     if let Some(params) = ui.widget(id) {
         return !params.flags.no_history_recording();

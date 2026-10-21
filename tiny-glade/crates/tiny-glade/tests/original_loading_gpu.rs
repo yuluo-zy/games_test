@@ -67,7 +67,16 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
         }
     }
     vermeer::startup_vermeer(&mut Loader(&bridge, &shaders));
-    let extent = [320, 180];
+    let extent = if let Some(value) = std::env::var_os("TG_LOADING_SIZE") {
+        let value = value.to_str().expect("TG_LOADING_SIZE must be UTF-8 WIDTHxHEIGHT");
+        let (width, height) = value.split_once('x').expect("TG_LOADING_SIZE must be WIDTHxHEIGHT");
+        let extent = [width.parse::<u32>().expect("invalid TG_LOADING_SIZE width"),
+            height.parse::<u32>().expect("invalid TG_LOADING_SIZE height")];
+        assert!(!extent.contains(&0), "TG_LOADING_SIZE dimensions must be positive");
+        extent
+    } else {
+        [320, 180]
+    };
     let mut app = bevy_app::App::new();
     {
         let world = app.world_mut();
@@ -122,6 +131,9 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
             .in_set(tiny_glade::run_game::GameSystemSet(44)),
     );
     app.update();
+    // This fixture has no SavedSessionList: the genuine optional background
+    // preparation completes immediately, without creating a substitute image.
+    assert!(loading_graph::poll_background_preparation(app.world_mut()).unwrap());
     assert!(
         app.world().resource::<StartupProbe>().0,
         "canonical MEI attachment must exist before Update44"
@@ -278,7 +290,6 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
         vermeer::PASS_RASTER_STROKES,
         vermeer::PASS_COMBINE,
         "Mei 2D",
-        "UI shadow combine",
         "UI",
     ] {
         assert!(
@@ -286,16 +297,87 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
             "missing original pass: {name}"
         );
     }
+    // Original loading caller 0x140165347: r9d=0 (cast_ui_shadows=false).
+    // Its sequence at 0x14016532a/34a/36e is Vermeer, direct MEI, Logo UI.
+    // Gameplay alone derives the shadow branch from EscMenuState.
+    let order = &receipt.snapshot.pass_order;
+    assert!(!order.iter().any(|name| name == "UI shadow combine"),
+        "the original loading caller must not select gameplay's MEI shadow branch");
+    let position = |name: &str| order.iter().position(|pass| pass == name).unwrap();
+    assert!(position(vermeer::PASS_COMBINE) < position("Mei 2D"));
+    assert!(position("Mei 2D") < position("UI"));
     bridge.wait_submits_done(10_000_000_000).unwrap();
     let owner = bridge.exported_texture(&receipt, output.id).unwrap();
     assert_eq!([owner.desc.width, owner.desc.height], extent);
     let mut pixels = vec![0; byte_count];
     readback.read_bytes(0, &mut pixels).unwrap();
+    let logo = world.resource::<country_core::resources::logo_animation::LogoAnimation>();
+    eprintln!(
+        "LOADING FIXTURE {}x{} logo_progress={:?}; one Time tick=1/60, default FrameConstants, manual glyph input; no async handoff or welcome UI",
+        extent[0], extent[1], logo.progress,
+    );
+    // Save the actual final loading target after Vermeer, MEI and both logo
+    // draw-list entries. Unlike any-RGB!=0 below, the artifact and region facts
+    // let the reviewer distinguish a background from a single visible glyph.
+    if let Some(path) = std::env::var_os("TG_LOADING_PIXEL_OUT").map(PathBuf::from) {
+        if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        match path.extension().and_then(|extension| extension.to_str()) {
+            Some("png") => {
+                image::RgbaImage::from_raw(extent[0], extent[1], pixels.clone()).unwrap()
+                    .save_with_format(&path, image::ImageFormat::Png).unwrap();
+            }
+            Some("ppm") => {
+                let mut ppm = format!("P6\n{} {}\n255\n", extent[0], extent[1]).into_bytes();
+                for pixel in pixels.chunks_exact(4) { ppm.extend_from_slice(&pixel[..3]); }
+                std::fs::write(&path, ppm).unwrap();
+            }
+            _ => panic!("TG_LOADING_PIXEL_OUT must end in .png or .ppm"),
+        }
+        eprintln!("LOADING FINAL PIXELS: {}", path.display());
+    }
+    for (label, x0, y0, x1, y1) in [
+        ("full", 0, 0, extent[0], extent[1]),
+        ("top-left", 0, 0, extent[0] / 4, extent[1] / 4),
+        ("bottom-band", 0, extent[1] * 3 / 4, extent[0], extent[1]),
+    ] {
+        let mut colors = std::collections::HashSet::new();
+        let mut sum = 0u64;
+        let mut count = 0u64;
+        let mut black = 0u64;
+        let mut alpha = [u8::MAX, u8::MIN];
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let pixel = &pixels[((y as usize * extent[0] as usize + x as usize) * 4)..][..4];
+                let rgb = u32::from(pixel[0]) + u32::from(pixel[1]) + u32::from(pixel[2]);
+                sum += u64::from(rgb);
+                count += 1;
+                black += u64::from(rgb == 0);
+                colors.insert([pixel[0], pixel[1], pixel[2]]);
+                alpha = [alpha[0].min(pixel[3]), alpha[1].max(pixel[3])];
+            }
+        }
+        if count != 0 {
+            eprintln!("LOADING REGION {label}: pixels={count} mean_rgb={:.3} black_fraction={:.6} distinct={} alpha={alpha:?}",
+                sum as f64 / (3.0 * count as f64), black as f64 / count as f64, colors.len());
+        }
+    }
     assert!(
         pixels
             .chunks_exact(4)
             .any(|pixel| pixel[0] != 0 || pixel[1] != 0 || pixel[2] != 0),
         "actual packaged background and glyph draws must produce visible RGB data"
+    );
+    // The packaged background is opaque, and both native logo shaders emit
+    // premultiplied color. In particular the initial transparent logo quad
+    // must preserve its background, including alpha, rather than overwrite it
+    // with RGBA=0. The previous missing UI blend produced a 243x243 alpha-zero
+    // black rectangle at 960x540 despite the any-visible-RGB assertion passing.
+    assert_eq!(logo.progress, [0.0; 5]);
+    assert!(
+        pixels.chunks_exact(4).all(|pixel| pixel[3] == 255),
+        "transparent logo pixels must preserve the opaque packaged loading background"
     );
     // Releasing a library-backed consumer must retain the authoritative slots.
     drop(world.remove_resource::<LoadingGpuResources>());

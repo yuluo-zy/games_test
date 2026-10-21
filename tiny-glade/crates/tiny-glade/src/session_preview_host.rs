@@ -519,7 +519,9 @@ pub fn render(
         let mut ctx = DrawPassCtx::new(world, elapsed, &mut factory, &lookup);
         let mut pass = ctx.raster_pass(
             PASS_NAME,
-            &[ColorSpec::tag2(target)],
+            // B 0x1408f83b0: color tag0, carried in r9 at 0x1408f8404.
+            // Preview quads blend over the preceding menu/world composition.
+            &[ColorSpec::tag0(target)],
             DepthSpec::None,
             target,
         );

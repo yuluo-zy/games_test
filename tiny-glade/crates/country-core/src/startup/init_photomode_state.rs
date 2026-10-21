@@ -2,6 +2,13 @@
 use crate::resources::photo_mode::PhotoModeCameraMode;
 use bevy_ecs::resource::Resource;
 
+/// Original one-byte screenshot-message visibility owner, read by toolbar
+/// `hide_ui`. The application constructor passes zero to its resource insert
+/// at B 0x14059f3d7..3d9; the insert stores that byte at 0x14011d557.
+/// This is application state, separate from each session's PhotomodeState reset.
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SteamdeckScreenshotMsgScreen(pub bool);
+
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub struct PhotomodeState {
     /// 拍照标量；demo 初值为 1，完整版为 3。

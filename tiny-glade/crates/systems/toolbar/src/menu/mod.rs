@@ -4,5 +4,6 @@ pub mod credits;
 pub mod load;
 pub mod report_bug;
 pub mod splash;
+pub mod welcome;
 
 pub mod load_ui;

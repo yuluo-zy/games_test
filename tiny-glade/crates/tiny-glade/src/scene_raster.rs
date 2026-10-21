@@ -110,8 +110,9 @@ impl<'f, 's, 'w, 'l> SceneRasterHost<'f, 's, 'w, 'l> {
     pub fn late_forward_and_deferred_pass(
         &mut self,
         targets: &MainPassTargets,
+        scene_color: &AttachmentTexture,
     ) -> rhapsody::Result<()> {
-        self.with_ctx(|ctx, lists| main_pass::late_forward_and_deferred_pass(ctx, targets, lists))
+        self.with_ctx(|ctx, lists| main_pass::late_forward_and_deferred_pass(ctx, targets, scene_color, lists))
     }
     pub fn shadow_pass(&mut self) -> rhapsody::Result<()> {
         self.with_ctx(shadow_pass::shadow_pass)

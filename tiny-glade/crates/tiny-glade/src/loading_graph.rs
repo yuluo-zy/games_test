@@ -18,7 +18,7 @@ use country_core::{
     render::{load_texture::{AlignedFile, parse_compiled_image, boundary::TextureDevice},
         pass_builder::{pass_resource_access::RgTexture, rg_resources::RgResources}},
     resources::{session::SavedSessionList, window::WindowSize},
-    rhapsody_types::{Texture, TextureDesc},
+    rhapsody_types::TextureDesc,
     systems::render_loop::{
         draw_passes::{d_main_support::{DrawPassCtx, ShaderLookup}, draw_lists::DrawLists,
             ui_2d_pass, ui_pass},
@@ -32,11 +32,84 @@ use crate::{effects_host::{EffectsHost, attachment}, frame_world::{FrameLibrarie
     mei_host::{MeiHost, load_text_fonts},
     render_bridge::CoreGraphFrame, render_host::HostTables};
 
+#[path = "loading_background_prepare.rs"]
+mod background_prepare;
+pub use background_prepare::LoadingBackgroundStatus;
+
 #[derive(Resource)]
 pub struct LoadingGpuResources {
     pub mei: MeiHost,
-    background_attempted: bool,
-    background: Option<Texture>,
+    background_preparation: background_prepare::BackgroundPreparation,
+}
+
+/// The native managed owner survives the loading→gameplay App move. Graph
+/// indices and TextureHost slot numbers are deliberately not persisted here.
+#[derive(Resource)]
+pub(crate) struct SavedLoadingBackgroundTexture(pub Arc<rhapsody::resource::Texture>);
+
+pub(crate) fn import_saved_background(
+    frame: &mut CoreGraphFrame<'_>, world: &World,
+) -> rhapsody::Result<Option<RgTexture>> {
+    let Some(owner) = world.get_resource::<SavedLoadingBackgroundTexture>() else { return Ok(None); };
+    let texture = owner.0.clone();
+    let desc = TextureDesc::new_2d([texture.desc.width, texture.desc.height], texture.desc.format.as_raw() as u32).sampled();
+    // The existing import checks exact Device identity and retains this Arc
+    // through graph cancellation, submission and GPU completion.
+    let resource = frame.import_native_texture_owned(texture, 0x22)?;
+    Ok(Some(RgTexture { resource: resource.raw(), desc }))
+}
+
+pub(crate) fn refresh_saved_background_reference(
+    state: &mut VermeerState, imported: Option<RgTexture>,
+) -> rhapsody::Result<()> {
+    if state.background.is_some() {
+        let imported = imported.ok_or_else(|| rhapsody::Error::invalid_usage(
+            "Vermeer background reference has no saved managed texture owner in this App"))?;
+        state.background = Some(vermeer::ManagedTexture(
+            country_core::systems::render_loop::painterly::TexRef(imported.resource)));
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_saved_background_handoff(from: &World, to: &World) -> Result<()> {
+    if !from.get_resource::<VermeerState>().is_some_and(|state| state.background.is_some()) {
+        return Ok(());
+    }
+    let owner = from.get_resource::<SavedLoadingBackgroundTexture>()
+        .context("loading→gameplay: Vermeer background is Some but its managed texture owner is missing")?;
+    for (world, name) in [(from, "loading"), (to, "gameplay")] {
+        let device = world.get_resource::<country_core::render::device::GraphicsDeviceResource>()
+            .with_context(|| format!("loading→gameplay: {name} background GraphicsDeviceResource is missing"))?;
+        anyhow::ensure!(Arc::ptr_eq(owner.0.device(), device.device().inner()),
+            "loading→gameplay: saved background belongs to a different {name} graphics device");
+    }
+    anyhow::ensure!(!to.contains_resource::<SavedLoadingBackgroundTexture>(),
+        "loading→gameplay: gameplay App already owns another saved reveal background");
+    Ok(())
+}
+
+/// Called immediately before the first loading render, and before later loading
+/// updates while pending. Freeze the original first-session choice once. This
+/// only starts/polls owned CPU work; it never uploads or waits for a worker/GPU.
+/// Actual loading rendering still requires its Startup owners; CPU-only frame
+/// fixtures without loading GPU resources have no optional preparation work.
+pub fn poll_background_preparation(world: &mut World) -> Result<bool> {
+    // CPU-only frame-driver fixtures do not install loading GPU owners. Actual
+    // loading rendering retains its mandatory Startup/resource validation.
+    let Some(gpu) = world.get_resource::<LoadingGpuResources>() else { return Ok(true); };
+    if gpu.background_preparation.is_ready() { return Ok(true); }
+    let path = if gpu.background_preparation.needs_selection() {
+        world.get_resource::<SavedSessionList>()
+            .and_then(|list| list.sessions.first()).map(|session| session.loading_background_path())
+    } else { None };
+    let mut gpu = world.get_resource_mut::<LoadingGpuResources>()
+        .context("loading background: original loading Startup owner is missing")?;
+    Ok(gpu.background_preparation.poll(path).map_err(anyhow::Error::msg)? == LoadingBackgroundStatus::Ready)
+}
+
+pub fn is_background_preparation_pending(world: &World) -> bool {
+    world.get_resource::<LoadingGpuResources>()
+        .is_some_and(|gpu| gpu.background_preparation.is_pending())
 }
 
 /// Register the original loading Startup subset on this App's real owners.
@@ -164,7 +237,7 @@ pub(crate) fn attach_loading_mei(
         .context("loading App AssetSsboLibrary producer has not run")?;
     let mei = MeiHost::from_library(device, hosts.buffers.clone(), hosts.textures.clone(), library)?;
     world.insert_resource(LoadingGpuResources { mei,
-        background_attempted: false, background: None });
+        background_preparation: background_prepare::BackgroundPreparation::default() });
     Ok(())
 }
 
@@ -186,6 +259,12 @@ pub fn build_loading_frame(
     frame: &mut CoreGraphFrame<'_>, world: &mut World, shaders: &AssetShaderLibrary,
     extent: [u32; 2], _swapchain_format: u32, lists: &DrawLists,
 ) -> rhapsody::Result<render_world::RgTexture> {
+    if !poll_background_preparation(world).map_err(|error|
+        rhapsody::Error::invalid_usage(format!("loading background preparation failed: {error:#}")))?
+    {
+        return Err(rhapsody::Error::invalid_usage(
+            "loading background CPU preparation is pending; defer the first loading render before advancing reveal"));
+    }
     crate::frame_setup::with_frame_resources(frame, world, |frame, world|
         build_loading_with_resources(frame, world, shaders, extent, lists))
 }
@@ -208,28 +287,32 @@ fn build_loading(
     if extent.contains(&0) { return Err(fail("B loading graph requires nonzero extent")); }
     let dt = world.get_resource::<bevy_time::Time>().ok_or_else(|| fail("B loading graph: Time<()> is missing"))?.delta_secs();
     let time = world.resource::<bevy_time::Time>().elapsed();
-    // O: the process-static optional image is attempted once. Missing save list,
-    // image decoding or optional GPU-image creation keeps it absent.
-    if !gpu.background_attempted {
-        gpu.background_attempted = true;
-        let path = world.get_resource::<SavedSessionList>()
-            .and_then(|list| list.sessions.first()).map(|s| s.loading_background_path());
-        if let Some(path) = path {
-            if let Ok(image) = image::open(path) {
-                let rgba = image.to_rgba8();
-                gpu.background = frame.hosts().textures.create_texture("loading background",
-                    &TextureDesc::new_2d([rgba.width(), rgba.height()], 0x2b).sampled(), &rgba).ok();
+    // Original optional background is attempted once. The host must keep the
+    // reveal/Vermeer clocks stopped while CPU preparation is pending; absence
+    // and pending are different states. Upload only a genuinely decoded image
+    // through this App's exact TextureHost before the first loading draw.
+    if let Some(rgba) = gpu.background_preparation.take_ready().map_err(|error| fail(error))? {
+        match frame.hosts().textures.create_texture("loading background",
+            &TextureDesc::new_2d([rgba.width(), rgba.height()], 0x2b).sampled(), &rgba)
+        {
+            Ok(texture) => {
+                let native = frame.hosts().textures.get(&texture).ok_or_else(||
+                    fail("loading background upload returned a texture outside the original host"))?.shared();
+                // This one-off upload is not a named texture-library entry.
+                // Retain the actual Arc instead of pinning a loading-host slot.
+                frame.hosts().textures.release(&texture);
+                world.insert_resource(SavedLoadingBackgroundTexture(native));
             }
+            Err(error) => log::warn!(target: "tiny_glade::startup",
+                "Optional loading background GPU upload failed; retaining original absent-background fallback: {error}"),
         }
     }
     let target = frame.with_compute(|f| Ok(f.create_raw_texture("loading screen", &TextureDesc::new_2d(extent, 0x2b))))?;
-    let background = if let Some(texture) = &gpu.background {
-        let id = frame.import_texture(texture, 0x22)?;
-        Some(RgTexture { resource: id.raw(), desc: TextureDesc::new_2d([texture.width, texture.height], texture.format).sampled() })
-    } else { None };
+    let background = import_saved_background(frame, world)?;
     let timer = {
         let mut state = world.get_resource_mut::<VermeerState>().ok_or_else(|| fail("B loading graph: VermeerPlugin state is missing"))?;
         assert_ne!(state.phase, VermeerPhase::Disabled, "loading screen requires activated Vermeer state");
+        refresh_saved_background_reference(&mut state, background)?;
         state.timer += dt.min(1.0 / 30.0);
         if let Some(background) = background {
             // This source-level view is refreshed to this frame's real imported
@@ -271,14 +354,16 @@ fn build_loading(
     let blue = textures.get_by_name(NameHash(0x579f_39ab_91a0_1865));
     raster.assets.lock().textures_by_name.insert(0x579f_39ab_91a0_1865,
         (country_core::rhapsody_contract::ManagedHandle(blue.id), country_core::render::pass_builder::framebuffer_binding::AttachmentTexture::from(blue)));
-    let temp = frame.with_compute(|f| Ok(f.create_raw_texture("mei temp", &TextureDesc::new_2d(extent, 0x2b))))?;
     let lookup = LibraryShaders(shaders);
     frame.with_raster(|host| {
         let mut new_host = || -> Box<dyn country_core::render::pass_builder::draw_stream::PassHost> {
             Box::new(host.sibling())
         };
         let mut ctx = DrawPassCtx::new(world, time, &mut new_host, &lookup);
-        ui_2d_pass::mei_pass(&mut ctx, &attachment(target), &attachment(temp), (extent[0], extent[1]), &text);
+        // B compile_loading 0x140165347 clears r9d before mei_pass:
+        // cast_ui_shadows=false draws directly onto the loading target.
+        // Only the gameplay caller derives this flag from EscMenuState.
+        ui_2d_pass::mei_pass_with_shadows(&mut ctx, &attachment(target), None, (extent[0], extent[1]), &text);
         Ok(())
     })?;
     if !lists.list(country_core::systems::render_loop::draw_passes::draw_lists::list::LOADING_SCREEN).is_empty() {
@@ -310,5 +395,44 @@ impl ShaderLookup for LibraryShaders<'_> {
     fn raster_handle_by_name(&self, name: &str) -> Option<country_core::rhapsody_contract::Handle<country_core::render::shader::RasterShaderProgram>> {
         self.0.get_raster_handle_by_name(name).map(|h| country_core::rhapsody_contract::Handle(
             country_core::rhapsody_contract::ManagedHandle(h.id().raw()), core::marker::PhantomData))
+    }
+}
+
+#[cfg(test)]
+mod saved_background_reference_tests {
+    use super::*;
+
+    fn imported(resource: u32) -> RgTexture {
+        // Pure graph-view metadata fixture; this does not claim a GPU owner.
+        RgTexture { resource, desc: TextureDesc::new_2d([2, 1], 0x2b).sampled() }
+    }
+
+    #[test]
+    fn saved_background_reference_is_refreshed_for_each_graph_namespace() {
+        use country_core::systems::render_loop::painterly::TexRef;
+        let mut state = VermeerState::default();
+        state.background = Some(vermeer::ManagedTexture(TexRef(999)));
+        refresh_saved_background_reference(&mut state, Some(imported(7))).unwrap();
+        assert_eq!(state.background.as_ref().unwrap().0, TexRef(7));
+        // The next App/frame may reuse graph indices for completely different
+        // resources. Its real import's new index must replace the old one.
+        refresh_saved_background_reference(&mut state, Some(imported(42))).unwrap();
+        assert_eq!(state.background.as_ref().unwrap().0, TexRef(42));
+    }
+
+    #[test]
+    fn background_some_without_managed_owner_is_rejected_not_erased() {
+        use country_core::systems::render_loop::painterly::TexRef;
+        let mut state = VermeerState::default();
+        state.background = Some(vermeer::ManagedTexture(TexRef(999)));
+        assert!(refresh_saved_background_reference(&mut state, None).is_err());
+        assert_eq!(state.background.as_ref().unwrap().0, TexRef(999));
+    }
+
+    #[test]
+    fn original_no_background_never_gains_a_graph_reference() {
+        let mut state = VermeerState::default();
+        refresh_saved_background_reference(&mut state, None).unwrap();
+        assert!(state.background.is_none());
     }
 }

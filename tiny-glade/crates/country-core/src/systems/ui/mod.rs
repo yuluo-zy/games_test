@@ -1,5 +1,8 @@
-//! Recovered widget registration/query owner. Input arbitration and the other
-//! widget volumes remain separate work; no default interaction is fabricated.
+//! Complete widget geometry, real hover picking and captured input ownership.
+//! Host registration preserves native set6 ordering; signifier integration has
+//! separate outstanding factory producer dependencies.
+pub mod hover_intersection;
+pub mod ui_update;
 pub mod resources;
 pub mod signifiers;
 

@@ -1,0 +1,354 @@
+--- a/tiny-glade/crates/country-core/src/resources/events.rs
++++ b/tiny-glade/crates/country-core/src/resources/events.rs
+@@ -37,18 +37,11 @@
+     }
+ }
+ 
+-/// 模式刚切换事件（0x28B EventInstance = 0x20B 载荷，O：`hint_focused_edit_condition`
+-/// 0x14227da70 以 0x28 步长遍历 `ModeJustChanged`、读 `+8` 载荷首 u32 与 `tool-1<2`；
+-/// system_color `autoclose_color_menu` 0x142298d30 同样 0x28 步长消费）。
+-/// 载荷 = `{tool u32@+8, +0xc..+0x20 U}`。
+-#[repr(C)]
+-#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+-pub struct ModeJustChanged {
+-    /// +0x08：刚切换到的工具 id（u32，O）。
+-    pub tool: u32,
+-    /// +0x0c..+0x20：其余载荷（U，typed gap 表达以对齐 0x20B 载荷/0x28B 步长）。
+-    pub _gap: [u8; 0x1c],
+-}
++/// Native publisher 140a875e0 writes current AppMode at +0, previous at
++/// +0x10, then Bevy EventId at +0x20; finally previous := current.
++/// Keep one semantic event identity and both complete AppMode payloads.
++/// The rebuilding compiler's private enum layout is not a native ABI contract.
++pub use crate::systems::mode_manager::AppModeChanged as ModeJustChanged;
+ 
+ /// 菜单刚打开事件（O：`resources::gui::EscapeMenuJustOpened` 族——原模块
+ /// `resources::gui`；autoclose_color_menu 消费。载荷语义 U）。
+--- a/tiny-glade/crates/systems/toolbar/src/toolbar_button.rs
++++ b/tiny-glade/crates/systems/toolbar/src/toolbar_button.rs
+@@ -228,7 +228,7 @@
+     }
+     // B 0x14234322b..26c selects the tail of the newer nonempty event buffer,
+     // otherwise the older buffer. Consume all unread events and use the last.
+-    let last_tool = mode_changed.read().last().map(|event| event.tool);
++    let last_tool = mode_changed.read().last().map(|event| event.current.native_tag());
+     if tod_screen.visible && last_tool.is_some_and(|tool| tool != 0xd) {
+         tod_screen.visible = false;
+     }
+@@ -281,8 +281,8 @@
+         world
+             .resource_mut::<Events<ModeJustChanged>>()
+             .send(ModeJustChanged {
+-                tool: 7,
+-                _gap: [0; 0x1c],
++                current: AppMode::Path,
++                previous: AppMode::default(),
+             });
+         schedule.run(&mut world);
+         world.flush();
+--- a/tiny-glade/crates/systems/color/src/autoclose_color_menu.rs
++++ b/tiny-glade/crates/systems/color/src/autoclose_color_menu.rs
+@@ -17,7 +17,7 @@
+ ) {
+     // Only the latest mode command participates, not any earlier command in
+     // this reader batch. A non-Customize mode does not consume escape events.
+-    if modes.read().last().is_some_and(|mode| mode.tool != 12) {
++    if modes.read().last().is_some_and(|mode| mode.current.native_tag() != 12) {
+         hides.write(HideColorMenuCmd { cancel: true });
+         return;
+     }
+--- a/tiny-glade/crates/systems/onboarding/src/hint_focused_edit.rs
++++ b/tiny-glade/crates/systems/onboarding/src/hint_focused_edit.rs
+@@ -37,11 +37,11 @@
+ pub struct FocusSubjectByte(pub u8);
+ 
+ /// hint_focused_edit_condition（O 0x14227da70）：profile 0x1f5!=0 → hint_done=1 返回；
+-/// 读 `ModeJustChanged`（0x28B），首事件工具 ∈ {1,2}（`*piVar5-1U<2`）→ hint_done=1；
++/// 读 `ModeJustChanged`（0x28B），末事件当前模式 tag ∈ {1,2}（`*piVar5-1U<2`）→ hint_done=1；
+ /// 未 done 且工具不满足 → false；写 TutorialHintComplete(id 1)；焦点实体字节==1 →
+ /// PlayUiSound(kind 0x13)。
+ /// **重建（2026-10-17，ModeJustChanged + GameProfile 落库）**；分歧点：焦点字节 Query
+-/// 组件类型 U（seam `FocusSubjectByte`）、PlayUiSound id U。
++/// 组件类型 U（seam `FocusSubjectByte`）；音效实例 EventId 由 Bevy 管理。
+ // O：反编译返回 void（0x14227da70 / 0x141c3d890 全部 `return;`），且原 add_onboarding 经 InfallibleSystemWrapper
+ // 以普通系统入链（Out=()）；早先 `-> bool` 属误判，已改为 `()`，各早退路径语义不变。
+ pub fn hint_focused_edit_condition(
+@@ -56,8 +56,8 @@
+         state.hint_done = true;
+         return;
+     }
+-    if let Some(first) = mode.read().next() {
+-        if matches!(first.tool, 1 | 2) {
++    if let Some(latest) = mode.read().last() {
++        if matches!(latest.current.native_tag(), 1 | 2) {
+             state.hint_done = true;
+         } else if !state.hint_done {
+             return;
+@@ -69,8 +69,7 @@
+     if query.iter().next().is_some_and(|b| b.0 == 1) {
+         let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
+             kind: 0x13,
+-            _payload: [0; 0x10],
+-            id: 0,
++            _payload: [0; 20],
+         });
+     }
+ }
+@@ -235,3 +234,60 @@
+         assert_eq!(world.resource::<FocusedEditHintConditions>().count, 1);
+     }
+ }
++
++#[cfg(test)]
++mod canonical_mode_publication_tests {
++    use super::*;
++    use country_core::resources::events::ModeJustChanged;
++    use country_core::systems::mode_manager::{
++        send_mode_just_changed_event, AppMode, EditSubject, PreviousAppMode,
++    };
++    use crate::hint_clutter_focus_edit::{
++        hint_clutter_focused_edit_condition, FocusedClutterHintConditions,
++    };
++    use crate::tutorial_completion::TutorialHintComplete;
++
++    #[test]
++    fn published_latest_mode_controls_both_hint_consumers_and_drains_old_modes() {
++        for (target, expected_hint) in [
++            (AppMode::Editing(EditSubject::Wall(0xfedc_ba98_7654_3210)), 1),
++            (AppMode::Editing(EditSubject::DecoClutter { decorator_id: 0xdead_beef }), 9),
++        ] {
++            let mut world = World::new();
++            world.init_resource::<country_core::game_profile::GameProfile>();
++            world.init_resource::<FocusedEditHintConditions>();
++            world.init_resource::<FocusedClutterHintConditions>();
++            world.init_resource::<PreviousAppMode>();
++            world.init_resource::<Events<ModeJustChanged>>();
++            world.init_resource::<Events<TutorialHintComplete>>();
++            world.init_resource::<Events<country_core::systems::ui::resources::widget_params::PlayUiSound>>();
++            let mut publish = Schedule::default();
++            publish.add_systems(send_mode_just_changed_event);
++            let mut consume = Schedule::default();
++            consume.add_systems((hint_focused_edit_condition, hint_clutter_focused_edit_condition));
++
++            // A qualifying old-buffer mode must not override the newest Path.
++            world.insert_resource(target);
++            publish.run(&mut world);
++            world.resource_mut::<Events<ModeJustChanged>>().update();
++            world.insert_resource(AppMode::Path);
++            publish.run(&mut world);
++            consume.run(&mut world);
++            assert!(!world.resource::<FocusedEditHintConditions>().hint_done);
++            assert!(!world.resource::<FocusedClutterHintConditions>().hint_done);
++            assert_eq!(world.resource::<Events<TutorialHintComplete>>().len(), 0);
++            consume.run(&mut world);
++            assert_eq!(world.resource::<Events<TutorialHintComplete>>().len(), 0);
++
++            // Re-enter through the real publisher; only the latest target qualifies.
++            world.insert_resource(target);
++            publish.run(&mut world);
++            consume.run(&mut world);
++            let completed: Vec<_> = world.resource_mut::<Events<TutorialHintComplete>>()
++                .drain().map(|event| event.id).collect();
++            assert_eq!(completed, vec![expected_hint]);
++            consume.run(&mut world);
++            assert_eq!(world.resource::<Events<TutorialHintComplete>>().len(), 0);
++        }
++    }
++}
+--- a/tiny-glade/crates/systems/onboarding/src/hint_clutter_focus_edit.rs
++++ b/tiny-glade/crates/systems/onboarding/src/hint_clutter_focus_edit.rs
+@@ -67,10 +67,10 @@
+ }
+ 
+ /// hint_clutter_focused_edit_condition（O 0x141c3d890）：profile 0x200!=0 →
+-/// hint_done=1 返回；读 `ModeJustChanged`，首事件工具==3 → hint_done=1；未 done 且
++/// hint_done=1 返回；读 `ModeJustChanged`，末事件当前模式 tag==3 → hint_done=1；未 done 且
+ /// 工具!=3 → false；写 TutorialHintComplete(id 9)；焦点实体字节==9 → PlayUiSound(kind 0x13)。
+ /// **重建（2026-10-17，ModeJustChanged + GameProfile 落库）**；分歧点：焦点字节 Query
+-/// 组件类型 U（seam `FocusSubjectByte`）、PlayUiSound id U。
++/// 组件类型 U（seam `FocusSubjectByte`）；音效实例 EventId 由 Bevy 管理。
+ // O：反编译返回 void（0x14227da70 / 0x141c3d890 全部 `return;`），且原 add_onboarding 经 InfallibleSystemWrapper
+ // 以普通系统入链（Out=()）；早先 `-> bool` 属误判，已改为 `()`，各早退路径语义不变。
+ pub fn hint_clutter_focused_edit_condition(
+@@ -85,8 +85,8 @@
+         state.hint_done = true;
+         return;
+     }
+-    if let Some(first) = mode.read().next() {
+-        if first.tool == 3 {
++    if let Some(latest) = mode.read().last() {
++        if latest.current.native_tag() == 3 {
+             state.hint_done = true;
+         } else if !state.hint_done {
+             return;
+@@ -98,8 +98,7 @@
+     if query.iter().next().is_some_and(|b| b.0 == 9) {
+         let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
+             kind: 0x13,
+-            _payload: [0; 0x10],
+-            id: 0,
++            _payload: [0; 20],
+         });
+     }
+ }
+--- a/tiny-glade/crates/systems/onboarding/src/exponential_back_off.rs
++++ b/tiny-glade/crates/systems/onboarding/src/exponential_back_off.rs
+@@ -81,11 +81,11 @@
+         cooldown_b = TutorialCooldowns::DEFAULT_COOLDOWN;
+         profile.tutorial_cooldowns.cooldown_b = cooldown_b;
+     }
+-    // O：B 读者（ModeJustChanged 0x28B）首事件载荷 u32 ∈ {1,2}（`*piVar11-1U<2`）。
++    // O：B 读者（ModeJustChanged 0x28B）末事件当前模式 tag ∈ {1,2}（`*piVar11-1U<2`）。
+     let mode_triggered = mode_b
+         .read()
+-        .next()
+-        .is_some_and(|e| (1..=2).contains(&e.tool));
++        .last()
++        .is_some_and(|e| (1..=2).contains(&e.current.native_tag()));
+     if mode_triggered {
+         profile.tutorial_cooldowns.timer_b = 0.0;
+         cooldown_b = (cooldown_b * 1.5).clamp(720.0, 10800.0);
+@@ -117,3 +117,50 @@
+     let tc = &mut profile.tutorial_cooldowns;
+     tc.timer_a = tc.timer_a.clamp(0.0, tc.cooldown_a);
+ }
++
++#[cfg(test)]
++mod canonical_mode_backoff_tests {
++    use super::*;
++    use country_core::resources::events::{ModeJustChanged, WriteSettingsFileCmd};
++    use country_core::systems::mode_manager::{
++        send_mode_just_changed_event, AppMode, EditSubject, PreviousAppMode,
++    };
++
++    #[test]
++    fn published_latest_mode_controls_backoff_once_across_both_event_buffers() {
++        let mut world = World::new();
++        world.init_resource::<country_core::game_profile::GameProfile>();
++        world.init_resource::<GameTime>();
++        world.init_resource::<PreviousAppMode>();
++        world.init_resource::<crate::hint_deselect_tool::DeselectToolHintConditions>();
++        world.init_resource::<crate::hint_focused_edit::FocusedEditHintConditions>();
++        world.init_resource::<Events<ModeJustChanged>>();
++        world.init_resource::<Events<WriteSettingsFileCmd>>();
++        world.init_resource::<Events<country_core::resources::window::CursorMovedScreenSpace>>();
++        world.init_resource::<Events<crate::DisplayHintRequest>>();
++        world.resource_mut::<GameTime>().delta = 0.0;
++        world.resource_mut::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b = 800.0;
++        let mut publish = Schedule::default();
++        publish.add_systems(send_mode_just_changed_event);
++        let mut consume = Schedule::default();
++        consume.add_systems(exponential_back_off);
++
++        world.insert_resource(AppMode::Editing(EditSubject::Roof(0x1234_5678_90ab_cdef)));
++        publish.run(&mut world);
++        world.resource_mut::<Events<ModeJustChanged>>().update();
++        world.insert_resource(AppMode::Path);
++        publish.run(&mut world);
++        consume.run(&mut world);
++        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 800.0);
++        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 0);
++
++        world.insert_resource(AppMode::Editing(EditSubject::Wall(0xfeed_dead_beef_1234)));
++        publish.run(&mut world);
++        consume.run(&mut world);
++        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 1200.0);
++        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 1);
++        consume.run(&mut world);
++        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 1200.0);
++        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 1);
++    }
++}
+--- a/tiny-glade/crates/systems/toolbar/tests/tb_e_toolbar_buttons.rs
++++ b/tiny-glade/crates/systems/toolbar/tests/tb_e_toolbar_buttons.rs
+@@ -12,11 +12,11 @@
+ use toolbar::resouces_and_components::{SwitchAppModeButton, UiPlaySelectAnimation};
+ use toolbar::ui_interaction::UiClickEvent;
+ 
+-fn mode_changed() -> ModeJustChanged {
+-    ModeJustChanged {
+-        tool: 7,
+-        _gap: [0; 0x1c],
+-    }
++fn publish_mode_change(world: &mut World) {
++    world.init_resource::<country_core::systems::mode_manager::PreviousAppMode>();
++    let mut publish = Schedule::default();
++    publish.add_systems(country_core::systems::mode_manager::send_mode_just_changed_event);
++    publish.run(world);
+ }
+ 
+ #[test]
+@@ -68,9 +68,7 @@
+     assert!(world.get::<UiPlaySelectAnimation>(water).is_none());
+ 
+     // ModeJustChanged phase: drains the event and compares targets.
+-    world
+-        .resource_mut::<Events<ModeJustChanged>>()
+-        .send(mode_changed());
++    publish_mode_change(&mut world);
+     schedule.run(&mut world);
+     world.flush();
+ 
+@@ -120,3 +118,25 @@
+     assert_eq!(state.keep, 1);
+     assert!(world.get::<UiPlaySelectAnimation>(button).is_none());
+ }
++
++#[test]
++fn canonical_publisher_retains_complete_modes_and_suppresses_unchanged_mode() {
++    use country_core::systems::mode_manager::{AppModeChanged, EditSubject, PreviousAppMode};
++    assert_eq!(std::any::TypeId::of::<ModeJustChanged>(), std::any::TypeId::of::<AppModeChanged>());
++    let previous = AppMode::Editing(EditSubject::Wall(0xfedc_ba98_7654_3210));
++    let current = AppMode::Editing(EditSubject::DecoClutter { decorator_id: 0xdead_beef });
++    let mut world = World::new();
++    world.init_resource::<Events<ModeJustChanged>>();
++    world.insert_resource(PreviousAppMode(previous));
++    world.insert_resource(current);
++    publish_mode_change(&mut world);
++    let events: Vec<_> = world.resource_mut::<Events<ModeJustChanged>>().drain().collect();
++    assert_eq!(events, vec![AppModeChanged { current, previous }]);
++    assert_eq!(world.resource::<PreviousAppMode>().0, current);
++    publish_mode_change(&mut world);
++    assert_eq!(world.resource::<Events<ModeJustChanged>>().len(), 0);
++    world.insert_resource(previous);
++    publish_mode_change(&mut world);
++    let events: Vec<_> = world.resource_mut::<Events<ModeJustChanged>>().drain().collect();
++    assert_eq!(events, vec![AppModeChanged { current: previous, previous: current }]);
++}
+--- a/tiny-glade/crates/systems/toolbar/tests/tod_focus_event_order.rs
++++ b/tiny-glade/crates/systems/toolbar/tests/tod_focus_event_order.rs
+@@ -25,8 +25,12 @@
+     (world, schedule, button)
+ }
+ 
+-fn mode(world: &mut World, tool: u32) {
+-    world.resource_mut::<Events<ModeJustChanged>>().send(ModeJustChanged { tool, _gap: [0; 0x1c] });
++fn mode(world: &mut World, current: country_core::systems::mode_manager::AppMode) {
++    world.init_resource::<country_core::systems::mode_manager::PreviousAppMode>();
++    world.insert_resource(current);
++    let mut publish = Schedule::default();
++    publish.add_systems(country_core::systems::mode_manager::send_mode_just_changed_event);
++    publish.run(world);
+ }
+ 
+ #[test]
+@@ -55,15 +59,15 @@
+ fn latest_unread_mode_across_both_event_buffers_controls_visibility() {
+     let (mut world, mut schedule, _) = fixture();
+     world.resource_mut::<TimeOfDayScreen>().visible = true;
+-    mode(&mut world, 7);
++    mode(&mut world, country_core::systems::mode_manager::AppMode::Path);
+     world.resource_mut::<Events<ModeJustChanged>>().update();
+-    mode(&mut world, 0xd);
++    mode(&mut world, country_core::systems::mode_manager::AppMode::Replay);
+     schedule.run(&mut world);
+     assert!(world.resource::<TimeOfDayScreen>().visible, "newest exempt mode wins");
+ 
+-    mode(&mut world, 0xd);
++    mode(&mut world, country_core::systems::mode_manager::AppMode::Replay);
+     world.resource_mut::<Events<ModeJustChanged>>().update();
+-    mode(&mut world, 7);
++    mode(&mut world, country_core::systems::mode_manager::AppMode::Path);
+     schedule.run(&mut world);
+     assert!(!world.resource::<TimeOfDayScreen>().visible, "newest normal mode closes TOD");
+ 

@@ -648,12 +648,10 @@ pub fn sort_display_hint_requests(requests: &mut [&DisplayHintRequest]) {
     requests.sort_by(|a, b| a.id.cmp(&b.id));
 }
 
-/// 工具栏 UI 焦点事件（O 原生类型 =
-/// `country_core::resources::toolbar::ToolbarUiIsInFocus`，由 toolbar plugin 注册；
-/// country-core 尚未落该类型）。本模块以同名本地 unit 事件承接 `hint_orchestrator`
-/// 的第 5 个 `EventReader` SystemParam；生产者/注册归属接线登记 U。
-#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ToolbarUiIsInFocus;
+/// The original reader and toolbar producer share this core-owned event.
+/// Keep the public onboarding path as a re-export so existing registration
+/// sites use the same Bevy event storage and cursor rather than a second ZST.
+pub use country_core::resources::toolbar::ToolbarUiIsInFocus;
 
 /// 提示文本构造（O 0x14227fc30 文本分支，disasm 0x1422800ea/0x142280408/0x142280490）：
 /// * id == 0x12：`lang_lib::lookup("Rollercoaster.Ride")` → `format!("{} 🎢", …)`

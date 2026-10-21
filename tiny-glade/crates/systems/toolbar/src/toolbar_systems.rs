@@ -375,8 +375,7 @@ pub fn toolbar_auto_hide(
         if let Some(kind) = auto_hide_sound_kind(old, next) {
             sounds.write(PlayUiSound {
                 kind,
-                _payload: [0; 0x10],
-                id: 0,
+                _payload: [0; 20],
             });
         }
     }

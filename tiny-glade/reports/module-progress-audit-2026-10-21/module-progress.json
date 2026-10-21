@@ -1,0 +1,616 @@
+{
+  "date": "2026-10-21",
+  "baseline": "f72938c81fbbece4e6b3a894a20ddd3d37537ef4",
+  "nature": "read-only source and existing evidence audit; no new business tests",
+  "percentage_kind": "conservative known-business engineering estimate, no uniform exhaustive denominator; not acceptance/test coverage",
+  "t13": "excluded by user",
+  "modules": [
+    {
+      "category": "主链",
+      "name": "启动→装配→非渲染主循环",
+      "estimated_percent_range": "75–85",
+      "confidence": "中低",
+      "gap": "真实 session、资产 owner、Startup/OnEnter 及大部分 set 已接；完整原插件顺序和卸载→第二会话待验。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "主链",
+      "name": "编辑→历史→回放",
+      "estimated_percent_range": "65–75",
+      "confidence": "中",
+      "gap": "主要跨 crate consumers 和单 Pop 已挂；多域回放后的实体/碰撞/画面副作用待联合验收。",
+      "detail": "DETAIL-save-history.md"
+    },
+    {
+      "category": "主链",
+      "name": "帧循环→构图→GPU（排除T13）",
+      "estimated_percent_range": "75–85",
+      "confidence": "中低",
+      "gap": "已有真实场景出图；最新修改后的长稳、实际 gameplay 窗口、完整场景生产者未验收。",
+      "detail": "DETAIL-render.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "主／自由／步行相机",
+      "estimated_percent_range": "80–90",
+      "confidence": "中",
+      "gap": "六body和set8/9/10已有真实更新；物理输入、模式、碰撞和最终画面联合验收不足。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "toolbar／摄影工具栏",
+      "estimated_percent_range": "65–75",
+      "confidence": "中",
+      "gap": "full/demo装配、滑块、焦点/动画/声音与undo布局已接；nav/hide/steal_mouse/demo仍缺。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "MEI／Taffy",
+      "estimated_percent_range": "70–85",
+      "confidence": "中低",
+      "gap": "真实文本/布局/prepare/draw/upload已接；部分widget、原load标签和完整导航/多页面未闭合。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "LUT gallery",
+      "estimated_percent_range": "70–85",
+      "confidence": "中低",
+      "gap": "真缩略图布局/点击/formation和set36；物理点击到最终画面仍未完整验收。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "Escape主菜单入口",
+      "estimated_percent_range": "75–90",
+      "confidence": "中",
+      "gap": "17槽状态和save/profile/quit等producer已恢复；不能代替所有下一页业务。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "Load菜单／备份事务",
+      "estimated_percent_range": "65–80",
+      "confidence": "中低",
+      "gap": "实际set36与modal/session/backup/error owner；非空选择、取消和异步handoff待验。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "Settings／语言菜单／Credits／TOD次级页",
+      "estimated_percent_range": "10–30",
+      "confidence": "中",
+      "gap": "入口状态存在，多个下一页消费者和ui主体仍todo。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "颜色自定义交互（system-color）",
+      "estimated_percent_range": "20–35",
+      "confidence": "中",
+      "gap": "事件、部分icons/radial/replay和颜色消费者已有；show/main/实际wall/gate/decorator触发仍缺。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "输入／录制／捕获",
+      "estimated_percent_range": "75–90",
+      "confidence": "中",
+      "gap": "OS到actions、record、camera快照与set1/2/3/5；实际设备/Steam及多模式联合验收待做。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "交互/状态",
+      "name": "onboarding／hints",
+      "estimated_percent_range": "35–50",
+      "confidence": "中",
+      "gap": "部分条件/冷却/音效；绘制空体和占位载荷仍在，toolbar/core与本地同名focus事件不相通。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "自由墙绘制／编辑",
+      "estimated_percent_range": "60–70",
+      "confidence": "中",
+      "gap": "draw/snapping/edit/publication主链已挂；39.6KB原交点采样当前仅取墙读length。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "wall-constructor／门／栅栏",
+      "estimated_percent_range": "50–60",
+      "confidence": "中",
+      "gap": "set19/28/34/44局部活链已接；支撑、灰泥、楼板、曲面半木和平台楼梯仍缺。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "规则形状／公共建筑",
+      "estimated_percent_range": "45–60",
+      "confidence": "中低",
+      "gap": "部分规则几何和权威状态；形状UX、完整输入/投影和消费者闭环未成。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "屋顶",
+      "estimated_percent_range": "70–80",
+      "confidence": "中",
+      "gap": "CPU/trigger producer与Roof插件/replay已恢复；部分widget适配、辅助调度及完整tile/交互待验。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "玩家楼梯／平台／扶手",
+      "estimated_percent_range": "30–45",
+      "confidence": "中",
+      "gap": "requests/插值和部分碰撞叶已恢复；完整cache、主网格、支撑/扶手和视觉宿主未闭合。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "timberframe",
+      "estimated_percent_range": "65–80",
+      "confidence": "中",
+      "gap": "真实set27矩形/圆形/音效和卸载；原矩形9275B已恢复，上游形状UX与构造命令producer仍缺。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "地形编辑",
+      "estimated_percent_range": "50–65",
+      "confidence": "中",
+      "gap": "主要CPU/历史及插件已有；hover/readback/focus适配输入仍无主宿主writer。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "路径／鹅卵石",
+      "estimated_percent_range": "40–55",
+      "confidence": "中低",
+      "gap": "draw/record存在；主App未挂完整用户绘制输入链。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "花园",
+      "estimated_percent_range": "40–55",
+      "confidence": "中低",
+      "gap": "draw/record存在；主App未挂，pin等仍有事件替身。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "水",
+      "estimated_percent_range": "65–75",
+      "confidence": "中",
+      "gap": "world raster/历史/实际音频已接；pin语义统一、完整编辑/存档/画面待验。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "建筑/世界",
+      "name": "glade-border",
+      "estimated_percent_range": "80–90",
+      "confidence": "中",
+      "gap": "真实set36、虚线和越界音效；Demo overlay原事件归属/门禁适配及完整交互待验。",
+      "detail": "DETAIL-building.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "decorator总体",
+      "estimated_percent_range": "40–55",
+      "confidence": "中低",
+      "gap": "真实loader/validator/rotate/typed patch已推进；完整move/place、cache、UI/set25宿主和卸载缺口。",
+      "detail": "DETAIL-decorator.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "clutter／autoclutter",
+      "estimated_percent_range": "45–60",
+      "confidence": "中低",
+      "gap": "ClutterPlugin已实挂；region/filter/sort猜测及非Window输出合同未闭。",
+      "detail": "DETAIL-decorator.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "窗户／玻璃／窗灯",
+      "estimated_percent_range": "50–65",
+      "confidence": "中低",
+      "gap": "canonical灯/TimeOfDay/玻璃数据已有；哥特动态几何与全部generator→Nani未闭。",
+      "detail": "DETAIL-decorator.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "装饰门／阳台门",
+      "estimated_percent_range": "30–45",
+      "confidence": "中低",
+      "gap": "资产与部分叶函数；builder/附加记录未真正消费，完整视觉未挂。",
+      "detail": "DETAIL-decorator.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "ivy",
+      "estimated_percent_range": "45–60",
+      "confidence": "中低",
+      "gap": "startup owner已接；grow/spawn/prune/叶段上传主App消费未装全。",
+      "detail": "DETAIL-decorator.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "forest",
+      "estimated_percent_range": "75–90",
+      "confidence": "中",
+      "gap": "真实插件和placements/canopy已接；视图移除谓词仍有surrogate，多帧编辑/历史待验。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "羊",
+      "estimated_percent_range": "75–85",
+      "confidence": "中",
+      "gap": "真实生成、移动/反应/资源和音频；跨帧多模式/历史及视觉听觉联合验收。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "鸭",
+      "estimated_percent_range": "70–85",
+      "confidence": "中",
+      "gap": "计划/移动/建筑反应和真实音频；spawn/despawn残余近似及整世界行为待验。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "鱼",
+      "estimated_percent_range": "40–55",
+      "confidence": "中",
+      "gap": "基础生成/boids；BoidFlock持久辅助状态缺失，原四路PathRaster被单water raster近似。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "蝴蝶",
+      "estimated_percent_range": "65–80",
+      "confidence": "中",
+      "gap": "state0–3及目标/速度/反应；state4–7、query派生写入和完整GPU消费未闭。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "萤火虫",
+      "estimated_percent_range": "75–90",
+      "confidence": "中低",
+      "gap": "目标/速度/实例数据；原数值边界及完整GPU/物种联验。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "鹪鹩／鸟群",
+      "estimated_percent_range": "45–65",
+      "confidence": "中",
+      "gap": "部分perch/状态机；32向射线仍golden-angle占位，认领/释放/树冠关联近似。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "meadow／grass／sky＋TOD",
+      "estimated_percent_range": "80–90",
+      "confidence": "中",
+      "gap": "真实OnEnter、drawables、GPU owner和时间更新已挂；完整主题/季节/画面动态联验。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "weather整体",
+      "estimated_percent_range": "75–85",
+      "confidence": "中",
+      "gap": "有实际set36和完整小雪数值叶；更广的渲染、音频、季节动态未全验。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "装饰/生态",
+      "name": "audio",
+      "estimated_percent_range": "70–85",
+      "confidence": "中低",
+      "gap": "native/disabled owner、bank/worker、域事件、水声/music已接；完整载荷、听觉和多帧卸载取消待验。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "存档/回放",
+      "name": "History账本／Undo／Redo／Pop",
+      "estimated_percent_range": "80–90",
+      "confidence": "中",
+      "gap": "真实owner/queue/cursor及单Pop；整游戏多步反复编辑和副作用重建待验。",
+      "detail": "DETAIL-save-history.md"
+    },
+    {
+      "category": "存档/回放",
+      "name": "文件／worker／备份／GC",
+      "estimated_percent_range": "80–90",
+      "confidence": "中",
+      "gap": "真实写盘/flush/close/join与错误owner；原格式多版本、多会话和当前基线联验待做。",
+      "detail": "DETAIL-save-history.md"
+    },
+    {
+      "category": "存档/回放",
+      "name": "snapshot／加载与全域恢复",
+      "estimated_percent_range": "70–80",
+      "confidence": "中",
+      "gap": "14节、真实域请求与六raster staging；stairs checksum格式及全部实体/几何/GPU消费未闭。",
+      "detail": "DETAIL-save-history.md"
+    },
+    {
+      "category": "渲染",
+      "name": "rhapsody",
+      "estimated_percent_range": "85–95",
+      "confidence": "中",
+      "gap": "分页、租约、事务、动态图资源/提交已落地；生产接线粗估75–85，最新长稳与全owner寿命待验。",
+      "detail": "DETAIL-render.md"
+    },
+    {
+      "category": "渲染",
+      "name": "W1–W54世界构图",
+      "estimated_percent_range": "85–90",
+      "confidence": "中",
+      "gap": "世界图与实际GPU出图；生产接线75–85，缺完整场景producer和稳定验收。",
+      "detail": "DETAIL-render.md"
+    },
+    {
+      "category": "渲染",
+      "name": "尾部／截图／UI合成（排T13）",
+      "estimated_percent_range": "85–95",
+      "confidence": "中",
+      "gap": "T11/T12/T16/T21和截图purpose等已接；接线75–85，ICC custom_lut仍None。",
+      "detail": "DETAIL-render.md"
+    },
+    {
+      "category": "渲染",
+      "name": "Nani／实例上传",
+      "estimated_percent_range": "75–85",
+      "confidence": "中低",
+      "gap": "实例/稀疏上传已有；主set44仅部分tuple，上游完整几何未挂，接线55–70。",
+      "detail": "DETAIL-render.md"
+    },
+    {
+      "category": "渲染",
+      "name": "shader协议／编译链",
+      "estimated_percent_range": "80–90",
+      "confidence": "中",
+      "gap": "协议、编译与真实后端消费已有；完整算法/反射/画面等价未验，接线75–85。",
+      "detail": "DETAIL-render.md"
+    },
+    {
+      "category": "渲染",
+      "name": "窗口／呈现",
+      "estimated_percent_range": "80–90",
+      "confidence": "中低",
+      "gap": "真实loading WSI和gameplay严格入口已有；接线65–80，gameplay窗口及长稳未正式通过。",
+      "detail": "DETAIL-render.md"
+    },
+    {
+      "category": "基础能力",
+      "name": "utils／geometry／asset／paths／lang-lib",
+      "estimated_percent_range": "85–95",
+      "confidence": "中",
+      "gap": "当前功能较完整；用户重写后的原版等价未统一复验，不能继承旧源码SHA的验收。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "基础能力",
+      "name": "asset-pipe",
+      "estimated_percent_range": "80–90",
+      "confidence": "中",
+      "gap": "mip/压缩/数组/cache等能力；完整资产编译→游戏→GPU待验。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "基础能力",
+      "name": "motomoto／tabloid／integrity",
+      "estimated_percent_range": "85–95",
+      "confidence": "中",
+      "gap": "容器/发布/manifest等已有；payload schema、完整消费者和部署验收分别处理。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "基础能力",
+      "name": "tg-text独立库",
+      "estimated_percent_range": "85–95",
+      "confidence": "中",
+      "gap": "重写后真实CPU/GPU证据；游戏中全部页面/字体/平台验收仍独立。",
+      "detail": "DETAIL-ui.md"
+    },
+    {
+      "category": "基础能力",
+      "name": "tg-theme库／每日主题整链",
+      "estimated_percent_range": "80–90 / 35–50",
+      "confidence": "中",
+      "gap": "原三主题库已合并；每日主题更新宿主仍no-op，未消费库订阅。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "基础能力",
+      "name": "tg-gpu-selector库／宿主整链",
+      "estimated_percent_range": "70–85 / 40–55",
+      "confidence": "中",
+      "gap": "库策略/GUI runner存在；真实生产入口与持久化/选择器未闭合。",
+      "detail": "DETAIL-foundation-ecology.md"
+    },
+    {
+      "category": "基础能力",
+      "name": "tg-iced原功能",
+      "estimated_percent_range": "60–75",
+      "confidence": "中",
+      "gap": "native runner/基本对话框；原选项、默认值、完整样式与生产runner未全映射。",
+      "detail": "DETAIL-foundation-ecology.md"
+    }
+  ],
+  "workspace": [
+    {
+      "package": "tg-terrain",
+      "path": "crates/systems/terrain",
+      "classification": "地形编辑"
+    },
+    {
+      "package": "system-water",
+      "path": "crates/systems/water",
+      "classification": "水"
+    },
+    {
+      "package": "forest",
+      "path": "crates/systems/forest",
+      "classification": "forest"
+    },
+    {
+      "package": "system-glade-border",
+      "path": "crates/systems/glade-border",
+      "classification": "glade-border"
+    },
+    {
+      "package": "timberframe",
+      "path": "crates/systems/timberframe",
+      "classification": "timberframe"
+    },
+    {
+      "package": "system-tree",
+      "path": "crates/systems/tree-tool",
+      "classification": "Tree工具/forest/Tree历史；真实插件和19项既有回归不代表完整树编辑验收，Tree历史见65–75%细项"
+    },
+    {
+      "package": "system-color",
+      "path": "crates/systems/color",
+      "classification": "颜色自定义20–35%，颜色历史75–85%见细项，二者不能混算"
+    },
+    {
+      "package": "tg-building-runtime",
+      "path": "crates/tg-building-runtime",
+      "classification": "工程适配/独立harness，无main安装；不独立折算原版恢复率"
+    },
+    {
+      "package": "tg-history",
+      "path": "crates/tg-history",
+      "classification": "工程抽离格式访问层；不独立折算原版恢复率，历史主链另计"
+    },
+    {
+      "package": "tiny-glade",
+      "path": "crates/tiny-glade",
+      "classification": "启动装配、菜单、窗口呈现和各宿主接线"
+    },
+    {
+      "package": "country-core",
+      "path": "crates/country-core",
+      "classification": "相机/输入/历史/存档/建筑/资源/生态/render等横切领域，不提供重复的crate平均"
+    },
+    {
+      "package": "system-roof",
+      "path": "crates/systems/roof",
+      "classification": "屋顶"
+    },
+    {
+      "package": "system-wall-constructor",
+      "path": "crates/systems/wall-constructor",
+      "classification": "wall-constructor／门／栅栏及楼梯"
+    },
+    {
+      "package": "system-decorator",
+      "path": "crates/systems/decorator",
+      "classification": "decorator、窗门及装饰楼梯"
+    },
+    {
+      "package": "system-critters",
+      "path": "crates/systems/critters",
+      "classification": "羊/鸭/鱼/蝶/萤/鸟分列"
+    },
+    {
+      "package": "system-clutter",
+      "path": "crates/systems/clutter",
+      "classification": "clutter/autoclutter"
+    },
+    {
+      "package": "system-onboarding",
+      "path": "crates/systems/onboarding",
+      "classification": "onboarding/hints"
+    },
+    {
+      "package": "toolbar",
+      "path": "crates/systems/toolbar",
+      "classification": "toolbar/摄影/MEI/LUT及菜单部分"
+    },
+    {
+      "package": "rhapsody",
+      "path": "crates/rhapsody",
+      "classification": "rhapsody"
+    },
+    {
+      "package": "shader-pipeline",
+      "path": "crates/rhapsody/crates/shader-pipeline",
+      "classification": "shader协议/编译/反射和shader ABI"
+    },
+    {
+      "package": "utils",
+      "path": "crates/utils",
+      "classification": "utils/geometry能力"
+    },
+    {
+      "package": "paths",
+      "path": "crates/paths",
+      "classification": "paths"
+    },
+    {
+      "package": "lang-lib",
+      "path": "crates/lang-lib",
+      "classification": "lang-lib"
+    },
+    {
+      "package": "tabloid",
+      "path": "crates/tabloid",
+      "classification": "tabloid"
+    },
+    {
+      "package": "motomoto",
+      "path": "crates/motomoto",
+      "classification": "motomoto"
+    },
+    {
+      "package": "tg-package-integrity",
+      "path": "crates/tg-package-integrity",
+      "classification": "integrity"
+    },
+    {
+      "package": "tg-theme",
+      "path": "crates/tg-theme",
+      "classification": "主题库与每日主题整链分列"
+    },
+    {
+      "package": "tg-text",
+      "path": "crates/tg-text",
+      "classification": "tg-text"
+    },
+    {
+      "package": "asset",
+      "path": "crates/asset",
+      "classification": "asset"
+    },
+    {
+      "package": "asset-pipe",
+      "path": "crates/asset-pipe",
+      "classification": "asset-pipe"
+    },
+    {
+      "package": "tg-iced",
+      "path": "crates/tg-iced",
+      "classification": "tg-iced"
+    },
+    {
+      "package": "tg-gpu-selector",
+      "path": "crates/tg-gpu-selector",
+      "classification": "库与宿主整链分列"
+    },
+    {
+      "package": "shader-compiler",
+      "path": "crates/rhapsody/crates/shader-compiler",
+      "classification": "shader协议/编译链"
+    }
+  ]
+}

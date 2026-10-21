@@ -1,0 +1,2 @@
+0x140be6750: mov eax, 0x1ffc00d0
+0x140be6755: ret 

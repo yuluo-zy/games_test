@@ -12,11 +12,11 @@ use country_core::systems::mode_manager::{AppMode, RequestAppModeChange};
 use toolbar::resouces_and_components::{SwitchAppModeButton, UiPlaySelectAnimation};
 use toolbar::ui_interaction::UiClickEvent;
 
-fn mode_changed() -> ModeJustChanged {
-    ModeJustChanged {
-        tool: 7,
-        _gap: [0; 0x1c],
-    }
+fn publish_mode_change(world: &mut World) {
+    world.init_resource::<country_core::systems::mode_manager::PreviousAppMode>();
+    let mut publish = Schedule::default();
+    publish.add_systems(country_core::systems::mode_manager::send_mode_just_changed_event);
+    publish.run(world);
 }
 
 #[test]
@@ -68,9 +68,7 @@ fn click_requests_the_button_mode_and_mode_change_selects_only_matching() {
     assert!(world.get::<UiPlaySelectAnimation>(water).is_none());
 
     // ModeJustChanged phase: drains the event and compares targets.
-    world
-        .resource_mut::<Events<ModeJustChanged>>()
-        .send(mode_changed());
+    publish_mode_change(&mut world);
     schedule.run(&mut world);
     world.flush();
 
@@ -119,4 +117,26 @@ fn mode_change_is_ignored_when_no_event_was_written() {
     assert_eq!(state.selected, 0);
     assert_eq!(state.keep, 1);
     assert!(world.get::<UiPlaySelectAnimation>(button).is_none());
+}
+
+#[test]
+fn canonical_publisher_retains_complete_modes_and_suppresses_unchanged_mode() {
+    use country_core::systems::mode_manager::{AppModeChanged, EditSubject, PreviousAppMode};
+    assert_eq!(std::any::TypeId::of::<ModeJustChanged>(), std::any::TypeId::of::<AppModeChanged>());
+    let previous = AppMode::Editing(EditSubject::Wall(0xfedc_ba98_7654_3210));
+    let current = AppMode::Editing(EditSubject::DecoClutter { decorator_id: 0xdead_beef });
+    let mut world = World::new();
+    world.init_resource::<Events<ModeJustChanged>>();
+    world.insert_resource(PreviousAppMode(previous));
+    world.insert_resource(current);
+    publish_mode_change(&mut world);
+    let events: Vec<_> = world.resource_mut::<Events<ModeJustChanged>>().drain().collect();
+    assert_eq!(events, vec![AppModeChanged { current, previous }]);
+    assert_eq!(world.resource::<PreviousAppMode>().0, current);
+    publish_mode_change(&mut world);
+    assert_eq!(world.resource::<Events<ModeJustChanged>>().len(), 0);
+    world.insert_resource(previous);
+    publish_mode_change(&mut world);
+    let events: Vec<_> = world.resource_mut::<Events<ModeJustChanged>>().drain().collect();
+    assert_eq!(events, vec![AppModeChanged { current: previous, previous: current }]);
 }

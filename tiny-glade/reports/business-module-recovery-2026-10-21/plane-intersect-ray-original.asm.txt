@@ -1,0 +1,60 @@
+
+D:\game\tmp\logo-startup-install\Tiny Glade\tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1412803f0: 48 83 ec 48                 	subq	$0x48, %rsp
+1412803f4: 44 0f 29 4c 24 30           	movaps	%xmm9, 0x30(%rsp)
+1412803fa: 44 0f 29 44 24 20           	movaps	%xmm8, 0x20(%rsp)
+141280400: 0f 29 7c 24 10              	movaps	%xmm7, 0x10(%rsp)
+141280405: 0f 29 34 24                 	movaps	%xmm6, (%rsp)
+141280409: 48 89 c8                    	movq	%rcx, %rax
+14128040c: f3 41 0f 10 40 08           	movss	0x8(%r8), %xmm0
+141280412: f2 41 0f 10 08              	movsd	(%r8), %xmm1
+141280417: f3 0f 16 e9                 	movshdup	%xmm1, %xmm5            # xmm5 = xmm1[1,1,3,3]
+14128041b: f2 41 0f 10 50 0c           	movsd	0xc(%r8), %xmm2
+141280421: f3 41 0f 10 60 14           	movss	0x14(%r8), %xmm4
+141280427: f3 0f 10 32                 	movss	(%rdx), %xmm6
+14128042b: f3 0f 10 7a 04              	movss	0x4(%rdx), %xmm7
+141280430: f3 44 0f 10 42 08           	movss	0x8(%rdx), %xmm8
+141280436: f3 0f 5c f1                 	subss	%xmm1, %xmm6
+14128043a: f3 0f 5c fd                 	subss	%xmm5, %xmm7
+14128043e: f3 44 0f 5c c0              	subss	%xmm0, %xmm8
+141280443: f2 0f 10 6a 0c              	movsd	0xc(%rdx), %xmm5
+141280448: 0f 16 fa                    	movlhps	%xmm2, %xmm7            # xmm7 = xmm7[0],xmm2[0]
+14128044b: 0f c6 fa e2                 	shufps	$0xe2, %xmm2, %xmm7     # xmm7 = xmm7[2,0],xmm2[2,3]
+14128044f: 0f 59 fd                    	mulps	%xmm5, %xmm7
+141280452: 44 0f 28 ca                 	movaps	%xmm2, %xmm9
+141280456: f3 44 0f 10 ce              	movss	%xmm6, %xmm9            # xmm9 = xmm6[0],xmm9[1,2,3]
+14128045b: 45 0f c6 c9 e1              	shufps	$0xe1, %xmm9, %xmm9     # xmm9 = xmm9[1,0,2,3]
+141280460: 0f c6 ed e1                 	shufps	$0xe1, %xmm5, %xmm5     # xmm5 = xmm5[1,0,2,3]
+141280464: 41 0f 59 e9                 	mulps	%xmm9, %xmm5
+141280468: 0f 58 ef                    	addps	%xmm7, %xmm5
+14128046b: 0f 28 f4                    	movaps	%xmm4, %xmm6
+14128046e: 41 0f 14 f0                 	unpcklps	%xmm8, %xmm6            # xmm6 = xmm6[0],xmm8[0],xmm6[1],xmm8[1]
+141280472: f3 0f 10 7a 14              	movss	0x14(%rdx), %xmm7
+141280477: f3 0f 12 ff                 	movsldup	%xmm7, %xmm7            # xmm7 = xmm7[0,0,2,2]
+14128047b: 0f 59 fe                    	mulps	%xmm6, %xmm7
+14128047e: 0f 58 fd                    	addps	%xmm5, %xmm7
+141280481: f3 0f 16 ef                 	movshdup	%xmm7, %xmm5            # xmm5 = xmm7[1,1,3,3]
+141280485: f3 0f 5e ef                 	divss	%xmm7, %xmm5
+141280489: 31 c9                       	xorl	%ecx, %ecx
+14128048b: 0f 2e dd                    	ucomiss	%xmm5, %xmm3
+14128048e: 77 25                       	ja	0x1412804b5 <.text+0x127f4b5>
+141280490: f3 0f 12 dd                 	movsldup	%xmm5, %xmm3            # xmm3 = xmm5[0,0,2,2]
+141280494: 0f 59 d3                    	mulps	%xmm3, %xmm2
+141280497: f3 0f 59 e5                 	mulss	%xmm5, %xmm4
+14128049b: f3 0f 58 c4                 	addss	%xmm4, %xmm0
+14128049f: f3 0f 11 68 04              	movss	%xmm5, 0x4(%rax)
+1412804a4: 0f 58 ca                    	addps	%xmm2, %xmm1
+1412804a7: 0f 13 48 08                 	movlps	%xmm1, 0x8(%rax)
+1412804ab: f3 0f 11 40 10              	movss	%xmm0, 0x10(%rax)
+1412804b0: b9 01 00 00 00              	movl	$0x1, %ecx
+1412804b5: 89 08                       	movl	%ecx, (%rax)
+1412804b7: 0f 28 34 24                 	movaps	(%rsp), %xmm6
+1412804bb: 0f 28 7c 24 10              	movaps	0x10(%rsp), %xmm7
+1412804c0: 44 0f 28 44 24 20           	movaps	0x20(%rsp), %xmm8
+1412804c6: 44 0f 28 4c 24 30           	movaps	0x30(%rsp), %xmm9
+1412804cc: 48 83 c4 48                 	addq	$0x48, %rsp
+1412804d0: c3                          	retq

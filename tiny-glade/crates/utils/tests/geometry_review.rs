@@ -124,29 +124,20 @@ fn camera_projection_and_pixel_unprojection_are_inverses() {
 }
 
 #[test]
-fn planes_reject_parallel_and_nonfinite_hits() {
-    let plane = Plane {
-        point: Vec3::ZERO,
-        normal: Vec3::Y,
-    };
-    for origin in [Vec3::ZERO, Vec3::Y, -Vec3::Y] {
-        assert_eq!(
-            plane.intersect_ray(
-                Ray {
-                    origin,
-                    direction: Vec3::X
-                },
-                0.0
-            ),
-            None
-        );
-    }
-    let ray = Ray {
-        origin: Vec3::Y * 3.0,
-        direction: -Vec3::Y * 2.0,
-    };
+fn planes_preserve_original_ordered_minimum_test() {
+    // Original 225B function uses UCOMISS/JA, not finite/parallel guards.
+    let plane = Plane { point: Vec3::ZERO, normal: Vec3::Y };
+    let parallel = |origin| Ray { origin, direction: Vec3::X };
+    let coplanar = plane.intersect_ray(parallel(Vec3::ZERO), 0.0).unwrap();
+    assert!(coplanar.0.is_nan());
+    assert!(coplanar.1.is_nan());
+    assert!(plane.intersect_ray(parallel(Vec3::Y), 0.0).is_none());
+    let forward_infinite = plane.intersect_ray(parallel(-Vec3::Y), 0.0).unwrap();
+    assert_eq!(forward_infinite.0, f32::INFINITY);
+    let ray = Ray { origin: Vec3::Y * 3.0, direction: -Vec3::Y * 2.0 };
     assert_eq!(plane.intersect_ray(ray, 0.0), Some((1.5, Vec3::ZERO)));
     assert_eq!(plane.intersect_ray(ray, 2.0), None);
+    assert_eq!(plane.intersect_ray(ray, f32::NAN), Some((1.5, Vec3::ZERO)));
 }
 
 #[test]

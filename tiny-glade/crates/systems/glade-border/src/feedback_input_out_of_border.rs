@@ -18,11 +18,11 @@
 //!
 //! ## wave3 落库
 //! 音效写面**已判等**：`PlayUiSound` 变体 #4（coregap-1 落库
-//! `{kind u32 @+0=4, 载荷区 @+8..0x17, id u64 @+0x18}`，事件步长 0x20B）。disasm
+//! 业务载荷 24B；另加 Bevy EventId 8B，事件步长 0x20B）。disasm
 //! 0x141be2280 行 92-93：`*(lVar7 + lVar11*0x20) = 4`（判别值 4）、
 //! `*(lVar7 + 0x18 + lVar11*0x20) = uVar6`（`uVar6 = *(lVar4+0x40)` =
 //! EventWriter 计数，bevy 胶水）。crate `EventWriter::write` 自动补实例 id；
-//! `PlayUiSound::variant4(0)` 的 id@+0x18 由 bevy 记账填充（游戏逻辑无差异）。
+//! `PlayUiSound::variant4()` 不包含实例 id；EventId 由 Bevy 另行管理。
 
 use bevy_ecs::prelude::*;
 
@@ -48,8 +48,8 @@ pub fn feedback_input_out_of_border(
         // O：宿主 `[state+0x158] == 0`（上一帧无反馈）才写音效——上升沿触发一次。
         if !cache.had_feedback_last_run {
             // O：写 `PlayUiSound` 变体 #4（判别值 4 @+0，事件步长 0x20B，id @+0x18）。
-            // id = 宿主 EventWriter 计数（bevy 胶水）；crate 以 0 承载。
-            sounds.write(PlayUiSound::variant4(0));
+            // id = 宿主 EventWriter 计数（Bevy 另行记账），不进入业务载荷。
+            sounds.write(PlayUiSound::variant4());
         }
         cache.had_feedback_last_run = true;
     } else {

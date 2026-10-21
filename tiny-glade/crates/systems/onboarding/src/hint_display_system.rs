@@ -111,8 +111,7 @@ pub fn hint_deletion_cooldown_system(
 
 /// hint_audio（O 0x141c4fb00）：**有 HintMarkedForDeletion 且** eased(+4)==1.0 →
 /// PlayUiSound tag 0x15(21)；time(+8)==0.0 → tag 0x14(20)（无门控）。
-/// PlayUiSound 判别值（tag）由 country-core 承载（当前 widget_params::PlayUiSound
-/// 为 unit，数值边界登记）。
+/// 使用 core 的 24B PlayUiSound 业务载荷；实例 EventId 由 Bevy 管理。
 pub fn hint_audio(
     mut sounds: EventWriter<PlayUiSound>,
     query: Query<(&HintAnimation, Option<&HintMarkedForDeletion>)>,
@@ -122,16 +121,14 @@ pub fn hint_audio(
             // O：PlayUiSound tag 0x15（21），仅在满显后被标记删除（播放"关闭"音）。
             let _ = sounds.write(PlayUiSound {
                 kind: 0x15,
-                _payload: [0; 0x10],
-                id: 0,
+                _payload: [0; 20],
             });
         }
         if anim.time == 0.0 {
             // O：PlayUiSound tag 0x14（20）。
             let _ = sounds.write(PlayUiSound {
                 kind: 0x14,
-                _payload: [0; 0x10],
-                id: 0,
+                _payload: [0; 20],
             });
         }
     }
@@ -375,8 +372,7 @@ pub fn progress_bar_update_system(
         if level != bar.level {
             let _ = sounds.write(PlayUiSound {
                 kind: 0x16,
-                _payload: [0; 0x10],
-                id: 0,
+                _payload: [0; 20],
             }); // O：tag 0x16(22)
             bar.level = level;
         }

@@ -195,20 +195,20 @@ pub fn switch_toolbar_category_button(
 /// **重建（核心）+ FIX-T2（reviewer-A-toolbar 顺序/事件源修正）**：
 /// ① 先处理 **UiClickEvent**：实体命中 TimeOfDayButtonV2 widget → `visible ^= 1` +
 ///    insert `UiPlaySelectAnimation{a:0.1,b:0.2}`；若 toggle 后 visible==1 → 写
-///    `UiNavState` +0x10=0（布局 U，登记）；
-/// ② click 读尽后处理 **ModeJustChanged**：存在未读事件且**首事件 tag `!= 0xd`** 且
+///    `UiNavState` +0x10 的头 8B 清零，保留焦点载荷；
+/// ② click 读尽后处理 **ModeJustChanged**：存在未读事件且**末事件 tag `!= 0xd`** 且
 ///    `visible==1` → `visible=0`；
 /// ③ 逐项写 `interaction.selected = visible`（在 ①② 之后）。
 ///
 /// **分歧（未实现/代理）**：`visible` 真实偏移 +0xa vs country-core `{visible}`@+0；
-/// `UiNavState+0x10=0` 写面（UiNavState 布局 U，登记未写）；widget 命中经组件
+/// widget 命中经组件
 /// `Query<Entity, With<TimeOfDayButtonV2>>` 代理（B 经 UiNavState hashbrown）。
 pub fn tod_v2_button(
     mut query: Query<(&TimeOfDayButtonV2, &mut UiInteractionState)>,
     widget_entities: Query<Entity, With<TimeOfDayButtonV2>>,
     mut click_events: EventReader<crate::ui_interaction::UiClickEvent>,
     mut tod_screen: ResMut<country_core::resources::gui::TimeOfDayScreen>,
-    _nav_state: ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,
+    mut nav_state: ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,
     mut mode_changed: EventReader<country_core::resources::events::ModeJustChanged>,
     mut commands: Commands,
 ) {
@@ -219,18 +219,17 @@ pub fn tod_v2_button(
             commands
                 .entity(click.entity)
                 .insert(UiPlaySelectAnimation { a: 0.1, b: 0.2, ..Default::default() });
-            // toggle 后 visible==1 → 写 UiNavState+0x10=0（O；UiNavState 布局 U，登记未写）。
+            // B 0x14234316b writes one qword, not the following payload.
+            if tod_screen.visible {
+                nav_state.focus.tag = 0;
+                nav_state.focus._pad = 0;
+            }
         }
     }
-    // ② FIX-T2：click 之后读 ModeJustChanged 首事件 tag != 0xd && visible → 清 visible。
-    // 读取整个 reader 以推进游标（原生同样把游标移到事件末尾），只使用首事件。
-    let mut first_tool = None;
-    for event in mode_changed.read() {
-        if first_tool.is_none() {
-            first_tool = Some(event.tool);
-        }
-    }
-    if tod_screen.visible && first_tool.is_some_and(|tool| tool != 0xd) {
+    // B 0x14234322b..26c selects the tail of the newer nonempty event buffer,
+    // otherwise the older buffer. Consume all unread events and use the last.
+    let last_tool = mode_changed.read().last().map(|event| event.current.native_tag());
+    if tod_screen.visible && last_tool.is_some_and(|tool| tool != 0xd) {
         tod_screen.visible = false;
     }
     // ③ 逐项写 per-widget +2 = visible（在 ①② 之后；B `*(char*)(col+2+id*3)=visible`）。
@@ -282,8 +281,8 @@ mod native_switch_app_mode_tests {
         world
             .resource_mut::<Events<ModeJustChanged>>()
             .send(ModeJustChanged {
-                tool: 7,
-                _gap: [0; 0x1c],
+                current: AppMode::Path,
+                previous: AppMode::default(),
             });
         schedule.run(&mut world);
         world.flush();

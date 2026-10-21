@@ -215,21 +215,23 @@ pub fn main_pass_oc2(
 /// W34 — `Late Deferred`（`DrawLists +0x128/+0x130`）与 `Late Forward`（`+0x140/+0x148`）两个子 pass（O：0x1408373b0）。
 ///
 /// O：每个子 pass 前先 `test [lists + len], len; je skip`（`impl$0::is_empty` 守卫）——**列表为空则整个子 pass（含
-/// `RasterPass::new`）都不创建**。颜色 tag0 = `targets.gbuffer`（`r8 + 0`），深度 tag0 可写/加载 = `r8 + 0x24`，视口 = 深度 extent
-/// （`r8 + 0x28`）。第 4 个参数 `r9` 在 pass 创建里没被使用（保存到栈，U）。
+/// `RasterPass::new`）都不创建**。Late Deferred 颜色 tag0 = `targets.gbuffer`（`r8 + 0`）；
+/// Late Forward 颜色 tag0 = 第 4 参数 `scene_color`（`r9`，0x1408373d6 保存、0x14083773e 恢复、
+/// 0x140837787 写入附件）。两者深度 tag0 可写/加载 = `r8 + 0x24`，视口 = 深度 extent（`r8 + 0x28`）。
 pub fn late_forward_and_deferred_pass(
     ctx: &mut DrawPassCtx<'_>,
     targets: &MainPassTargets,
+    scene_color: &AttachmentTexture,
     lists: &DrawLists,
 ) {
-    let colors = [ColorSpec::tag0(targets.gbuffer)];
-    for (name, idx) in [
-        (names::LATE_DEFERRED, list::LATE_DEFERRED),
-        (names::LATE_FORWARD, list::LATE_FORWARD),
+    for (name, idx, target) in [
+        (names::LATE_DEFERRED, list::LATE_DEFERRED, targets.gbuffer),
+        (names::LATE_FORWARD, list::LATE_FORWARD, *scene_color),
     ] {
         if lists.list(idx).is_empty() {
             continue;
         }
+        let colors = [ColorSpec::tag0(target)];
         let spec = ListPass {
             name,
             colors: &colors,

@@ -1,0 +1,15 @@
+0x14067ea20: push rsi
+0x14067ea21: sub rsp, 0x20
+0x14067ea25: mov rsi, rdx
+0x14067ea28: movzx edx, byte ptr [rcx + 0x25d]
+0x14067ea2f: cmp dl, 0x28
+0x14067ea32: je 0x14067ea47
+0x14067ea34: mov rcx, qword ptr [rsi + 8]
+0x14067ea38: call 0x140946620
+0x14067ea3d: test al, al
+0x14067ea3f: je 0x14067ea47
+0x14067ea41: mov rax, qword ptr [rsi]
+0x14067ea44: or byte ptr [rax], 0x20
+0x14067ea47: add rsp, 0x20
+0x14067ea4b: pop rsi
+0x14067ea4c: ret 

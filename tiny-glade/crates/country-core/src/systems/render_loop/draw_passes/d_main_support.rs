@@ -189,8 +189,12 @@ impl<'a> DrawPassCtx<'a> {
 /// 逐元素的状态位改写模式。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ItemMode {
-    /// 无改写（`ui_pass`、`loading_screen_pass`）。
+    /// 无状态改写。
     Plain,
+    /// `ui_pass` 0x140837ee2 / `loading_screen_pass` 0x140838292：
+    /// `bind_common` 后 `state.byte3 = (byte3 & 0x9f) | 0x40`。
+    /// Premultiplied alpha blending; all other state bits are preserved.
+    Ui,
     /// `bind_common` 之后：`state.byte3 |= 0x80`（`set_polygon_mode`）、`state.byte0 &= 0x7f`（`set_depth_test_enable(false)`）、
     /// 混合 1.0（`wireframe_pass`）。
     Wireframe,
@@ -272,6 +276,10 @@ pub fn run_list_pass(ctx: &mut DrawPassCtx<'_>, spec: &ListPass<'_>, items: &[Dr
             builder = extra(builder);
         }
         match spec.mode {
+            ItemMode::Ui => {
+                let p = builder.packet_mut();
+                p.state = p.state.set_byte3_field_2();
+            }
             ItemMode::Transparent { byte3_field2 } => {
                 let p = builder.packet_mut();
                 p.state.0 &= !0x40;

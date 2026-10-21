@@ -226,8 +226,7 @@ pub fn ui_slider(
             if sound_bucket(slider.previous_value_01()) != sound_bucket(fraction) {
                 sounds.write(PlayUiSound {
                     kind: 0x1c,
-                    _payload: [0; 0x10],
-                    id: 0,
+                    _payload: [0; 20],
                 });
             }
             let value = slider_math::parameter(slider.kind(), fraction)

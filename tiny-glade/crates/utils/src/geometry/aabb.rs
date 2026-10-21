@@ -209,8 +209,10 @@ impl Aabb3 {
         }
     }
 }
+/// B 0x14123ffc0: all four comparisons are strict; this private picker
+/// predicate intentionally differs from the public closed Aabb2::contains.
 pub fn is_inside_bbx(point: Vec2, min: Vec2, max: Vec2) -> bool {
-    Aabb2 { min, max }.contains(point)
+    min.x < point.x && point.x < max.x && min.y < point.y && point.y < max.y
 }
 /// Returns the first segment point inside the closed 2D box.
 pub fn intersection_aabb_segment2(min: Vec2, max: Vec2, start: Vec2, end: Vec2) -> Option<Vec2> {

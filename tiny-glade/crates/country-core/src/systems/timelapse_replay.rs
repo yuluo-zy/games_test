@@ -65,7 +65,7 @@ pub fn start_timelapse(
         return;
     };
     if history.is_recording() {
-        sounds.write(PlayUiSound::variant4(0));
+        sounds.write(PlayUiSound::variant4());
         return;
     }
     restore.0 = *mode;

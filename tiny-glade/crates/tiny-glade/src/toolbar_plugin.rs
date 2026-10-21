@@ -4,7 +4,7 @@
 //! phase2-toolbar-layout/native-schedule-config-names.json.
 //!
 //! Text/Taffy set44 and renderer-scale set7 are already installed by mei_host.
-//! This entry installs recovered members once. Missing hide_ui, ui_nav_update,
+//! This entry installs recovered members once. Missing ui_nav_update,
 //! toolbar_steal_mouse_input and demo policy remain explicit gaps.
 use bevy_app::{App, Plugin, Update};
 use bevy_ecs::schedule::IntoScheduleConfigs;
@@ -30,6 +30,7 @@ pub fn build(app: &mut App) {
 
     // Preserve native nested tuples: these members are not internally chained.
     app.add_systems(Update, (
+        ui::hide_ui,
         ui::render_taffy_ui_to_widgets,
         ui::ui_focus_parent_if_self_in_focus,
         button::toolbar_button_keep_focus,

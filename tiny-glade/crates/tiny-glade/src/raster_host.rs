@@ -303,8 +303,52 @@ pub struct RasterShared {
     attachments: Mutex<AttachmentCache>,
     programs: RasterPrograms,
     reflections: Mutex<HashMap<(u64, u8), Arc<CoreReflection>>>,
+    vao_refresh_timing: Mutex<VaoRefreshTiming>,
     dynamic: Arc<Mutex<DynamicConstants>>,
     pub assets: Mutex<AssetTables>,
+}
+
+/// Cumulative opt-in CPU wall time for full draw-list VAO refreshes on this App.
+/// Counts include failed attempts; direct subset refreshes are not counted here.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct VaoRefreshTiming {
+    pub calls: u64,
+    pub list_entries: u64,
+    pub queried_entities: u64,
+    pub unique_vaos: u64,
+    pub elapsed_ns: u64,
+}
+
+impl VaoRefreshTiming {
+    /// Compare snapshots from the same RasterShared owner only.
+    pub fn delta_since(self, before: Self) -> Self {
+        Self {
+            calls: self.calls.saturating_sub(before.calls),
+            list_entries: self.list_entries.saturating_sub(before.list_entries),
+            queried_entities: self.queried_entities.saturating_sub(before.queried_entities),
+            unique_vaos: self.unique_vaos.saturating_sub(before.unique_vaos),
+            elapsed_ns: self.elapsed_ns.saturating_sub(before.elapsed_ns),
+        }
+    }
+}
+
+struct VaoRefreshMeasurement<'a> {
+    totals: &'a Mutex<VaoRefreshTiming>,
+    started: std::time::Instant,
+    counts: VaoRefreshTiming,
+}
+
+impl Drop for VaoRefreshMeasurement<'_> {
+    fn drop(&mut self) {
+        // Drop also observes an early Err without altering its error or cleanup.
+        let elapsed_ns = self.started.elapsed().as_nanos().min(u64::MAX as u128) as u64;
+        let mut totals = self.totals.lock();
+        totals.calls = totals.calls.saturating_add(1);
+        totals.list_entries = totals.list_entries.saturating_add(self.counts.list_entries);
+        totals.queried_entities = totals.queried_entities.saturating_add(self.counts.queried_entities);
+        totals.unique_vaos = totals.unique_vaos.saturating_add(self.counts.unique_vaos);
+        totals.elapsed_ns = totals.elapsed_ns.saturating_add(elapsed_ns);
+    }
 }
 
 /// The two handle spaces are deliberately exclusive. A game handle must never
@@ -344,6 +388,11 @@ impl RasterPrograms {
 }
 
 impl RasterShared {
+    /// Snapshot diagnostic totals; this never clears another frame's measurements.
+    pub(crate) fn vao_refresh_timing(&self) -> VaoRefreshTiming {
+        *self.vao_refresh_timing.lock()
+    }
+
     /// Snapshot only handles actually present in the original draw lists. The
     /// typed ECS handle is resolved through the live AssetVAOLibrary, and every
     /// buffer is resolved through this App's exact physical host table.
@@ -354,14 +403,32 @@ impl RasterShared {
     ) -> rhapsody::Result<()> {
         use country_core::asset_libraries::{Handle as AssetHandle, vao_library::AssetVAOLibrary};
         use country_core::render::vao::Vao;
+        let mut timing = crate::game_loop::frame_timing_enabled().then(|| VaoRefreshMeasurement {
+            totals: &self.vao_refresh_timing,
+            started: std::time::Instant::now(),
+            counts: VaoRefreshTiming::default(),
+        });
         let wanted = (0
             ..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT)
             .flat_map(|index| lists.list(index))
-            .map(|entry| entry.0.vao)
+            .map(|entry| {
+                if let Some(timing) = timing.as_mut() {
+                    timing.counts.list_entries += 1;
+                }
+                entry.0.vao
+            })
             .collect::<std::collections::BTreeSet<_>>();
+        if let Some(timing) = timing.as_mut() {
+            timing.counts.unique_vaos = wanted.len() as u64;
+        }
         let mut query = world.query::<&AssetHandle<Vao>>();
         let handles = query
             .iter(world)
+            .inspect(|_| {
+                if let Some(timing) = timing.as_mut() {
+                    timing.counts.queried_entities += 1;
+                }
+            })
             .filter(|handle| wanted.contains(&handle.id().raw()))
             .map(|handle| (handle.id().raw(), *handle))
             .collect::<HashMap<_, _>>();
@@ -506,6 +573,7 @@ impl RasterShared {
             shaders,
             programs,
             reflections: Mutex::new(HashMap::new()),
+            vao_refresh_timing: Mutex::new(VaoRefreshTiming::default()),
             assets: Mutex::new(AssetTables::default()),
         }))
     }
