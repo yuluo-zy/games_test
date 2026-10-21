@@ -8,5 +8,6 @@
 4. [IMPL-B-rhapsody.md](IMPL-B-rhapsody.md) — B 层 rhapsody 内部(B0–B7),数据结构与算法,文末 25 条【未核实】。
 5. [IMPL-C-architecture.md](IMPL-C-architecture.md) — C 层保留图 / GPU 驱动绘制 / pass 合并,迁移里程碑与像素等价验证。
 6. [ANALYSIS.md](ANALYSIS.md) — 根因分析与原版对照(证据来源)。
+7. [PROGRESS.md](PROGRESS.md) — 实施进度、真实运行观测、与计划的偏差、审阅发现与修复、本机构建环境。
 
-所有内容为只读代码分析,基线提交 `f98b40229`,未构建、未运行;真机数据为空,第 0 步测量先行。`measurements/` 目录存放每次真机记录。
+DESIGN、IMPL-A/B/C、ANALYSIS 是基于基线提交 `f98b40229` 的只读代码分析;PROGRESS 记录实际落地情况。真机数据仍为空,第 0 步测量先行,`measurements/` 目录存放每次真机记录。
