@@ -41,6 +41,12 @@ pub fn rasterize_foliage_exclusion_mask(
     })
 }
 
+/// Last building elements written to the GPU by W11, in canonical order. Lets
+/// the per-frame projection skip the (fence-waiting) upload while the wall rows
+/// are unchanged.
+#[derive(bevy_ecs::prelude::Resource, Default)]
+struct GroundedUploadCache(Option<Vec<country_core::systems::render_loop::compute_passes::rasterize_buildings::GroundedBuildingsSsbo>>);
+
 /// W11 @140a32770, filter1412fc510 and publisher140a8b530. Build only an
 /// ephemeral GPU projection from the actual published wall rows; elevation
 /// (+280 in B) is independent of plaster removal. Freeform rows are excluded.
@@ -75,7 +81,18 @@ pub fn rasterize_buildings(
         assert!(count < buildings::MAX_BUILDINGS, "{}", buildings::TOO_MANY_PANIC);
         let device = world.get_resource::<GraphicsDeviceResource>()
             .ok_or_else(|| missing("GraphicsDeviceResource"))?.clone();
-        buildings::upload_buildings(&sources, &mut world.resource_mut::<AssetSsboLibrary>(), &*device);
+        // Same collection and write rules as `upload_buildings`, but the GPU is
+        // only written when the building rows changed. The library is still
+        // borrowed mutably every frame, so its change flag behaves as before.
+        world.get_resource_or_insert_with(GroundedUploadCache::default);
+        world.resource_scope(|world, mut cache: bevy_ecs::prelude::Mut<GroundedUploadCache>| {
+            buildings::upload_buildings_if_changed(
+                &sources,
+                &mut world.resource_mut::<AssetSsboLibrary>(),
+                &*device,
+                &mut cache.0,
+            );
+        });
     }
     with_env(frame, world, |env| {
         let desc = env.preset_desc(0x15);

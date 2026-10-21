@@ -169,6 +169,45 @@ pub fn upload_buildings<K>(
     count
 }
 
+/// 与 [`upload_buildings`] 相同的收集与写入规则,但内容与上次上传一致时不再写 GPU。
+///
+/// 建筑表是 `HashMap`,迭代顺序每帧不同,所以先把元素排成规范顺序再与 `last`
+/// 比较;着色器对 `count` 个形状做掩码光栅化,与元素顺序无关。`last` 保存上次
+/// 实际写入的规范元素序列,调用方在会话内持有。缓冲里的 `instance_count` 也必须
+/// 等于 `count`,否则视为被外部改动而重新写入。返回 `(count, 是否写了 GPU)`。
+/// 原样保留的 [`upload_buildings`] 仍是原版步骤 2–5 的逐条还原。
+pub fn upload_buildings_if_changed<K>(
+    buildings: &HashMap<K, GroundedSource>,
+    ssbos: &mut AssetSsboLibrary,
+    device: &dyn GraphicsDevice,
+    last: &mut Option<Vec<GroundedBuildingsSsbo>>,
+) -> (usize, bool) {
+    let mut elements: Vec<GroundedBuildingsSsbo> = buildings
+        .values()
+        .filter_map(GroundedSource::to_element)
+        .collect();
+    elements.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    let count = elements.len();
+    let Some(buffer) = ssbos.get_mut::<GroundedBuildingsSsbo>() else {
+        return (count, false); // 未注册：跳过上传（O）
+    };
+    assert!(count < MAX_BUILDINGS, "{TOO_MANY_PANIC}");
+    if last.as_deref() == Some(elements.as_slice()) && buffer.instance_count == count {
+        return (count, false);
+    }
+    if count == 0 {
+        buffer.instance_count = 0;
+    } else {
+        buffer
+            .buffer
+            .gpu_write(device, &elements)
+            .unwrap_or_else(|e| panic!("called `Result::unwrap()` on an `Err` value: {e:?}"));
+        buffer.instance_count = count;
+    }
+    *last = Some(elements);
+    (count, true)
+}
+
 /// W11 的 pass 声明部分（步骤 6–8）。
 pub fn declare_passes(
     env: &mut PassEnv<'_>,
@@ -318,6 +357,68 @@ mod tests {
             lib.get_mut::<GroundedBuildingsSsbo>()
                 .unwrap()
                 .instance_count,
+            0
+        );
+    }
+
+    #[test]
+    fn unchanged_buildings_are_not_uploaded_again_whatever_the_map_order() {
+        let dev = MockDevice::default();
+        let mut lib = lib_with_buffer(&dev);
+        let mut last = None;
+        let mut m = HashMap::new();
+        m.insert(1u32, src(0, 0.0));
+        m.insert(2, src(1, 0.0));
+        let before = dev.writes.borrow().len();
+        assert_eq!(
+            upload_buildings_if_changed(&m, &mut lib, &dev, &mut last),
+            (2, true)
+        );
+        assert_eq!(dev.writes.borrow().len(), before + 1);
+        // Same content, rebuilt map (different iteration order): no new write.
+        for _ in 0..20 {
+            let again: HashMap<u32, GroundedSource> = m.iter().map(|(k, v)| (*k, *v)).collect();
+            assert_eq!(
+                upload_buildings_if_changed(&again, &mut lib, &dev, &mut last),
+                (2, false)
+            );
+        }
+        assert_eq!(dev.writes.borrow().len(), before + 1);
+        // A change in any element uploads once more.
+        m.insert(2, src(1, 0.01));
+        m.get_mut(&2).unwrap().w3c = 0x99;
+        assert_eq!(
+            upload_buildings_if_changed(&m, &mut lib, &dev, &mut last),
+            (2, true)
+        );
+        assert_eq!(dev.writes.borrow().len(), before + 2);
+    }
+
+    #[test]
+    fn external_instance_count_change_forces_a_rewrite_and_empty_is_cached() {
+        let dev = MockDevice::default();
+        let mut lib = lib_with_buffer(&dev);
+        let mut last = None;
+        let mut m = HashMap::new();
+        m.insert(1u32, src(0, 0.0));
+        upload_buildings_if_changed(&m, &mut lib, &dev, &mut last);
+        lib.get_mut::<GroundedBuildingsSsbo>().unwrap().instance_count = 0;
+        assert_eq!(
+            upload_buildings_if_changed(&m, &mut lib, &dev, &mut last),
+            (1, true)
+        );
+        // Removing every building zeroes the count once without writing, then stays quiet.
+        let empty: HashMap<u32, GroundedSource> = HashMap::new();
+        assert_eq!(
+            upload_buildings_if_changed(&empty, &mut lib, &dev, &mut last),
+            (0, true)
+        );
+        assert_eq!(
+            upload_buildings_if_changed(&empty, &mut lib, &dev, &mut last),
+            (0, false)
+        );
+        assert_eq!(
+            lib.get_mut::<GroundedBuildingsSsbo>().unwrap().instance_count,
             0
         );
     }
