@@ -18,6 +18,8 @@ pub(crate) struct Memory {
     pub(crate) suballocator: Option<Arc<crate::raw::suballoc::SubAllocator>>,
     /// Whether `VK_EXT_memory_budget` was enabled at creation.
     pub(crate) budget_extension: bool,
+    /// When the driver budget was last queried by `refresh_memory_budget_if_due`.
+    pub(crate) budget_refreshed_at: parking_lot::Mutex<Option<std::time::Instant>>,
     /// Caches asked to release idle entries under memory pressure.
     pub(crate) evictables: crate::device::EvictionRegistry,
 }
@@ -62,6 +64,7 @@ impl Memory {
             #[cfg(feature = "suballocation")]
             suballocator,
             budget_extension: core.has_extension("VK_EXT_memory_budget"),
+            budget_refreshed_at: parking_lot::Mutex::new(None),
             evictables: Default::default(),
         })
     }
@@ -179,6 +182,33 @@ impl Device {
             physical.publish_memory_budget(&budget);
         }
         Ok(Some(budget))
+    }
+    /// Minimum time between driver budget queries on the frame path.
+    pub const MEMORY_BUDGET_MIN_INTERVAL: std::time::Duration =
+        std::time::Duration::from_millis(250);
+    /// Like [`Self::refresh_memory_budget`], but queries the driver only when the
+    /// last query is older than [`Self::MEMORY_BUDGET_MIN_INTERVAL`] or the
+    /// allocator is already under budget pressure. Returns `Ok(None)` when it
+    /// skipped the query or the extension is not enabled. Teardown and
+    /// callers that need a fresh value keep using the forced version.
+    pub fn refresh_memory_budget_if_due(
+        &self,
+    ) -> crate::Result<Option<vk::PhysicalDeviceMemoryBudgetPropertiesEXT<'static>>> {
+        if !self.memory.budget_extension {
+            return Ok(None);
+        }
+        let pressure = self.memory.stats.budget_action() != crate::device::BudgetAction::None;
+        {
+            let mut last = self.memory.budget_refreshed_at.lock();
+            let now = std::time::Instant::now();
+            if !pressure
+                && last.is_some_and(|at| now.duration_since(at) < Self::MEMORY_BUDGET_MIN_INTERVAL)
+            {
+                return Ok(None);
+            }
+            *last = Some(now);
+        }
+        self.refresh_memory_budget()
     }
     /// Whether `VK_EXT_memory_budget` was enabled at creation.
     pub fn memory_budget_enabled(&self) -> bool {

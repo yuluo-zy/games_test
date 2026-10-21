@@ -256,3 +256,28 @@ fn cpu_metadata_exhaustion_rejects_resource_and_view_creation_without_native_gro
     assert_eq!(device.allocator_stats().report(), before);
     assert_eq!(device.allocator_stats().cpu_memory_usage(), cpu);
 }
+
+#[test]
+fn throttled_budget_refresh_skips_a_second_query_inside_the_interval() {
+    let Some(device) = gpu_test_support::initialize(
+        "throttled budget refresh",
+        Device::new_headless(&DeviceConfig::headless()),
+    ) else {
+        return;
+    };
+    let first = device.refresh_memory_budget_if_due().unwrap();
+    let second = device.refresh_memory_budget_if_due().unwrap();
+    if device.memory_budget_enabled() {
+        // Under pressure the refresh is always due; otherwise the second call is skipped.
+        let pressure = device.allocator_stats().budget_action() != rhapsody::device::BudgetAction::None;
+        assert!(first.is_some(), "first call queries the driver");
+        assert_eq!(second.is_some(), pressure);
+    } else {
+        assert!(first.is_none() && second.is_none());
+    }
+    // The forced variant is unaffected by the interval.
+    assert_eq!(
+        device.refresh_memory_budget().unwrap().is_some(),
+        device.memory_budget_enabled()
+    );
+}

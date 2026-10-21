@@ -1795,7 +1795,7 @@ impl RenderHost for ProductionRenderHost<'_> {
         self.renderer.last_stats = self.renderer.stats.snapshot_and_reset();
     }
     fn refresh_memory_budget(&mut self) {
-        if let Err(error) = self.renderer.device.refresh_memory_budget() {
+        if let Err(error) = self.renderer.device.refresh_memory_budget_if_due() {
             self.renderer.record_error(error);
         }
     }

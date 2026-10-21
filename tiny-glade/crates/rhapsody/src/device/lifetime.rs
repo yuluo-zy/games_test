@@ -62,7 +62,7 @@ impl Device {
     /// destroyed in FIFO order per queue, so none can starve.
     pub fn try_collect_garbage(&self) -> crate::Result<usize> {
         let completed = self.reclamation_completed()?;
-        if let Err(error) = self.refresh_memory_budget() {
+        if let Err(error) = self.refresh_memory_budget_if_due() {
             log::warn!("memory budget refresh failed: {error}");
         }
         let budget = self
