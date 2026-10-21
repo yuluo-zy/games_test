@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 static UPLOAD_WAIT_CALLS: AtomicU64 = AtomicU64::new(0);
 static UPLOAD_WAIT_NS: AtomicU64 = AtomicU64::new(0);
 static UPLOAD_WAIT_BYTES: AtomicU64 = AtomicU64::new(0);
+static UPLOAD_CAPACITY_WAITS: AtomicU64 = AtomicU64::new(0);
 static PREWARM_CALLS: AtomicU64 = AtomicU64::new(0);
 static PREWARM_TICKETS: AtomicU64 = AtomicU64::new(0);
 static PREWARM_NS: AtomicU64 = AtomicU64::new(0);
@@ -23,6 +24,8 @@ pub struct FrameCounters {
     pub upload_wait_calls: u64,
     pub upload_wait_ns: u64,
     pub upload_wait_bytes: u64,
+    /// Times the queued-upload flush had to wait for a full staging ring.
+    pub upload_capacity_waits: u64,
     /// `ShaderHost::prewarm` invocations.
     pub prewarm_calls: u64,
     /// Tickets scanned across those invocations.
@@ -47,6 +50,10 @@ pub(crate) fn record_upload_wait(started: Option<Instant>, bytes: usize) {
     }
 }
 
+pub(crate) fn record_upload_capacity_wait() {
+    UPLOAD_CAPACITY_WAITS.fetch_add(1, Relaxed);
+}
+
 pub(crate) fn record_prewarm(started: Option<Instant>, tickets: usize) {
     PREWARM_CALLS.fetch_add(1, Relaxed);
     PREWARM_TICKETS.fetch_add(tickets as u64, Relaxed);
@@ -65,6 +72,7 @@ pub fn take() -> FrameCounters {
         upload_wait_calls: UPLOAD_WAIT_CALLS.swap(0, Relaxed),
         upload_wait_ns: UPLOAD_WAIT_NS.swap(0, Relaxed),
         upload_wait_bytes: UPLOAD_WAIT_BYTES.swap(0, Relaxed),
+        upload_capacity_waits: UPLOAD_CAPACITY_WAITS.swap(0, Relaxed),
         prewarm_calls: PREWARM_CALLS.swap(0, Relaxed),
         prewarm_tickets: PREWARM_TICKETS.swap(0, Relaxed),
         prewarm_ns: PREWARM_NS.swap(0, Relaxed),

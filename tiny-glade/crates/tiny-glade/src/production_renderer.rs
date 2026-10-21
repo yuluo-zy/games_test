@@ -743,7 +743,9 @@ pub struct ProductionRenderer {
     other_applications: BTreeMap<usize, ApplicationGpu>,
     timing: Option<RenderStageTiming>,
     timing_gameplay_count: u64,
-    gpu_timing_configured: bool,
+    /// Identity (raster owner address) of the bridge whose session has GPU timing
+    /// configured; the loading and gameplay Apps own different sessions.
+    gpu_timing_bridge: Option<usize>,
     gpu_span_window: crate::frame_counters::GpuSpanWindow,
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
@@ -865,7 +867,7 @@ impl ProductionRenderer {
             other_applications: BTreeMap::new(),
             timing: None,
             timing_gameplay_count: 0,
-            gpu_timing_configured: false,
+            gpu_timing_bridge: None,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1110,8 +1112,9 @@ impl ProductionRenderer {
         if !crate::frame_counters::gpu_timing_enabled() {
             return;
         }
-        if !self.gpu_timing_configured {
-            self.gpu_timing_configured = true;
+        let bridge_id = std::sync::Arc::as_ptr(self.bridge.raster_resources()) as usize;
+        if self.gpu_timing_bridge != Some(bridge_id) {
+            self.gpu_timing_bridge = Some(bridge_id);
             let config = rhapsody::rg::GpuTimingConfig {
                 pass_spans: true,
                 pending_commands: 1024,
@@ -1299,8 +1302,8 @@ impl GameRenderHostFactory for ProductionRenderer {
                 "recording_shape gameplay_n={} main_batches_parallel_chunks={:?}",
                 t.frame, t.main_recording);
             log::info!(target: "tiny_glade::frame_timing",
-                "frame_counters gameplay_n={} upload_wait_n={} upload_wait_ms={:.3} upload_wait_bytes={} prewarm_calls={} prewarm_tickets={} prewarm_ms={:.3}",
-                t.frame, c.upload_wait_calls, c.upload_wait_ns as f64 / 1_000_000.0, c.upload_wait_bytes,
+                "frame_counters gameplay_n={} upload_wait_n={} upload_wait_ms={:.3} upload_wait_bytes={} upload_capacity_waits={} prewarm_calls={} prewarm_tickets={} prewarm_ms={:.3}",
+                t.frame, c.upload_wait_calls, c.upload_wait_ns as f64 / 1_000_000.0, c.upload_wait_bytes, c.upload_capacity_waits,
                 c.prewarm_calls, c.prewarm_tickets, c.prewarm_ns as f64 / 1_000_000.0);
             // Compare only the exact App's RasterShared, after adoption. Never
             // subtract counters from another App's same-numbered VAO table.

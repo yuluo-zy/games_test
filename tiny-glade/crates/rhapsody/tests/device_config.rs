@@ -165,6 +165,53 @@ fn two_graphs_in_one_display_frame_share_one_in_flight_slot() {
 }
 
 #[test]
+fn a_display_frame_with_more_than_two_graphs_never_exhausts_command_slots() {
+    let Some(device) = create(&DeviceConfig {
+        frames_in_flight: 2,
+        ..DeviceConfig::headless()
+    }) else {
+        return;
+    };
+    let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
+    let mut session = VulkanGraphSession::new(backend);
+    // Three graphs per display frame (a retry on top of main + presentation),
+    // several frames in a row: without a bound on graphs the slots run out.
+    for _ in 0..6 {
+        session.begin_display_frame().unwrap();
+        for name in ["main", "presentation", "retry"] {
+            let mut graph = session.begin_frame().unwrap();
+            graph.add_pass(name).with_side_effect().render(|_| true);
+            session.execute_frame(graph.build()).unwrap();
+        }
+        session.end_display_frame();
+        assert!(session.pending_frame_count() <= 4, "graphs in flight stay bounded by the slots");
+    }
+    session.wait_submits_done(10_000_000_000).unwrap();
+    assert_eq!(session.pending_frame_count(), 0);
+}
+
+#[test]
+fn a_leftover_display_frame_does_not_disable_throttling_for_plain_graphs() {
+    let Some(device) = create(&DeviceConfig {
+        frames_in_flight: 1,
+        ..DeviceConfig::headless()
+    }) else {
+        return;
+    };
+    let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
+    let mut session = VulkanGraphSession::new(backend);
+    // An aborted frame left its display frame open; the next display frame
+    // replaces it and throttles again.
+    session.begin_display_frame().unwrap();
+    let mut graph = session.begin_frame().unwrap();
+    graph.add_pass("a").with_side_effect().render(|_| true);
+    session.execute_frame(graph.build()).unwrap();
+    session.begin_display_frame().unwrap();
+    assert_eq!(session.pending_frame_count(), 0, "limit 1: the stale frame was drained");
+    session.end_display_frame();
+}
+
+#[test]
 fn a_stale_display_frame_is_replaced_and_end_is_idempotent() {
     let Some(device) = create(&DeviceConfig::headless()) else {
         return;

@@ -815,6 +815,17 @@ impl VulkanGraphBackend {
     ) -> Arc<crate::raw::transient_backing::TransientBackingCounters> {
         self.transient_counters.clone()
     }
+    /// Command pool slots: one per in-flight graph. Once display frames are in
+    /// use each of the `frames_in_flight` display frames may hold two graphs.
+    fn command_slot_count(&self) -> usize {
+        self.device.frames_in_flight() as usize
+            * if self.display_frames {
+                COMMAND_SLOTS_PER_DISPLAY_FRAME as usize
+            } else {
+                1
+            }
+    }
+
     /// A new graph records into an available frame slot. CPU leases, rather than
     /// guessed frame counters, prevent resetting a pool still retained by a frame.
     fn begin_command_frame(&mut self) -> crate::Result<()> {
@@ -833,12 +844,7 @@ impl VulkanGraphBackend {
         // One slot per graph, not per display frame: a display frame holds the
         // main and the presentation graph, and `frames_in_flight` display frames
         // may be in flight at once.
-        let slots = self.device.frames_in_flight()
-            * if self.display_frames {
-                COMMAND_SLOTS_PER_DISPLAY_FRAME
-            } else {
-                1
-            };
+        let slots = self.command_slot_count() as u32;
         let selected = (1..=slots)
             .map(|offset| (self.active_frame_slot + offset) % slots)
             .find(|slot| {
@@ -2504,7 +2510,18 @@ impl VulkanGraphSession {
         // 显示帧内的图共用一个槽：已有显式显示帧时节流已在其开始处完成；
         // 否则本图自成一个显示帧（与旧行为一致：每图占一个槽）。
         let display = match self.active_display {
-            Some(display) => display,
+            Some(display) => {
+                // The display-frame throttle counts groups, so a display frame
+                // with more graphs than expected (a retry, a partial failure kept
+                // in `pending`) could otherwise exhaust the command slots. Bound
+                // the graphs themselves as well.
+                let slots = self.backend.command_slot_count();
+                while self.pending.in_flight() >= slots {
+                    let frame = self.pending.front().unwrap().frame;
+                    self.wait_frame(frame, 10_000_000_000)?;
+                }
+                display
+            }
             None => {
                 self.throttle_in_flight()?;
                 self.allocate_display()

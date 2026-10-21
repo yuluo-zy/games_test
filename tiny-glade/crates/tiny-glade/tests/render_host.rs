@@ -996,6 +996,59 @@ fn queued_device_local_updates_coalesce_in_call_order_and_submit_on_flush_withou
 }
 
 #[test]
+fn queue_pressure_flush_in_the_middle_of_a_frame_never_cancels_earlier_writes() {
+    use ash::vk;
+    use rhapsody::transfer::{TransferConfig, TransferManager};
+    let Some(device) = graphics_device() else {
+        return;
+    };
+    let host = BufferHost::new(device.clone());
+    let desc = BufferDesc::new(
+        256,
+        (vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST).as_raw(),
+        1,
+    );
+    // More device-local buffers than the queue admits jobs (64) but fewer than its
+    // key limit (128): enqueue is rejected part-way through the frame, the retry
+    // succeeds after a flush, and the epoch has moved on by then. 100 distinct
+    // buffers, so
+    // that retry path is exercised (more would hit the key limit and fall back to a waited write).
+    let buffers: Vec<_> = (0..100)
+        .map(|index| host.create_buffer(&desc, &format!("pressure {index}"), Some(&[0u8; 256])).unwrap())
+        .collect();
+    for (index, buffer) in buffers.iter().enumerate() {
+        let first = [index as u8 | 1; 16];
+        host.update_buffer_bytes(buffer, &first, &[0..16], 0).unwrap();
+    }
+    // Same frame, same buffers, a different non-overlapping range: it must add to,
+    // not replace, the first write that may already have been flushed or queued.
+    // Start with the 65th buffer: its first write is the one that was retried right
+    // after the mid-frame flush, so it is still queued when this second write arrives.
+    for index in (64..buffers.len()).chain(0..64) {
+        let second = [index as u8 | 2; 16];
+        host.update_buffer_bytes(&buffers[index], &second, &[0..16], 64).unwrap();
+    }
+    host.flush_pending_uploads().unwrap();
+    let mut reads = TransferManager::new(
+        device.clone(),
+        TransferConfig { slots: 1, chunk_bytes: 256, max_bytes: 8 << 20 },
+    )
+    .unwrap();
+    for (index, buffer) in buffers.iter().enumerate() {
+        let raw = host.get_by_id(buffer.id).unwrap().shared();
+        let read = reads.read_buffer(raw, 0, 256).unwrap();
+        read.wait(5_000_000_000).unwrap();
+        let mut actual = [0u8; 256];
+        read.try_read(&mut actual).unwrap().unwrap();
+        assert_eq!(&actual[..16], &[index as u8 | 1; 16], "first write lost for buffer {index}");
+        assert_eq!(&actual[64..80], &[index as u8 | 2; 16], "second write lost for buffer {index}");
+    }
+    for buffer in &buffers {
+        host.release(buffer);
+    }
+}
+
+#[test]
 fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
     use country_core::render::rg_helpers::{
         rg_boundary::UploadContentVersion, rg_buffer_copy_from_slice_u32,

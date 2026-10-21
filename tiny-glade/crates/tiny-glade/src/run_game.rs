@@ -672,6 +672,9 @@ pub fn run_game_thread(
             )),
     );
     let mut gui = Schedule::new(bevy_app::Update);
+    // This schedule is owned by the exclusive gui system, not by `app`, so the
+    // executor policy applied to the App's schedules cannot reach it.
+    apply_ecs_executor_policy_to(&mut gui);
     configure_gui_consumers(app.world_mut(), &mut gui);
     gui.add_systems(crate::gui::gui_debug::show_camera_snapshot_panel
         .after(country_core::systems::backend::gui::show_debug_controls));
@@ -801,8 +804,8 @@ pub fn run_game_thread(
 }
 
 /// Sizes the shared compute task pool before anything creates it with defaults.
-/// The ECS multi-threaded executor and rhapsody's parallel command recording both
-/// use this pool; one core is left for the render/main thread. `TG_ECS_THREADS`
+/// rhapsody's parallel command recording (and the ECS executor, when the
+/// `ecs-multithreaded` feature is on) share this pool; one core is left for the render/main thread. `TG_ECS_THREADS`
 /// overrides the count. `get_or_init` is first-come, so tests that initialise
 /// their own pool are unaffected.
 fn init_ecs_task_pool() {
@@ -821,34 +824,45 @@ fn init_ecs_task_pool() {
     });
 }
 
-/// The original runs the multi-threaded executor, so that is the default.
-/// `TG_ECS_EXECUTOR=single` restores the single-threaded executor on the main
-/// schedules (a kill switch if a system-order dependency shows up), and
-/// `TG_SCHEDULE_AMBIGUITY=1` logs every pair of conflicting systems that has no
-/// declared order, which is what a parallel executor would make nondeterministic.
+/// Executor policy. The single-threaded executor is the default build; the
+/// `ecs-multithreaded` feature switches bevy to its multi-threaded executor, as in
+/// the original, but only once the system-order ambiguities below are resolved.
+/// `TG_ECS_EXECUTOR=single` forces the single-threaded executor on every schedule
+/// of a feature-enabled build, and `TG_SCHEDULE_AMBIGUITY=1` logs every pair of
+/// conflicting systems with no declared order (the audit that decides whether the
+/// feature is safe: a real run reports 525 such pairs in `Update`).
 fn apply_ecs_executor_policy(app: &mut App) {
-    use bevy_ecs::schedule::{ExecutorKind, LogLevel, ScheduleBuildSettings};
-    let single = std::env::var("TG_ECS_EXECUTOR").is_ok_and(|value| value == "single");
-    let ambiguity = std::env::var_os("TG_SCHEDULE_AMBIGUITY").is_some_and(|value| value == "1");
-    if !single && !ambiguity {
+    if !ecs_policy_active() {
         return;
     }
-    macro_rules! configure {
-        ($($label:expr),*) => {$(
-            if let Some(schedule) = app.get_schedule_mut($label) {
-                if single {
-                    schedule.set_executor_kind(ExecutorKind::SingleThreaded);
-                }
-                if ambiguity {
-                    schedule.set_build_settings(ScheduleBuildSettings {
-                        ambiguity_detection: LogLevel::Warn,
-                        ..Default::default()
-                    });
-                }
-            }
-        )*};
+    let mut schedules = app.world_mut().resource_mut::<bevy_ecs::schedule::Schedules>();
+    for (_, schedule) in schedules.iter_mut() {
+        apply_ecs_executor_policy_to(schedule);
     }
-    configure!(bevy_app::PreUpdate, bevy_app::Update, bevy_app::PostUpdate);
+}
+
+fn ecs_policy_active() -> bool {
+    ecs_single_threaded() || ecs_ambiguity_detection()
+}
+fn ecs_single_threaded() -> bool {
+    std::env::var("TG_ECS_EXECUTOR").is_ok_and(|value| value == "single")
+}
+fn ecs_ambiguity_detection() -> bool {
+    std::env::var_os("TG_SCHEDULE_AMBIGUITY").is_some_and(|value| value == "1")
+}
+
+/// Applies the policy to one schedule (also used for schedules the App does not own).
+fn apply_ecs_executor_policy_to(schedule: &mut Schedule) {
+    use bevy_ecs::schedule::{ExecutorKind, LogLevel, ScheduleBuildSettings};
+    if ecs_single_threaded() {
+        schedule.set_executor_kind(ExecutorKind::SingleThreaded);
+    }
+    if ecs_ambiguity_detection() {
+        schedule.set_build_settings(ScheduleBuildSettings {
+            ambiguity_detection: LogLevel::Warn,
+            ..Default::default()
+        });
+    }
 }
 
 /// Original device-input slices in the actual gameplay App's numbered sets.

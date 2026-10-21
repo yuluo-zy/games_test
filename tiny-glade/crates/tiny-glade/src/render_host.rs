@@ -97,9 +97,12 @@ impl BufferHost {
     ) -> Result<(), BackendError> {
         let mut uploads = self.uploads.lock();
         let service = self.upload_service(&mut uploads)?;
-        let options = rhapsody::transfer::UploadOptions {
+        // The epoch is read fresh for every enqueue: a flush in the middle of this
+        // call advances it, and an enqueue at the old epoch would then be treated
+        // as superseded by the next write to the same buffer and cancelled.
+        let options_at = |epoch: u64| rhapsody::transfer::UploadOptions {
             key: rhapsody::transfer::UploadKey(buffer.id),
-            epoch: service.epoch,
+            epoch,
             priority: rhapsody::transfer::UploadPriority::High,
         };
         let mut result = Ok(());
@@ -109,15 +112,21 @@ impl BufferHost {
                 let bytes = (range.end - cursor).min(UPLOAD_CHUNK_BYTES as usize);
                 let at = offset as u64 + cursor as u64;
                 let slice = &data[cursor..cursor + bytes];
-                let mut accepted = service
-                    .manager
-                    .enqueue_upload(managed.shared(), at, slice, options);
+                let mut accepted = service.manager.enqueue_upload(
+                    managed.shared(),
+                    at,
+                    slice,
+                    options_at(service.epoch),
+                );
                 if accepted.is_err() {
                     // Queue or memory pressure: drain what is pending, then retry once.
                     Self::flush_locked(service)?;
-                    accepted = service
-                        .manager
-                        .enqueue_upload(managed.shared(), at, slice, options);
+                    accepted = service.manager.enqueue_upload(
+                        managed.shared(),
+                        at,
+                        slice,
+                        options_at(service.epoch),
+                    );
                 }
                 if let Err(error) = accepted {
                     result = Err(error);
@@ -166,11 +175,13 @@ impl BufferHost {
                 ));
             }
             // Staging is full: earlier uploads must finish first. `flush_uploads`
-            // polls the device each call, so yield and retry within the bound.
+            // polls the device each call, so back off briefly and retry within the
+            // bound. Counted, because this is a real wait on the GPU.
             if Instant::now() >= deadline {
                 return Err(rhapsody::Error::Timeout);
             }
-            std::thread::yield_now();
+            crate::frame_counters::record_upload_capacity_wait();
+            std::thread::sleep(Duration::from_micros(100));
         }
         // Next frame's writes get a fresh epoch; this frame's jobs are submitted.
         service.epoch = service

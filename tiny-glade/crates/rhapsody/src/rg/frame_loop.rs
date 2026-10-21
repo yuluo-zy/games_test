@@ -302,6 +302,10 @@ impl FrameLoop {
         let result = self.graph.begin_display_frame();
         self.observe(result)?;
         let result = self.graph.begin_frame();
+        if result.is_err() {
+            // `execute` never runs for this frame, so nothing else would close it.
+            self.graph.end_display_frame();
+        }
         self.observe(result)
     }
     pub fn execute_graph(&mut self, built: BuiltGraph) -> Result<SessionFrameReceipt> {

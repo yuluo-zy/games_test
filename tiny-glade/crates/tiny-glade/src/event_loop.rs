@@ -93,17 +93,22 @@ impl LoopTarget for winit::event_loop::EventLoopWindowTarget<()> {
 }
 
 /// Game-thread view of the OS loop. `exit` raises a flag and wakes the main
-/// thread (a redraw request is an event it must handle), which then leaves its
-/// loop. Control flow is the main thread's business and is ignored here.
+/// thread with a user event, which then leaves its loop. Control flow is the main thread's business and is ignored here.
 pub(crate) struct ThreadTarget {
     window: std::sync::Arc<winit::window::Window>,
     exit: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    /// A user event reaches the main loop even while the window is hidden or
+    /// minimized, where a redraw request may never be delivered, and it is safe
+    /// to send after the loop has ended.
+    wake: winit::event_loop::EventLoopProxy<()>,
 }
 
 impl LoopTarget for ThreadTarget {
     fn exit(&self) {
         self.exit.store(true, std::sync::atomic::Ordering::Release);
-        self.window.request_redraw();
+        // Only the proxy: once the loop has ended it reports an error, whereas a
+        // window call (`request_redraw`) on a destroyed window panics.
+        let _ = self.wake.send_event(());
     }
     fn set_control_flow(&self, _flow: winit::event_loop::ControlFlow) {}
     fn available_monitors(&self) -> Vec<winit::monitor::MonitorHandle> {
@@ -129,7 +134,8 @@ pub fn run_event_loop(
 /// default: window handling off the main thread is only exercised on X11, and
 /// platforms such as macOS require main-thread window calls.
 pub fn game_thread_enabled() -> bool {
-    std::env::var_os("TG_GAME_THREAD").is_some_and(|value| value == "1")
+    // macOS requires window calls (cursor warp, fullscreen, resize) on the main thread.
+    !cfg!(target_os = "macos") && std::env::var_os("TG_GAME_THREAD").is_some_and(|value| value == "1")
 }
 
 /// Threaded variant of [`run_event_loop`]. `build` runs on the game thread and
@@ -147,13 +153,14 @@ pub fn run_event_loop_threaded(
     use winit::event::{DeviceEvent, Event, WindowEvent};
     let (sender, receiver) = mpsc::channel::<Event<()>>();
     let exit = Arc::new(AtomicBool::new(false));
+    let wake = event_loop.create_proxy();
     let handle = std::thread::Builder::new()
         .name("tiny-glade game".into())
         .spawn({
             let window = window.clone();
             let exit = exit.clone();
             move || -> anyhow::Result<()> {
-                let target = ThreadTarget { window: window.clone(), exit: exit.clone() };
+                let target = ThreadTarget { window: window.clone(), exit: exit.clone(), wake };
                 // However this thread ends, wake the main loop so it can leave.
                 struct WakeMain<'a>(&'a ThreadTarget);
                 impl Drop for WakeMain<'_> {
@@ -166,9 +173,6 @@ pub fn run_event_loop_threaded(
                 game.run_on_game_thread(receiver, &target)
             }
         })?;
-    let mut handle = Some(handle);
-    let game_result: Arc<std::sync::Mutex<Option<anyhow::Result<()>>>> = Arc::default();
-    let result_slot = game_result.clone();
     let loop_result = event_loop.run(move |event, target| {
         target.set_control_flow(winit::event_loop::ControlFlow::Wait);
         if exit.load(Ordering::Acquire) {
@@ -183,22 +187,51 @@ pub fn run_event_loop_threaded(
             | Event::Resumed => {
                 let _ = sender.send(event);
             }
+            // Must not join here: the game thread's shutdown may call window
+            // functions that wait for this thread to pump messages.
             Event::LoopExiting => {
                 let _ = sender.send(event);
-                if let Some(handle) = handle.take() {
-                    *result_slot.lock().unwrap() = Some(handle.join().unwrap_or_else(|panic| {
-                        Err(anyhow::anyhow!("game thread panicked: {panic:?}"))
-                    }));
-                }
             }
             _ => {}
         }
     });
-    let finished = game_result.lock().unwrap().take();
+    // The callback (and with it the sender) is gone, so a game thread blocked in
+    // `recv` has been released; now it is safe to wait for it.
+    let finished = handle
+        .join()
+        .unwrap_or_else(|panic| Err(anyhow::anyhow!("game thread panicked: {panic:?}")));
     match finished {
-        Some(Err(error)) => Err(error),
-        _ => loop_result.map_err(Into::into),
+        Err(error) => Err(error),
+        Ok(()) => loop_result.map_err(Into::into),
     }
+}
+
+/// Collapses runs of adjacent pointer motion into one event: a stalled frame
+/// otherwise replays every queued `CursorMoved` (each warping the cursor and
+/// adding an offset from the anchor) and every raw `MouseMotion`, over-counting
+/// camera input. Absolute positions keep the last one; raw deltas are summed.
+fn coalesce_pointer_motion(batch: &mut Vec<winit::event::Event<()>>) {
+    use winit::event::{DeviceEvent, Event, WindowEvent};
+    let mut out: Vec<Event<()>> = Vec::with_capacity(batch.len());
+    for event in batch.drain(..) {
+        match (&event, out.last_mut()) {
+            (
+                Event::WindowEvent { window_id, event: WindowEvent::CursorMoved { .. } },
+                Some(Event::WindowEvent { window_id: last_id, event: WindowEvent::CursorMoved { .. } }),
+            ) if window_id == last_id => {
+                *out.last_mut().unwrap() = event;
+            }
+            (
+                Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta }, .. },
+                Some(Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta: last }, .. }),
+            ) => {
+                last.0 += delta.0;
+                last.1 += delta.1;
+            }
+            _ => out.push(event),
+        }
+    }
+    *batch = out;
 }
 
 impl crate::game_loop::GameLoop {
@@ -238,6 +271,7 @@ impl crate::game_loop::GameLoop {
                 Err(RecvTimeoutError::Disconnected) => break 'run,
             }
             batch.extend(events.try_iter());
+            coalesce_pointer_motion(&mut batch);
             let mut loop_exiting = false;
             for event in batch {
                 loop_exiting |= matches!(event, Event::LoopExiting);
