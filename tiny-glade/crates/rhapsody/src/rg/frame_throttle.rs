@@ -28,6 +28,20 @@ impl<R> FrameThrottle<R> {
     pub fn in_flight(&self) -> usize {
         self.pending.len()
     }
+    /// 在途"组"数：回执按提交顺序排列，`group` 连续相等的回执算同一组。
+    /// 同一显示帧内的多张图共用一个节流槽，节流按组数而不是回执数。
+    pub fn in_flight_groups<K: PartialEq>(&self, group: impl Fn(&R) -> K) -> usize {
+        let mut count = 0;
+        let mut last: Option<K> = None;
+        for receipt in &self.pending {
+            let key = group(receipt);
+            if last.as_ref() != Some(&key) {
+                count += 1;
+                last = Some(key);
+            }
+        }
+        count
+    }
     /// 队首（最早提交）回执；不弹出。
     pub fn front(&self) -> Option<&R> {
         self.pending.front()
@@ -89,6 +103,23 @@ mod tests {
         .unwrap();
         assert_eq!(waited, [0, 1, 2]);
         assert_eq!(t.in_flight(), 1);
+    }
+
+    #[test]
+    fn groups_count_consecutive_equal_keys() {
+        let mut t = FrameThrottle::new();
+        assert_eq!(t.in_flight_groups(|r: &u32| *r), 0);
+        for r in [1u32, 1, 2, 2, 3] {
+            t.end_frame(r);
+        }
+        assert_eq!(t.in_flight_groups(|r| *r), 3);
+        assert_eq!(t.in_flight(), 5);
+        // 每个回执自成一组时与旧的 in_flight 一致。
+        let mut single = FrameThrottle::new();
+        for r in 0u32..4 {
+            single.end_frame(r);
+        }
+        assert_eq!(single.in_flight_groups(|r| *r), single.in_flight());
     }
 
     #[test]

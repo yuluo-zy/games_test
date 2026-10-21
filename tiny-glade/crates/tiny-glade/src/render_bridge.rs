@@ -248,6 +248,19 @@ impl CoreRenderBridge {
         Ok((value, receipt))
     }
 
+    /// Opens one display frame on this bridge's session and throttles once. The
+    /// main and presentation graphs declared before [`Self::end_display_frame`]
+    /// share a single in-flight slot, so CPU work for the next frame overlaps
+    /// GPU work for this one.
+    pub fn begin_display_frame(&mut self) -> rhapsody::Result<rhapsody::rg::DisplayFrameId> {
+        self.session.borrow_mut().begin_display_frame()
+    }
+
+    /// Closes the display frame. Idempotent; safe on error paths.
+    pub fn end_display_frame(&mut self) {
+        self.session.borrow_mut().end_display_frame();
+    }
+
     /// Separate graph declaration from execution for the recovered outer render
     /// loop (B 0x1404e8010: compile main -> execute -> acquire -> display).
     /// The returned graph must be executed or cancelled before declaring another.

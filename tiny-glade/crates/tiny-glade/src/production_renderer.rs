@@ -718,6 +718,7 @@ struct RenderStageTiming {
     acquire: Duration,
     resolve: Duration,
     present: Duration,
+    frame_throttle: Duration,
     queue_trim: Duration,
     queue_budget: Duration,
     observed_completion_wall_ns: u64,
@@ -725,7 +726,7 @@ struct RenderStageTiming {
 }
 
 #[derive(Clone, Copy)]
-enum TimedStage { DrawLists, Declare, Prewarm, Compile, Execute, Collect, PresentWait, Acquire, Resolve, Present, QueueTrim }
+enum TimedStage { DrawLists, Declare, Prewarm, Compile, Execute, Collect, PresentWait, Acquire, Resolve, Present, FrameThrottle, QueueTrim }
 
 pub struct ProductionRenderer {
     bridge: CoreRenderBridge,
@@ -1146,6 +1147,7 @@ impl ProductionRenderer {
             TimedStage::Collect => &mut timing.collect, TimedStage::PresentWait => &mut timing.present_wait,
             TimedStage::Acquire => &mut timing.acquire, TimedStage::Resolve => &mut timing.resolve,
             TimedStage::Present => &mut timing.present, TimedStage::QueueTrim => &mut timing.queue_trim,
+            TimedStage::FrameThrottle => &mut timing.frame_throttle,
         };
         *slot = slot.saturating_add(elapsed);
     }
@@ -1178,6 +1180,7 @@ impl ProductionRenderer {
         if self.closed {
             return Ok(());
         }
+        self.bridge.end_display_frame();
         self.presentation.take();
         self.bridge.cancel_presentation()?;
         if let Some(image) = self.acquired.take() {
@@ -1280,6 +1283,8 @@ pub struct ProductionRenderHost<'a> {
 impl GameRenderHostFactory for ProductionRenderer {
     type Host<'a> = ProductionRenderHost<'a>;
     fn finish_render(&mut self) -> anyhow::Result<()> {
+        // Close the display frame on every path, including failed frames.
+        self.bridge.end_display_frame();
         // Drain the per-frame counters even for frames that are not logged, so
         // a logged frame never carries totals from skipped ones.
         let counters = self.timing.is_some().then(crate::frame_counters::take);
@@ -1298,8 +1303,8 @@ impl GameRenderHostFactory for ProductionRenderer {
             let vao = t.vao_before.filter(|(owner, _)| *owner == Arc::as_ptr(raster) as usize)
                 .map(|(_, before)| raster.vao_refresh_timing().delta_since(before));
             log::info!(target: "tiny_glade::frame_timing",
-                "render_stages gameplay_n={} graph={:?} receipt={:?} draw_lists_ms={:.3} declare_ms={:.3} prewarm_ms={:.3} compile_ms={:.3} record_submit_ms={:.3} collect_ms={:.3} present_ticket_wait_ms={:.3} acquire_ms={:.3} resolve_inclusive_ms={:.3} present_ms={:.3} queue_trim_actual_ms={:.3} queue_trim_budget_ms={:.3} observed_completion_wall_ms={:.3} submitted={} present_queued={} error={}; GPU top-level timestamp span unavailable",
-                t.frame, t.graph, t.receipt, ms(t.draw_lists), ms(t.declare), ms(t.prewarm), ms(t.compile), ms(t.execute), ms(t.collect), ms(t.present_wait), ms(t.acquire), ms(t.resolve), ms(t.present), ms(t.queue_trim), ms(t.queue_budget), t.observed_completion_wall_ns as f64 / 1_000_000.0,
+                "render_stages gameplay_n={} graph={:?} receipt={:?} draw_lists_ms={:.3} declare_ms={:.3} prewarm_ms={:.3} compile_ms={:.3} record_submit_ms={:.3} collect_ms={:.3} present_ticket_wait_ms={:.3} acquire_ms={:.3} resolve_inclusive_ms={:.3} present_ms={:.3} frame_throttle_ms={:.3} queue_trim_actual_ms={:.3} queue_trim_budget_ms={:.3} observed_completion_wall_ms={:.3} submitted={} present_queued={} error={}; GPU top-level timestamp span unavailable",
+                t.frame, t.graph, t.receipt, ms(t.draw_lists), ms(t.declare), ms(t.prewarm), ms(t.compile), ms(t.execute), ms(t.collect), ms(t.present_wait), ms(t.acquire), ms(t.resolve), ms(t.present), ms(t.frame_throttle), ms(t.queue_trim), ms(t.queue_budget), t.observed_completion_wall_ns as f64 / 1_000_000.0,
                 self.frame_submitted, self.frame_present_queued, self.first_error.is_some());
             if let Some(vao) = vao {
                 log::info!(target: "tiny_glade::frame_timing",
@@ -1332,6 +1337,15 @@ impl GameRenderHostFactory for ProductionRenderer {
         } else if let Some(timing) = &mut self.timing {
             let raster = self.bridge.raster_resources();
             timing.vao_before = Some((Arc::as_ptr(raster) as usize, raster.vao_refresh_timing()));
+        }
+        if self.first_error.is_none() {
+            // The main and presentation graphs of this frame share one in-flight
+            // slot; this is where the CPU waits for the frame before last.
+            let started = self.timing_start();
+            if let Err(error) = self.bridge.begin_display_frame() {
+                self.record_error(error);
+            }
+            self.timing_end(TimedStage::FrameThrottle, started);
         }
         if self.programs_deferred {
             self.record_error(rhapsody::Error::invalid_usage(

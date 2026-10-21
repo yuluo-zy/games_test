@@ -337,6 +337,10 @@ pub struct VulkanGraphBackend {
     frame_pools: BTreeMap<FramePoolKey, FrameCommandPool>,
     recording_epoch: u64,
     active_frame_slot: u32,
+    /// Set once the session uses explicit display frames; doubles the command
+    /// slots (see `COMMAND_SLOTS_PER_DISPLAY_FRAME`). Sessions that only call
+    /// `begin_frame` keep one slot per in-flight frame.
+    display_frames: bool,
     commands: BTreeMap<u64, VulkanCommandBuffer>,
     queue: recording::Queue,
     family: u32,
@@ -665,6 +669,7 @@ impl VulkanGraphBackend {
             frame_pools: BTreeMap::new(),
             recording_epoch: 0,
             active_frame_slot: 0,
+            display_frames: false,
             device,
             accesses,
             submissions: vec![],
@@ -825,7 +830,15 @@ impl VulkanGraphBackend {
             self.prepared_transients.trim_unaliased();
             self.caches.alias().trim();
         }
-        let slots = self.device.frames_in_flight();
+        // One slot per graph, not per display frame: a display frame holds the
+        // main and the presentation graph, and `frames_in_flight` display frames
+        // may be in flight at once.
+        let slots = self.device.frames_in_flight()
+            * if self.display_frames {
+                COMMAND_SLOTS_PER_DISPLAY_FRAME
+            } else {
+                1
+            };
         let selected = (1..=slots)
             .map(|offset| (self.active_frame_slot + offset) % slots)
             .find(|slot| {
@@ -2017,9 +2030,20 @@ impl PreparedSessionFrame {
     }
 }
 
+/// Graphs recorded per display frame (main + presentation); sizes the command
+/// pool slots so that `frames_in_flight` whole display frames fit.
+const COMMAND_SLOTS_PER_DISPLAY_FRAME: u32 = 2;
+
+/// One displayed frame. Several graphs (main plus presentation) executed
+/// inside one display frame share a single in-flight throttle slot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DisplayFrameId(pub u64);
+
 struct PendingSessionFrame {
     failed: bool,
     frame: u64,
+    /// Display frame this graph belongs to; the throttle counts these groups.
+    display: u64,
     execution: GraphExecution,
     retire: Vec<graph::RetireCallback>,
     started_at: std::time::Instant,
@@ -2042,6 +2066,12 @@ pub struct VulkanGraphSession {
     /// 在途提交队列（帧节流）。
     pending: super::frame_throttle::FrameThrottle<PendingSessionFrame>,
     next_frame: u64,
+    /// Next display-frame id (ids start at 1).
+    next_display: u64,
+    /// Explicit display frame opened by `begin_display_frame`, if any.
+    active_display: Option<u64>,
+    /// Display frame of the graph currently being declared.
+    current_display: u64,
     receipt_storage: Option<super::receipt_storage::ReceiptStorage>,
     frame_imports: Option<super::frame_imports::FrameImports>,
     frame_import_config: super::frame_imports::FrameImportConfig,
@@ -2070,6 +2100,9 @@ impl VulkanGraphSession {
             pool: graph::Pool::default(),
             pending: Default::default(),
             next_frame: 1,
+            next_display: 1,
+            active_display: None,
+            current_display: 0,
             receipt_storage: None,
             frame_imports: None,
             frame_import_config: Default::default(),
@@ -2410,6 +2443,44 @@ impl VulkanGraphSession {
         self.backend.device.try_collect_all_completed()?;
         Ok(())
     }
+    /// 配置限制在飞显示帧数量；只等待最旧帧，不等待其他会话或无关队列。
+    fn throttle_in_flight(&mut self) -> Result<(), crate::Error> {
+        let limit = self.backend.device.frames_in_flight() as usize;
+        while self.pending.in_flight_groups(|pending| pending.display) >= limit {
+            let frame = self.pending.front().unwrap().frame;
+            self.wait_frame(frame, 10_000_000_000)?;
+        }
+        Ok(())
+    }
+    fn allocate_display(&mut self) -> u64 {
+        let display = self.next_display;
+        self.next_display += 1;
+        display
+    }
+    /// Opens a display frame and throttles once. Graphs declared with
+    /// [`Self::begin_frame`] before [`Self::end_display_frame`] (for example the
+    /// main graph and the presentation graph) share this one in-flight slot, so
+    /// CPU work for frame N+1 can overlap GPU work for frame N.
+    ///
+    /// A display frame left open by an aborted frame is replaced, not an error.
+    pub fn begin_display_frame(&mut self) -> Result<DisplayFrameId, crate::Error> {
+        self.active_display = None;
+        self.backend.display_frames = true;
+        self.throttle_in_flight()?;
+        if self.is_poisoned() {
+            return Err(crate::Error::DeviceLost);
+        }
+        let display = self.allocate_display();
+        self.active_display = Some(display);
+        Ok(DisplayFrameId(display))
+    }
+    /// Closes the explicit display frame. Idempotent.
+    pub fn end_display_frame(&mut self) {
+        self.active_display = None;
+    }
+    pub fn has_active_display_frame(&self) -> bool {
+        self.active_display.is_some()
+    }
     pub fn begin_frame(&mut self) -> Result<graph::RenderGraph, crate::Error> {
         if self.active_prepared.is_some() {
             return Err(crate::Error::invalid_usage(
@@ -2430,14 +2501,19 @@ impl VulkanGraphSession {
         }
         self.forget_evicted_pool_entries();
         self.evict_idle_resources_under_pressure()?;
-        // 配置限制在飞帧数量；只等待最旧帧，不等待其他会话或无关队列。
-        while self.pending.in_flight() >= self.backend.device.frames_in_flight() as usize {
-            let frame = self.pending.front().unwrap().frame;
-            self.wait_frame(frame, 10_000_000_000)?;
-        }
+        // 显示帧内的图共用一个槽：已有显式显示帧时节流已在其开始处完成；
+        // 否则本图自成一个显示帧（与旧行为一致：每图占一个槽）。
+        let display = match self.active_display {
+            Some(display) => display,
+            None => {
+                self.throttle_in_flight()?;
+                self.allocate_display()
+            }
+        };
         if self.is_poisoned() {
             return Err(crate::Error::DeviceLost);
         }
+        self.current_display = display;
         if let Some(named) = &mut self.named {
             named.state.begin_frame();
         }
@@ -3059,6 +3135,7 @@ impl VulkanGraphSession {
                 self.end_frame(PendingSessionFrame {
                     failed: false,
                     frame,
+                    display: self.current_display,
                     execution,
                     retire,
                     started_at: std::time::Instant::now(),
@@ -3085,6 +3162,7 @@ impl VulkanGraphSession {
                     self.end_frame(PendingSessionFrame {
                         failed: true,
                         frame,
+                        display: self.current_display,
                         execution,
                         retire,
                         started_at: std::time::Instant::now(),

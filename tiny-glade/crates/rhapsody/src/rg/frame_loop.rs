@@ -298,6 +298,9 @@ impl FrameLoop {
         }
         let result = self.collect_wsi();
         self.observe(result)?;
+        // The main and presentation graphs of this frame share one in-flight slot.
+        let result = self.graph.begin_display_frame();
+        self.observe(result)?;
         let result = self.graph.begin_frame();
         self.observe(result)
     }
@@ -329,7 +332,10 @@ impl FrameLoop {
                 build_presentation: Some(build_presentation),
             },
             built,
-        )?;
+        );
+        // Close the display frame on success and failure alike.
+        self.graph.end_display_frame();
+        let output = output?;
         let presentation = output.presentation?;
         let generation = self.swapchain.generation();
         let (presentation_graph, presentation) = presentation.unzip();

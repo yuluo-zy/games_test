@@ -75,7 +75,7 @@ pub use temporal::{NamedBuffer, NamedTexture, TemporalTexturePair};
 pub use vulkan::{
     AccessTable, CompletedNamedResources, GpuResource, PreparedSessionFrame, PresentPolicy,
     PresentTarget, ResourceSpec, SessionFrameReceipt, SwapchainContents, VulkanGraphBackend,
-    VulkanGraphSession,
+    DisplayFrameId, VulkanGraphSession,
 };
 
 mod graph_caches;

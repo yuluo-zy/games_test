@@ -130,6 +130,57 @@ fn configured_frames_in_flight_controls_the_session() {
 }
 
 #[test]
+fn two_graphs_in_one_display_frame_share_one_in_flight_slot() {
+    let Some(device) = create(&DeviceConfig {
+        frames_in_flight: 2,
+        ..DeviceConfig::headless()
+    }) else {
+        return;
+    };
+    let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
+    let mut session = VulkanGraphSession::new(backend);
+    let run_display_frame = |session: &mut VulkanGraphSession| {
+        session.begin_display_frame().unwrap();
+        assert!(session.has_active_display_frame());
+        // Main graph and presentation graph of one displayed frame.
+        for name in ["main", "presentation"] {
+            let mut graph = session.begin_frame().unwrap();
+            graph.add_pass(name).with_side_effect().render(|_| true);
+            session.execute_frame(graph.build()).unwrap();
+        }
+        session.end_display_frame();
+        assert!(!session.has_active_display_frame());
+    };
+    run_display_frame(&mut session);
+    assert_eq!(session.pending_frame_count(), 2, "one group of two graphs");
+    run_display_frame(&mut session);
+    // The second display frame did not wait for the first one.
+    assert_eq!(session.pending_frame_count(), 4, "two groups in flight");
+    // The third display frame must retire the whole oldest group, not one graph.
+    session.begin_display_frame().unwrap();
+    assert_eq!(session.pending_frame_count(), 2);
+    session.end_display_frame();
+    session.wait_submits_done(10_000_000_000).unwrap();
+    assert_eq!(session.pending_frame_count(), 0);
+}
+
+#[test]
+fn a_stale_display_frame_is_replaced_and_end_is_idempotent() {
+    let Some(device) = create(&DeviceConfig::headless()) else {
+        return;
+    };
+    let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
+    let mut session = VulkanGraphSession::new(backend);
+    let first = session.begin_display_frame().unwrap();
+    // An aborted frame never closed its display frame.
+    let second = session.begin_display_frame().unwrap();
+    assert!(second > first);
+    session.end_display_frame();
+    session.end_display_frame();
+    assert!(!session.has_active_display_frame());
+}
+
+#[test]
 fn an_independent_compute_queue_submits_while_the_graphics_queue_lock_is_held() {
     use rhapsody::device::{
         DevicePreference, FamilyInfo, QueueConfig, QueuePreference, plan_queues,
