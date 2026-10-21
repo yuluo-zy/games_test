@@ -5,6 +5,7 @@ pub use system_roof as roof;
 pub use tg_history as history;
 pub use tg_terrain as terrain;
 pub use utils;
+pub mod frame_counters;
 pub mod raster_host;
 pub mod render_host;
 pub mod compute_frame;

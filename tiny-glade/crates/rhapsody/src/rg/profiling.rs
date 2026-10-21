@@ -28,7 +28,7 @@ impl Default for GpuTimingConfig {
         }
     }
 }
-#[derive(Clone, Copy, Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct GpuCommandTiming {
     pub recording_epoch: u64,
     pub queue: usize,
@@ -37,6 +37,9 @@ pub struct GpuCommandTiming {
     /// None is the whole command span. Pass spans overlap command spans and
     /// must never be added to them to estimate a frame's GPU latency.
     pub pass_index: Option<usize>,
+    /// Declared pass name for pass spans; always None for whole-command spans.
+    /// Filled only when pass spans are enabled (diagnostic builds of the log).
+    pub pass_name: Option<String>,
 }
 /// A CPU-only reserved query pair. Its query-pool owner is retained by the
 /// command's outer timing scope, through that command's real completion point.
@@ -105,6 +108,8 @@ struct Tracked {
 pub(crate) struct GpuTimingRing {
     // Slots and completed samples drop before their reservation.
     slots: Vec<Option<Tracked>>,
+    /// Pass names of reserved pass-span slots, removed when the slot is released.
+    slot_names: std::collections::HashMap<usize, Arc<str>>,
     active: Vec<(u64, usize)>,
     free: VecDeque<usize>,
     samples: VecDeque<GpuCommandTiming>,
@@ -207,6 +212,7 @@ impl GpuTimingRing {
             })?;
         Ok(Self {
             slots,
+            slot_names: std::collections::HashMap::new(),
             active,
             free,
             samples,
@@ -289,6 +295,7 @@ impl GpuTimingRing {
         &mut self,
         command: u64,
         pass_index: usize,
+        name: &Arc<str>,
     ) -> Option<GpuPassTimestamp> {
         if !self.pass_spans {
             return None;
@@ -313,6 +320,7 @@ impl GpuTimingRing {
             ended: true,
             ..outer
         });
+        self.slot_names.insert(slot, name.clone());
         self.active.push((command, slot));
         self.stats.pending += 1;
         self.stats.peak_pending = self.stats.peak_pending.max(self.stats.pending);
@@ -365,6 +373,7 @@ impl GpuTimingRing {
     fn release(&mut self, index: usize, slot: usize) {
         self.active.swap_remove(index);
         self.slots[slot] = None;
+        self.slot_names.remove(&slot);
         self.free.push_back(slot);
         self.stats.pending -= 1;
     }
@@ -415,6 +424,7 @@ impl GpuTimingRing {
                     completion_value: point.value,
                     duration_ns,
                     pass_index: tracked.pass_index,
+                    pass_name: self.slot_names.get(&slot).map(|name| name.to_string()),
                 });
                 self.stats.completed += 1;
             }

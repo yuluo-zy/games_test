@@ -207,7 +207,8 @@ impl CoreGraphicsDevice for BufferHost {
             .epoch
             .checked_add(1)
             .ok_or_else(|| BackendError::invalid_usage("buffer upload epoch exhausted"))?;
-        service.manager.upload_buffer_ranges_wait(
+        let started = crate::frame_counters::start();
+        let result = service.manager.upload_buffer_ranges_wait(
             managed.shared(),
             data,
             ranges,
@@ -218,7 +219,9 @@ impl CoreGraphicsDevice for BufferHost {
                 priority: rhapsody::transfer::UploadPriority::High,
             },
             u64::MAX,
-        )
+        );
+        crate::frame_counters::record_upload_wait(started, data.len());
+        result
     }
 
     fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
@@ -1614,6 +1617,14 @@ impl ShaderHost {
             targets.push(Target::IndexedCount(adapter.ticket()));
         }
         let total = targets.len();
+        // Counts every scan, including ones that return early with an error.
+        struct PrewarmSample(Option<Instant>, usize);
+        impl Drop for PrewarmSample {
+            fn drop(&mut self) {
+                crate::frame_counters::record_prewarm(self.0, self.1);
+            }
+        }
+        let _sample = PrewarmSample(crate::frame_counters::start(), total);
         for (index, target) in targets.into_iter().enumerate() {
             let remaining = deadline
                 .checked_duration_since(Instant::now())

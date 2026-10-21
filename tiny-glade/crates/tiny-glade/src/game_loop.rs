@@ -135,6 +135,19 @@ pub(crate) fn frame_timing_enabled() -> bool {
     *ENABLED.get_or_init(|| std::env::var_os("TG_FRAME_TIMING").is_some_and(|value| value == "1"))
 }
 
+/// Sampling interval for the per-stage log lines. `TG_FRAME_TIMING_EVERY=1`
+/// logs every gameplay frame (needed for p95/p99); the default stays 30.
+pub(crate) fn frame_timing_every() -> u64 {
+    static EVERY: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    *EVERY.get_or_init(|| {
+        std::env::var("TG_FRAME_TIMING_EVERY")
+            .ok()
+            .and_then(|value| value.trim().parse::<u64>().ok())
+            .filter(|every| *every > 0)
+            .unwrap_or(30)
+    })
+}
+
 /// B 0x1404de6b4..0x1404de7da. An open, throttleable menu limits
 /// positive configured FPS to 60; disabled/NaN limits become 60 in that branch.
 /// Profiling bypasses that menu cap. Missing menu/commander resources have

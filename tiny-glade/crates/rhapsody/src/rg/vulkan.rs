@@ -1412,8 +1412,9 @@ impl ExecutionBackend for VulkanGraphBackend {
         &mut self,
         command: u64,
         pass: usize,
+        name: &Arc<str>,
     ) -> Option<super::profiling::GpuPassTimestamp> {
-        self.gpu_timing.as_mut()?.reserve_pass(command, pass)
+        self.gpu_timing.as_mut()?.reserve_pass(command, pass, name)
     }
     unsafe fn write_pass_timestamp(
         &self,

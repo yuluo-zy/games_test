@@ -740,6 +740,8 @@ pub struct ProductionRenderer {
     other_applications: BTreeMap<usize, ApplicationGpu>,
     timing: Option<RenderStageTiming>,
     timing_gameplay_count: u64,
+    gpu_timing_configured: bool,
+    gpu_span_window: crate::frame_counters::GpuSpanWindow,
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
     acquired: Option<AcquiredImageLease>,
@@ -860,6 +862,8 @@ impl ProductionRenderer {
             other_applications: BTreeMap::new(),
             timing: None,
             timing_gameplay_count: 0,
+            gpu_timing_configured: false,
+            gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
             acquired: None,
@@ -1096,6 +1100,41 @@ impl ProductionRenderer {
             self.first_error = Some(error);
         }
     }
+    /// `TG_GPU_TIMING=1`: enable per-pass timestamps on the main session once,
+    /// then drain completed samples every frame and log a window summary.
+    /// Does not feed `last_gpu_frame_ns`, so frame pacing is unchanged.
+    fn report_gpu_spans(&mut self) {
+        if !crate::frame_counters::gpu_timing_enabled() {
+            return;
+        }
+        if !self.gpu_timing_configured {
+            self.gpu_timing_configured = true;
+            let config = rhapsody::rg::GpuTimingConfig {
+                pass_spans: true,
+                pending_commands: 1024,
+                ..Default::default()
+            };
+            if let Err(error) = self.bridge.with_session(|session| session.backend.configure_gpu_timing(Some(config))) {
+                log::warn!(target: "tiny_glade::frame_timing", "TG_GPU_TIMING requested but unavailable: {error}");
+                return;
+            }
+        }
+        let window = &mut self.gpu_span_window;
+        let polled = self.bridge.with_session(|session| {
+            session.backend.poll_gpu_timings()?;
+            for sample in session.backend.drain_gpu_timings() {
+                window.add(sample.duration_ns, sample.pass_name);
+            }
+            Ok::<_, rhapsody::Error>(())
+        });
+        if let Err(error) = polled {
+            log::warn!(target: "tiny_glade::frame_timing", "GPU timing poll failed: {error}");
+            return;
+        }
+        if let Some(line) = self.gpu_span_window.end_frame(crate::game_loop::frame_timing_every().max(30)) {
+            log::info!(target: "tiny_glade::frame_timing", "{line}");
+        }
+    }
     fn timing_start(&self) -> Option<Instant> { self.timing.as_ref().map(|_| Instant::now()) }
     fn timing_end(&mut self, stage: TimedStage, started: Option<Instant>) {
         let (Some(timing), Some(started)) = (&mut self.timing, started) else { return; };
@@ -1241,8 +1280,18 @@ pub struct ProductionRenderHost<'a> {
 impl GameRenderHostFactory for ProductionRenderer {
     type Host<'a> = ProductionRenderHost<'a>;
     fn finish_render(&mut self) -> anyhow::Result<()> {
-        if let Some(t) = self.timing.take().filter(|t| t.frame <= 3 || t.frame % 30 == 0) {
+        // Drain the per-frame counters even for frames that are not logged, so
+        // a logged frame never carries totals from skipped ones.
+        let counters = self.timing.is_some().then(crate::frame_counters::take);
+        self.report_gpu_spans();
+        let every = crate::game_loop::frame_timing_every();
+        if let Some(t) = self.timing.take().filter(|t| t.frame <= 3 || t.frame % every == 0) {
             let ms = |d: Duration| d.as_secs_f64() * 1000.0;
+            let c = counters.unwrap_or_default();
+            log::info!(target: "tiny_glade::frame_timing",
+                "frame_counters gameplay_n={} upload_wait_n={} upload_wait_ms={:.3} upload_wait_bytes={} prewarm_calls={} prewarm_tickets={} prewarm_ms={:.3}",
+                t.frame, c.upload_wait_calls, c.upload_wait_ns as f64 / 1_000_000.0, c.upload_wait_bytes,
+                c.prewarm_calls, c.prewarm_tickets, c.prewarm_ns as f64 / 1_000_000.0);
             // Compare only the exact App's RasterShared, after adoption. Never
             // subtract counters from another App's same-numbered VAO table.
             let raster = self.bridge.raster_resources();

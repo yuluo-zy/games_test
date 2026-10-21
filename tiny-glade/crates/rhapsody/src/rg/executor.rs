@@ -293,6 +293,7 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         &mut self,
         _command: u64,
         _pass: usize,
+        _name: &std::sync::Arc<str>,
     ) -> Option<super::profiling::GpuPassTimestamp> {
         None
     }
@@ -1324,7 +1325,7 @@ impl ExecutionChain {
                                 errors.borrow_mut().get_or_insert(error);
                                 return false;
                             }
-                            let gpu = backend.reserve_pass_timestamp(handle, pass_index);
+                            let gpu = backend.reserve_pass_timestamp(handle, pass_index, pass_names[pass_index]);
                             if let Some(pair) = gpu {
                                 // SAFETY: this pair was reserved for this exclusively recording command.
                                 unsafe { backend.write_pass_timestamp(handle, pair, false) };
@@ -1739,7 +1740,11 @@ impl ExecutionChain {
         for (range, command) in chunks.iter().zip(begun) {
             for index in range.clone() {
                 gpu_timings[index] =
-                    backend.reserve_pass_timestamp(command.handle(), first_pass + index);
+                    backend.reserve_pass_timestamp(
+                        command.handle(),
+                        first_pass + index,
+                        pass_names[first_pass + index],
+                    );
             }
         }
         let handles = begun
