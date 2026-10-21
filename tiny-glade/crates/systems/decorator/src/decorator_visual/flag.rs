@@ -27,7 +27,7 @@ use bevy_ecs::prelude::*;
 use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
 use country_core::resources::walls::decorator_subtype::{
-    DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorSubtypes,
+    DecoratorLibKey, DerivedDecoratorInfoResources,
 };
 use glam::{Quat, Vec3};
 
@@ -111,39 +111,50 @@ pub fn flag_cloth_corners(origin: Vec3, rotation: Quat) -> [Vec3; 4] {
 pub fn generate_flags(
     decorator_storage: Res<DecoratorStorage>,
     cached_transforms: Res<CachedDecoratorTransforms>,
-    derived_subtypes: Res<DerivedDecoratorSubtypes>,
-    mesh_lib: Res<DecoratorMeshLibrary>,
+    derived_subtypes: DerivedDecoratorInfoResources,
     mut blueprints: ResMut<DecoratorBlueprints>,
     mut transient: ResMut<DecoratorTransientVisualState>,
 ) {
-    for (_wall, decorators) in decorator_storage.iter_walls() {
-        for (id, _info) in decorators.iter_modified() {
+    let derived = derived_subtypes.as_view();
+    let mesh_lib = derived.mesh_library();
+    for (wall, decorators) in decorator_storage.iter_walls() {
+        for (id, info) in decorators.iter_modified() {
+            // 原ffe90的类型门先于cache/subtype；其它装饰不进入旗帜业务。
+            if info.decorator_type().0 != 0x3d {
+                continue;
+            }
             let transform = cached_transforms.transform(id);
-            let derived = derived_subtypes.get(id);
-            let subtype = derived.subtype().0;
+            let subtype = derived
+                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
+                .0;
             match classify_flag_subtype(subtype) {
                 Some(FlagSubtype::HandledElsewhere) => continue,
                 Some(FlagSubtype::Connections) => continue,
                 Some(FlagSubtype::Flag) => {
                     // O 蓝图写面：`+0x00 = {1, 0}`，`+0x10.. = cloth 基四元数`，
                     // 变换槽由缓存变换承载。
-                    let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
+                    let blueprint = blueprints.insert_for(
+                id,
+                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
+                info.state(),
+            );
                     blueprint.u50 = 1;
                     blueprint.flag_cloth_basis = FLAG_CLOTH_QUAT_XYZW;
                     blueprint.transform = Some(transform);
                     // O：网格库查询（DecoratorLibKey::new + 查询链）→ 逐条目构建。
-                    let key = DecoratorLibKey::new(subtype, 0);
-                    if let Some(collision) = mesh_lib.collision_mesh(key) {
-                        blueprint.set_colliders(vec![collision]);
-                    }
-                    blueprints.insert(id, blueprint);
+                    let key = DecoratorLibKey::new(subtype, info.rank());
+                    blueprint.set_positioned_colliders(
+                        std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
+                        std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
+                        &transform.translation,
+                        &transform.rotation,
+                    );
                     // O：旗布几何（四元数 + 0.48/0.08 常量）。
                     let pos = transform.translation;
                     let corners = flag_cloth_corners(pos, transform.rotation);
                     let _ = corners;
                     // O：视觉实体 builder（沿用 id/位置；mesh 名静态表 U）。
-                    let mut builder =
-                        WindowVisualEntityBuilder::new(pos, transform.rotation, id);
+                    let mut builder = WindowVisualEntityBuilder::new(pos, transform.rotation, id);
                     match subtype {
                         FLAG_WALL_SUBTYPE => {
                             builder.flag_wall_cloth();
@@ -180,10 +191,7 @@ mod tests {
         );
         assert_eq!(classify_flag_subtype(0x0d), Some(FlagSubtype::Flag));
         assert_eq!(classify_flag_subtype(0x0e), Some(FlagSubtype::Flag));
-        assert_eq!(
-            classify_flag_subtype(0x0f),
-            Some(FlagSubtype::Connections)
-        );
+        assert_eq!(classify_flag_subtype(0x0f), Some(FlagSubtype::Connections));
         assert_eq!(classify_flag_subtype(0x10), None);
         assert_eq!(classify_flag_subtype(0x0a), None);
     }
@@ -214,5 +222,228 @@ mod tests {
         assert!((FLAG_CLOTH_QUAT_XYZW[1] + std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-6);
         assert_eq!(FLAG_CLOTH_QUAT_XYZW[2], 0.0);
         assert!((FLAG_CLOTH_QUAT_XYZW[3] - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-6);
+    }
+}
+
+#[cfg(test)]
+mod canonical_mixed_input_gate_tests {
+    use super::*;
+    use crate::blueprint::{BlueprintMeshSlot, DecoratorBlueprints};
+    use crate::decorator_visual::{
+        arrow_slit::generate_arrow_slits, chimney_roof::generate_roof_chimneys,
+    };
+    use bevy_ecs::system::RunSystemOnce;
+    use country_core::resources::walls::{
+        WallId,
+        cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
+        decorator::{
+            ChimneyExtra, DecoratorExtraInfo, DecoratorId, DecoratorInfo, FlagExtra, WindowExtra,
+        },
+        decorator_storage::{DecoratorStorage, DecoratorStorageAddr, Decorators},
+        decorator_subtype::{
+            DecoratorCollision, DecoratorCollisionOutline, DecoratorLibKey, DecoratorMeshLibrary,
+            DecoratorOutline, DecoratorSubtype, DerivedDecoratorSubtypes,
+        },
+        public_walls::PublicWalls,
+    };
+    use country_core::systems::collision::world::RaycastMeshData;
+    use country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume;
+    use country_core::utils::components::transform::Transform;
+    use std::{
+        any::Any,
+        panic::{AssertUnwindSafe, catch_unwind},
+        sync::Arc,
+    };
+
+    fn fixture() -> World {
+        let mut world = World::new();
+        let mut bucket = Decorators::default();
+        for (id, ty, rank) in [(41, 0x3d, 2), (42, 0x3b, 1), (43, 0x38, 2), (44, 0x3a, 1)] {
+            let mut info = DecoratorInfo {
+                decorator_id: id,
+                ty,
+                rank,
+                state: 1,
+                ..Default::default()
+            };
+            match id {
+                41 => info.set_extra(DecoratorExtraInfo::Flag(FlagExtra(0))),
+                42 => {
+                    info.u20 = 2 << 16;
+                    info.set_extra(DecoratorExtraInfo::Chimney(ChimneyExtra {
+                        f: 1.0,
+                        smoke: 3,
+                    }));
+                }
+                43 | 44 => info.set_extra(DecoratorExtraInfo::Window(WindowExtra(0))),
+                _ => unreachable!(),
+            }
+            bucket.insert(DecoratorId(id), info);
+        }
+        let mut storage = DecoratorStorage::default();
+        storage.per_wall.insert(WallId(7), bucket);
+        world.insert_resource(storage);
+        let mut derived = DerivedDecoratorSubtypes::default();
+        for (id, subtype) in [(41, 13), (42, 21), (43, 4), (44, 23)] {
+            derived.insert(id, DecoratorSubtype(subtype));
+        }
+        world.insert_resource(derived);
+        let mut cached = CachedDecoratorTransforms::default();
+        for id in [41, 42] {
+            cached.insert(
+                id,
+                CachedDecoratorTransform {
+                    rotation: Quat::from_rotation_y(0.5),
+                    translation: Vec3::new(id as f32, 2.0, -3.0),
+                    scale: Vec3::ONE,
+                },
+            );
+        }
+        // 普通门与23/rank1没有cache；真前门必须先拒绝，不凭默认位姿继续。
+        world.insert_resource(cached);
+        let collision = DecoratorCollision {
+            triangles: box_trigger_volume(1.0, 1.0, 1.0, &Transform::identity()),
+            mesh: Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
+            bounds: utils::geometry::Rectangle3d::new(Vec3::ZERO, Vec3::ONE, glam::Vec2::X),
+        };
+        let mut library = DecoratorMeshLibrary::default();
+        library.insert_collision_and_interaction_as_same(
+            DecoratorLibKey::new(13, 2),
+            collision,
+            DecoratorOutline::None,
+            DecoratorCollisionOutline::None,
+        );
+        world.insert_resource(library);
+        world.insert_resource(PublicWalls::default());
+        world.insert_resource(DecoratorBlueprints::default());
+        world.insert_resource(DecoratorTransientVisualState::default());
+        world
+    }
+
+    fn panic_text(payload: Box<dyn Any + Send>) -> String {
+        if let Some(text) = payload.downcast_ref::<String>() {
+            return text.clone();
+        }
+        if let Some(text) = payload.downcast_ref::<&str>() {
+            return (*text).to_owned();
+        }
+        panic!("预期原required失败文字");
+    }
+
+    #[test]
+    fn three_actual_generators_share_a_mixed_modified_world_without_consuming_unrelated_inputs() {
+        let mut world = fixture();
+        world.run_system_once(generate_flags).unwrap();
+        world.run_system_once(generate_roof_chimneys).unwrap();
+        world.run_system_once(generate_arrow_slits).unwrap();
+        let blueprints = world.resource::<DecoratorBlueprints>();
+        assert_eq!(blueprints.map.len(), 2);
+        for id in [41, 42] {
+            let blueprint = blueprints.get(id).unwrap();
+            assert_eq!(
+                blueprint.storage_addr,
+                Some(DecoratorStorageAddr::Wall(WallId(7)))
+            );
+            assert_eq!(blueprint.interaction_source_flags, 1);
+            assert!(matches!(
+                blueprint.collision_mesh,
+                BlueprintMeshSlot::Mesh(_)
+            ));
+            assert!(matches!(
+                blueprint.interaction_mesh,
+                BlueprintMeshSlot::Mesh(_)
+            ));
+        }
+        assert!(blueprints.get(43).is_none());
+        assert!(blueprints.get(44).is_none());
+    }
+
+    #[test]
+    fn flags_skip_non_flag_types_before_id_cache_and_keep_their_own_required_order() {
+        let mut world = fixture();
+        let mut only_flag = DerivedDecoratorSubtypes::default();
+        only_flag.insert(41, DecoratorSubtype(13));
+        world.insert_resource(only_flag);
+        world.run_system_once(generate_flags).unwrap();
+        assert_eq!(world.resource::<DecoratorBlueprints>().map.len(), 1);
+        let mut missing_both = fixture();
+        missing_both.insert_resource(CachedDecoratorTransforms::default());
+        missing_both.insert_resource(DerivedDecoratorSubtypes::default());
+        let failure = catch_unwind(AssertUnwindSafe(|| {
+            missing_both.run_system_once(generate_flags).unwrap()
+        }))
+        .unwrap_err();
+        assert!(panic_text(failure).contains("CachedDecoratorTransforms::transform"));
+        assert!(
+            missing_both
+                .resource::<DecoratorBlueprints>()
+                .map
+                .is_empty()
+        );
+        let mut missing_id = fixture();
+        missing_id.insert_resource(DerivedDecoratorSubtypes::default());
+        let failure = catch_unwind(AssertUnwindSafe(|| {
+            missing_id.run_system_once(generate_flags).unwrap()
+        }))
+        .unwrap_err();
+        assert!(panic_text(failure).contains("subtype library doesn't contain subtype 41"));
+    }
+
+    #[test]
+    fn arrow_id_and_real_wall_are_required_after_type_and_excluded_rank_guard() {
+        let mut excluded = fixture();
+        excluded.run_system_once(generate_arrow_slits).unwrap();
+        assert!(excluded.resource::<DecoratorBlueprints>().map.is_empty());
+        let mut missing_id = fixture();
+        missing_id.insert_resource(DerivedDecoratorSubtypes::default());
+        let failure = catch_unwind(AssertUnwindSafe(|| {
+            missing_id.run_system_once(generate_arrow_slits).unwrap()
+        }))
+        .unwrap_err();
+        assert!(panic_text(failure).contains("subtype library doesn't contain subtype 44"));
+        let mut missing_wall = fixture();
+        missing_wall
+            .resource_mut::<DerivedDecoratorSubtypes>()
+            .insert(44, DecoratorSubtype(22));
+        missing_wall
+            .resource_mut::<DecoratorStorage>()
+            .per_wall
+            .get_mut(&WallId(7))
+            .unwrap()
+            .get_mut(DecoratorId(44))
+            .unwrap()
+            .rank = 2;
+        let failure = catch_unwind(AssertUnwindSafe(|| {
+            missing_wall.run_system_once(generate_arrow_slits).unwrap()
+        }))
+        .unwrap_err();
+        assert!(panic_text(failure).contains("arrow slit requires its public wall"));
+        assert!(
+            missing_wall
+                .resource::<DecoratorBlueprints>()
+                .map
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn roof_generator_does_not_hide_missing_id_behind_a_synthetic_destination_gate() {
+        let mut world = fixture();
+        {
+            let mut storage = world.resource_mut::<DecoratorStorage>();
+            storage
+                .per_wall
+                .get_mut(&WallId(7))
+                .unwrap()
+                .decorators
+                .retain(|&id, _| id == 43);
+        }
+        world.insert_resource(DerivedDecoratorSubtypes::default());
+        let failure = catch_unwind(AssertUnwindSafe(|| {
+            world.run_system_once(generate_roof_chimneys).unwrap()
+        }))
+        .unwrap_err();
+        assert!(panic_text(failure).contains("subtype library doesn't contain subtype 43"));
+        assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
     }
 }

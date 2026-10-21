@@ -1,30 +1,24 @@
-//! B `decorator_visual/stairs_assemble.rs` — 玩家楼梯装配（D1）。
+//! B `decorator_visual/stairs_assemble.rs` — 玩家楼梯装配。
 //!
-//! 证据：fresh RE-MCP 反编译（18 业务 VA）+ 原字节手解（capdis）+ 骨架 callees（O）。
-//!
-//! **状态（2026-10-20）**：gen_stairs_structural_collider 955B 的八点凸包和
-//! tiny-sphere fallback 已按原字节及独立执行恢复；其余主流程仍部分恢复。
-//! `determine_ladder_support` 0x1407de800 只有原字节结构（a/b 高度选段 + 逐段
-//! 校验分支），段阈值/flag 语义仍 U，函数体返回显式未恢复值 0；订阅/碰撞
-//! 函数同样只有调用面结构。`playermade_stairs_assemble<true/false>`
-//! （0x140008c90/0x140018040）是**硬阻塞 U**：Ghidra 两次 timeout，且 4 个
-//! 发射闭包 `closure$8/9<true>`（0x140284b0/0x140275b0）、
-//! `closure$24/25<false>`（0x140286d0/0x14027840）均无落盘反编译；在补齐
-//! 闭包/P-code 前禁止写空体或伪造装配输出。
-//!
-//! 结构恢复（O 业务链，U 主体）：calculate_adjusted_ladder_positions /
-//! construct_ladder / playermade_stairs_assemble<false,true> /
-//! playermade_stairs_interpolate_and_compare /
-//! playermade_stairs_assembly_propagate_dirty_flags /
-//! playermade_stairs_add_wall_holes /
-//! create_structural_colliders_and_initial_graph /
-//! calculate_distortion_from_structural_graph /
-//! split_segment_into_supported_and_unsupported_subsegments /
-//! construct_stair_steps / gen_stair_floors / gen_stairs_collider_and_rt_geo /
-//! create_stairs_collider。
+//! 本轮原证闭包：calculate_adjusted_ladder_positions 598B及相邻603B回调；
+//! playermade_stairs_interpolate_and_compare 8622B及真实六资源wrapper。
+//! 插值消费同一请求/历史/可视状态owner，保旧XZ与输出XYZ的不同坐标语义。
+//! 本轮候选的实际CPU验证、原宿主注册和完整cache仍分别待验收，不能据此
+//! 宣称完整楼梯渲染链已挂载。原gen_stairs_structural_collider 955B的八点
+//! 凸包及tiny-sphere分支沿用已有恢复；其余标U的装配/订阅/碰撞/支撑函数
+//! 仍是明确缺口，不以本轮类型或插值恢复替代它们的业务实现。
 
 use bevy_ecs::prelude::*;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
+use country_core::resources::walls::decorator::DecoratorId;
+use country_core::resources::stairs::stairs_assembly_params::{
+    PlayermadeStairsAssemblyRequests, SampledStairsPoints, StairGraphEdgeIdentity,
+    StairNodeAnchor, StairSamplesMetadata, StairSubSegmentMap,
+};
+use country_core::resources::stairs::stairs_state::{StairGraphEdge, StairSegment, StairsState, USE_STAIRS_LAZINESS};
+use country_core::resources::stairs::stairs_removed_supports::StairsRemovedSupports;
+use country_core::resources::stairs::visual::StairsVisualState;
+use country_core::resources::time::GameTime;
 use country_core::systems::collision::world::RaycastWorld;
 use glam::{Vec2, Vec3};
 
@@ -88,19 +82,71 @@ pub fn stairs_subscribe_lazy(
     // U。
 }
 
-/// 0x1407d8fe0（O 结构，8 参面）：调整梯位（ObservedStairNodeAnchor::try_as_wall
-/// 0x140959ef0 消费 + 高度比较）。U：梯位调整主体。
+/// B 0x1407d8fe0：按墙端与 junction 的真实旧段类型调整梯子两端。
+/// 锚点和邻接度来自同一 request；旧段表借用 canonical owner，不创建镜像。
 pub fn calculate_adjusted_ladder_positions(
-    _out: &mut [Vec3],
-    _anchor: &[u8],
-    _a: f32,
-    _b: f32,
-    _p5: u64,
-    _p6: u64,
-    _p7: u32,
-    _p8: u32,
-) {
-    // U。
+    nodes: &[(StairNodeAnchor, u8); 2],
+    from: Vec3,
+    to: Vec3,
+    stairs: &StairsState,
+    previous_segments: &StairSubSegmentMap,
+    endpoint_ids: [DecoratorId; 2],
+) -> [Vec3; 2] {
+    let from_above = from.y > to.y;
+    let (higher, lower) = if from_above { (&nodes[0], &nodes[1]) } else { (&nodes[1], &nodes[0]) };
+    let wall_offset = if higher.0.try_as_wall().is_some()
+        && higher.1 == 1
+        && lower.0.try_as_wall().is_none()
+    {
+        f32::from_bits(0x3e8f_5c29)
+    } else {
+        0.0
+    };
+    // 原先算 from-to，再按 dz²+dx² 求倒长度；零水平长度保留 NaN。
+    let dx = from.x - to.x;
+    let dz = from.z - to.z;
+    let reciprocal = 1.0 / (dz * dz + dx * dx).sqrt();
+    let direction = Vec3::new(dx * reciprocal, 0.0, dz * reciprocal);
+    // from/to 的身份顺序与几何一致，只有排除当前无向边时才规范化。
+    let [a, b] = endpoint_ids;
+    let segment = StairSegment::new(a, b);
+    let needs_offset = if to.y > from.y && nodes[0].1 > 1 {
+        !neighbor_segment_is_ladder(stairs, previous_segments, a, segment, true)
+    } else {
+        from.y > to.y && nodes[1].1 > 1
+            && !neighbor_segment_is_ladder(stairs, previous_segments, b, segment, false)
+    };
+    let joint_offset = if needs_offset { f32::from_bits(0x3e99_999a) } else { 0.0 };
+    if from_above {
+        [from - direction * wall_offset, to - direction * joint_offset]
+    } else {
+        [from + direction * joint_offset, to + direction * wall_offset]
+    }
+}
+
+/// B 0x1407d9240：第一条命中旧表的相邻边决定结果，空列表也立即 false。
+fn neighbor_segment_is_ladder(
+    stairs: &StairsState,
+    previous_segments: &StairSubSegmentMap,
+    node: DecoratorId,
+    current: StairSegment,
+    last: bool,
+) -> bool {
+    for neighbor in stairs.graph().neighbors(node.0) {
+        if stairs.graph().edge_weight(node.0, neighbor).is_none() {
+            unreachable!();
+        }
+        let other = StairSegment::new(node, DecoratorId(neighbor));
+        if other == current {
+            continue;
+        }
+        let Some(segments) = previous_segments.get(&StairGraphEdgeIdentity::from(other)) else {
+            continue;
+        };
+        let endpoint = if last { segments.last() } else { segments.first() };
+        return endpoint.is_some_and(|segment| segment.kind == 3);
+    }
+    false
 }
 
 /// 0x1407db3e0（O 结构）：构建梯（梯段几何）。
@@ -122,12 +168,101 @@ pub fn playermade_stairs_assemble<const X: bool>() {
     // U：见上；未取证前不写装配输出。
 }
 
-/// 0x1407cf500（O 结构）：插值与比较（新旧装配对比）。
+/// 原 optional raw 判别；非 Stair 不先经过会 panic 的 enum parser。
+fn optional_stair_extra(info: &country_core::resources::walls::decorator::DecoratorInfo)
+    -> Option<country_core::resources::walls::decorator::StairExtra>
+{
+    (info.extra_disc() <= 1).then(|| info.extra().as_stair())
+}
+
+/// 原四次 optional 查找保持 +28、extra+8、extra+10、extra+c 的读取顺序。
+fn stair_samples_metadata(storage: &DecoratorStorage, removed: &StairsRemovedSupports,
+    segment: StairSegment) -> StairSamplesMetadata
+{
+    let first = segment.nodes().0;
+    let info_28 = storage.lookup_decorator_info(first).map_or(0, |info| info.u28);
+    let extra_08 = storage.lookup_decorator_info(first).and_then(optional_stair_extra)
+        .map_or(0, |extra| u32::from_le_bytes(extra.0[8..12].try_into().unwrap()));
+    let extra_10 = storage.lookup_decorator_info(first).and_then(optional_stair_extra)
+        .map_or(0, |extra| extra.0[16]);
+    let extra_0c = storage.lookup_decorator_info(first).and_then(optional_stair_extra)
+        .map_or(0, |extra| u32::from_le_bytes(extra.0[12..16].try_into().unwrap()));
+    StairSamplesMetadata { info_28, extra_08, extra_0c,
+        removed_support: removed.contains(&StairGraphEdge::from(segment)), extra_10 }
+}
+
+/// 原1407cf500/8622B：插值当前请求，比较真实旧采样并维护同一历史 owner。
 pub fn playermade_stairs_interpolate_and_compare(
-    _old: &[f32],
-    _new: &[f32],
-) -> bool {
-    false // U。
+    mut requests: ResMut<PlayermadeStairsAssemblyRequests>, time: Res<GameTime>,
+    visual: Res<StairsVisualState>, removed: Res<StairsRemovedSupports>, storage: Res<DecoratorStorage>,
+    _signifiers: Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,
+) {
+    let factor = utils::time_continuous_lerp_factor(time.delta, 9.0);
+    let requests = &mut *requests;
+    let mut old_samples = std::mem::take(&mut requests.previous.sampled_points);
+    // 原 typed fold141293420：增量发布本轮段列表，不清除独立旧段表。
+    requests.previous.sub_segments.extend(requests.requests.iter()
+        .map(|request| (StairGraphEdgeIdentity::from(request.segment), request.sub_segments.clone())));
+    for request in &mut requests.requests {
+        let identity = StairGraphEdgeIdentity::from(request.segment);
+        let mut positions: Vec<_> = request.curve.points.iter().zip(&request.heights)
+            .map(|(point, &height)| Vec3::new(point.x, height, point.y)).collect();
+        let metadata = stair_samples_metadata(&storage, &removed, request.segment);
+        if let Some(previous) = old_samples.remove(&identity) {
+            // 旧比较按XZ；最终输出的Curve3按XYZ，不能被同ICF getter名字混淆。
+            if let Ok(old_curve) = utils::curve::Curve3XZ::try_new_from_points(previous.points.clone(), true) {
+                let mut moved = false;
+                for index in 0..request.curve.points.len().min(request.curve.points_u.len()) {
+                    // 原先要求本轮位置，再要求本轮tangent，之后才读旧采样下标。
+                    let position = &mut positions[index];
+                    let tangent = &mut request.tangents[index];
+                    let (old_position, mut old_tangent) = if previous.points.len() == request.curve.points.len() {
+                        (previous.points[index], previous.tangents[index])
+                    } else {
+                        let coord = old_curve.get_coord_at_u(request.curve.points_u[index]);
+                        let a = previous.points[coord.segment];
+                        let b = previous.points[coord.segment + 1];
+                        let ta = previous.tangents[coord.segment];
+                        let tb = previous.tangents[coord.segment + 1];
+                        (a + (b - a) * coord.t, ta + (tb - ta) * coord.t)
+                    };
+                    let delta = *position - old_position;
+                    *position = old_position + delta * factor;
+                    if tangent.x * old_tangent.x + tangent.y * old_tangent.y < 0.0 { old_tangent = -old_tangent; }
+                    let blended = old_tangent + (*tangent - old_tangent) * factor;
+                    let reciprocal = (blended.x * blended.x + blended.y * blended.y).sqrt().recip();
+                    *tangent = if reciprocal.is_finite() && reciprocal > 0.0 { blended * reciprocal } else { Vec2::X };
+                    // 原比较插值前delta²，NaN有序 > 为false。
+                    moved |= (delta.x * delta.x + delta.y * delta.y) + delta.z * delta.z
+                        > f32::from_bits(0x3851_b717);
+                }
+                if !moved && previous.metadata.removed_support == metadata.removed_support
+                    && previous.metadata.extra_10 == metadata.extra_10 && previous.metadata.extra_0c == metadata.extra_0c
+                    && previous.metadata.extra_08 == metadata.extra_08 && previous.metadata.info_28 == metadata.info_28
+                    && request.widths.len() == previous.widths.len()
+                    && request.widths.iter().zip(&previous.widths)
+                        .all(|(&new, &old)| !((new - old).abs() > f32::from_bits(0x38d1_b717)))
+                    && USE_STAIRS_LAZINESS.load(std::sync::atomic::Ordering::Relaxed)
+                    && visual.get(&StairGraphEdge::from(request.segment)).is_some_and(|state| !state.force_rebuild_requested())
+                {
+                    // 原同数取旧点clone；异数才接管当前插值点。
+                    let output = if previous.points.len() == positions.len() { previous.points.clone() } else { positions };
+                    request.interpolated_curve = utils::curve::Curve3::try_new_from_points(output, true).ok();
+                    requests.previous.sampled_points.insert(identity, previous);
+                    // 旧dirty不被reuse清除，第四历史Vec也原样保留。
+                    continue;
+                }
+            }
+        }
+        // 原fresh先写history，随后CurveTry即使失败仍保留history和dirty。
+        requests.previous.sampled_points.insert(identity, SampledStairsPoints {
+            points: positions.clone(), tangents: request.tangents.clone(), widths: request.widths.clone(),
+            auxiliary_words: Vec::new(), metadata,
+        });
+        request.interpolated_curve = utils::curve::Curve3::try_new_from_points(positions, true).ok();
+        request.dirty = true;
+    }
+    // 未被本轮消费的旧identity在这里drop，移除消失边的四路旧采样。
 }
 
 /// 0x1407d16b0（O 结构）：脏标记传播。
@@ -290,4 +425,493 @@ pub fn structural_stair_collider_geometry(
 /// 梯三角计数 → 图集索引（内联，O callee 面；U 映射）。
 pub fn floor_tri_count_to_atlas_idx(_tri_count: u32) -> u32 {
     0 // U。
+}
+
+#[cfg(test)]
+mod ladder_position_tests {
+    use super::*;
+    use country_core::resources::stairs::stairs_assembly_params::{
+        StairSubSegment, StairSubSegments, StairWallAnchor,
+    };
+    use country_core::resources::walls::WallId;
+
+    fn terrain(degree: u8) -> (StairNodeAnchor, u8) {
+        (StairNodeAnchor::Terrain { height: 0.0 }, degree)
+    }
+    fn wall(degree: u8) -> (StairNodeAnchor, u8) {
+        (StairNodeAnchor::Wall(StairWallAnchor::new(WallId(91), 0.0)), degree)
+    }
+    fn edge(a: u32, b: u32) -> StairSegment {
+        StairSegment::new(DecoratorId(a), DecoratorId(b))
+    }
+    fn record(kinds: &[u8]) -> StairSubSegments {
+        kinds.iter().map(|&kind| StairSubSegment { kind, flag: 1, count: 1 }).collect()
+    }
+    fn place(
+        nodes: [(StairNodeAnchor, u8); 2], from: Vec3, to: Vec3,
+        stairs: &StairsState, previous: &StairSubSegmentMap,
+    ) -> [Vec3; 2] {
+        calculate_adjusted_ladder_positions(&nodes, from, to, stairs, previous, [DecoratorId(1), DecoratorId(2)])
+    }
+
+    #[test]
+    fn terminal_wall_offset_preserves_both_directions_and_equal_height_choice() {
+        let stairs = StairsState::new();
+        let previous = StairSubSegmentMap::default();
+        let delta = f32::from_bits(0x3e8f_5c29);
+        let up = place([terrain(1), wall(1)], Vec3::ZERO, Vec3::new(2.0, 2.0, 0.0), &stairs, &previous);
+        assert_eq!(up, [Vec3::ZERO, Vec3::new(2.0 - delta, 2.0, 0.0)]);
+        let down = place([wall(1), terrain(1)], Vec3::new(2.0, 2.0, 0.0), Vec3::ZERO, &stairs, &previous);
+        assert_eq!(down, [up[1], Vec3::ZERO]);
+        let level = place([terrain(1), wall(1)], Vec3::ZERO, Vec3::new(2.0, 0.0, 0.0), &stairs, &previous);
+        assert_eq!(level[1], Vec3::new(2.0 - delta, 0.0, 0.0));
+        let both = place([wall(1), wall(1)], Vec3::ZERO, Vec3::new(2.0, 2.0, 0.0), &stairs, &previous);
+        assert_eq!(both, [Vec3::ZERO, Vec3::new(2.0, 2.0, 0.0)]);
+    }
+
+    #[test]
+    fn ascending_junction_uses_last_subsegment_and_spilled_smallvec() {
+        let mut stairs = StairsState::new();
+        stairs.add_edge(1, 2);
+        stairs.add_edge(1, 3);
+        let mut previous = StairSubSegmentMap::default();
+        let key = StairGraphEdgeIdentity::from(edge(1, 3));
+        let segments = record(&[1, 3]);
+        assert!(segments.spilled());
+        previous.insert(key, segments);
+        let end = Vec3::new(2.0, 2.0, 0.0);
+        assert_eq!(place([terrain(2), terrain(1)], Vec3::ZERO, end, &stairs, &previous), [Vec3::ZERO, end]);
+        previous.insert(key, record(&[3, 1]));
+        assert_eq!(place([terrain(2), terrain(1)], Vec3::ZERO, end, &stairs, &previous)[0], Vec3::new(-0.3, 0.0, 0.0));
+    }
+
+    #[test]
+    fn descending_junction_uses_first_subsegment() {
+        let mut stairs = StairsState::new();
+        stairs.add_edge(1, 2);
+        stairs.add_edge(2, 3);
+        let mut previous = StairSubSegmentMap::default();
+        let key = StairGraphEdgeIdentity::from(edge(2, 3));
+        previous.insert(key, record(&[3, 1]));
+        let start = Vec3::new(2.0, 2.0, 0.0);
+        assert_eq!(place([terrain(1), terrain(2)], start, Vec3::ZERO, &stairs, &previous), [start, Vec3::ZERO]);
+        previous.insert(key, record(&[1, 3]));
+        assert_eq!(place([terrain(1), terrain(2)], start, Vec3::ZERO, &stairs, &previous)[1], Vec3::new(-0.3, 0.0, 0.0));
+    }
+
+    #[test]
+    fn first_present_neighbor_decides_and_missing_entries_continue() {
+        let mut stairs = StairsState::new();
+        stairs.add_edge(1, 2);
+        stairs.add_edge(1, 3);
+        stairs.add_edge(1, 4);
+        let others: Vec<_> = stairs.graph().neighbors(1).filter(|&id| id != 2).collect();
+        let first = StairGraphEdgeIdentity::from(edge(1, others[0]));
+        let second = StairGraphEdgeIdentity::from(edge(1, others[1]));
+        let mut previous = StairSubSegmentMap::default();
+        previous.insert(second, record(&[3]));
+        assert!(neighbor_segment_is_ladder(&stairs, &previous, DecoratorId(1), edge(1, 2), true));
+        previous.insert(first, record(&[1]));
+        assert!(!neighbor_segment_is_ladder(&stairs, &previous, DecoratorId(1), edge(1, 2), true));
+        previous.insert(first, record(&[]));
+        assert!(!neighbor_segment_is_ladder(&stairs, &previous, DecoratorId(1), edge(1, 2), true));
+        assert!(stairs.graph().contains_edge(1, 2));
+        assert_eq!(previous.len(), 2);
+    }
+
+    #[test]
+    fn absent_node_and_current_edge_only_do_not_find_a_neighbor_ladder() {
+        let mut stairs = StairsState::new();
+        let mut previous = StairSubSegmentMap::default();
+        previous.insert(StairGraphEdgeIdentity::from(edge(1, 2)), record(&[3]));
+        assert!(!neighbor_segment_is_ladder(&stairs, &previous, DecoratorId(1), edge(1, 2), false));
+        stairs.add_edge(1, 2);
+        assert!(!neighbor_segment_is_ladder(&stairs, &previous, DecoratorId(1), edge(1, 2), false));
+    }
+
+    #[test]
+    fn zero_horizontal_span_retains_nan_and_unordered_height_does_not_add_joint_offset() {
+        let stairs = StairsState::new();
+        let previous = StairSubSegmentMap::default();
+        let points = place([terrain(1), terrain(1)], Vec3::new(1.0, 0.0, 1.0), Vec3::new(1.0, 2.0, 1.0), &stairs, &previous);
+        assert!(points.iter().all(|point| point.x.is_nan() && point.z.is_nan()));
+        assert_eq!(points[0].y, 0.0);
+        assert_eq!(points[1].y, 2.0);
+        let unordered = place([terrain(7), wall(1)], Vec3::new(0.0, f32::NAN, 0.0), Vec3::new(2.0, 2.0, 0.0), &stairs, &previous);
+        assert_eq!(unordered[0].x, 0.0);
+        assert!(unordered[0].y.is_nan());
+        assert_eq!(unordered[1].x, 2.0 - f32::from_bits(0x3e8f_5c29));
+    }
+    #[test]
+    fn reversed_endpoint_ids_keep_their_geometry_and_neighbor_association() {
+        let mut stairs = StairsState::new();
+        stairs.add_edge(29, 7);
+        stairs.add_edge(29, 3);
+        let mut previous = StairSubSegmentMap::default();
+        previous.insert(StairGraphEdgeIdentity::from(edge(29, 3)), record(&[1, 3]));
+        let start = Vec3::ZERO;
+        let end = Vec3::new(2.0, 2.0, 0.0);
+        assert_eq!(calculate_adjusted_ladder_positions(
+            &[terrain(2), terrain(1)], start, end, &stairs, &previous,
+            [DecoratorId(29), DecoratorId(7)],
+        ), [start, end]);
+        let mut down_stairs = StairsState::new();
+        down_stairs.add_edge(29, 7);
+        down_stairs.add_edge(7, 3);
+        previous.clear();
+        previous.insert(StairGraphEdgeIdentity::from(edge(7, 3)), record(&[3, 1]));
+        assert_eq!(calculate_adjusted_ladder_positions(
+            &[terrain(1), terrain(2)], end, start, &down_stairs, &previous,
+            [DecoratorId(29), DecoratorId(7)],
+        ), [end, start]);
+    }
+
+}
+
+
+#[cfg(test)]
+mod interpolate_history_tests {
+    use super::*;
+    use bevy_ecs::system::RunSystemOnce;
+    use country_core::resources::stairs::stairs_assembly_params::StairArchWallSupportType;
+    use country_core::resources::terrain_height::{TerrainHeightsData, VisualTerrainHeightSsbo};
+    use country_core::resources::walls::cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms};
+    use country_core::resources::walls::decorator::{DecoratorExtraInfo, DecoratorInfo, FlagExtra, StairExtra};
+    use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
+    use country_core::resources::walls::public_walls::PublicWalls;
+    use country_core::systems::backend::input::translate_input::DemoModeEnabled;
+    use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+    use std::sync::{Mutex, MutexGuard, atomic::Ordering};
+
+    // 本模块所有实际 consumer case 共用此锁，离开作用域始终恢复原全局值。
+    static LAZY_TEST_LOCK: Mutex<()> = Mutex::new(());
+    struct LazyPolicyGuard {
+        previous: bool,
+        _lock: MutexGuard<'static, ()>,
+    }
+    impl LazyPolicyGuard {
+        fn enabled() -> Self {
+            let lock = LAZY_TEST_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            let previous = USE_STAIRS_LAZINESS.swap(true, Ordering::Relaxed);
+            Self { previous, _lock: lock }
+        }
+    }
+    impl Drop for LazyPolicyGuard {
+        fn drop(&mut self) { USE_STAIRS_LAZINESS.store(self.previous, Ordering::Relaxed); }
+    }
+
+    fn generated_world(length: f32) -> World {
+        let mut storage = DecoratorStorage::default();
+        let mut cached = CachedDecoratorTransforms::default();
+        let mut stairs = StairsState::new();
+        for (id, x) in [(1, 0.0), (2, length)] {
+            let mut info = DecoratorInfo {
+                u20: 3 << 16,
+                dst_wall: u64::from(x.to_bits()),
+                ..DecoratorInfo::default()
+            };
+            let mut extra = [0; 20];
+            extra[4..8].copy_from_slice(&1.0f32.to_le_bytes());
+            info.set_extra(DecoratorExtraInfo::Stair(StairExtra(extra)));
+            storage.apply_decorator_place(DecoratorStorageAddr::Terrain, DecoratorId(id), &info);
+            cached.insert(id, CachedDecoratorTransform {
+                rotation: glam::Quat::IDENTITY, translation: Vec3::new(x, 0.0, 0.0), scale: Vec3::ONE,
+            });
+            stairs.add_node(id);
+        }
+        stairs.add_edge(1, 2);
+        let mut terrain = TerrainHeightsData::<VisualTerrainHeightSsbo>::new();
+        terrain.set_height_range(-20.0, -20.0);
+        let mut world = World::new();
+        world.insert_resource(storage); world.insert_resource(cached); world.insert_resource(stairs);
+        world.insert_resource(PublicWalls::default()); world.insert_resource(terrain);
+        world.insert_resource(PlayermadeStairsAssemblyRequests::default());
+        world.insert_resource(UiSignifierStream::default()); world.insert_resource(DemoModeEnabled(false));
+        // 使用已恢复的真实上游请求系统，不在测试中捏造 Default Params。
+        world.run_system_once(crate::decorator_visual::stairs::generate_playermade_stair_requests::<false>).unwrap();
+        let requests = world.resource::<PlayermadeStairsAssemblyRequests>();
+        assert_eq!(requests.requests.len(), 1);
+        let edge = StairGraphEdge::from(requests.requests[0].segment);
+        let mut visual = StairsVisualState::default(); visual.reset_edge(edge);
+        world.insert_resource(visual); world.insert_resource(StairsRemovedSupports::default());
+        world.insert_resource(GameTime { delta: 0.25, ..Default::default() });
+        world
+    }
+
+    fn run(world: &mut World) {
+        world.run_system_once(playermade_stairs_interpolate_and_compare).unwrap();
+    }
+
+    fn key(world: &World) -> StairGraphEdgeIdentity {
+        StairGraphEdgeIdentity::from(world.resource::<PlayermadeStairsAssemblyRequests>().requests[0].segment)
+    }
+
+    fn seed_previous(world: &mut World) -> StairGraphEdgeIdentity {
+        // 第一帧由真实 consumer 发布历史；只给下一帧设置明确的旧缓存输入。
+        run(world);
+        let id = key(world);
+        let mut requests = world.resource_mut::<PlayermadeStairsAssemblyRequests>();
+        requests.requests[0].dirty = false;
+        requests.previous.sampled_points.get_mut(&id).unwrap().auxiliary_words = vec![0x8000_0000, 0x7fc1_2345, 19];
+        id
+    }
+
+    #[test]
+    fn fresh_history_publishes_real_segments_and_disappeared_samples_are_dropped() {
+        let _policy = LazyPolicyGuard::enabled();
+        let mut world = generated_world(1.0);
+        let id = key(&world);
+        run(&mut world);
+        let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+        let current = &owner.requests[0];
+        assert!(current.dirty);
+        assert!(current.interpolated_curve.is_some());
+        let sample = &owner.previous.sampled_points[&id];
+        assert_eq!(sample.points.len(), current.curve.points.len());
+        assert_eq!(sample.widths, current.widths);
+        assert!(sample.auxiliary_words.is_empty());
+        assert_eq!(owner.previous.sub_segments[&id], current.sub_segments);
+        let orphan = StairGraphEdgeIdentity::from(StairSegment::new(DecoratorId(7), DecoratorId(8)));
+        let old_sample = sample.clone(); let old_segments = current.sub_segments.clone();
+        let mut owner = world.resource_mut::<PlayermadeStairsAssemblyRequests>();
+        owner.previous.sampled_points.insert(orphan, old_sample);
+        owner.previous.sub_segments.insert(orphan, old_segments);
+        owner.previous.arch_wall_supports.insert(orphan, StairArchWallSupportType::Kind1);
+        owner.requests.clear();
+        drop(owner);
+        run(&mut world);
+        let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+        assert!(owner.previous.sampled_points.is_empty());
+        assert!(owner.previous.sub_segments.contains_key(&id));
+        assert!(owner.previous.sub_segments.contains_key(&orphan));
+        assert_eq!(owner.previous.arch_wall_supports[&orphan], StairArchWallSupportType::Kind1);
+    }
+
+    #[test]
+    fn reuse_same_count_keeps_old_geometry_and_all_four_history_vectors() {
+        let _policy = LazyPolicyGuard::enabled();
+        let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+        let old = world.resource::<PlayermadeStairsAssemblyRequests>().previous.sampled_points[&id].clone();
+        for height in &mut world.resource_mut::<PlayermadeStairsAssemblyRequests>().requests[0].heights { *height += 0.001; }
+        run(&mut world);
+        let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+        assert!(!owner.requests[0].dirty);
+        assert_eq!(owner.requests[0].interpolated_curve.as_ref().unwrap().points, old.points);
+        let preserved = &owner.previous.sampled_points[&id];
+        assert_eq!(preserved.points, old.points); assert_eq!(preserved.tangents, old.tangents);
+        assert_eq!(preserved.widths, old.widths); assert_eq!(preserved.auxiliary_words, old.auxiliary_words);
+        assert_eq!(preserved.metadata, old.metadata);
+        world.resource_mut::<PlayermadeStairsAssemblyRequests>().requests[0].dirty = true;
+        run(&mut world);
+        assert!(world.resource::<PlayermadeStairsAssemblyRequests>().requests[0].dirty);
+        assert_eq!(world.resource::<PlayermadeStairsAssemblyRequests>().previous.sampled_points[&id].auxiliary_words, old.auxiliary_words);
+    }
+
+    #[test]
+    fn reuse_different_position_count_moves_interpolated_geometry_but_preserves_old_history() {
+        let _policy = LazyPolicyGuard::enabled();
+        let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+        {
+            let mut owner = world.resource_mut::<PlayermadeStairsAssemblyRequests>();
+            assert_eq!(owner.requests[0].curve.points.len(), 2);
+            let old = owner.previous.sampled_points.get_mut(&id).unwrap();
+            old.points.insert(1, (old.points[0] + old.points[1]) * 0.5);
+            old.tangents.insert(1, old.tangents[0]);
+            // 四个Vec的长度独立；原比较并没有用points长度替代widths长度。
+            for height in &mut owner.requests[0].heights { *height += 0.001; }
+        }
+        run(&mut world);
+        let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+        assert!(!owner.requests[0].dirty);
+        let output = owner.requests[0].interpolated_curve.as_ref().unwrap();
+        assert_eq!(output.points.len(), 2);
+        let expected_y = 0.001 * utils::time_continuous_lerp_factor(0.25, 9.0);
+        assert!((output.points[0].y - expected_y).abs() < 1e-7);
+        let old = &owner.previous.sampled_points[&id];
+        assert_eq!(old.points.len(), 3); assert_eq!(old.points[0].y, 0.0);
+        assert_eq!(old.auxiliary_words, [0x8000_0000, 0x7fc1_2345, 19]);
+    }
+
+    #[test]
+    fn resampling_uses_old_xz_distance_and_motion_compares_before_time_factor() {
+        let _policy = LazyPolicyGuard::enabled();
+        let mut world = generated_world(2.0); let id = seed_previous(&mut world);
+        world.resource_mut::<GameTime>().delta = 0.0;
+        {
+            let mut owner = world.resource_mut::<PlayermadeStairsAssemblyRequests>();
+            assert_eq!(owner.requests[0].curve.points.len(), 4);
+            let old = owner.previous.sampled_points.get_mut(&id).unwrap();
+            old.points = vec![Vec3::ZERO, Vec3::new(0.25, 10.0, 0.0), Vec3::new(2.0, 0.0, 0.0)];
+            old.tangents = vec![Vec2::X; 3];
+        }
+        run(&mut world);
+        let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+        let output = owner.requests[0].interpolated_curve.as_ref().unwrap();
+        let x = 2.0 / 3.0;
+        assert!((output.points[1].x - x).abs() < 1e-6);
+        assert!((output.points[1].y - (10.0 + (0.0 - 10.0) * ((x - 0.25) / 1.75))).abs() < 1e-5);
+        assert!(owner.requests[0].dirty);
+        assert!(owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+        // dt=0使实际位置不动；超阈值仍必须标脏，不能比较插值后的delta。
+        for (difference, dirty) in [(0.007, false), (0.0071, true)] {
+            let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+            world.resource_mut::<GameTime>().delta = 0.0;
+            for height in &mut world.resource_mut::<PlayermadeStairsAssemblyRequests>().requests[0].heights { *height += difference; }
+            run(&mut world);
+            let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+            assert_eq!(owner.requests[0].dirty, dirty);
+            assert_eq!(owner.requests[0].interpolated_curve.as_ref().unwrap().points[0].y, 0.0);
+            assert_eq!(owner.previous.sampled_points[&id].auxiliary_words.is_empty(), dirty);
+        }
+    }
+
+    #[test]
+    fn tangent_sign_fallback_and_width_nan_keep_original_ordered_gates() {
+        let _policy = LazyPolicyGuard::enabled();
+        for zero_tangent in [false, true] {
+            let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+            {
+                let mut owner = world.resource_mut::<PlayermadeStairsAssemblyRequests>();
+                owner.requests[0].tangents.fill(if zero_tangent { Vec2::ZERO } else { Vec2::Y });
+                owner.requests[0].widths[0] = f32::NAN;
+                owner.previous.sampled_points.get_mut(&id).unwrap().tangents.fill(if zero_tangent { Vec2::ZERO } else { -Vec2::Y });
+            }
+            run(&mut world);
+            let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+            assert!(!owner.requests[0].dirty);
+            assert!(owner.requests[0].tangents.iter().all(|&direction| direction == if zero_tangent { Vec2::X } else { Vec2::Y }));
+            assert!(!owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+            assert_eq!(owner.previous.sampled_points[&id].widths[0], 1.0);
+        }
+        let tolerance = f32::from_bits(0x38d1_b717);
+        for (difference, dirty) in [(tolerance, false), (f32::from_bits(tolerance.to_bits() + 1), true)] {
+            let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+            {
+                let mut owner = world.resource_mut::<PlayermadeStairsAssemblyRequests>();
+                owner.requests[0].widths.fill(0.0);
+                owner.requests[0].widths[0] = difference;
+                owner.previous.sampled_points.get_mut(&id).unwrap().widths.fill(0.0);
+            }
+            run(&mut world);
+            assert_eq!(world.resource::<PlayermadeStairsAssemblyRequests>().requests[0].dirty, dirty);
+        }
+    }
+
+    fn edit_first_info(world: &mut World, edit: impl FnOnce(&mut DecoratorInfo)) {
+        let mut storage = world.resource_mut::<DecoratorStorage>();
+        edit(storage.lookup_decorator_info_mut(DecoratorId(1)).unwrap());
+    }
+
+    #[test]
+    fn metadata_compares_raw_signed_zero_nan_payload_and_each_optional_field() {
+        let _policy = LazyPolicyGuard::enabled();
+        let mut world = generated_world(1.0);
+        edit_first_info(&mut world, |info| info.u28 = 0x7fc1_2345);
+        let id = seed_previous(&mut world);
+        run(&mut world);
+        assert!(!world.resource::<PlayermadeStairsAssemblyRequests>().requests[0].dirty);
+        assert!(!world.resource::<PlayermadeStairsAssemblyRequests>().previous.sampled_points[&id].auxiliary_words.is_empty());
+        edit_first_info(&mut world, |info| info.u28 = 0x7fc1_2346);
+        run(&mut world);
+        assert!(world.resource::<PlayermadeStairsAssemblyRequests>().requests[0].dirty);
+        assert_eq!(world.resource::<PlayermadeStairsAssemblyRequests>().previous.sampled_points[&id].metadata.info_28, 0x7fc1_2346);
+        for field in 0..5 {
+            let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+            if field == 4 {
+                world.resource_mut::<StairsRemovedSupports>().record(StairGraphEdge::new(1, 2));
+            } else {
+                edit_first_info(&mut world, |info| {
+                    if field == 0 { info.u28 = 0x8000_0000; }
+                    else {
+                        let mut extra = info.extra().as_stair();
+                        match field {
+                            1 => extra.0[8..12].copy_from_slice(&0x8000_0000u32.to_le_bytes()),
+                            2 => extra.0[12..16].copy_from_slice(&0x7fc1_2345u32.to_le_bytes()),
+                            3 => extra.0[16] = 1,
+                            _ => unreachable!(),
+                        }
+                        info.set_extra(DecoratorExtraInfo::Stair(extra));
+                    }
+                });
+            }
+            run(&mut world);
+            let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+            assert!(owner.requests[0].dirty);
+            assert!(owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+        }
+    }
+
+    #[test]
+    fn optional_missing_non_stair_and_unknown_raw_extra_keep_zero_metadata() {
+        let _policy = LazyPolicyGuard::enabled();
+        for mode in 0..3 {
+            let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+            if mode == 0 {
+                world.resource_mut::<DecoratorStorage>().apply_decorator_remove(DecoratorStorageAddr::Terrain, DecoratorId(1));
+            } else {
+                edit_first_info(&mut world, |info| {
+                    if mode == 1 { info.set_extra(DecoratorExtraInfo::Flag(FlagExtra(91))); }
+                    else { info.u40 = (info.u40 & !0xff00) | 0xff00; }
+                });
+            }
+            run(&mut world);
+            let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+            assert!(!owner.requests[0].dirty);
+            assert_eq!(owner.previous.sampled_points[&id].metadata,
+                StairSamplesMetadata { info_28: 0, extra_08: 0, extra_0c: 0, removed_support: false, extra_10: 0 });
+            assert!(!owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+        }
+    }
+
+    #[test]
+    fn actual_visual_missing_force_rebuild_and_global_off_each_prevent_reuse() {
+        let _policy = LazyPolicyGuard::enabled();
+        for gate in 0..3 {
+            let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+            let edge = StairGraphEdge::from(world.resource::<PlayermadeStairsAssemblyRequests>().requests[0].segment);
+            match gate {
+                0 => world.resource_mut::<StairsVisualState>().remove_edge(edge),
+                1 => world.resource_mut::<StairsVisualState>().force_rebuild(edge),
+                2 => USE_STAIRS_LAZINESS.store(false, Ordering::Relaxed),
+                _ => unreachable!(),
+            }
+            run(&mut world);
+            let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+            assert!(owner.requests[0].dirty);
+            assert!(owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+            USE_STAIRS_LAZINESS.store(true, Ordering::Relaxed);
+        }
+    }
+
+    #[test]
+    fn old_xz_curve_accepts_nan_y_and_reuse_preserves_opaque_history_when_xyz_output_fails() {
+        let _policy = LazyPolicyGuard::enabled();
+        let mut world = generated_world(1.0); let id = seed_previous(&mut world);
+        {
+            let mut owner = world.resource_mut::<PlayermadeStairsAssemblyRequests>();
+            let old = owner.previous.sampled_points.get_mut(&id).unwrap();
+            assert_eq!(old.points.len(), 2);
+            old.points = vec![Vec3::new(0.0, f32::NAN, 0.0), Vec3::new(1.0, f32::NAN, 0.0)];
+        }
+        run(&mut world);
+        let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+        assert!(!owner.requests[0].dirty);
+        assert!(owner.requests[0].interpolated_curve.is_none());
+        let old = &owner.previous.sampled_points[&id];
+        assert!(old.points.iter().all(|point| point.y.is_nan()));
+        assert_eq!(old.auxiliary_words, [0x8000_0000, 0x7fc1_2345, 19]);
+    }
+
+    #[test]
+    fn fresh_xyz_curve_failure_still_inserts_history_and_marks_dirty() {
+        let _policy = LazyPolicyGuard::enabled();
+        let mut world = generated_world(1.0); let id = key(&world);
+        world.resource_mut::<PlayermadeStairsAssemblyRequests>().requests[0].heights.fill(f32::NAN);
+        run(&mut world);
+        let owner = world.resource::<PlayermadeStairsAssemblyRequests>();
+        assert!(owner.requests[0].dirty);
+        assert!(owner.requests[0].interpolated_curve.is_none());
+        assert!(owner.previous.sampled_points[&id].points.iter().all(|point| point.y.is_nan()));
+        assert!(owner.previous.sampled_points[&id].auxiliary_words.is_empty());
+    }
 }

@@ -168,28 +168,134 @@ impl IsoTransform {
     }
 }
 
-// ---- D4 追加（subdivide_wall_decorator，PDB utils/mod.rs 行 12 内联）----
-
-/// B `subdivide_wall_decorator`（utils/mod.rs 行 12，inline；closure$0 行 26
-/// 用 `WallSpaceCoord::with_offset_unbounded`，O）。
-///
-/// 墙装饰细分：把装饰位置按 `(du, dy)` 偏移复制一份（细分墙时装饰在两侧各
-/// 保留一份）。返回 `(原位置, 偏移位置)`。
-/// 签名面 I（调用点为 D2 ui_systems handle_splitting_* 内联宿主，待 reviewer
-/// 按调用点核对参数序）。
-pub fn subdivide_wall_decorator(
-    space: &utils::wall_space::WallSpace,
+/// 原 B utils/mod.rs 的墙装饰分段：逐点走同一真实墙曲线，再组合相邻点。
+/// 原调用方收集迭代器；这里不建立第二份点数组或几何 owner。
+/// 宽度、零乘法与各标量求值顺序来自 1407ed6c7..7be 和完整 141260ca0。
+pub fn subdivide_wall_decorator<'a>(
+    space: utils::wall_space::WallSpace,
     coord: utils::wall_space::WallSpaceCoord,
-    offset: Vec2,
-) -> (utils::wall_space::WallSpaceCoord, utils::wall_space::WallSpaceCoord) {
-    let split = coord.with_offset_unbounded(space, offset);
-    (coord, split)
+    width: f32,
+    pieces: usize,
+    curve: &'a impl utils::wall_space::CurveSampling,
+) -> impl Iterator<Item = country_core::utils::components::transform::Transform> + 'a {
+    use itertools::Itertools;
+    use utils::comparative_space::ComparativeSpace;
+    use utils::wall_space::WallSpaceCoord;
+
+    let half_offset = width * f32::from_bits(0xbf00_0000);
+    let start_u = space.project_unbounded(coord.u + half_offset);
+    let start_y = half_offset * 0.0 + coord.y;
+    let step = width / pieces as f32;
+    (0..pieces + 1)
+        .map(move |index| {
+            let distance = index as f32 * step;
+            let y_offset = 0.0 * distance;
+            let u = space.project_unbounded(start_u + distance);
+            WallSpaceCoord::new_unchecked(u, start_y + y_offset).to_world_space(curve)
+        })
+        .tuple_windows()
+        .map(|(first, second): (Vec3, Vec3)| {
+            let delta = second - first;
+            // 原首条路径先求 dy²+dx²，再加 dz²；不改成仅 XZ 归一化。
+            let reciprocal = 1.0 / ((delta.y * delta.y + delta.x * delta.x)
+                + delta.z * delta.z).sqrt();
+            let normal = Vec2::new(-delta.z * reciprocal, delta.x * reciprocal);
+            country_core::utils::components::transform::Transform {
+                // 原版在归一化之后仍调用同一个 bad-XZ 旋转，不改用 atan2。
+                rotation: utils::xz_rotation_bad(normal),
+                translation: Vec3::new(
+                    (first.x + second.x) * 0.5,
+                    (first.y + second.y) * 0.5,
+                    (first.z + second.z) * 0.5,
+                ),
+                scale: Vec3::ONE,
+            }
+        })
 }
 
-/// 装饰细分闭包宿主（closure$0 行 26：`with_offset_unbounded` 实例）。
-pub fn subdivide_wall_decorator_closure(
-    space: &utils::wall_space::WallSpace,
-) -> impl Fn(utils::wall_space::WallSpaceCoord, Vec2) -> (utils::wall_space::WallSpaceCoord, utils::wall_space::WallSpaceCoord)
-       + '_ {
-    move |coord, offset| subdivide_wall_decorator(space, coord, offset)
+#[cfg(test)]
+mod subdivision_native_tests {
+    use super::*;
+    use country_core::resources::roofs::geometry::surface::Curve2;
+    use utils::wall_space::{WallSpace, WallSpaceCoord};
+
+    fn close(actual: Quat, expected: [f32; 4]) {
+        for (actual, expected) in actual.to_array().into_iter().zip(expected) {
+            assert!((actual - expected).abs() < 2.0e-7,
+                "旋转分量不一致：actual={actual:?} ({:#010x}), expected={expected:?} ({:#010x})",
+                actual.to_bits(), expected.to_bits());
+        }
+    }
+
+    #[test]
+    fn real_bent_curve_uses_each_adjacent_pose_instead_of_endpoint_lerp() {
+        let curve = Curve2::try_new(vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0]], true).unwrap();
+        let poses: Vec<_> = subdivide_wall_decorator(
+            WallSpace { is_loop: false, length: 4.0 },
+            WallSpaceCoord::new_unchecked(2.0, 3.0), 4.0, 2, &curve).collect();
+        assert_eq!(poses.len(), 2);
+        assert_eq!(poses[0].translation, Vec3::new(1.0, 3.0, 0.0));
+        assert_eq!(poses[1].translation, Vec3::new(2.0, 3.0, 1.0));
+        close(poses[0].rotation, [0.0, 0.0, 0.0, 1.0]);
+        // 原 B140c91105..150 的 Y-major 分支取 y 正、w 负，不能套用 Euler 的相反符号。
+        close(poses[1].rotation, [0.0, std::f32::consts::FRAC_1_SQRT_2, 0.0,
+            -std::f32::consts::FRAC_1_SQRT_2]);
+        assert!((poses[0].rotation * Vec3::Z).abs_diff_eq(Vec3::Z, 1.0e-6));
+        assert!((poses[1].rotation * Vec3::Z).abs_diff_eq(-Vec3::X, 1.0e-6));
+        assert!((poses[1].rotation * Vec3::Y).abs_diff_eq(Vec3::Y, 1.0e-6));
+        assert!(poses.iter().all(|pose| pose.scale == Vec3::ONE));
+    }
+
+    #[test]
+    fn open_curve_reuses_original_negative_endpoint_direction_and_positive_extension() {
+        let curve = Curve2::try_new(vec![[0.0, 0.0], [2.0, 0.0]], true).unwrap();
+        let poses: Vec<_> = subdivide_wall_decorator(
+            WallSpace { is_loop: false, length: 2.0 },
+            WallSpaceCoord::new_unchecked(1.0, 5.0), 6.0, 2, &curve).collect();
+        // 原 to_world_space 对负 U 做 position - tangent * U，故 -2 映射为 +2。
+        assert_eq!(poses[0].translation, Vec3::new(1.5, 5.0, 0.0));
+        assert_eq!(poses[1].translation, Vec3::new(2.5, 5.0, 0.0));
+        close(poses[0].rotation, [0.0, 1.0, 0.0, 0.0]);
+        close(poses[1].rotation, [0.0, 0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn loop_projection_wraps_each_sample_across_the_actual_curve_seam() {
+        let curve = Curve2::try_new(vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0],
+            [0.0, 2.0], [0.0, 0.0]], true).unwrap();
+        let poses: Vec<_> = subdivide_wall_decorator(
+            WallSpace { is_loop: true, length: 8.0 },
+            WallSpaceCoord::new_unchecked(0.0, 4.0), 4.0, 2, &curve).collect();
+        assert_eq!(poses[0].translation, Vec3::new(0.0, 4.0, 1.0));
+        assert_eq!(poses[1].translation, Vec3::new(1.0, 4.0, 0.0));
+        close(poses[0].rotation, [0.0, std::f32::consts::FRAC_1_SQRT_2, 0.0,
+            std::f32::consts::FRAC_1_SQRT_2]);
+        close(poses[1].rotation, [0.0, 0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn zero_width_retains_degenerate_normal_and_original_shared_rotation_policy() {
+        let curve = Curve2::try_new(vec![[0.0, 0.0], [2.0, 0.0]], true).unwrap();
+        let poses: Vec<_> = subdivide_wall_decorator(
+            WallSpace { is_loop: false, length: 2.0 },
+            WallSpaceCoord::new_unchecked(1.0, 2.0), 0.0, 2, &curve).collect();
+        assert_eq!(poses.len(), 2);
+        for pose in poses {
+            assert_eq!(pose.translation, Vec3::new(1.0, 2.0, 0.0));
+            close(pose.rotation, [0.0, std::f32::consts::FRAC_1_SQRT_2, 0.0,
+                std::f32::consts::FRAC_1_SQRT_2]);
+        }
+    }
+
+    #[test]
+    fn zero_count_and_nonfinite_width_preserve_actual_curve_failures() {
+        let curve = Curve2::try_new(vec![[0.0, 0.0], [2.0, 0.0]], true).unwrap();
+        for (width, pieces) in [(1.0, 0), (f32::INFINITY, 2), (f32::NAN, 2)] {
+            assert!(std::panic::catch_unwind(|| {
+                subdivide_wall_decorator(WallSpace { is_loop: false, length: 2.0 },
+                    WallSpaceCoord::new_unchecked(1.0, 2.0), width, pieces, &curve)
+                    .collect::<Vec<_>>()
+            }).is_err());
+        }
+    }
 }

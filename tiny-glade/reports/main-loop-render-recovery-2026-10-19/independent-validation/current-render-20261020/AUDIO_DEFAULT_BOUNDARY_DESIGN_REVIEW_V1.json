@@ -1,0 +1,71 @@
+{
+  "at_utc": "2026-10-20T15:35:53.400897+00:00",
+  "reviewer": "render_reviewer",
+  "baseline": "fa53d49a6",
+  "status": "audio_boundary_design_requirements_only_no_candidate_review",
+  "native_scope": "原B已有保留指令逐条对当前RNE取字节核对；不把旧文本命名当完整PDB函数恢复或运行验证",
+  "native_evidence": [
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-d538772413c777c244/boot-audio-lifecycle-20261019/native/140a55f40-full-B-rne.asm",
+      "sha256": "ba7b486f6c8707ac735abf1c24e4fd7aabc548ebc1b8ccd1c5d8926a077d199e",
+      "direct_pe_instructions_checked": 56,
+      "bytes_checked": 176
+    },
+    {
+      "path": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-025d04787e7e6b72cd/boot-leaf-20261018/140a7a5b0-full-B-rne.asm",
+      "sha256": "a82b187ffaaad5bcd3ee23813c1c83553a8a95bc8d05892ed641140eb8490750",
+      "direct_pe_instructions_checked": 420,
+      "bytes_checked": 1527
+    }
+  ],
+  "source_observations": [
+    {
+      "path": "tiny-glade/crates/country-core/src/resources/audio_resources.rs",
+      "sha256": "c7fe299cc3c4646db78343329e9080fdea6dcff2cb95920028a32d687d57c24a"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/startup/clearing.rs",
+      "sha256": "ff05da24a121c6df35b3d49f6122d1aa3638231c77faa0edfa3888d501e996c2"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/audio/game_loading_audio.rs",
+      "sha256": "9ae1dc63eea2de5338ea6ea63ca0a86540304a7763e9a80d08bcb78b4ad36216"
+    },
+    {
+      "path": "tiny-glade/crates/systems/critters/src/startup_critters.rs",
+      "sha256": "9f336fbebe19f131394051ab5ec82656c7cbac433ca0768f4aac95dafd0dfa82"
+    },
+    {
+      "path": "tiny-glade/crates/systems/critters/src/startup_sheep.rs",
+      "sha256": "b504d8977d44877eab4332f6afd7997a0e924077d44da2d7ea68a6736feb3786"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/audio_host.rs",
+      "sha256": "5fac6cf40b39609db4d2f395953c2a164603a6308d1f71039bd5cc0c4dd66416"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/gameplay_startup.rs",
+      "sha256": "c4f5337ddaafb2d3d061e820799ca30b3243a67c455e93cc8feaad801fbde2e1"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/game_loop.rs",
+      "sha256": "abf77a552a24baf907c76670fbb4f9c53cb42f598945ab6474a4dd8b492765ec"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/run_game.rs",
+      "sha256": "d06f963c6c40df23e9b88daf92534ea33704a3ab576deb5e4d4feb633ffdcc8c"
+    }
+  ],
+  "production_modified": false,
+  "cargo_or_gpu_executed": false,
+  "requirements": [
+    "无native-audio仍执行完整Critter/Sheep出生和原Clearing清理，不cfg删系统",
+    "复用唯一AudioCore<S>，non-native通过不可构造DisabledStudio表示None，native保持真实NativeStudio/Err传播",
+    "不可构造事件/VCA所有方法为穷尽不可达，无假成功/占位backend",
+    "同一别名贯穿startup/unload/GameLoadingAudioState<S::Event>，新建Disabled owner不能替换有效native owner",
+    "原Startup init_game_loading_audio和set38 loading_audio都要复用，disabled snapshot也保留Some/None生命周期",
+    "不制造completion promise或扫描bank来伪装已加载",
+    "修Mac native-audio与disabled logo两个cfg重叠，避免每帧双推进",
+    "默认与native-audio各自编译，并验证出生数量/数据与真实非音频清理、loading state推进；check非运行验收"
+  ]
+}

@@ -525,9 +525,13 @@ impl CoreGraphFrame<'_> {
     ) -> rhapsody::Result<T> {
         let result = (|| {
             let device = self.bridge.session.borrow().backend.device().clone();
-            let passes = GraphPasses::new(self.graph(), device)?
-                .with_tables(self.bridge.tables.clone())
-                .with_shared_session(self.bridge.session.clone())?;
+            let passes = GraphPasses::new_with_app_constants(
+                self.graph(),
+                device,
+                &self.bridge.raster,
+            )?
+            .with_tables(self.bridge.tables.clone())
+            .with_shared_session(self.bridge.session.clone())?;
             let mut frame = CoreComputeFrame::new(passes, &self.bridge.shaders)
                 .with_resource_graph(self.resource_graph());
             let result = build(&mut frame);

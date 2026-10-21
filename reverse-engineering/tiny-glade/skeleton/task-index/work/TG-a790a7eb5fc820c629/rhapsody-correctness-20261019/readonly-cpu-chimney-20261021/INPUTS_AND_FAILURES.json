@@ -1,0 +1,57 @@
+{
+  "status": "read-only-root-cpu-failure-audit",
+  "source_sha256": "094ec0672bd7be2b403b196e83b7d43c15f902bef63c1dc4e6b7a8c9052da16d",
+  "cargo_or_target_executed_by_this_worker": false,
+  "inputs": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/decorator/src/derive_decorator_subtype.rs",
+      "sha256": "094ec0672bd7be2b403b196e83b7d43c15f902bef63c1dc4e6b7a8c9052da16d"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/public_wall_state.rs",
+      "sha256": "cc8c3c2f68de056376da60a85a90f14749eab9bf7e14615486800c32b3c418c3"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/freeform_height_cache.rs",
+      "sha256": "a6845bc62173565ff76277334434f20ce2a3bd7ee38ef252efae11b6d7b698c1"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/resources/walls/inner_wall_state.rs",
+      "sha256": "45a278ea90fd684356015ff6ea1b5fa171c72e1b9428feb4a4b080ea41b9018c"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/wall/wall_state/publication_policy.rs",
+      "sha256": "2573f23fb2984be4f57d29902f3143654b364c2d0d0dc1e7d36b7f8042e93cd9"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core/src/systems/wall/wall_state/path_preparation.rs",
+      "sha256": "ca9e7a4b68a6e8d238bcab351ff1f3b47bc2aad3a1cf306779e031384fcc5154"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a790a7eb5fc820c629/rhapsody-correctness-20261019/before-frozen-20261021-canonical-id-producer/native-pack/per-frame-subtype-producer.json",
+      "sha256": "4b5ba7d7d4b5c860d42db72804746f09b283486bc42d77b10cc449e1ed3b61e6"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a790a7eb5fc820c629/rhapsody-correctness-20261019/before-frozen-20261021-canonical-id-producer/native-pack/per-frame-subtype-producer.asm.txt",
+      "sha256": "34d1d0c1c2fe07befcee9112e3728ed39a55df3abe8f72bded40823528b6821f"
+    },
+    {
+      "path": "/private/tmp/tg-canonical28-decorator-tests-20261021.log",
+      "sha256": "19aa957e83eb67b314a2800de31265bdc5d559c8934a37df8afb9538ce85ca42"
+    }
+  ],
+  "failures": [
+    {
+      "line": 357,
+      "text": "thread 'derive_decorator_subtype::canonical_subtype_producer_tests::chimney_roof_neighbor_reads_the_real_cache_and_uses_strict_world_distance' (26789825) panicked at crates/country-core/src/resources/walls/public_wall_state.rs:205:33:\nwall heights have not been calculated yet. Perhaps you are trying to access it before `init_wall_height_and_arch_segment_height` system had a chance to run?\nFAILED\ntest derive_decorator_subtype::canonical_subtype_producer_tests::chimney_second_pass_uses_strict_wall_span_and_reverts_after_neighbor_removal ... "
+    },
+    {
+      "line": 361,
+      "text": "thread 'derive_decorator_subtype::canonical_subtype_producer_tests::chimney_second_pass_uses_strict_wall_span_and_reverts_after_neighbor_removal' (26789826) panicked at crates/country-core/src/resources/walls/public_wall_state.rs:205:33:\nwall heights have not been calculated yet. Perhaps you are trying to access it before `init_wall_height_and_arch_segment_height` system had a chance to run?\nFAILED\ntest derive_decorator_subtype::canonical_subtype_producer_tests::chimney_self_reads_required_mesh_before_self_exclusion_and_missing_cache_fails ... "
+    },
+    {
+      "line": 365,
+      "text": "thread 'derive_decorator_subtype::canonical_subtype_producer_tests::chimney_self_reads_required_mesh_before_self_exclusion_and_missing_cache_fails' (26789827) panicked at crates/country-core/src/resources/walls/public_wall_state.rs:205:33:\nwall heights have not been calculated yet. Perhaps you are trying to access it before `init_wall_height_and_arch_segment_height` system had a chance to run?\nFAILED\ntest derive_decorator_subtype::canonical_subtype_producer_tests::corner_then_actual_platform_precedes_half_without_unused_geometry_reads ... ok"
+    }
+  ]
+}

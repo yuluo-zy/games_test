@@ -1,0 +1,64 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_dormer.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_dormer.rs
+@@ -20,7 +20,7 @@
+ 
+ use bevy_ecs::prelude::*;
+ use country_core::resources::walls::decorator_storage::DecoratorStorage;
+-use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
++use country_core::resources::walls::decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources};
+ use glam::Vec2;
+ 
+ use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+@@ -75,27 +75,42 @@
+ /// 0x1407c5650（O 结构）：生成哥特老虎窗装饰视觉。
+ pub fn generate_gothic_dormers(
+     decorator_storage: Res<DecoratorStorage>,
+-    derived: Res<DerivedDecoratorSubtypes>,
++    derived: DerivedDecoratorInfoResources,
+     mut blueprints: ResMut<DecoratorBlueprints>,
+     mut transient: ResMut<DecoratorTransientVisualState>,
+-    _mesh_lib: Res<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>,
+-    cached: Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,
++    cached: Res<
++        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
++    >,
+ ) {
+-    for (_wall, decorators) in decorator_storage.iter_walls() {
++    let derived = derived.as_view();
++    let mesh_lib = derived.mesh_library();
++    for (wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+             // O：哥特老虎窗子类型 = 8（0x1407c5650 行 430）。
+-            if derived.get(id).subtype().0 != GOTHIC_DORMER_SUBTYPE {
++            if derived
++                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
++                .0
++                != GOTHIC_DORMER_SUBTYPE
++            {
+                 continue;
+             }
+-            let d = derived.get(id);
++            let transform = cached.transform(id);
+             // O：剖面（rank 驱动）。
+             let _profile = gothic_dormer_profile_curve(info.rank());
+             // O：蓝图 + 视觉实体。
+-            let transform = cached.transform(id);
+-            let mut blueprint = DecoratorBlueprint::new();
+-            blueprint.set_colliders(vec![d.collision_mesh()]);
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
++            let key = DecoratorLibKey::new(GOTHIC_DORMER_SUBTYPE, info.rank());
++            blueprint.set_positioned_colliders(
++                std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
++                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
++                &transform.translation,
++                &transform.rotation,
++            );
+             blueprint.set_outline((0.0, 0.0, 0.0));
+-            blueprints.insert(id, blueprint);
+             let builder =
+                 WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
+             let _ = &mut transient;

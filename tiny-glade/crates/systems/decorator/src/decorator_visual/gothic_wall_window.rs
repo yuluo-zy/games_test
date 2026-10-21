@@ -36,15 +36,18 @@
 
 use bevy_ecs::prelude::*;
 use country_core::resources::gothic_window_profile::gothic_half_dormer_profile_curve;
-use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
+use country_core::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+use country_core::resources::walls::decorator_subtype::{
+    DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorSubtypes,
+};
+use std::sync::Arc;
 use glam::{Vec2, Vec3};
 use utils::comparative_space::ComparativeSpace;
 use utils::curve::{Curve2, Curve3};
 use utils::swizzlers::xvy;
 use utils::wall_space::{WallSpace, WallSpaceCoord};
 
-use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+use crate::blueprint::DecoratorBlueprints;
 use crate::decorator_visual_state::DecoratorTransientVisualState;
 use crate::utils::inverse_lerp;
 use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
@@ -279,31 +282,36 @@ pub fn get_gothic_hat_bones(
     }
 }
 
-/// 0x1407e87b0（O 结构）：生成哥特墙窗装饰视觉。
+/// 旧部分生成器的canonical资源接口迁移。完整1407e87b0算法仍待恢复，
+/// 本次只接同一typed目录、真实mesh Arc及缓存姿态，不据此注册生产宿主。
 pub fn generate_gothic_wall_windows(
     decorator_storage: Res<DecoratorStorage>,
     derived: Res<DerivedDecoratorSubtypes>,
+    meshes: Res<DecoratorMeshLibrary>,
     cached: Res<
         country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
     >,
     mut blueprints: ResMut<DecoratorBlueprints>,
     mut transient: ResMut<DecoratorTransientVisualState>,
 ) {
-    for (_wall, decorators) in decorator_storage.iter_walls() {
+    for (wall, decorators) in decorator_storage.iter_walls() {
         for (id, info) in decorators.iter_modified() {
             // O：哥特窗 = DecoratorType 0x39 族（core is_window 位运算）。
             if info.decorator_type().0 != 0x39 {
                 continue;
             }
-            let d = derived.get(id);
+            let subtype = derived.get(id);
             // O：窗洞（get_window_holes，U）。
             let _holes = get_window_holes(id);
             // O：蓝图 + 视觉实体。
             let transform = cached.transform(id);
-            let mut blueprint = DecoratorBlueprint::new();
-            blueprint.set_colliders(vec![d.collision_mesh()]);
-            blueprint.set_outline((0.0, 0.0, 0.0));
-            blueprints.insert(id, blueprint);
+            let key = DecoratorLibKey::new(subtype.0, info.rank());
+            let collision = Arc::clone(&meshes.collision_record(key).mesh);
+            let interaction = Arc::clone(&meshes.interaction_record(key).mesh);
+            let blueprint = blueprints.insert_for(id, DecoratorStorageAddr::Wall(wall), info.state());
+            blueprint.set_positioned_colliders(collision, interaction,
+                &transform.translation, &transform.rotation);
+            blueprint.set_cached_transform(transform);
             let builder =
                 WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
             let _ = &mut transient;

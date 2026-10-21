@@ -37,7 +37,11 @@ impl TimelineApi for ash::Device {
         let info = vk::SemaphoreWaitInfo::default()
             .semaphores(semaphores)
             .values(values);
-        match unsafe { self.wait_semaphores(&info, timeout_ns) } {
+        let mut trace = crate::raw::command_buffer::SubmitTrace::new("vkWaitSemaphores");
+        trace.count("semaphores", semaphores.len());
+        let result = unsafe { self.wait_semaphores(&info, timeout_ns) };
+        trace.mark("driver");
+        match result {
             Ok(()) => Ok(true),
             Err(vk::Result::TIMEOUT) => Ok(false),
             Err(error) => Err(error.into()),

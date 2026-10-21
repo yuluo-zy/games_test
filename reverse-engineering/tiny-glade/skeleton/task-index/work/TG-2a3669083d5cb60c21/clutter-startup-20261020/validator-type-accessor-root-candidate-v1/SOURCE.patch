@@ -1,0 +1,103 @@
+--- a/crates/systems/decorator/src/ui_systems/ui_decorator_affordance_dispatch.rs
++++ b/crates/systems/decorator/src/ui_systems/ui_decorator_affordance_dispatch.rs
+@@ -37,7 +37,8 @@
+     pub state: u64,
+     /// @+8：载荷（楼梯继续 '?' 标记低字节；I）。
+     pub payload: u64,
+-    /// @+0x5c：装饰类型字节（'?'=0x3f 特殊标记；I）。
++    /// 当前活动变体的装饰类型；这是安全 Rust 的语义投影，不是固定原生偏移。
++    /// Move/Rotate 优先读取 owned request，其余原变体 writer 必须写入真实选中类型。
+     pub ty: u8,
+     /// Owned active-variant payload. The second word of the native enum header
+     /// is zero for Move/Rotate; it is neither a widget nor a DecoratorId.
+@@ -72,6 +73,21 @@
+         self.payload = 0;
+         self.ty = request.ty.0;
+         self.interaction = Some(DecoratorAffordanceInteraction::Rotate(request));
++    }
++
++    /// 原 validate_blueprints@140827294..2c9 的 decorator_ty 内联：
++    /// clear(6,0) 无图标；其它活动变体取得其真实类型，不读取重构结构的裸偏移。
++    pub fn decorator_ty(&self) -> Option<country_core::resources::walls::decorator::DecoratorType> {
++        use country_core::resources::walls::decorator::DecoratorType;
++        if self.state == 6 && self.payload == 0 {
++            return None;
++        }
++        let ty = match (&self.interaction, self.state, self.payload) {
++            (Some(DecoratorAffordanceInteraction::Move(request)), 2, 0) => request.ty,
++            (Some(DecoratorAffordanceInteraction::Rotate(request)), 3, 0) => request.ty,
++            _ => DecoratorType(self.ty),
++        };
++        Some(ty)
+     }
+ 
+     pub fn rotation(&self) -> Option<&RequestRotateDecorator> {
+@@ -236,3 +252,68 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod native_validation_type_projection_tests {
++    use super::*;
++    use country_core::{
++        resources::walls::decorator::{DecoratorId, DecoratorType},
++        systems::collision::world::RaycastWorldResult,
++    };
++
++    #[test]
++    fn only_exact_clear_variant_omits_type_and_does_not_reuse_stale_request() {
++        let mut dispatcher = DecoratorAffordanceDispatcher {
++            state: 6,
++            payload: 0,
++            ty: 56,
++            interaction: None,
++        };
++        assert_eq!(dispatcher.decorator_ty(), None);
++        for (state, payload) in [
++            (0, 0),
++            (1, 0),
++            (2, 0),
++            (3, 0),
++            (4, 0),
++            (5, 0),
++            (6, 1),
++            (11, 63),
++            (20, 0),
++        ] {
++            dispatcher.state = state;
++            dispatcher.payload = payload;
++            assert_eq!(
++                dispatcher.decorator_ty(),
++                Some(DecoratorType(56)),
++                "state={state},payload={payload}"
++            );
++        }
++        dispatcher.clear();
++        assert_eq!(dispatcher.decorator_ty(), None);
++    }
++
++    #[test]
++    fn active_owned_move_and_rotate_use_their_actual_typed_payload() {
++        let mut dispatcher = DecoratorAffordanceDispatcher::default();
++        dispatcher.set_move(RequestMoveClutter {
++            widget: WidgetId::from_name("真实Move请求"),
++            hit: RaycastWorldResult::miss(),
++            decorator_id: DecoratorId(9),
++            ty: DecoratorType(63),
++        });
++        dispatcher.ty = 56;
++        assert_eq!(dispatcher.decorator_ty(), Some(DecoratorType(63)));
++        dispatcher.set_rotate(RequestRotateDecorator {
++            widget: WidgetId::from_name("真实Rotate请求"),
++            hit: RaycastWorldResult::miss(),
++            decorator_id: DecoratorId(10),
++            amount: 0.25,
++            ty: DecoratorType(58),
++        });
++        dispatcher.ty = 56;
++        assert_eq!(dispatcher.decorator_ty(), Some(DecoratorType(58)));
++        dispatcher.clear();
++        assert_eq!(dispatcher.decorator_ty(), None);
++    }
++}

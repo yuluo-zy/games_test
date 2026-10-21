@@ -1,0 +1,308 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/cottage_dormer.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/cottage_dormer.rs
+@@ -9,8 +9,8 @@
+ //!
+ //! is_out_of_roof_bounds uses the complete matched B1561B body, actual cached
+ //! transform and Roof sections. The visual generator below remains partial;
+-//! its bounds caller now uses genuine geometry inputs, and is not registered
+-//! as a recovered full visual generator by this leaf.
++//! bounds叶仍独立保留。generator的动态碰撞分支按原尺寸表调用唯一
++//! collision_geo并消费真实Local缓存；面板/瓦片等其余视觉装配仍未完整恢复。
+ 
+ use bevy_ecs::prelude::*;
+ use country_core::resources::walls::decorator::DecoratorInfo;
+@@ -19,13 +19,13 @@
+ use country_core::resources::roofs::roof_shape::Roof;
+ use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
+ use country_core::resources::walls::decorator_subtype::{
+-    DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorSubtypes,
++    DerivedDecoratorSubtypes,
+ };
+ use country_core::resources::walls::public_walls::PublicWalls;
+ use glam::{Vec2, Vec3};
+ use utils::geometry::Rectangle2d;
+ 
+-use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
++use crate::blueprint::DecoratorBlueprints;
+ use crate::decorator_visual_state::DecoratorTransientVisualState;
+ use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
+ 
+@@ -106,9 +106,14 @@
+ /// 农舍老虎窗子类型（O：0x1407c7ac0 行 402 `subtype != 0x02 → skip`）。
+ pub const COTTAGE_DORMER_SUBTYPE: u8 = 0x02;
+ 
+-/// 农舍老虎窗尺寸（内联，I；U：维度来源）。未恢复返回 None。
+-pub fn cottage_dormer_dims(_info: &DecoratorInfo) -> Option<(f32, f32)> {
+-    None // U。
++/// 原7c81d3..81eb的rank1..3宽度表；高度固定为1，非法rank先失败。
++pub fn cottage_dormer_dims(info: &DecoratorInfo) -> Option<(f32, f32)> {
++    let rank = info.rank();
++    assert!(
++        (1..=3).contains(&rank),
++        "cottage_dormer_dims: rank out of range"
++    );
++    Some(([0.8, 1.5, 2.2][usize::from(rank - 1)], 1.0))
+ }
+ 
+ /// 老虎窗面板变换（内联，I；U：面板几何）。未恢复返回 None。
+@@ -122,10 +127,12 @@
+     derived: Res<DerivedDecoratorSubtypes>,
+     mut blueprints: ResMut<DecoratorBlueprints>,
+     mut transient: ResMut<DecoratorTransientVisualState>,
+-    cached: Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,
+-    mesh_lib: Res<DecoratorMeshLibrary>,
++    cached: Res<
++        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
++    >,
+     walls: Res<PublicWalls>,
+     roofs: Query<&Roof>,
++    mut collision_cache: Local<super::collision_geo::DormerCollisionCache>,
+ ) {
+     for (wall, decorators) in decorator_storage.iter_walls() {
+         // This is the original generator's real roof precondition; do not
+@@ -141,29 +148,35 @@
+         }
+         for (id, info) in decorators.iter_modified() {
+             // O：农舍老虎窗子类型 = 2。
+-            if derived.get(id).subtype().0 != COTTAGE_DORMER_SUBTYPE {
++            if derived.get(id).0 != COTTAGE_DORMER_SUBTYPE {
+                 continue;
+             }
+             let transform = cached.transform(id);
+-            let key = DecoratorLibKey::new(COTTAGE_DORMER_SUBTYPE, info.rank());
+-            let (minimum, maximum) = mesh_lib.get_collision_bbx_ls(key).unwrap_or_else(|| {
+-                panic!("The decorator mesh library doesn't contain {key:?}")
+-            });
+-            if is_out_of_roof_bounds(
++            let (width, height) = cottage_dormer_dims(info).expect("原rank尺寸表");
++            // 原8229先取得唯一entry；helper失败也保留source/flags及原部分mutation。
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
++            let mesh = super::collision_geo::get_collision_mesh(
+                 &transform,
+-                maximum.x - minimum.x,
+-                maximum.y - minimum.y,
++                width,
++                height,
+                 info.rank(),
++                0.2,
+                 roof,
+-            ) {
+-                continue;
+-            }
+-            let d = derived.get(id);
+-            // O：蓝图 + 视觉实体。
+-            let mut blueprint = DecoratorBlueprint::new();
+-            blueprint.set_colliders(vec![d.collision_mesh()]);
++                &mut collision_cache,
++            );
++            blueprint.set_positioned_colliders(
++                std::sync::Arc::clone(&mesh),
++                mesh,
++                &transform.translation,
++                &transform.rotation,
++            );
++            // 原82c1..82e7的唯一变换槽，不以legacy outline元组替代。
++            blueprint.set_cached_transform(transform);
+             blueprint.set_outline((0.0, 0.0, 0.0));
+-            blueprints.insert(id, blueprint);
+             let builder =
+                 WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
+             let _ = &mut transient;
+@@ -242,3 +255,193 @@
+         assert!(is_out_of_roof_bounds(&transform(position), 5.0, 4.0, 3, &roof));
+     }
+ }
++
++
++#[cfg(test)]
++mod canonical_dynamic_parent_tests {
++    use super::*;
++    use crate::blueprint::BlueprintMeshSlot;
++    use country_core::resources::walls::{
++        WallId,
++        cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
++        decorator::{DecoratorId, DecoratorInfo},
++        decorator_storage::{DecoratorStorage, DecoratorStorageAddr, Decorators},
++        decorator_subtype::{DecoratorSubtype, DerivedDecoratorSubtypes},
++    };
++    use glam::Quat;
++    use std::{
++        panic::{AssertUnwindSafe, catch_unwind},
++        sync::Arc,
++    };
++
++    fn roof() -> Roof {
++        let mut bytes = [0u8; 88];
++        for (offset, value) in [
++            (0x0c, 0.0f32),
++            (0x10, 0.0),
++            (0x14, 3.0),
++            (0x18, 0.0),
++            (0x1c, 8.0),
++            (0x20, 6.0),
++            (0x2c, 0.5),
++            (0x30, 0.5),
++            (0x34, 0.5),
++        ] {
++            bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
++        }
++        Roof::from_observed(bytes)
++    }
++
++    fn fixture(rank: u8, transform: CachedDecoratorTransform) -> (World, Schedule) {
++        let mut world = World::new();
++        let roof_entity = world.spawn(roof()).id();
++        let mut walls = PublicWalls::default();
++        walls.associate_roof(WallId(7), roof_entity);
++        world.insert_resource(walls);
++        let mut bucket = Decorators::default();
++        bucket.insert(
++            DecoratorId(41),
++            DecoratorInfo {
++                decorator_id: 41,
++                rank,
++                state: 1,
++                ..Default::default()
++            },
++        );
++        let mut storage = DecoratorStorage::default();
++        storage.per_wall.insert(WallId(7), bucket);
++        world.insert_resource(storage);
++        let mut subtypes = DerivedDecoratorSubtypes::default();
++        subtypes.insert(41, DecoratorSubtype(2));
++        world.insert_resource(subtypes);
++        let mut cached = CachedDecoratorTransforms::default();
++        cached.insert(41, transform);
++        world.insert_resource(cached);
++        world.insert_resource(DecoratorBlueprints::default());
++        world.insert_resource(DecoratorTransientVisualState::default());
++        // 不插DecoratorMeshLibrary：原动态几何不依赖loader的Sphere记录。
++        let mut schedule = Schedule::default();
++        schedule.add_systems(generate_cottage_dormers);
++        (world, schedule)
++    }
++
++    fn transform() -> CachedDecoratorTransform {
++        CachedDecoratorTransform {
++            rotation: Quat::IDENTITY,
++            translation: Vec3::new(-3.0, 0.25, 0.0),
++            scale: Vec3::new(2.0, 1.0, 2.0),
++        }
++    }
++
++    #[test]
++    fn actual_system_uses_native_rank_sizes_convex_local_cache_and_same_arc_in_both_slots() {
++        for (rank, width) in [(1, 0.8), (2, 1.5), (3, 2.2)] {
++            assert_eq!(
++                cottage_dormer_dims(&DecoratorInfo {
++                    rank,
++                    ..Default::default()
++                }),
++                Some((width, 1.0))
++            );
++            let transform = transform();
++            let (mut world, mut schedule) = fixture(rank, transform);
++            schedule.run(&mut world);
++            let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
++            assert_eq!(
++                blueprint.storage_addr,
++                Some(DecoratorStorageAddr::Wall(WallId(7)))
++            );
++            assert_eq!(blueprint.interaction_source_flags, 1);
++            assert_eq!(blueprint.transform, Some(transform));
++            assert!(blueprint.colliders.is_empty());
++            let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
++                panic!("真实collision槽")
++            };
++            let BlueprintMeshSlot::Mesh(interaction) = &blueprint.interaction_mesh else {
++                panic!("真实interaction槽")
++            };
++            assert!(Arc::ptr_eq(&collision.mesh, &interaction.mesh));
++            assert_eq!(collision.position, transform.translation);
++            assert_eq!(collision.rotation, transform.rotation);
++            assert!(
++                collision
++                    .mesh
++                    .shape_ref()
++                    .unwrap()
++                    .as_convex_polyhedron()
++                    .unwrap()
++                    .points()
++                    .len()
++                    >= 4
++            );
++            let previous = Arc::clone(&collision.mesh);
++            // 同一Schedule保留原Local；key不含scale，命中必须先于奇异inverse。
++            world.resource_mut::<CachedDecoratorTransforms>().insert(
++                41,
++                CachedDecoratorTransform {
++                    scale: Vec3::ZERO,
++                    ..transform
++                },
++            );
++            schedule.run(&mut world);
++            let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
++            let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
++                panic!("缓存命中实际网格")
++            };
++            assert!(Arc::ptr_eq(&previous, &collision.mesh));
++        }
++    }
++
++    #[test]
++    fn old_bounds_leaf_is_not_an_extra_gate_in_the_actual_dynamic_parent() {
++        let transform = CachedDecoratorTransform {
++            translation: Vec3::new(-0.5, 5.0, 0.0),
++            ..transform()
++        };
++        assert!(is_out_of_roof_bounds(&transform, 0.8, 1.0, 1, &roof()));
++        let (mut world, mut schedule) = fixture(1, transform);
++        schedule.run(&mut world);
++        let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
++        let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
++            panic!("原caller仍构造真实动态凸体")
++        };
++        assert!(
++            collision
++                .mesh
++                .shape_ref()
++                .unwrap()
++                .as_convex_polyhedron()
++                .is_some()
++        );
++    }
++
++    #[test]
++    fn invalid_rank_fails_before_entry_but_failed_hull_keeps_the_native_entry_side_effect() {
++        for rank in [0, 4] {
++            let (mut world, mut schedule) = fixture(rank, transform());
++            assert!(catch_unwind(AssertUnwindSafe(|| schedule.run(&mut world))).is_err());
++            assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
++        }
++        let transform = CachedDecoratorTransform {
++            scale: Vec3::ZERO,
++            ..transform()
++        };
++        let (mut world, mut schedule) = fixture(1, transform);
++        assert!(catch_unwind(AssertUnwindSafe(|| schedule.run(&mut world))).is_err());
++        let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
++        assert_eq!(
++            blueprint.storage_addr,
++            Some(DecoratorStorageAddr::Wall(WallId(7)))
++        );
++        assert_eq!(blueprint.interaction_source_flags, 1);
++        assert!(matches!(
++            blueprint.collision_mesh,
++            BlueprintMeshSlot::Unspecified
++        ));
++        assert!(matches!(
++            blueprint.interaction_mesh,
++            BlueprintMeshSlot::Unspecified
++        ));
++        assert!(blueprint.transform.is_none());
++    }
++}

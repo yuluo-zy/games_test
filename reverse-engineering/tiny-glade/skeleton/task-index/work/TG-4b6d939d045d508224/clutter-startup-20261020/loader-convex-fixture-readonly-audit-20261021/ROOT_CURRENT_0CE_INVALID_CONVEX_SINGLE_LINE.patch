@@ -1,0 +1,11 @@
+--- a/tiny-glade/crates/systems/decorator/src/load_decorators.rs
++++ b/tiny-glade/crates/systems/decorator/src/load_decorators.rs
+@@ -1223,7 +1223,7 @@
+     fn native_loader_keeps_completed_keys_but_does_not_replace_failed_convex_with_a_box() {
+         let fixture = Fixture::new();
+         // 合法JSON/索引而非三维凸包：原convex回调必须失败。
+-        let json = r#"{"indices":{"buffer":[0,1,2]},"attributes":["Vertex_Position"],"Vertex_Position":{"type":["float",3],"buffer":[[0,0,0],[1,0,0],[0,1,0]]}}"#;
++        let json = r#"{"indices":{"buffer":[0,1,2]},"attributes":["Vertex_Position"],"Vertex_Position":{"type":["float",3],"buffer":[[0,0,0],[1,0,0],[2,0,0]]}}"#;
+         std::fs::write(fixture.path("decorators/window_gothic_1x1_collision"), json).unwrap();
+         let assets = AssetMeshLibrary::new();
+         let mut library = DecoratorMeshLibrary::default();

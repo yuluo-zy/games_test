@@ -85,6 +85,7 @@ impl IndexedCountRequest {
 pub struct IndexedCountAdapter {
     device: Arc<Device>,
     heap: Arc<BindlessHeap>,
+    pages: Option<Arc<crate::bindless::BindlessPagePool>>,
     abi: Arc<BindlessShaderAbi>,
     pipeline: PipelineTicket,
 }
@@ -93,6 +94,21 @@ impl IndexedCountAdapter {
         device: Arc<Device>,
         heap: Arc<BindlessHeap>,
         compiler: &AsyncPipelineCompiler,
+    ) -> Result<Arc<Self>> {
+        Self::new_inner(device, heap, compiler, None)
+    }
+    pub fn new_paged(
+        device: Arc<Device>,
+        pages: Arc<crate::bindless::BindlessPagePool>,
+        compiler: &AsyncPipelineCompiler,
+    ) -> Result<Arc<Self>> {
+        Self::new_inner(device, pages.template().clone(), compiler, Some(pages))
+    }
+    fn new_inner(
+        device: Arc<Device>,
+        heap: Arc<BindlessHeap>,
+        compiler: &AsyncPipelineCompiler,
+        pages: Option<Arc<crate::bindless::BindlessPagePool>>,
     ) -> Result<Arc<Self>> {
         if !Arc::ptr_eq(&device, &heap.layout.device) {
             return Err(Error::invalid_usage(
@@ -124,6 +140,7 @@ impl IndexedCountAdapter {
         Ok(Arc::new(Self {
             device,
             heap,
+            pages,
             abi: package.abi,
             pipeline,
         }))
@@ -251,24 +268,62 @@ impl IndexedCountAdapter {
             let source = managed.buffer_for(commands.raw()).map_err(Error::from)?;
             let count = managed.buffer_for(counter.raw()).map_err(Error::from)?;
             let target = managed.buffer_for(scratch.raw()).map_err(Error::from)?;
-            let mut parameters =
-                BindlessParameters::new(adapter.heap.clone(), adapter.abi.clone(), &push)?;
-            for (binding, buffer, offset, size) in [
-                (0, source.shared(), command_base, command_range),
-                (1, count.shared(), count_base, count_range),
-                (2, target.shared(), 0, scratch_desc.size),
-            ] {
-                parameters.write(
-                    BindingLocation { set: 0, binding },
-                    0,
-                    BindlessResource::Buffer {
-                        buffer,
-                        offset,
-                        size,
-                    },
-                )?;
-            }
-            let prepared = parameters.finish(&mut constants.lock())?;
+            let resources = [
+                BindlessResource::Buffer {
+                    buffer: source.shared(),
+                    offset: command_base,
+                    size: command_range,
+                },
+                BindlessResource::Buffer {
+                    buffer: count.shared(),
+                    offset: count_base,
+                    size: count_range,
+                },
+                BindlessResource::Buffer {
+                    buffer: target.shared(),
+                    offset: 0,
+                    size: scratch_desc.size,
+                },
+            ];
+            let mut required = BindlessParameters::resource_requirements(
+                &adapter.abi,
+                resources.iter().enumerate().map(|(binding, resource)| {
+                    (
+                        BindingLocation {
+                            set: 0,
+                            binding: binding as u32,
+                        },
+                        0,
+                        resource,
+                    )
+                }),
+            )?;
+            required[2] += 1;
+            let build =
+                |heap: &Arc<BindlessHeap>| -> Result<crate::bindless::PreparedBindlessParameters> {
+                    let mut parameters =
+                        BindlessParameters::new(heap.clone(), adapter.abi.clone(), &push)?;
+                    for (binding, resource) in resources.iter().enumerate() {
+                        parameters.write(
+                            BindingLocation {
+                                set: 0,
+                                binding: binding as u32,
+                            },
+                            0,
+                            resource.clone(),
+                        )?;
+                    }
+                    parameters.finish(&mut constants.lock())
+                };
+            let prepared = if let Some(pages) = &adapter.pages {
+                let mut cursor = pages.cursor();
+                cursor.prepare(|group| {
+                    group.require_slots(required)?;
+                    build(group.heap()).map_err(Into::into)
+                })?
+            } else {
+                build(&adapter.heap)?
+            };
             let pipeline = adapter.pipeline.try_get()?;
             unsafe {
                 let command = vk::CommandBuffer::from_raw(ctx.command.handle());

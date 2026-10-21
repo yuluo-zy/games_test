@@ -31,7 +31,7 @@ use country_core::resources::session::ActiveSession;
 use country_core::resources::time::GameTime;
 use country_core::resources::walls::decorator::DecoratorExtraInfo;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary;
+use country_core::resources::walls::decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources};
 use glam::{Quat, Vec3};
 
 use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
@@ -185,34 +185,46 @@ pub fn lantern_lit(olden: bool, t: f32, fvar60: f32) -> bool {
 /// 0x14078d320（O 结构）：生成灯笼装饰视觉。
 pub fn generate_lanterns(
     decorator_storage: Res<DecoratorStorage>,
-    mesh_lib: Res<DecoratorMeshLibrary>,
+    derived: DerivedDecoratorInfoResources,
+    cached_transforms: Res<
+        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
+    >,
     mut blueprints: ResMut<DecoratorBlueprints>,
     mut transient: ResMut<DecoratorTransientVisualState>,
     _glade: Res<ActiveSession>,
 ) {
-    for (_wall, decorators) in decorator_storage.iter() {
-        for (_id, info) in decorators.iter_modified() {
+    let derived = derived.as_view();
+    let mesh_lib = derived.mesh_library();
+    for (wall, decorators) in decorator_storage.iter() {
+        for (id, info) in decorators.iter_modified() {
+            let subtype = derived
+                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
+                .0;
+            if !matches!(subtype, 16..=18) {
+                continue;
+            }
+            let blueprint = blueprints.insert_for(
+                id,
+                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
+                info.state(),
+            );
+            let transform = cached_transforms.transform(id);
+            // O：六键（DecoratorLibKey::new ×6 + rank ×6 = 碰撞/交互/描边 ×
+            // 2 侧；I 键面）。
+            let key = DecoratorLibKey::new(subtype, info.rank());
+
+            blueprint.set_positioned_colliders(
+                std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
+                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
+                &transform.translation,
+                &transform.rotation,
+            );
             // O 判别：DecoratorExtraInfo::as_lantern（非灯笼 panic）。
             let lantern = info.extra().as_lantern();
             let _payload = lantern.0; // U：灯载荷语义。
-            // O：六键（DecoratorLibKey::new ×6 + rank ×6 = 碰撞/交互/描边 ×
-            // 2 侧；I 键面）。
-            let key = country_core::resources::walls::decorator_subtype::DecoratorLibKey::new(
-                info.decorator_type().0,
-                info.rank(),
-            );
-            let mut blueprint = DecoratorBlueprint::new();
-            if let Some(collision) = mesh_lib.collision_mesh(key) {
-                blueprint.set_colliders(vec![collision]);
-            }
-            blueprints.insert(info.decorator_id, blueprint);
-            // O：视觉实体（lantern_light 标记）。位置由缓存变换消费面提供
-            // （U：本函数无 transforms 参数；实体 builder 记录保留）。
-            let builder = WindowVisualEntityBuilder::new(
-                Vec3::ZERO, // U：位置 = 缓存变换消费面待取证。
-                Quat::IDENTITY,
-                info.decorator_id,
-            );
+            // 视觉实体与实际碰撞槽共同消费同一缓存位姿；其它灯光装配仍按既有分支。
+            let builder =
+                WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
             let _ = &mut transient;
             let _ = &builder;
         }

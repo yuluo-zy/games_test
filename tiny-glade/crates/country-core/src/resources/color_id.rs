@@ -460,10 +460,10 @@ mod tests {
 
     #[test]
     fn color_ssbo_short_names_hash_to_the_shader_binding_ssbo_ids() {
-        // 槽名 = 复数（O：draw_builder WALL_COLOR_ID_SLOT_NAME；ssbo_tags 短名登记）。
+        // 原半木槽名保留 Ssbo 后缀；墙、门和屋顶三表使用复数短名。
         assert_eq!(WallColorIdSsbo::NAME, "WallColorIds");
         assert_eq!(GateColorIdSsbo::NAME, "GateColorIds");
-        assert_eq!(HalftimberColorIdSsbo::NAME, "HalftimberColorIds");
+        assert_eq!(HalftimberColorIdSsbo::NAME, "HalftimberColorIdSsbo");
         assert_eq!(
             crate::resources::color_id_roof::RoofColorIdSsbo::NAME,
             "RoofColorIds"

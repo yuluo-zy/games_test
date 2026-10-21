@@ -15,7 +15,7 @@
 //!   `RaycastWorld::spherecast`（0x1408ccfc0，`cast_shape` 17 槽）+ 地形合并（地形 toi =
 //!   `(dist - radius) / max(dir_len, 4e-8)`，NaN 语义同机器码）；
 //! - `RaycastMeshData::new_convex`（0x1408cec10）：`calculate_hash<&[UVec3]>` 存 hash@+0x70、
-//!   `try_convex_hull` + `ConvexPolyhedron::from_convex_mesh` → `Box<dyn Shape>`@+0x20/+0x28、
+//!   `try_convex_hull` + `ConvexPolyhedron::from_convex_mesh` → `SharedShape` Arc@+0x20/+0x28、
 //!   tag=4@+0、kind=4@+0x10、+0x68=0x3f80000000000000；
 //! - `SubworldColliderHandle::new`（0x1408cc620）：{u32@+0 index, u32@+4 gen, u8@+8 slot}，
 //!   24 B 枚举。
@@ -310,7 +310,7 @@ impl tabloid::StateDelta<ColliderDiff> for ColliderDelta {
 ///
 /// | +0x00 | +0x08 | +0x10 | +0x18 | +0x20/+0x28 | +0x30 | +0x38 | +0x40 | +0x48 | +0x50..+0x68 | +0x70 |
 /// |---|---|---|---|---|---|---|---|---|---|---|---|
-/// | 顶点 ptr | 顶点 len | 索引 ptr | 索引 len（计数） | shape Box<dyn Shape> | 法线 ptr | 法线 len | uv ptr | uv len | 常量区（0/0/0/1.0） | hash |
+/// | 顶点 ptr | 顶点 len | 索引 ptr | 索引 len（计数） | shape SharedShape（内部 Arc<dyn Shape>） | 法线 ptr | 法线 len | uv ptr | uv len | 常量区（0/0/0/1.0） | hash |
 ///
 /// 关键修正（fresh）：
 /// - 缓冲区是 **ptr+len**（无 cap 槽）；原输入 Vec 在 store 前被 shrink 到 cap==len；
@@ -332,8 +332,8 @@ pub struct RaycastMeshData {
     pub indices_ptr: u64,
     /// +0x18 索引 len / 计数（形状变体 = 0）。
     pub count: u64,
-    /// +0x20/+0x28：`Box<dyn Shape>`（数据 ptr + vtable）。
-    pub shape: Option<Box<dyn Shape>>,
+    /// +0x20/+0x28：原 SharedShape（内部 Arc ptr + dyn Shape metadata）。
+    pub shape: Option<SharedShape>,
     /// +0x30 法线（逐角点）缓冲 ptr。
     pub normals_ptr: u64,
     /// +0x38 法线缓冲 len。
@@ -398,6 +398,45 @@ impl Default for RaycastMeshData {
     }
 }
 
+/// 原trap内联Clone：四个boxed缓冲独立复制，内部SharedShape只递增同一Arc。
+#[cfg(feature = "native-physics")]
+impl Clone for RaycastMeshData {
+    fn clone(&self) -> Self {
+        // 先由Box持有全部副本；后续复制失败时，前面的分配仍能正常析构。
+        // ptr0与ptr4分别表示None与Some(empty)，不能只按空slice统一处理。
+        let vertices: Option<Box<[glam::Vec3]>> =
+            (self.vertices_ptr != 0).then(|| self.vertices().into());
+        let indices: Option<Box<[[u32; 3]]>> =
+            (self.indices_ptr != 0).then(|| self.indices().into());
+        let normals: Option<Box<[glam::Vec3]>> =
+            (self.normals_ptr != 0).then(|| self.normals().into());
+        let uvs: Option<Box<[glam::Vec2]>> = (self.uvs_ptr != 0).then(|| self.uvs().into());
+        let shape = self.shape.clone();
+        Self {
+            vertices_ptr: into_owned_mesh_buffer_ptr(vertices),
+            vertices_len: self.vertices_len,
+            indices_ptr: into_owned_mesh_buffer_ptr(indices),
+            count: self.count,
+            shape,
+            normals_ptr: into_owned_mesh_buffer_ptr(normals),
+            normals_len: self.normals_len,
+            uvs_ptr: into_owned_mesh_buffer_ptr(uvs),
+            uvs_len: self.uvs_len,
+            _pad0: self._pad0,
+            _pad1: self._pad1,
+            _pad2: self._pad2,
+            scale: self.scale,
+            hash: self.hash,
+        }
+    }
+}
+
+/// 把已成功复制的Box交给现有Drop；空Box保持元素对齐悬垂哨兵4。
+#[cfg(feature = "native-physics")]
+fn into_owned_mesh_buffer_ptr<T>(buffer: Option<Box<[T]>>) -> u64 {
+    buffer.map_or(0, |buffer| Box::into_raw(buffer) as *mut T as u64)
+}
+
 impl RaycastMeshData {
     /// 顶点缓冲切片（O：+0x00 ptr / +0x08 len，元素为 `Vec3` 位型；`UVec3` 仅为哈希载体）。
     pub fn vertices(&self) -> &[glam::Vec3] {
@@ -439,7 +478,7 @@ impl RaycastMeshData {
         }
     }
 
-    /// 形状指针（O：+0x20/+0x28 Box<dyn Shape>）。
+    /// 原共享形状借用（+0x20/+0x28）；Deref 复用锁定 parry 的 SharedShape。
     #[cfg(feature = "native-physics")]
     pub fn shape_ref(&self) -> Option<&dyn Shape> {
         self.shape.as_deref()
@@ -475,7 +514,7 @@ impl RaycastMeshData {
     }
 
     /// `RaycastMeshData::new_convex`（0x1408cec10，O）：`calculate_hash<&[UVec3]>` 存 hash、
-    /// `try_convex_hull` + `ConvexPolyhedron::from_convex_mesh` → `Box<dyn Shape>`；
+    /// `try_convex_hull` + `ConvexPolyhedron::from_convex_mesh` → `SharedShape`；
     /// None 写判别 0（O：`*out = 0`）。输出：tag=4@+0x00、kind=4@+0x10、shape@+0x20/+0x28、
     /// scale@+0x68=1.0、hash@+0x70（其余写 0，disasm 0x1408cec10 核对）。
     #[cfg(feature = "native-physics")]
@@ -495,7 +534,7 @@ impl RaycastMeshData {
             rapier3d::parry::transformation::try_convex_hull(&points_f).ok()?;
         // O：`ConvexPolyhedron::from_convex_mesh`。
         let convex = ConvexPolyhedron::from_convex_mesh(hull_points, &indices)?;
-        let shape: Box<dyn Shape> = Box::new(convex);
+        let shape = SharedShape::new(convex);
         Some(Self {
             vertices_ptr: 4, // tag（O：+0x00 = 4）
             vertices_len: 0,
@@ -545,7 +584,7 @@ impl RaycastMeshData {
             ),
         ));
         let half = dimensions * 0.5;
-        let shape: Box<dyn Shape> = Box::new(Cuboid::new(Vector::new(half.x, half.y, half.z)));
+        let shape = SharedShape::cuboid(half.x, half.y, half.z);
         let mut mesh = Self {
             vertices_ptr: 4,
             vertices_len: 0,
@@ -570,7 +609,7 @@ impl RaycastMeshData {
     #[cfg(feature = "native-physics")]
     pub fn new_sphere(radius: f32, translation_bits: glam::UVec3) -> Self {
         let hash = crate::render::utils::calculate_hash(&(radius.to_bits(), translation_bits));
-        let shape: Box<dyn Shape> = Box::new(Ball::new(radius));
+        let shape = SharedShape::ball(radius);
         let mut mesh = Self {
             vertices_ptr: 4,
             vertices_len: 0,
@@ -620,11 +659,11 @@ impl RaycastMeshData {
                     .expect("new_compound: child has no shape");
                 (
                     collider_isometry(local.translation, local.rotation),
-                    SharedShape(Arc::from(shape)),
+                    shape,
                 )
             })
             .collect();
-        let shape: Box<dyn Shape> = Box::new(Compound::new(parts));
+        let shape = SharedShape::compound(parts);
         Self {
             vertices_ptr: 4,
             vertices_len: 0,
@@ -679,7 +718,7 @@ impl RaycastMeshData {
             hash = crate::render::utils::calculate_hash(&(hash, &uv_bits));
         }
         let points: Vec<Point<f32>> = vertices.iter().map(|p| Point::new(p.x, p.y, p.z)).collect();
-        let shape: Box<dyn Shape> = Box::new(TriMesh::new(points, indices.to_vec()));
+        let shape = SharedShape::trimesh(points, indices.to_vec());
         let (vertices_ptr, vertices_len) = leak_slice(vertices);
         let (indices_ptr, count) = leak_slice(indices);
         let (normals_ptr, normals_len) = match normals {
@@ -752,7 +791,7 @@ impl RaycastMeshData {
             .flat_map(|t| t.points.iter())
             .map(|p| Point::new(p.x, p.y, p.z))
             .collect();
-        let shape: Box<dyn Shape> = Box::new(TriMesh::new(points, indices.clone()));
+        let shape = SharedShape::trimesh(points, indices.clone());
         let vertices: Vec<glam::Vec3> = triangles
             .iter()
             .flat_map(|t| t.points.iter().copied())
@@ -1585,6 +1624,29 @@ impl RaycastWorld {
         Rapier::intersects_any(self, origin, dir, max_toi, mask)
     }
 
+    /// 原 `Raycasting::intersects_any`（B 0x1408cc320）的借用接口。
+    /// 地形和已有Rapier owner共用调用方上限；方向不归一化。
+    #[cfg(feature = "native-physics")]
+    pub fn intersects_any_w_terrain(
+        &self,
+        terrain: &TerrainHeightsData<TerrainHeightSsbo>,
+        origin: glam::Vec3,
+        dir: glam::Vec3,
+        max_toi: f32,
+        mask: u32,
+    ) -> bool {
+        if mask & 0x20 != 0 {
+            let ray = TerrainRay {
+                origin,
+                direction: dir,
+            };
+            if terrain.intersect_ray(ray, max_toi).is_some() {
+                return true;
+            }
+        }
+        self.intersects_any_with_max_toi(origin, dir, max_toi, mask)
+    }
+
     /// `RaycastWorld::intersects_any`（非 native-physics 壳）。
     #[cfg(not(feature = "native-physics"))]
     pub fn intersects_any(&self, _origin: glam::Vec3, _dir: glam::Vec3, _mask: u32) -> bool {
@@ -1902,14 +1964,18 @@ pub fn upsert_collider<K: std::hash::Hash + Eq>(
         }
         dispose_collider_mesh_instance(world, &existing);
     }
-    let shape = mesh
-        .shape_ref()
-        .expect("upsert_collider: mesh has no shape")
-        .clone_dyn();
+    // 原转换共享同一个内部形状，不能通过 clone_dyn 重新分配几何。
+    let shape = Arc::clone(
+        &mesh
+            .shape
+            .as_ref()
+            .expect("upsert_collider: mesh has no shape")
+            .0,
+    );
     let transformed = OffsetColliderTransform {
         position: final_pose.translation,
         rotation: final_pose.rotation,
-        shape: Arc::from(shape),
+        shape,
     };
     let registry_key = world.mesh_sources.insert(RaycastMesh::new(mesh, source));
     let raw = registry_key.data().as_ffi();
@@ -2606,14 +2672,18 @@ pub fn into_transformed_shape_iso(
     let nested = transform
         .nested_in(&mesh.local_transform())
         .nested_in(parent);
-    let shape = mesh
-        .shape_ref()
-        .expect("into_transformed_shape_iso: mesh has no shape")
-        .clone_dyn();
+    // 原140b26d4d只增加shape Arc强计数，保持几何和metadata身份。
+    let shape = Arc::clone(
+        &mesh
+            .shape
+            .as_ref()
+            .expect("into_transformed_shape_iso: mesh has no shape")
+            .0,
+    );
     OffsetColliderTransform {
         position: nested.translation,
         rotation: nested.rotation,
-        shape: Arc::from(shape),
+        shape,
     }
 }
 
@@ -2861,6 +2931,146 @@ mod transform_family_tests {
         // as_collider_shape 取回形状 Arc。
         let back = t.as_collider_shape();
         assert!(Arc::ptr_eq(&back, &shape));
+    }
+
+    #[test]
+    fn mesh_data_clone_copies_four_owned_buffers_and_keeps_one_inner_shape() {
+        let vertices = [Vec3::ZERO, Vec3::X, Vec3::Z];
+        let indices = [[0, 1, 2]];
+        let normals = [Vec3::Y; 3];
+        let uvs = [glam::Vec2::ZERO, glam::Vec2::X, glam::Vec2::Y];
+        let mut original =
+            RaycastMeshData::new_indexed(&indices, &vertices, Some(&normals), Some(&uvs));
+        original.set_translation_pose(Vec3::new(-2.0, 0.5, 3.0));
+        let weak = Arc::downgrade(&original.shape.as_ref().unwrap().0);
+        let cloned = original.clone();
+        assert_eq!(cloned.vertices(), original.vertices());
+        assert_eq!(cloned.indices(), original.indices());
+        assert_eq!(cloned.normals(), original.normals());
+        assert_eq!(cloned.uvs(), original.uvs());
+        assert_ne!(cloned.vertices_ptr, original.vertices_ptr);
+        assert_ne!(cloned.indices_ptr, original.indices_ptr);
+        assert_ne!(cloned.normals_ptr, original.normals_ptr);
+        assert_ne!(cloned.uvs_ptr, original.uvs_ptr);
+        assert_eq!(cloned.hash, original.hash);
+        assert_eq!(
+            [cloned._pad0, cloned._pad1, cloned._pad2, cloned.scale],
+            [
+                original._pad0,
+                original._pad1,
+                original._pad2,
+                original.scale
+            ],
+        );
+        assert!(Arc::ptr_eq(
+            &cloned.shape.as_ref().unwrap().0,
+            &original.shape.as_ref().unwrap().0,
+        ));
+        assert_eq!(Arc::strong_count(&original.shape.as_ref().unwrap().0), 2);
+        // 两份真实CPU缓冲独立；修改clone缓冲不会修改原条目。
+        // SAFETY: clone独占已验证非空的Vec3副本；这里仅改它的第一个元素。
+        unsafe {
+            *(cloned.vertices_ptr as *mut Vec3) = Vec3::new(9.0, 8.0, 7.0);
+        }
+        assert_eq!(original.vertices()[0], Vec3::ZERO);
+        drop(original);
+        assert_eq!(cloned.vertices()[0], Vec3::new(9.0, 8.0, 7.0));
+        assert_eq!(cloned.indices(), &indices);
+        assert_eq!(cloned.normals(), &normals);
+        assert_eq!(cloned.uvs(), &uvs);
+        assert_eq!(Arc::strong_count(&cloned.shape.as_ref().unwrap().0), 1);
+        drop(cloned);
+        assert!(weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn mesh_data_clone_preserves_none_empty_and_primitive_sentinels() {
+        let vertices = [Vec3::ZERO, Vec3::X, Vec3::Z];
+        for present in [false, true] {
+            let original = RaycastMeshData::new_indexed(
+                &[[0, 1, 2]],
+                &vertices,
+                present.then_some(&[][..]),
+                present.then_some(&[][..]),
+            );
+            let cloned = original.clone();
+            let expected = if present { 4 } else { 0 };
+            assert_eq!((cloned.normals_ptr, cloned.uvs_ptr), (expected, expected));
+            assert_eq!((cloned.normals_len, cloned.uvs_len), (0, 0));
+            assert_eq!(cloned.hash, original.hash);
+            drop(cloned);
+            assert_eq!(original.vertices(), &vertices);
+            assert_eq!(Arc::strong_count(&original.shape.as_ref().unwrap().0), 1);
+        }
+        let original =
+            RaycastMeshData::new_cuboid_at(Vec3::new(1.3, 0.5, 1.3), Vec3::new(1.0, 2.0, 3.0));
+        let collision = Arc::new(original.clone());
+        let interaction = Arc::new(original);
+        assert!(!Arc::ptr_eq(&collision, &interaction));
+        assert!(Arc::ptr_eq(
+            &collision.shape.as_ref().unwrap().0,
+            &interaction.shape.as_ref().unwrap().0,
+        ));
+        assert_eq!((collision.vertices_ptr, collision.indices_ptr), (4, 4));
+        assert_eq!((collision.normals_ptr, collision.uvs_ptr), (0, 0));
+        assert_eq!(collision.local_transform(), interaction.local_transform());
+        assert_eq!(collision.hash, interaction.hash);
+        let empty = RaycastMeshData::default().clone();
+        assert_eq!(
+            (
+                empty.vertices_ptr,
+                empty.indices_ptr,
+                empty.normals_ptr,
+                empty.uvs_ptr
+            ),
+            (0, 0, 0, 0)
+        );
+        assert!(empty.shape.is_none());
+    }
+
+    #[test]
+    fn compound_and_transform_adapters_retain_the_original_child_shape_arc() {
+        let child = RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::X);
+        let inner = Arc::clone(&child.shape.as_ref().unwrap().0);
+        let compound =
+            RaycastMeshData::new_compound(vec![child], [0, 0, 0, 0, 0, 0, 0, 1.0f32.to_bits()]);
+        let shape = compound.shape_ref().unwrap().as_compound().unwrap();
+        assert!(Arc::ptr_eq(&shape.shapes()[0].1.0, &inner));
+        assert_eq!(shape.shapes()[0].0.translation.x, 1.0);
+        let mesh = Arc::new(compound);
+        let transformed = into_transformed_shape_iso(
+            &utils::iso_transform::IsoTransform::identity(),
+            &mesh,
+            &utils::iso_transform::IsoTransform::identity(),
+        );
+        assert!(Arc::ptr_eq(
+            &transformed.shape,
+            &mesh.shape.as_ref().unwrap().0
+        ));
+        let mut world = RaycastWorld::new();
+        let mut map = std::collections::HashMap::new();
+        let handle = match upsert_collider(
+            &mut world,
+            &mut map,
+            (),
+            RaycastGeoSource::Slot0,
+            Arc::clone(&mesh),
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        ) {
+            ColliderUpsert::Inserted { handle } => handle,
+            other => panic!("expected actual insertion, got {other:?}"),
+        };
+        let registered = world.into_transformed_shape(handle);
+        assert!(Arc::ptr_eq(
+            &registered.shape,
+            &mesh.shape.as_ref().unwrap().0
+        ));
+        drop(registered);
+        drop(transformed);
+        drop(world);
+        drop(mesh);
+        assert_eq!(Arc::strong_count(&inner), 1);
     }
 
     #[test]
@@ -3982,6 +4192,35 @@ mod bounded_ray_regressions {
         insert_box(&mut world, &mut map, 1, RaycastGeoSource::Slot0, Vec3::ZERO);
         world.flush_colliders();
         assert!(world.intersects_any_with_max_toi(Vec3::ZERO, Vec3::Z, 0.0, 1));
+    }
+
+    #[test]
+    fn terrain_aware_ray_uses_the_same_finite_bound_and_mask() {
+        let world = RaycastWorld::new();
+        let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        terrain.set_height_range(-2.5, -2.5);
+        let origin = Vec3::Y * 10.0;
+        let direction = -Vec3::Y * 10.0;
+        // 地面在t=1.25；有限线段到t=1时不应把后面的地形算作遮挡。
+        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 1.0, 0x20));
+        assert!(world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0x20));
+        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0));
+    }
+
+    #[test]
+    fn terrain_aware_ray_keeps_the_live_collider_owner_and_bound() {
+        let mut world = RaycastWorld::new();
+        let mut instances = HashMap::new();
+        insert_box(&mut world, &mut instances, 1, RaycastGeoSource::Slot0, Vec3::Y * 15.0);
+        world.flush_colliders();
+        let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        terrain.set_height_range(-2.5, -2.5);
+        let origin = Vec3::ZERO;
+        let direction = Vec3::Y * 10.0;
+        assert!(world.intersects_any(origin, direction, 1));
+        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 1.0, 0x21));
+        assert!(world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0x21));
+        assert!(!world.intersects_any_w_terrain(&terrain, origin, direction, 2.0, 0x20));
     }
 }
 

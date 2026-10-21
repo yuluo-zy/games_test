@@ -1,0 +1,32 @@
+{
+  "status": "frozen_for_independent_review",
+  "supersedes": "headless-frame-maintenance-v1-20261021 (original order correction; V1 withdrawn)",
+  "patch_sha256": "fccc13d2cb13d90b26eef5cd705d85f79049a55318b294ed9e57b689453a66d8",
+  "contract_sha256": "d6780e1861f83393d6fc80de9a9d4338678c51e6b1d4fc62a2ec4592880d22cd",
+  "engineering_scope": "restore nonblocking completed-frame maintenance after successful compile and before execute, matching production original order; preserve test samples/assertions",
+  "required_root_validation": "core_render_bridge existing7+new1; original30world all unmodified assertions; existing WSI as scheduled",
+  "author_validation": "source/actual log audit and rustfmt syntax parse; no Cargo/GPU",
+  "unchanged_sources": {
+    "tiny-glade/crates/rhapsody/src/rg/vulkan.rs": "d6149b76fbfef86c481008e9434b062ebf6e250758851a939bfb8d9b8d58e654",
+    "tiny-glade/crates/rhapsody/src/rg/transaction.rs": "0a3a42a5aeeae3bfba1cb15df36e4a2a688adb9f5f8d97e6ccda4565b7b7afb6",
+    "tiny-glade/crates/rhapsody/src/rg/executor.rs": "3a64c53267e8d064a43048bbd24ba448e984e7204f6b3d9c488bb36ad99eea49",
+    "tiny-glade/crates/rhapsody/src/rg/result_cache.rs": "b1c02430f80ad259184611d46cea36aeb4d091ca5f40fd907e263135927ab6f6",
+    "tiny-glade/crates/rhapsody/src/rg/frame_imports.rs": "996aa6f05184b1aa6676fee028753037964616adc88f23c6c36cad49f963ffb3",
+    "tiny-glade/crates/rhapsody/src/sync/timeline.rs": "86bc8a02f95e1550fd8093300cf3325e9743ce42ae2643c243dcdfac9246703c",
+    "tiny-glade/crates/rhapsody/src/raw/command_buffer.rs": "1b3923a9dfe6bb15e29c5f7f3c7b8a6741a69a54cbc61c56ca59e61b1be040fa",
+    "tiny-glade/crates/rhapsody/src/bindless.rs": "9fe4e3f97bd92b6925892839cde8aec818e7d7cf5811b2ab8a3ac43895ef9016",
+    "tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs": "e644b65425fbd1c096e60205c8ff8e616a5f62a70a3149ffc077908acabe4697",
+    "tiny-glade/crates/country-core/src/systems/render_loop/render_frame.rs": "d89f8239845daa9a6236edced2f59356fe5be35d316a74a01878adde8c8c54bf"
+  },
+  "sources": {
+    "tiny-glade/crates/tiny-glade/src/production_renderer.rs": {
+      "baseline_sha256": "8224b87cc5723ec2929fd5de0356f1b6f0a32e6533b2a19a7ecf161446b94255",
+      "candidate_sha256": "b0aac913dde5659f4375c4c963cde1111a3a869928e08cb83ca71f462f494657"
+    },
+    "tiny-glade/crates/tiny-glade/tests/core_render_bridge.rs": {
+      "baseline_sha256": "ad4820a58ce123b160eea9b8cd9709b9e7c49078950a1d70846a086fc2651a80",
+      "candidate_sha256": "ffb2aa3e6928a87a4b7b244452e8121f4466c0fd74a63e832ea653b73d34acac"
+    }
+  },
+  "new_tests": 1
+}

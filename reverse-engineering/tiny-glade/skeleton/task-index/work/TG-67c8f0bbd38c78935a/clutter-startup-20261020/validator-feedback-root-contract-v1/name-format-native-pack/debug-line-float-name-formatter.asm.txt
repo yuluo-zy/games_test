@@ -1,0 +1,39 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140d8c890: 55                          	pushq	%rbp
+140d8c891: 48 89 e5                    	movq	%rsp, %rbp
+140d8c894: f3 0f 10 09                 	movss	(%rcx), %xmm1
+140d8c898: 44 8b 42 24                 	movl	0x24(%rdx), %r8d
+140d8c89c: 83 7a 10 01                 	cmpl	$0x1, 0x10(%rdx)
+140d8c8a0: 75 11                       	jne	0x140d8c8b3 <.text+0xd8b8b3>
+140d8c8a2: 4c 8b 4a 18                 	movq	0x18(%rdx), %r9
+140d8c8a6: 41 80 e0 01                 	andb	$0x1, %r8b
+140d8c8aa: 48 89 d1                    	movq	%rdx, %rcx
+140d8c8ad: 5d                          	popq	%rbp
+140d8c8ae: e9 ed 73 ff ff              	jmp	0x140d83ca0 <.text+0xd82ca0>
+140d8c8b3: 0f 28 05 c6 20 ba 01        	movaps	0x1ba20c6(%rip), %xmm0  # 0x14292e980
+140d8c8ba: 0f 54 c1                    	andps	%xmm1, %xmm0
+140d8c8bd: 0f 2e 05 7c f4 db 01        	ucomiss	0x1dbf47c(%rip), %xmm0  # 0x142b4bd40
+140d8c8c4: 73 31                       	jae	0x140d8c8f7 <.text+0xd8b8f7>
+140d8c8c6: 0f 57 d2                    	xorps	%xmm2, %xmm2
+140d8c8c9: 0f c2 d1 04                 	cmpneqps	%xmm1, %xmm2
+140d8c8cd: f3 0f 10 1d bb ae cf 01     	movss	0x1cfaebb(%rip), %xmm3  # 0x142a87790
+140d8c8d5: 0f c2 c3 01                 	cmpltps	%xmm3, %xmm0
+140d8c8d9: 0f 54 c2                    	andps	%xmm2, %xmm0
+140d8c8dc: 66 0f 7e c0                 	movd	%xmm0, %eax
+140d8c8e0: a8 01                       	testb	$0x1, %al
+140d8c8e2: 75 13                       	jne	0x140d8c8f7 <.text+0xd8b8f7>
+140d8c8e4: 41 80 e0 01                 	andb	$0x1, %r8b
+140d8c8e8: 41 b9 01 00 00 00           	movl	$0x1, %r9d
+140d8c8ee: 48 89 d1                    	movq	%rdx, %rcx
+140d8c8f1: 5d                          	popq	%rbp
+140d8c8f2: e9 c9 7b ff ff              	jmp	0x140d844c0 <.text+0xd834c0>
+140d8c8f7: 41 80 e0 01                 	andb	$0x1, %r8b
+140d8c8fb: 48 89 d1                    	movq	%rdx, %rcx
+140d8c8fe: 45 31 c9                    	xorl	%r9d, %r9d
+140d8c901: 5d                          	popq	%rbp
+140d8c902: e9 69 84 ff ff              	jmp	0x140d84d70 <.text+0xd83d70>

@@ -1,0 +1,11 @@
+# 二维原样条失败域合同独审
+
+通过此最窄合同，允许该唯一natural_cubic.rs writer开始源码候选。只恢复requests实际调用的2D原两个infallible入口及其dense方法，保持现代try_*与Spline3D现严谨域；不以B/C作者文件checksum代替C函数等价证明。
+
+独立核原包说明、实际源码与新clamped coefficient完整385B：原min2/min3长度assert；无point/tangent/segment/coeff有限或正数门，zero chord传播到真实后继CurveTry。当前knots检查和expect确实会更早panic，形成业务失败分支差异。coeff/RHS/Thomas及周期rank-one算法复用当前同内核合理，不准改成linear或跳失败segment；gamma等代数写法非本范围bitwise证明。需要保留knots累计f32顺序、X/Y求解顺序及所有返回segments。
+
+Dense真实f32→usize饱和/取max2，而非业务2^24 cap；负/零/NaN span也采两点并由实际CurveTry判断，正Inf容量overflow不截断。收集points先于端导数，required index先于span。候选要保此失败/副作用先后，不实际分配巨Vec。
+
+同文件将knot guard抽泛型单态回调、不拒绝Infallible native2D路径可保持性能与单一数学实现，但源码独审必须证明modern guard顺序/错误不变、3D byte/语义不扩散，无动态分发/二次norm/新全局策略。原Bump→现Vec不声明allocation/OOM身份等价。
+
+143旧dense fixtures及native coefficient测试只是现存待root运行；旧comparison Cargo失败/132probe不作验证。新增实际CurveTry消费者测试、min长度panic、Inf容量overflow/no finite额外门有意义。源码冻结后另做独审，当前不能称已实现/已通过运行。

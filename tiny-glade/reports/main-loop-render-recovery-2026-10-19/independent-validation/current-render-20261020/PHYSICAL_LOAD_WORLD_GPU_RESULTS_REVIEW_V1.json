@@ -1,0 +1,51 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "decision": "精确uint2修复已取得当前真实driver编译/世界单帧内容证据；30帧实际执行但稳态失败，不能标游戏主链完成",
+  "static_review": "PHYSICAL_UVEC2_LOAD_NORMALIZATION_V1_REVIEW_V1.json，候选/生产9893094f71298cdb24ad378bfd1a37d88ecd0b52c508f1b49d55c39ef3e82062已先核一致",
+  "actual_current_tests": {
+    "pure_cpu": "四项实际4pass/0ignored；包含words恢复、ID边界不变、幂等/负例、生产lower_stage ABI接线",
+    "world_content": "实际原session→同App→真实production world graph→物理export+原截图consumer，1pass/0ignored，24.57秒；上传502墙brick instances/5draw ranges，174draw-list条目；mean154.4/41882色",
+    "image": "独审实际view_image看到480x270秋季草地、树群和石墙弧，无完整窗/角/交互业务可见验收之意",
+    "world_steady": "warmup后frame0..29的30行全部执行，433.80秒，exit101，live6026..6059跨度33超过原16阈值；后续peak/memory/pixels/TAA断言未执行，不能默认通过"
+  },
+  "observed_not_excused": {
+    "UINT_blend": "30帧log prewarm75条R32G32_UINT不支持blending；图像有内容不能证明所有渲染状态语义正确",
+    "submission": "actual行可见每帧submit约12.6至13.2秒，未有内部阶段归因；新可选trace已另审待实际结果",
+    "memory": "frame12约1029.0MiB→无capture干扰的frame28约1053.4MiB；frame29有capture1059.8MiB不混为clean比较",
+    "descriptors": "总live并非严格单调，page/sampler缓存与在途lease统计不同，当前不能直接归因为泄漏或改阈值；需同owner/per-kind/完成点定位"
+  },
+  "artifacts": {
+    "/private/tmp/tg-physical-pointer-normalization-tests-20261021.log": "1eb9a1857aacf68681a642ea932d4489bd9bd8b6455442e2470174337a02eb7f",
+    "/private/tmp/tg-original-world-content-20261021.log": "4f3923b8de7773b720b187a71e659f2bca0c78a14083c791890f722177574551",
+    "/private/tmp/tg-original-world-content-20261021.png": "6ffad90b116efa75b9836aa288ebd91f15496ce56e786c32d9b31fc5c9201111",
+    "/private/tmp/tg-world-normalized-thirty-20261021.log": "1108706c11cde1259008dd543cb75188419b446bd4bbe52257b923e7de75f75a"
+  },
+  "executor_retained_result": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/validation-20261021/WORLD-NORMALIZED-30-RESULT.json",
+    "sha256": "66446be49ce7368302e2738726a93bbb35bd735de46f7310274665780b46202c",
+    "all_six_retained_artifact_sha256_independently_match": true,
+    "old_executed_binary_recorded_by_root": "0385c559dbbf6f50478b0983b746cb4f1ec93b5377e5dc3509885563fe244e1d",
+    "old_binary_path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_gameplay_chain-a9739bd31f688730",
+    "binary_identity_limit": "后续trace rebuild已覆盖同文件名；审时实际SHA d35609e6498e7d2c49a384cbf1d00d03994b5145f93eb1d3e027c23c0ba84b6b，故旧SHA只作为执行者当时绑定，审者没有现在重算旧binary。留存build JSON/log及源epoch仍完整，未据新binary伪称旧identity吻合",
+    "source_epoch_record": [
+      {
+        "path": "tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs",
+        "sha256": "2344ff2c55fa960b96b896890250be1102edb9b751c06d5b4b3c7ace2a85b1f9"
+      },
+      {
+        "path": "tiny-glade/crates/rhapsody/crates/shader-compiler/src/bindless.rs",
+        "sha256": "9893094f71298cdb24ad378bfd1a37d88ecd0b52c508f1b49d55c39ef3e82062"
+      },
+      {
+        "path": "tiny-glade/crates/tiny-glade/src/render_host.rs",
+        "sha256": "703706cf7687849e60c1ced68e62386ddf85f6ade8e765b3b11516255d73dfe0"
+      },
+      {
+        "path": "tiny-glade/crates/country-core/src/systems/collision/world.rs",
+        "sha256": "7699e1839dba45eff1a1703405e367c0b860f7ff3339f8a6001444e7aacfc294"
+      }
+    ]
+  },
+  "scope": "M3后端physicalLoad问题越过是真实驱动事实；工程适配仍同shader算法和ABI。不包含gameplay WSI/scanout、长稳、TAA收敛、完整窗业务、编辑/保存/重启闭环。独审未执行Cargo/GPU。"
+}

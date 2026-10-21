@@ -1,0 +1,14 @@
+--- a/stairs.rs
++++ b/stairs.rs
+@@ -1678,8 +1678,9 @@
+         storage.apply_decorator_place(to.addr, to.id, &info);
+         let result = find_alignment_preferences(&from, &to, Vec2::X, &storage, &walls);
+         assert_eq!(result[0].0.tag, 1);
+-        assert_eq!(result[0].0.second.x.to_bits(), 0xffc0_0000);
+-        assert_eq!(result[0].0.second.y.to_bits(), 0xffc0_0000);
++        // 原 x86 结果为负 quiet NaN；ARM 的乘法可选择正 NaN，仅忽略符号位。
++        assert_eq!(result[0].0.second.x.to_bits() & 0x7fff_ffff, 0x7fc0_0000);
++        assert_eq!(result[0].0.second.y.to_bits() & 0x7fff_ffff, 0x7fc0_0000);
+     }
+ 
+     fn short_request_points(world: &World) -> std::collections::HashMap<DecoratorId, StairPoint> {

@@ -408,9 +408,9 @@ mod actual_host_tests {
         asset_libraries::ssbo_library::AssetSsboLibrary,
         geometry::instanced_wall::InstancedWall,
         render::{sparse_instance_buffer::SparseInstanceBuffer},
-        resources::walls::{InnerWalls, WallState, public_walls::WallEntities, publication_source::TerrainHeightGrid512, decorator_storage::DecoratorStorageAddr, decorator_subtype::{DerivedDecoratorSubtypes, DecoratorMeshLibrary, DecoratorSubtype, LegacyDerivedDecoratorInfoRecord}},
+        resources::walls::{InnerWalls, WallState, public_walls::WallEntities, publication_source::TerrainHeightGrid512, decorator_storage::DecoratorStorageAddr, decorator_subtype::{DerivedDecoratorSubtypes, DecoratorMeshLibrary, DecoratorSubtype}},
     };
-    use std::{sync::Arc, panic::{AssertUnwindSafe, catch_unwind}};
+    use std::panic::{AssertUnwindSafe, catch_unwind};
 
 
     /// CPU-only range-checking boundary for these CPU ownership/state tests.
@@ -495,7 +495,7 @@ mod actual_host_tests {
         let (mut world, wall, entity) = actual_world(); let id = DecoratorId(7);
         // This fixture only exercises the canonical subtype lookup, not the
         // still-unrecovered collision payload/asset loader.
-        world.resource_mut::<DerivedDecoratorSubtypes>().insert(id.0, Arc::new(LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(0x14), Vec3::ZERO, Vec3::ZERO)));
+        world.resource_mut::<DerivedDecoratorSubtypes>().insert(id.0, DecoratorSubtype(0x14));
         world.resource_mut::<WallAttachedDecoTracker<ChimneyAssemblyParams>>().add(DecoratorStorageAddr::Wall(wall), id, &params(1));
         let mut schedule = Schedule::default(); schedule.add_systems(chimney_assemble_bricks);
         schedule.run(&mut world);

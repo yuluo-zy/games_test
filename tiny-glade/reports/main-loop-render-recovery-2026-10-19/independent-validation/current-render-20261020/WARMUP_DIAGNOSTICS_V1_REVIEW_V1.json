@@ -1,0 +1,36 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "static_review_accepted",
+  "scope": "只补pipeline prewarm失败身份诊断；不修shader、不绕pipeline失败。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/warmup-diagnostics-v1-20261021/MANIFEST.json": "f4c5472b0caafefaf48f0815560635b1cb3a4fef218633d7ebf6d469a6aa1a03",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/warmup-diagnostics-v1-20261021/warmup-diagnostics-v1.patch": "ebb9891147ba43fd195efca6827d9368da9d5d6dad0db080273a4adba1b4ed0d",
+    "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/warmup-diagnostics-v1-20261021/tiny-glade/crates/tiny-glade/src/render_host.rs": "bf97abc48051fabcaad43cb6eef2894b8d902ebc8a0945170389f80ee31d88e0"
+  },
+  "actual_source_at_review": {
+    "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/render_host.rs",
+    "sha256": "bf97abc48051fabcaad43cb6eef2894b8d902ebc8a0945170389f80ee31d88e0",
+    "is_baseline": false,
+    "is_candidate": true
+  },
+  "source_conclusions": [
+    "compute→raster→indexedCount等待次序、统一Instant deadline与逐项remaining保持原逻辑。",
+    "targets克隆实际entry Arc而非只存ticket，host本已持相同entries；不新增owner环。短锁收集targets后才wait，不持cache/manager/compiler队列锁阻塞等待。",
+    "wait原错误原样into返回，保ErrorKind；只失败分支输出shader/ABI/pass格式/序号/compiler统计，log::error未enabled才stderr fallback，集成test无logger也能定位。",
+    "不删draw/shader、不加retry或默认成功、不改lowering和pipeline创建算法。"
+  ],
+  "new_actual_failure_evidence": {
+    "path": "/private/tmp/tg-paging-world-debug-20261021.log",
+    "sha256": "96904a575c726b1200706169c189e8fc0f59cbc02f01009a82d74e6b59b39038",
+    "lines": "52143..52148（同样错误又在52892..52897）",
+    "observed": "MoltenVK shader library compile failed：Vertex program_source416对const device uint2*作as_type<float2>非法，后续VK_ERROR_INITIALIZATION_FAILED。当前只能确认生成MSL错误，不仅凭该文本宣称原SPIRV、lowering或SPIRV-Cross哪层是根因。"
+  },
+  "remaining": "root需以该诊断定位真实shader/input identity，再修具体typed physical pointer链并跑同输入；此诊断本身不计游戏业务恢复。",
+  "reviewer_execution": {
+    "production_write": false,
+    "cargo": false,
+    "gpu": false,
+    "native_execution": false
+  }
+}

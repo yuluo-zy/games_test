@@ -1,0 +1,37 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_dormer.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_dormer.rs
+@@ -84,7 +84,7 @@
+ ) {
+     let derived = derived.as_view();
+     let mesh_lib = derived.mesh_library();
+-    for (_wall, decorators) in decorator_storage.iter_walls() {
++    for (wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+             // O：哥特老虎窗子类型 = 8（0x1407c5650 行 430）。
+             if derived
+@@ -94,11 +94,15 @@
+             {
+                 continue;
+             }
++            let transform = cached.transform(id);
+             // O：剖面（rank 驱动）。
+             let _profile = gothic_dormer_profile_curve(info.rank());
+             // O：蓝图 + 视觉实体。
+-            let transform = cached.transform(id);
+-            let mut blueprint = DecoratorBlueprint::new();
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
+             let key = DecoratorLibKey::new(GOTHIC_DORMER_SUBTYPE, info.rank());
+             blueprint.set_positioned_colliders(
+                 std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
+@@ -107,7 +111,6 @@
+                 &transform.rotation,
+             );
+             blueprint.set_outline((0.0, 0.0, 0.0));
+-            blueprints.insert(id, blueprint);
+             let builder =
+                 WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
+             let _ = &mut transient;

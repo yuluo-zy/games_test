@@ -186,3 +186,69 @@ mod cloth_shared_utils_tests {
         assert!((expected * Vec3::Z).abs_diff_eq(Vec3::X, 1e-6));
     }
 }
+
+/// B140c904e0/81B 调用 UCRT expf，按真实时间步长平滑当前值。
+/// 保留原 f32 运算顺序，不额外钳制或使用融合乘加。
+pub fn time_continuous_lerp(a: f32, b: f32, delta: f32, rate: f32) -> f32 {
+    (b - a) * (1.0 - (-delta * rate).exp()) + a
+}
+
+/// 原140c90540/40B：先对 delta 翻转符号，再乘 rate，最后从1减 expf。
+/// 不钳制负时间步长，也不提前拒绝非有限值。
+pub fn time_continuous_lerp_factor(delta: f32, rate: f32) -> f32 {
+    1.0 - (-delta * rate).exp()
+}
+
+#[cfg(test)]
+mod continuous_lerp_factor_tests {
+    use super::time_continuous_lerp_factor;
+
+    #[test]
+    fn factor_keeps_decay_and_negative_time_without_clamping() {
+        assert!((time_continuous_lerp_factor(1.0 / 60.0, 9.0) - 0.139_292_0).abs() < 0.000_001);
+        assert!(time_continuous_lerp_factor(-1.0, 1.0) < 0.0);
+        assert!(time_continuous_lerp_factor(1.0, -1.0) < 0.0);
+        assert_eq!(time_continuous_lerp_factor(0.0, 9.0).to_bits(), 0);
+        assert_eq!(time_continuous_lerp_factor(-0.0, 9.0).to_bits(), 0);
+    }
+
+    #[test]
+    fn factor_keeps_overflow_and_unordered_domains() {
+        assert_eq!(time_continuous_lerp_factor(f32::MAX, 9.0), 1.0);
+        assert_eq!(time_continuous_lerp_factor(-f32::MAX, 9.0), f32::NEG_INFINITY);
+        assert!(time_continuous_lerp_factor(f32::INFINITY, 0.0).is_nan());
+        assert!(time_continuous_lerp_factor(f32::from_bits(0x7fc1_2345), 1.0).is_nan());
+        assert!(time_continuous_lerp_factor(1.0, f32::NAN).is_nan());
+    }
+}
+
+#[cfg(test)]
+mod continuous_lerp_tests {
+    use super::time_continuous_lerp;
+
+    #[test]
+    fn actual_delta_exponential_preserves_current_value_and_zero_step() {
+        assert_eq!(time_continuous_lerp(0.375, 1.0, 0.0, 3.0), 0.375);
+        assert_eq!(time_continuous_lerp(0.375, 1.0, 0.2, 0.0), 0.375);
+        let actual = time_continuous_lerp(0.25, 1.0, 0.5, 3.0);
+        assert!((actual - 0.832_652_4).abs() < 2.0e-7, "{actual}");
+        assert!((time_continuous_lerp(1.0, 0.0, 0.5, 3.0) - 0.223_130_17).abs() < 2.0e-7);
+    }
+
+    #[test]
+    fn subdivision_and_target_direction_use_the_same_current_state() {
+        let whole = time_continuous_lerp(-0.2, 0.9, 0.5, 3.0);
+        let first = time_continuous_lerp(-0.2, 0.9, 0.125, 3.0);
+        let split = time_continuous_lerp(first, 0.9, 0.375, 3.0);
+        assert!((whole - split).abs() < 2.0e-7);
+        assert!(time_continuous_lerp(0.5, 1.0, -0.25, 3.0) < 0.5);
+    }
+
+    #[test]
+    fn invalid_scalar_inputs_are_not_silently_replaced() {
+        assert!(time_continuous_lerp(0.0, 1.0, f32::NAN, 3.0).is_nan());
+        assert!(time_continuous_lerp(f32::NAN, 1.0, 0.1, 3.0).is_nan());
+        assert!(time_continuous_lerp(0.0, 1.0, 0.1, f32::NAN).is_nan());
+        assert_eq!(time_continuous_lerp(0.25, 1.0, f32::INFINITY, 3.0), 1.0);
+    }
+}

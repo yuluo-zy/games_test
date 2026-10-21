@@ -120,6 +120,8 @@ fn install_asset_library_systems(app: &mut App) {
     }
     use bevy_ecs::schedule::IntoScheduleConfigs;
     use country_core::asset_libraries::runtime::{build_missing_vaos, rebuild_vaos};
+    // 独立加载 App 可能尚无 PostUpdate；初始化缺失调度，不覆盖已有系统。
+    app.init_schedule(bevy_app::PostUpdate);
     country_core::asset_libraries::runtime::add_asset_library_post_update_systems(
         app.get_schedule_mut(bevy_app::PostUpdate).expect("App 缺少 PostUpdate 调度"),
     );
@@ -475,14 +477,10 @@ impl GameLoop {
                     >,
                 ),
             );
-            #[cfg(target_os = "macos")]
+            #[cfg(not(any(windows, feature = "native-audio")))]
             app.add_systems(
                 bevy_app::Update,
                 country_core::resources::logo_animation::animate_logo_with_disabled_audio,
-            );
-            #[cfg(not(any(windows, feature = "native-audio", target_os = "macos")))]
-            anyhow::bail!(
-                "AnimatedLogo requires a real FMOD AudioCore startup backend on this target"
             );
         } else {
             crate::run_game::finish_skipped_splash(app.world_mut())?;
@@ -551,6 +549,11 @@ impl GameLoop {
     /// including a ticket already reclaimed by normal frame maintenance.
     pub fn frame_present_complete(&self) -> rhapsody::Result<Option<bool>> {
         self.renderer.frame_present_complete()
+    }
+
+    /// 原生 present 结果映射前的成功次数；可恢复的过期结果不计入。
+    pub fn native_present_success_count(&self) -> u64 {
+        self.renderer.native_present_success_count()
     }
 
     pub fn gameplay_preparation_pending(&self) -> bool {

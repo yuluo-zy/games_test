@@ -1,0 +1,7 @@
+# 七源真实蓝图entry收口v2合同独审
+
+core_business_lead，2026-10-21：合同可进入候选。真实collider consumer要求storage_addr，v1 legacyinsert不能挂载；复用已恢复唯一insert_for按各原1408258b0时点写真实StorageAddr、原第五参Info+47，不猜0/不mask，从而保allocation/previous Arc独立及entry前后失败副作用。缺ID前置与缺mesh后置必须区分真实partial mutation。
+
+实际World验收必须继续到instantiate_decorator_colliders及registry，两表shape/Arc/pose/source都核；不能只断蓝图字段或数量。其它visual算法/terrain-stair遍历等旧缺口仍明确未完成。
+
+另有已报root的上游域矛盾：现storage placed.state=2而当前world decorator_interaction只接受flags0/1。v2按原完整字节传值且测试用合法非零1，不允许吞掉值2；root需原证核该生产者/consumer类型合同后才可宣称真实placed闭环。此批准不把此矛盾默认为已解决。

@@ -220,6 +220,24 @@ struct BootedSession {
     _boot: std::sync::MutexGuard<'static, ()>,
 }
 
+/// 显式诊断已完成但尚待销毁的对象，不改变逐帧采样或后面的稳定性断言。
+fn diagnose_completed_retirement(device: &rhapsody::device::Device, stage: &str) -> Result<()> {
+    if !std::env::var_os("TG_RETIREMENT_DRAIN_DIAGNOSTIC").is_some_and(|v| v == "1") {
+        return Ok(());
+    }
+    let before = device.retirement_stats();
+    let bytes_before = device.allocator_stats().totals().total_allocated_bytes;
+    let destroyed = device.try_collect_all_completed()?;
+    let after = device.retirement_stats();
+    let bytes_after = device.allocator_stats().totals().total_allocated_bytes;
+    eprintln!(
+        "RETIREMENT_DRAIN_DIAGNOSTIC stage={stage} pending={}→{} destroyed={destroyed} allocated_bytes={bytes_before}→{bytes_after} submitted={:?} completed={:?} idle_waits={}→{}",
+        before.pending, after.pending, after.submitted, after.completed,
+        before.idle_waits, after.idle_waits,
+    );
+    Ok(())
+}
+
 fn boot_shipped_session() -> Result<BootedSession> {
     let installed = std::env::var_os("TG_INSTALL_ROOT")
         .map(PathBuf::from)
@@ -346,7 +364,7 @@ fn boot_shipped_session() -> Result<BootedSession> {
 
 #[test]
 fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()> {
-    let BootedSession { mut driver, context: _context, bridge, shaders, device: _device, _boot } = boot_shipped_session()?;
+    let BootedSession { mut driver, context: _context, bridge, shaders, device, _boot } = boot_shipped_session()?;
     let world = driver.app_mut().world_mut();
     assert_eq!(world.resource::<InnerWalls>().wall_ids().count(), 3);
     assert_nonempty_original_walls(world, shaders.as_ref(), &bridge);
@@ -415,6 +433,7 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
         tiny_glade::screenshot::shared_texture_capture::finish(world)?;
     }
     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
+    diagnose_completed_retirement(&device, "single-world-complete")?;
     let (w, h, rgba) = captured
         .lock()
         .take()
@@ -644,9 +663,10 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
             .frame_render_returned();
         let stats = frame.receipt.stats;
         eprintln!(
-            "MULTIFRAME progress frame {index}: shader heap {:?}, record {:.0} ms",
+            "MULTIFRAME progress frame {index}: shader heap {:?}, record {:.0} ms, retirement {:?}",
             bridge.shader_backend().bindless_stats(),
-            stats.record_ns as f64 / 1e6
+            stats.record_ns as f64 / 1e6,
+            device.retirement_stats(),
         );
         in_flight.push_back(frame.receipt.frame);
         let (cache, passes) = bridge.with_session(|session| {
@@ -712,6 +732,19 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     }
     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
     bridge.wait_submits_done(10_000_000_000)?;
+    diagnose_completed_retirement(&device, "thirty-world-complete")?;
+
+    // 先保存真实回读证据；后面的任一稳定性断言失败也不能丢失世界图像。
+    // 所有原断言与阈值仍在下方执行。
+    if let Some(dir) = &out_dir {
+        std::fs::create_dir_all(dir)?;
+        let artifact_shots = captured.lock().clone();
+        for (index, w, h, rgba) in &artifact_shots {
+            tiny_glade::screenshot::write_image_with_callback_impl(
+                &dir.join(format!("multiframe-frame{:02}.png", index + 1)), *w, *h, rgba, 90,
+                &|result| assert!(result.is_ok(), "{result:?}"));
+        }
+    }
 
     // ---- report -------------------------------------------------------------------------------
     eprintln!("MULTIFRAME idx counter hist hit compile_ms record_ms submit_ms barriers/trans cmds batches par chunks | update declare compile exec (ms) | shaderheap live/ret/peak  texheap live | constants pages/inflight/creat/reuse | alloc_MiB blocks parked");
@@ -809,14 +842,9 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     shots.sort_by_key(|shot| shot.0);
     anyhow::ensure!(shots.len() == CAPTURES.len(), "expected {} readbacks, got {}", CAPTURES.len(), shots.len());
     let lumas = shots.iter().map(|(_, _, _, rgba)| luma(rgba)).collect::<Vec<_>>();
-    for (n, (index, w, h, rgba)) in shots.iter().enumerate() {
+    for (n, (index, w, h, _rgba)) in shots.iter().enumerate() {
         let mean = lumas[n].iter().sum::<f32>() / lumas[n].len() as f32;
         eprintln!("MULTIFRAME shot frame {index}: {w}x{h} mean_luma {mean:.3}");
-        if let Some(dir) = &out_dir {
-            tiny_glade::screenshot::write_image_with_callback_impl(
-                &dir.join(format!("multiframe-frame{:02}.png", index + 1)), *w, *h, rgba, 90,
-                &|result| assert!(result.is_ok(), "{result:?}"));
-        }
     }
     for pair in (1..shots.len()).map(|n| (n - 1, n)) {
         let (a, b) = (&lumas[pair.0], &lumas[pair.1]);

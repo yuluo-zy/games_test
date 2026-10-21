@@ -32,15 +32,128 @@ use std::sync::Arc;
 pub struct FrameGlobals {
     constants: DynamicConstantsChunk,
     sampled: Vec<(u32, Arc<TextureView>)>,
-    /// 全局纹理表的描述符租约：每帧只建一次，所有 draw/dispatch 的参数块共享
-    /// （原版是一张全局表；逐 draw 重建会耗尽 bindless 采样图像表）。
-    sampled_leases: std::sync::OnceLock<Vec<(u32, Arc<rhapsody::bindless::BindlessLease>)>>,
-    /// FrameConstants 的存储视图租约（set 1/b1 存在时 b0/b1 共用，见 `write_to`）。
-    storage_lease: std::sync::OnceLock<Arc<rhapsody::bindless::BindlessLease>>,
+    /// 每页缓存保持实际 heap owner；没有 heap→FrameGlobals 的反向引用。
+    page_leases: parking_lot::Mutex<Vec<Arc<FrameGlobalsPageSlot>>>,
+}
+struct FrameGlobalsPageSlot {
+    heap: Arc<rhapsody::bindless::BindlessHeap>,
+    cache: parking_lot::Mutex<Option<Arc<FrameGlobalsPageCache>>>,
+}
+struct FrameGlobalsPageCache {
+    storage: Option<Arc<rhapsody::bindless::BindlessLease>>,
+    sampled: Option<Arc<Vec<(u32, Arc<rhapsody::bindless::BindlessLease>)>>>,
+}
+pub(crate) struct FrameGlobalsPreparation {
+    slot: Arc<FrameGlobalsPageSlot>,
+    cached: Option<Arc<FrameGlobalsPageCache>>,
+    storage: bool,
+    sampled: bool,
+    sampled_count: usize,
+}
+pub(crate) struct FrameGlobalsPublication {
+    slot: Arc<FrameGlobalsPageSlot>,
+    cache: Arc<FrameGlobalsPageCache>,
+}
+impl FrameGlobalsPublication {
+    /// 参数组已完整生成；缓存槽事先存在，发布阶段不能再分配或失败。
+    pub fn commit(self) {
+        let old = { self.slot.cache.lock().replace(self.cache) };
+        drop(old);
+    }
+}
+impl FrameGlobalsPreparation {
+    pub fn requirements(&self) -> [usize; 4] {
+        let storage_missing = self.storage
+            && self
+                .cached
+                .as_ref()
+                .is_none_or(|cache| cache.storage.is_none());
+        let sampled_missing = self.sampled
+            && self
+                .cached
+                .as_ref()
+                .is_none_or(|cache| cache.sampled.is_none());
+        [
+            if sampled_missing {
+                self.sampled_count
+            } else {
+                0
+            },
+            0,
+            usize::from(storage_missing),
+            0,
+        ]
+    }
+    pub fn write_to(
+        &self,
+        globals: &FrameGlobals,
+        parameters: &mut BindlessParameters,
+    ) -> rhapsody::Result<FrameGlobalsPublication> {
+        let mut storage = self.cached.as_ref().and_then(|cache| cache.storage.clone());
+        let mut sampled = self.cached.as_ref().and_then(|cache| cache.sampled.clone());
+        let mut changed = self.cached.is_none();
+        if self.storage && storage.is_none() {
+            // b0/b1 始终使用已声明的同一存储角色，不能改成 private upload。
+            storage = Some(self.slot.heap.storage_buffer(
+                globals.constants.buffer.clone(),
+                globals.constants.offset,
+                globals.constants.size,
+            )?);
+            changed = true;
+        }
+        if self.sampled && sampled.is_none() {
+            let mut leases = Vec::new();
+            leases
+                .try_reserve(globals.sampled.len())
+                .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+            for (index, view) in &globals.sampled {
+                leases.push((
+                    *index,
+                    self.slot
+                        .heap
+                        .sampled_image(view.clone(), vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)?,
+                ));
+            }
+            sampled = Some(Arc::new(leases));
+            changed = true;
+        }
+        for binding in [0, 1] {
+            let location = BindingLocation { set: 1, binding };
+            if parameters.abi().slot(location).is_some() {
+                parameters.write_lease(
+                    location,
+                    0,
+                    storage
+                        .as_ref()
+                        .expect("validated frame storage role")
+                        .clone(),
+                )?;
+            }
+        }
+        if self.sampled {
+            for (index, lease) in sampled.as_ref().expect("prepared sampled table").iter() {
+                parameters.write_lease(
+                    BindingLocation { set: 2, binding: 0 },
+                    *index,
+                    lease.clone(),
+                )?;
+            }
+        }
+        let cache = if changed {
+            Arc::new(FrameGlobalsPageCache { storage, sampled })
+        } else {
+            self.cached
+                .as_ref()
+                .expect("unchanged complete cache")
+                .clone()
+        };
+        Ok(FrameGlobalsPublication {
+            slot: self.slot.clone(),
+            cache,
+        })
+    }
 }
 impl FrameGlobals {
-    /// Physical owner and range of the FrameConstants block bound through the
-    /// storage view at original set 1/b1 (see `write_to`).
     pub fn storage_view(&self) -> (Arc<rhapsody::resource::Buffer>, u64, u64) {
         (
             self.constants.buffer.clone(),
@@ -48,95 +161,77 @@ impl FrameGlobals {
             self.constants.size,
         )
     }
-
-    /// 每帧快照的全局纹理表（set 2/b0）视图；着色器按下标动态采样，宿主需把它们逐个声明为 pass 读访问。
     pub fn sampled_table(&self) -> &[(u32, Arc<TextureView>)] {
         &self.sampled
     }
-
-    fn frame_storage_lease(
+    /// 只预备页身份和元数据，不分配任何描述符；实际 writer 在组 guard 内调用。
+    pub(crate) fn prepare_page(
         &self,
-        heap: &Arc<rhapsody::bindless::BindlessHeap>,
-    ) -> rhapsody::Result<Arc<rhapsody::bindless::BindlessLease>> {
-        if let Some(lease) = self.storage_lease.get() {
-            return Ok(lease.clone());
-        }
-        let lease = heap.storage_buffer(
-            self.constants.buffer.clone(),
-            self.constants.offset,
-            self.constants.size,
-        )?;
-        Ok(self.storage_lease.get_or_init(|| lease).clone())
-    }
-
-    pub fn write_to(
-        &self,
-        parameters: &mut BindlessParameters,
         abi: &BindlessShaderAbi,
         heap: &Arc<rhapsody::bindless::BindlessHeap>,
-    ) -> rhapsody::Result<()> {
-        // Original global set 1/b0 is the FrameConstants block. The lowered
-        // shader may use a uniform or storage representation of the same bytes.
-        let frame = BindingLocation { set: 1, binding: 0 };
-        if let Some(slot) = abi.slot(frame) {
-            if !matches!(
-                slot.kind,
-                BindingKind::UniformBuffer | BindingKind::StorageBuffer
-            ) {
-                return Err(rhapsody::Error::invalid_usage(
-                    "original frame constants binding has the wrong kind",
-                ));
+    ) -> rhapsody::Result<FrameGlobalsPreparation> {
+        let mut storage = false;
+        for binding in [0, 1] {
+            if let Some(slot) = abi.slot(BindingLocation { set: 1, binding }) {
+                let valid = if binding == 0 {
+                    matches!(
+                        slot.kind,
+                        BindingKind::UniformBuffer | BindingKind::StorageBuffer
+                    )
+                } else {
+                    slot.kind == BindingKind::StorageBuffer
+                };
+                if !valid {
+                    return Err(rhapsody::Error::invalid_usage(
+                        "original frame storage binding has the wrong kind",
+                    ));
+                }
+                storage = true;
             }
-            // 该存储租约对应的字节范围已被宿主声明为所有绑定 set 1 的 pass 的读访问；
-            // 同一命令缓冲里再混入对同一范围的私有上传读会与声明重叠(rhapsody 拒绝)，
-            // 所以 b0/b1 一律共用这一个已声明的存储租约。
-            parameters.write_lease(frame, 0, self.frame_storage_lease(heap)?)?;
         }
-        // Original global set 1/b1: the wall/roof chain reads the very same FrameConstants
-        // bytes through a storage view (`frame_constants_storage_buffer`,
-        // `StructuredBuffer`/`ByteAddressBuffer` register(t1, space1) in
-        // wall/generate_draw_lists, nani_instanced_roof, roof_tiles_gravity).
-        let frame_storage = BindingLocation { set: 1, binding: 1 };
-        if let Some(slot) = abi.slot(frame_storage) {
-            if slot.kind != BindingKind::StorageBuffer {
-                return Err(rhapsody::Error::invalid_usage(
-                    "original frame constants storage binding has the wrong kind",
-                ));
-            }
-            parameters.write_lease(frame_storage, 0, self.frame_storage_lease(heap)?)?;
-        }
-        let images = BindingLocation { set: 2, binding: 0 };
-        if let Some(slot) = abi.slot(images) {
+        let sampled = if let Some(slot) = abi.slot(BindingLocation { set: 2, binding: 0 }) {
             if slot.kind != BindingKind::SampledImage {
                 return Err(rhapsody::Error::invalid_usage(
                     "original texture array binding has the wrong kind",
                 ));
             }
-            for (index, _) in &self.sampled {
-                if *index >= slot.parameter_count {
-                    return Err(rhapsody::Error::unsupported(
-                        "original texture array exceeds this shader host's admitted runtime array capacity",
-                    ));
-                }
+            if self
+                .sampled
+                .iter()
+                .any(|(index, _)| *index >= slot.parameter_count)
+            {
+                return Err(rhapsody::Error::unsupported(
+                    "original texture array exceeds this shader host's admitted runtime array capacity",
+                ));
             }
-            if self.sampled_leases.get().is_none() {
-                let mut leases = Vec::with_capacity(self.sampled.len());
-                for (index, view) in &self.sampled {
-                    leases.push((
-                        *index,
-                        heap.sampled_image(
-                            view.clone(),
-                            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-                        )?,
-                    ));
-                }
-                let _ = self.sampled_leases.set(leases);
+            true
+        } else {
+            false
+        };
+        let slot = {
+            let mut pages = self.page_leases.lock();
+            if let Some(slot) = pages.iter().find(|slot| Arc::ptr_eq(&slot.heap, heap)) {
+                slot.clone()
+            } else {
+                pages
+                    .try_reserve(1)
+                    .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+                let slot = Arc::new(FrameGlobalsPageSlot {
+                    heap: heap.clone(),
+                    cache: parking_lot::Mutex::new(None),
+                });
+                pages.push(slot.clone());
+                slot
             }
-            for (index, lease) in self.sampled_leases.get().into_iter().flatten() {
-                parameters.write_lease(images, *index, lease.clone())?;
-            }
-        }
-        Ok(())
+        };
+        let cached = slot.cache.lock().clone();
+        Ok(FrameGlobalsPreparation {
+            slot,
+            cached,
+            storage,
+            sampled,
+            sampled_count: self.sampled.len(),
+        })
     }
 }
 
@@ -343,7 +438,11 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
     }
     frame
         .shader_backend()
-        .set_frame_globals(Arc::new(FrameGlobals { constants, sampled, sampled_leases: std::sync::OnceLock::new(), storage_lease: std::sync::OnceLock::new() }));
+        .set_frame_globals(Arc::new(FrameGlobals {
+            constants,
+            sampled,
+            page_leases: parking_lot::Mutex::new(Vec::new()),
+        }));
     Ok(())
 }
 

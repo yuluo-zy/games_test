@@ -1,0 +1,35 @@
+{
+  "status": "frozen_for_independent_review_and_root_only_validation",
+  "source": "tiny-glade/crates/rhapsody/crates/shader-compiler/src/bindless.rs",
+  "baseline_sha256": "5a3473d2b34507d8a2eee7bf8e8a305a8f5caba38b0a50a3538a5c48b26edc63",
+  "candidate_sha256": "9893094f71298cdb24ad378bfd1a37d88ecd0b52c508f1b49d55c39ef3e82062",
+  "patch_sha256": "57d2e370444a7da71cc8c5e3ce32833031a72ba7fd5b971bf8631f27fdf7898f",
+  "ownership": "existing shader heap lower_stage backend engineering adapter; explicit root necessary typed-load closure delegation; no claim changes",
+  "rule": "only OpLoad unsigned32x2 from exact Function variable type, immediately consumed as OpBitcast PhysicalStorageBuffer pointer to the same unsigned32x2 type; inserted typed integer add-zero changes address expression provenance, not its bits",
+  "preserved": [
+    "ABI_VERSION=1",
+    "original pointer target/storage class",
+    "all original OpLoad words including alignment/access flags",
+    "all original arithmetic/float bitcasts",
+    "Vk error category and driver pin"
+  ],
+  "tests": [
+    "word restoration proves only cast source changed plus two new instructions",
+    "ID uniqueness and checked bound update",
+    "idempotence",
+    "float-pointee/private-source/arithmetic-source negative inputs unchanged",
+    "ID-bound overflow fails before mutation",
+    "production lower_stage invokes same normalization and retains original load/float-cast words/ABI"
+  ],
+  "validation": {
+    "candidate_parse": "rustfmt passed",
+    "actual_dump_experiment": "two exact dumped modules: spirv-val vulkan1.2 passed, CPU CLI Cross baseline reproduces missing dereference and add-zero modules emit real dereference",
+    "cargo_gpu": "not run; root sole execution owner",
+    "evidence": "../physical-load-evidence-20261021/BYTE_EXPERIMENTS.json"
+  },
+  "limitations": [
+    "upstream MoltenVK1.4.2 pinned Cross source revision explains observed installed runtime bug; installed dylib build provenance is not assumed to equal source tag",
+    "local CLI Cross is a different tool identity; does not establish installed MoltenVK pipeline acceptance",
+    "integer add-zero may be constant-folded, but native code/performance not measured; IR introduces one integer vector op per exact matching cast, no extra memory access/branch"
+  ]
+}

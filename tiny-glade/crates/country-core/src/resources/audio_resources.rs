@@ -145,10 +145,17 @@ impl<E: EventInstance> AudioInstance<E> {
         Ok(())
     }
 
-    /// `set_parameter` (0x140a57670).
+    /// B 0x140a57670：参数失败通过原 log-once 0.3.1 的进程静态消息集去重告警。
+    /// 保留现有 Result API；原调用者丢弃 Err 后继续，不把参数错误升级成构造失败。
     pub fn set_parameter(&mut self, name: &str, value: f32) -> Result<(), E::Error> {
-        if let AudioInstance::Active { event, .. } = self {
-            event.set_parameter_by_name(name, value)?;
+        if let AudioInstance::Active { event, name: event_name, .. } = self {
+            if let Err(error) = event.set_parameter_by_name(name, value) {
+                log_once::warn_once!(
+                    "Failed to set parameter named {} on FMOD event {}\n{:?}",
+                    name, event_name, error
+                );
+                return Err(error);
+            }
         }
         Ok(())
     }
@@ -410,6 +417,101 @@ pub trait VcaHandle {
     type Error: std::fmt::Debug;
     /// `Vca::set_volume` (0x140a54810 continuation); native unwraps the failure.
     fn set_volume(&self, volume: f32) -> Result<(), Self::Error>;
+}
+
+/// 未链接 FMOD 的宿主类型：只允许 `AudioCore::studio = None`，对应原作
+/// `instantiate_audio`（0x140a55f40）的 Disabled 分支；无法构造虚假的音频后端。
+#[derive(Debug)]
+pub enum DisabledStudio {}
+
+/// 禁用后端不会产生事件或 VCA，空枚举使误用在类型层面不可达。
+#[derive(Debug)]
+pub enum DisabledEvent {}
+
+#[derive(Debug)]
+pub enum DisabledVca {}
+
+impl EventInstance for DisabledEvent {
+    type Error = std::convert::Infallible;
+
+    fn start(&mut self) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn stop(&mut self, _: i32) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn get_playback_state(&self) -> Result<PlaybackState, Self::Error> {
+        match *self {}
+    }
+    fn set_volume(&mut self, _: f32) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn set_parameter_by_name(&mut self, _: &str, _: f32) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn has_parameter(&self, _: &str) -> Result<bool, Self::Error> {
+        match *self {}
+    }
+    fn set_3d_attributes(
+        &mut self,
+        _: [f32; 3],
+        _: [f32; 3],
+        _: [f32; 3],
+        _: [f32; 3],
+    ) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn get_timeline_position(&self) -> Result<i32, Self::Error> {
+        match *self {}
+    }
+    fn pause(&mut self, _: bool) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn install_beat_callback(&mut self) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn release(&mut self) -> Result<(), Self::Error> {
+        match *self {}
+    }
+}
+
+impl VcaHandle for DisabledVca {
+    type Error = std::convert::Infallible;
+
+    fn set_volume(&self, _: f32) -> Result<(), Self::Error> {
+        match *self {}
+    }
+}
+
+impl Studio for DisabledStudio {
+    type Error = std::convert::Infallible;
+    type Event = DisabledEvent;
+    type Vca = DisabledVca;
+
+    fn load_bank_file(&mut self, _: &str) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn load_sample_data(&mut self) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn load_bank_sample_data(&mut self, _: &str) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn get_vca(&self, _: &str) -> Result<Self::Vca, Self::Error> {
+        match *self {}
+    }
+    fn set_listener_attributes(&mut self, _: ListenerAttributes) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn update(&mut self) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn set_parameter_by_name(&self, _: &str, _: f32) -> Result<(), Self::Error> {
+        match *self {}
+    }
+    fn create_event_instance(&self, _: &str) -> Result<Option<Self::Event>, Self::Error> {
+        match *self {}
+    }
 }
 
 /// 3D listener attributes passed to Studio::update (O: camera rotation+position

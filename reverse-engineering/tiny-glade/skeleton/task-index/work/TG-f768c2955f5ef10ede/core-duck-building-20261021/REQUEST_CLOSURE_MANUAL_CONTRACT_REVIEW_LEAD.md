@@ -1,0 +1,13 @@
+# closure1与完整手工短请求合同独审
+
+结论：这两个有界helper的合同已足够源码实现。批准在原唯一stairs.rs候选writer下追加完整实现，不能据此宣称两30KB requests或宿主闭合。
+
+独立核原661B closure1的140285a90..5d24：required point[a]先于alignment图；两次required同(a,b)查询分别复制20B种类/求width offset，最终点xz加offset和原kind。第二端point不被closure读取，不能借有向边做sorted端点替换。完整失败门均保留。
+
+独立核true281d4b..282043：width传原a.width且count2；tangent仅dir.xz规范化两项；determine同时存AL和DL；两次同VisualTerrain.sample+.1严格ordered > 对NaN清位；最后才required两Info/derive anchors。常量负零与-1基向量复核已存原字节。manual输入b只供身份/metadata，几何仅a出射；不可连a/b代替。isolated使用未消耗的权威图，failedVec按顺序处理。CurveTry Err才None，不用默认Params吞失败。
+
+实现需保持normal Some/None读cache差异、rawQuaternion旋转、原两点/height增量、两真实flags/count1、empty auxiliary和None interpolated这两个本producer真实初始化；未证字段不填随意默认。测试必须以真实Info/cache/terrain/owner联动验证特殊分支与required失败顺序，不只helper镜像。
+
+完整producer合同的旧每失败段manual措辞已被后文及REQUEST_SPLINE_SEGMENTS勘误覆盖：any_success路径只要有一次成功便不manual；全失败只取front/second一次。empty preferences只写当前有向边，front/back墙停标记不是末首相等替身。当前共享Spline zero-span失败提前panic与调度specialization未知仍为明确外部缺口，不改私有曲线绕过。此次仅接受closure/manual完整helper；整体request源码可继续构造但不能mount，最终source独审另做。
+
+无Cargo/runtime或C等价证明。

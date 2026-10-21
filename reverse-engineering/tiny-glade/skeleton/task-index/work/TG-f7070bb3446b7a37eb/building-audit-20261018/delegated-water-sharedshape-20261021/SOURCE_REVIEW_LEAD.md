@@ -1,0 +1,13 @@
+# 必要canonical依赖源码独立复核（lead）
+
+源码最窄范围通过；逐项读合同/patch并核真实caller/pin API，原生产before隔离patch-F0退出0且字节等于冻结候选。未Cargo/GPU/运行，生产保持before；不能据此冒全模块业务完成。
+
+完整读新Clone、六构造和两个direct adapter及三ownership测试；原trap分配四缓冲后Arc INC/两个outer、原SharedShape ball强弱计数1/1和86B adapter已先独立合同审。当前before38593包含root bounded query/convex改动，patch未动其它查询/统计/registry/source算法。
+
+四个Option<Box<[T]>>先分别安全持有，Box全部复制成功后共享同shape并转raw，指针不浅拷；None0与Someempty4分别保留，长度/hash/localpose原word复制不重算。原primitive4仅作为空Box哨兵，不解引用。Box失败drop由Rust持有关系保障，原owner Drop仍逐副本释放。Clone实现仅native feature，system-decorator原Cargo明确启用native-physics；未给无allocator非native壳编造行为。
+
+六构造只把Box表示纠正为pinparry0.17.0的SharedShape APIs（new/ball/cuboid/trimesh/compound均从本机实际源码核了签名），保几何、输入hash、失败None、localpose和ownedrawbuffer。compound直接move子SharedShape，两个directadapter Arcclone同owner，shape_ref as_deref仍Option<&dynShape>，不需要typed canonical表改动即可编译。全crates外部无RaycastMeshData struct literal或Box shape专用接口；既有OffsetColliderTransform本来Arc<dynShape>。新source没有外部typedlib必改断点，可独立基础批次整合。
+
+三实物测试验证indexed四非空缓冲独立/修改/Drop、None对Someempty/primitive两个outer一个inner、compound child和真实world upsert/转换身份；已有0x78 layout测试继续适用，Option<SharedShape>16B符合原字段跨度，但本重构不声称original 16B alignment Vecstride128 ABI直接等价。测试未实际执行，root须native-physics collision/clone/compound实际验收。新增SAFETY只改独占clone非空buffer第0项，无保留slice跨写。
+
+before `38593f8e24bb93aae26fdd4d30e910937b106c7065a2df5ca2972cf371eefe62`；after `7699e1839dba45eff1a1703405e367c0b860f7ff3339f8a6001444e7aacfc294`；patch `a0c1dddfc6c4c1fcb0f0ae65e5d8f9398a557be08fb2cf7a12ffa712ffab73d7`。

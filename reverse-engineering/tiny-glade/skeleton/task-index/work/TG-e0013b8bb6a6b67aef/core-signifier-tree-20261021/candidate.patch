@@ -1,0 +1,76 @@
+--- a/tiny-glade/crates/systems/water/src/draw_water.rs
++++ b/tiny-glade/crates/systems/water/src/draw_water.rs
+@@ -163,9 +163,11 @@
+             let factory = SignifierFactory::from_closure(
+                 ERASER_SIGNIFIER_NAME,
+                 Arc::new(
+-                    move |_mesh_library: &AssetMeshLibrary,
+-                          _shader_library: &AssetShaderLibrary,
+-                          commands: &mut Commands| closure_0(point, scale, commands),
++                    move |mesh_library: &AssetMeshLibrary,
++                          shader_library: &AssetShaderLibrary,
++                          commands: &mut Commands| {
++                        closure_0(point, scale, mesh_library, shader_library, commands)
++                    },
+                 ),
+             );
+             signifiers.write_factory(&factory);
+@@ -286,44 +288,19 @@
+     );
+ }
+ 
+-/// `draw_water::closure$0` @0x141ba9700（O，fresh disasm 0x141ba9700..0x141ba9853）：
+-/// 橡皮笔刷指示符的唤醒闭包。环境 = `{position: Vec3, scale: f32}`（原生 ArcInner data
+-/// 0x10 B）；唤醒实参 = `(&AssetMeshLibrary, &AssetShaderLibrary, &mut Commands)`
+-/// （vtable call 面，**非捕获**）。返回 1 元素 `Vec<Entity>`。
+-///
+-/// 逐指令对应：
+-/// 1. `alloc 0x15` + 拷贝 `"brush_circle_scribble"`（21 B，0x142eebc98 源）；
+-/// 2. 载荷 `[0x8000000000000000, 0x15, name_ptr, 0x15, ?, ?]` → `new`
+-///    （0x14089d9b0；尾 2 qword 原生为栈未初始化——取 0，I）；
+-/// 3. `animation_duration(0.0)`（0x14089dc90，XORPS XMM2）；
+-/// 4. `position(env+0)`（0x14089dc00：`+0x7c = [pos]`（x,y）、`+0x84 = [pos+8]`（z））；
+-/// 5. `scale(env+0xc)`（0x14089dc60：`+0x50 = 1`、`+0x54 = scale`）；
+-/// 6. `set_ui_pass(0)`（0x14089dad0，R8D=0）→ `build`（0x14089dd50）；
+-/// 7. sret 写 `{cap=1, ptr=heap(Entity), len=1}`。
+-///
+-/// GAP（既有，core 侧登记）：`build` 的 mesh/shader 解析面（`AssetMeshLibrary::
+-/// try_get_handle_by_name` / `AssetShaderLibrary::get_raster_handle_by_name`）未落库；
+-/// 两个库参数保留以维持原生闭包实参形状。
+-pub fn closure_0(position: Vec3, scale: f32, commands: &mut Commands) -> Vec<Entity> {
+-    let name = BRUSH_CIRCLE_SCRIBBLE;
+-    // O：new 的 6-qword 载荷（0x141ba9771-0x141ba9795）：
+-    //    {mesh_kind=0x8000000000000000, len, ptr, len, 未初始化, 未初始化}。
+-    let payload: [u64; 6] = [
+-        0x8000_0000_0000_0000,
+-        name.len() as u64,
+-        name.as_ptr() as u64,
+-        name.len() as u64,
+-        0,
+-        0,
+-    ];
+-    let mut builder = SignifierEntityBuilder::new(&payload).animation_duration(0.0);
+-    // O：position（0x14089dc00）——[RDX+0x7c] = qword [R8]（x,y）、[RDX+0x84] = dword [R8+8]。
+-    builder.u7c =
+-        (position.x.to_bits() as u64) | (((position.y.to_bits() as u64) & 0xffff_ffff) << 32);
+-    builder.u84 = position.z.to_bits();
+-    // O：scale（0x14089dc60）——[RDX+0x50] = 1、[RDX+0x54] = XMM2。
+-    builder.flag50 = 1;
+-    builder.f54 = scale;
+-    let entity = builder.set_ui_pass(0).build(commands);
++/// B 141ba9700：按真实资源库解析笔刷网格，保留位置、缩放与零时长动画。
++pub fn closure_0(
++    position: Vec3,
++    scale: f32,
++    meshes: &AssetMeshLibrary,
++    shaders: &AssetShaderLibrary,
++    commands: &mut Commands,
++) -> Vec<Entity> {
++    let entity = SignifierEntityBuilder::from_mesh_name(BRUSH_CIRCLE_SCRIBBLE)
++        .animation_duration(0.0)
++        .position(position)
++        .scale(scale)
++        .set_ui_pass(0)
++        .build(meshes, shaders, commands);
+     vec![entity]
+ }

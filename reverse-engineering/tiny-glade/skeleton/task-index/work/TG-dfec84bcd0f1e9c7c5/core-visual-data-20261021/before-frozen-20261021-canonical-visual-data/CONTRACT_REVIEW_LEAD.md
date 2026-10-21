@@ -1,0 +1,5 @@
+# canonical visual调用迁移合同独立审查
+
+core_business_lead，2026-10-21：合同通过，允许其中已证六项库Arc消费与roof chimney真实动态cuboid进入源码。原调用现场已区分collision/interaction的各自表及真实cache position/rotation；不得TriangleVec deepclone或用同collision替代interaction。lantern subtype门必须在as_lantern前，exactrank与requiredID/mesh/cache失败保留。roof高度轴Y及.85/height+.1/.85真实cuboid来源可独立闭合。
+
+wall/trap/cottage_dormer保持原动态geometry明确阻点，不能只为编译把它们换成loader Sphere/bbox或默认shape。该批准不扩大其它visual业务算法，不宣称十模块全恢复；源码冻结后独审，root统一编译/生产。

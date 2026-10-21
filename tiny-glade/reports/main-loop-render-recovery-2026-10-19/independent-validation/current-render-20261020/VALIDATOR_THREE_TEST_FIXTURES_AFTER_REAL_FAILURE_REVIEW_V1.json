@@ -1,0 +1,57 @@
+{
+  "schema": "tiny-glade-independent-test-fix-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept exactly three test-fixture/API corrections, production behavior unchanged; root rerun pending",
+  "actual_failure_log": "/private/tmp/tg-validator-closure-tests-v3-20261021.log",
+  "failure_log_sha256": "c5b4c6d25df66770825b7deb1205b275448d1a2b61bdc29eeecdff55c5960574",
+  "actual_result_before_fix": "system-decorator375 passed/3failed/2ignored; core2838 passed/1ignored. Expected caught panics elsewhere do not count as the three failures.",
+  "candidates": [
+    {
+      "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/window-validation-root-candidate-v2-fixtures-only/FIXTURE_INCREMENT_MANIFEST_V1.json",
+      "manifest_sha256": "2da623272bdbfad73e7a7cf999e1a7c0119da16e64eca0efb06bfbb82b2489d1",
+      "source": "tiny-glade/crates/systems/decorator/src/blueprint.rs",
+      "before": "3cd01fb81ff0fb652c80c4ac0d39495eb43ee166657fb62b48737811c76c16e3",
+      "after": "39bd6fb2d10d3c52acc53512eeb1fee19ec87679d6867c2ae28cec2ef3279bee",
+      "patch_sha256": "41521b975f84ea1d187fea246b94c7a6d426735be894d7f4ced4a3f05ad6625d"
+    },
+    {
+      "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-3ab1be37613b300ae5/clutter-startup-20261020/validator-icon-root-candidate-v2-fixture-only/FIXTURE_INCREMENT_MANIFEST_V1.json",
+      "manifest_sha256": "390d78016c45ed14c0db8635fb9c6675b69353d3f9581061a03af79d1added79",
+      "source": "tiny-glade/crates/systems/decorator/src/ui_systems/ui_place_decorator.rs",
+      "before": "53d0b0665617a4384bed26917a25c2e6459d474faae201702c078537dd6565c9",
+      "after": "8571dbdba3498c24a4f20fa762b72a92403b631fd0724bffab7cc536c9ae8944",
+      "patch_sha256": "1480db885bf3f0fc3702c74680da453b6ce775355a24080eb1d2ec594aebb7fe"
+    }
+  ],
+  "independent_root_causes": [
+    {
+      "test": "locator_uses_its_actual_address_instead_of_a_different_d2s_address",
+      "observed": "d2s insert: already exists;7 at decorator_storage.rs96 before validate_blueprints is invoked",
+      "source_proof": "fixture stored() already inserts ID7 mapping. Actual DecoratorToStorageMap::insert always inserts and panics on previous Some (required original semantics). This is setup duplicate, not a failure of explicit-address validation.",
+      "narrow_fix": "test-only remove ID7 old mapping and assert Some(addr), then insert deliberately wrong Terrain. Bucket record remains at Wall42, and no production path changes. Existing backup-state expectation unchanged; actual callback lookup continues testing locator.addr instead of d2s."
+    },
+    {
+      "test": "maximum_height_feedback_uses_zip_and_original_shape_closure_gate",
+      "observed": "actual looped Vec of7 regular Y9.04 vs expected3 freeform points atY8.5/9.5/8.5",
+      "source_proof": "wall_fixture calls actual PublicWalls.consume, which can publish regular cache. arch_segment_heights uses gable→regular→freeform. Prior fixture only truncated freeform while regular cache remained; show_max_wall_y correctly consumed selected regular six entries and closed its shape.",
+      "narrow_fix": "only this maxY test sets regular_heights=None and gable_heights=None before truncating the already-defined freeform table2. Prepared points/height values/expected vectors/loop closure gate all unchanged. Shared fixture and production cache selection untouched."
+    },
+    {
+      "test": "real_factory_has_position_identity_and_wakes_one_actual_ui_entity",
+      "observed": "factory.wake and all component assertions complete; subsequent test positions_without_indices panics at mesh.rs194 required POSITION lookup",
+      "source_proof": "actual shared SignifierEntityBuilder Empty creates Mesh::new(\"signifier empty\") with zero attributes/indices. Current Mesh positions accessor requires POSITION and intentionally unwrap-panics when absent. Original Empty behavior does not require an empty POSITION attribute.",
+      "narrow_fix": "test observes actual Empty attributes.is_empty and indices.is_empty instead. Same actual handle/TransientMesh/registry/despawn assertions retained, no fake geometry or builder relaxation."
+    }
+  ],
+  "independent_freeze_checks": [
+    "Two manifests and all enumerated before/candidate/patch/contract hashes match; production current source is exact corresponding before.",
+    "Both entire production prefixes before first cfg(test) byte-identical; hunk positions confined to the three named tests.",
+    "No tests ignored/deleted, no expected numeric vectors/tolerance/production algorithm/native oracle changed."
+  ],
+  "validation_boundary": [
+    "reviewer executed no Cargo/rustc/GPU; root must rerun both exact tests and package, retaining V3 fail log.",
+    "These three logs do not demonstrate production defects in the reviewed consumer. Other pending editor/registration/scene business gaps remain as prior reports.",
+    "Root devdep test-support feature used to compile test-only canonical geometry fixtures is separate engineering configuration; never assert production default enables it."
+  ]
+}

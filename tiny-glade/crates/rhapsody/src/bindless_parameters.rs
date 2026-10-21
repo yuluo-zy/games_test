@@ -285,6 +285,37 @@ impl BindlessParameters {
             _memory: memory,
         })
     }
+    pub fn abi(&self) -> &BindlessShaderAbi {
+        &self.abi
+    }
+    /// 与 write 的局部缓存相同的 key/上传角色规则；只计算尚未分配的普通资源。
+    /// 外部 write_lease 与参数块由完整组调用者另计，不能假定它们进入局部缓存。
+    pub fn resource_requirements<'a>(
+        abi: &BindlessShaderAbi,
+        resources: impl IntoIterator<Item = (BindingLocation, u32, &'a BindlessResource)>,
+    ) -> Result<[usize; 4]> {
+        let mut keys = SmallVec::<[ResourceKey; 16]>::new();
+        let mut counts = [0; 4];
+        for (location, element, resource) in resources {
+            let slot = abi.slot(location).ok_or_else(|| {
+                Error::invalid_usage("binding is absent from the shader heap ABI")
+            })?;
+            if element >= slot.parameter_count || expected(slot)? != resource.kind() {
+                return Err(Error::invalid_usage(
+                    "resource requirement differs from the shader heap ABI",
+                ));
+            }
+            let uniform_upload = slot.kind == BindingKind::UniformBuffer
+                && matches!(resource, BindlessResource::Buffer {buffer, ..} if buffer.is_dynamic_constants_page());
+            let key = resource.key(uniform_upload);
+            if !keys.contains(&key) {
+                keys.try_reserve(1).map_err(|_| Error::OutOfHostMemory)?;
+                keys.push(key);
+                counts[resource.kind() as usize] += 1;
+            }
+        }
+        Ok(counts)
+    }
     fn location(&self, location: BindingLocation, element: u32) -> Result<(usize, DescriptorKind)> {
         let slot = self
             .abi
@@ -411,6 +442,10 @@ pub struct PreparedBindlessParameters {
     _memory: crate::raw::allocator::CpuMemoryReservation,
 }
 impl PreparedBindlessParameters {
+    /// 只用于游标判断原参数是否仍属于当前真实页；数值下标本身不能证明同页。
+    pub fn belongs_to(&self, heap: &Arc<BindlessHeap>) -> bool {
+        Arc::ptr_eq(&self.heap, heap)
+    }
     /// Reuse the same resource leases while allocating a fresh parameter slice.
     /// Earlier dispatches retain their immutable parameter block until completion.
     pub fn with_push(

@@ -1,0 +1,121 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs
+@@ -17,6 +17,8 @@
+ 
+ use bevy_ecs::prelude::*;
+ use country_core::resources::walls::decorator_storage::DecoratorStorage;
++use country_core::resources::walls::decorator::DecoratorId;
++use country_core::resources::stairs::stairs_assembly_params::AlignKind;
+ use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
+ use glam::{Vec2, Vec3};
+ use utils::natural_cubic::{DenseSplineSegment2D, Spline2D};
+@@ -89,14 +91,40 @@
+     Vec::new() // U。
+ }
+ 
+-/// 0x14080c360（O 结构，4 参面）：最优邻接对齐。
++/// B 0x14080c360：遍历完整邻接候选组合，返回所有选择及其总分。
++/// 冲突方向每次扣 10；严格大于才替换，保持原先后顺序与 NaN 分支。
+ pub fn find_best_neighbor_alignments(
+-    _candidates: &[(u32, f32)],
+-    _p2: u32,
+-    _p3: u64,
+-    _p4: u8,
+-) -> Option<u32> {
+-    None // U。
++    candidates: &[(DecoratorId, Vec<(AlignKind, f32)>)],
++    used_directions: u8,
++) -> (Vec<(DecoratorId, AlignKind)>, f32) {
++    let Some(((id, options), remaining)) = candidates.split_first() else {
++        return (Vec::new(), 0.0);
++    };
++    let mut best = Vec::new();
++    let mut best_score = -f32::MAX;
++    for &(kind, score) in options {
++        let direction = match kind.tag {
++            0 => 1,
++            1 => {
++                let left = kind.first.x * kind.second.y;
++                let right = kind.first.y * kind.second.x;
++                // 原 UCOMISS/SETBE 在 unordered 时也取 mask4。
++                if left > right { 2 } else { 4 }
++            }
++            _ => unreachable!(),
++        };
++        let (mut choices, child_score) =
++            find_best_neighbor_alignments(remaining, used_directions | direction);
++        let penalty = if used_directions & direction != 0 { -10.0 } else { 0.0 };
++        let total = (score + child_score) + penalty;
++        if total > best_score {
++            // 接管递归的真实 Vec；原算法在前部插入当前邻居，避免整表 clone。
++            choices.insert(0, (*id, kind));
++            best = choices;
++            best_score = total;
++        }
++    }
++    (best, best_score)
+ }
+ 
+ /// 0x140803dd0（O 结构）：生成玩家楼梯装饰视觉（walk_shape 消费 + 蓝图）。
+@@ -163,4 +191,60 @@
+         assert_eq!(derive_stair_node_params(&info_tag(1), 0), 0);
+         assert_eq!(derive_stair_node_params(&info_tag(5), 0), 0);
+     }
+-}
++    fn direction_kind(tag: u8, first: Vec2, second: Vec2) -> AlignKind {
++        AlignKind { tag, first, second, ..AlignKind::default() }
++    }
++
++    #[test]
++    fn alignment_search_chooses_the_global_non_conflicting_combination() {
++        let straight = direction_kind(0, Vec2::X, Vec2::ZERO);
++        let turn = direction_kind(1, Vec2::X, Vec2::Y);
++        let candidates = vec![
++            (DecoratorId(7), vec![(straight, 9.0), (turn, 8.0)]),
++            (DecoratorId(29), vec![(straight, 9.0)]),
++        ];
++        let before = candidates.clone();
++        let (choices, score) = find_best_neighbor_alignments(&candidates, 0);
++        assert_eq!(choices, vec![(DecoratorId(7), turn), (DecoratorId(29), straight)]);
++        assert_eq!(score, 17.0);
++        assert_eq!(candidates, before);
++    }
++
++    #[test]
++    fn alignment_search_preserves_the_first_equal_score_candidate() {
++        let first = direction_kind(0, Vec2::X, Vec2::ZERO);
++        let second = direction_kind(0, Vec2::Y, Vec2::ZERO);
++        let candidates = [(DecoratorId(3), vec![(first, 5.0), (second, 5.0)])];
++        assert_eq!(find_best_neighbor_alignments(&candidates, 0),
++            (vec![(DecoratorId(3), first)], 5.0));
++    }
++
++    #[test]
++    fn alignment_empty_inputs_and_empty_candidate_lists_have_distinct_scores() {
++        assert_eq!(find_best_neighbor_alignments(&[], 7), (vec![], 0.0));
++        let candidates = [(DecoratorId(3), vec![])];
++        assert_eq!(find_best_neighbor_alignments(&candidates, 0), (vec![], -f32::MAX));
++    }
++
++    #[test]
++    fn alignment_unordered_cross_uses_mask_four_and_nan_score_never_wins() {
++        let kind = direction_kind(1, Vec2::new(f32::NAN, 0.0), Vec2::Y);
++        let candidates = [(DecoratorId(3), vec![(kind, 5.0)])];
++        assert_eq!(find_best_neighbor_alignments(&candidates, 4).1, -5.0);
++        assert_eq!(find_best_neighbor_alignments(&candidates, 2).1, 5.0);
++        let straight = direction_kind(0, Vec2::X, Vec2::ZERO);
++        let scores = [(DecoratorId(3), vec![(straight, f32::NAN), (straight, 1.0)])];
++        assert_eq!(find_best_neighbor_alignments(&scores, 0),
++            (vec![(DecoratorId(3), straight)], 1.0));
++        let all_nan = [(DecoratorId(3), vec![(straight, f32::NAN)])];
++        assert_eq!(find_best_neighbor_alignments(&all_nan, 0), (vec![], -f32::MAX));
++    }
++
++    #[test]
++    #[should_panic(expected = "internal error: entered unreachable code")]
++    fn alignment_none_variant_retains_original_panic() {
++        let none = AlignKind { tag: 2, ..AlignKind::default() };
++        let _ = find_best_neighbor_alignments(&[(DecoratorId(3), vec![(none, 0.0)])], 0);
++    }
++
++}

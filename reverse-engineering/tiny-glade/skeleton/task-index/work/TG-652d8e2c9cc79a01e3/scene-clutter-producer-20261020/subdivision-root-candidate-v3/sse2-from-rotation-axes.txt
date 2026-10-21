@@ -1,0 +1,72 @@
+198:     pub(crate) fn from_rotation_axes(x_axis: Vec3, y_axis: Vec3, z_axis: Vec3) -> Self {
+199:         glam_assert!(x_axis.is_normalized() && y_axis.is_normalized() && z_axis.is_normalized());
+200:         // Based on https://github.com/microsoft/DirectXMath `XMQuaternionRotationMatrix`
+201:         let (m00, m01, m02) = x_axis.into();
+202:         let (m10, m11, m12) = y_axis.into();
+203:         let (m20, m21, m22) = z_axis.into();
+204:         if m22 <= 0.0 {
+205:             // x^2 + y^2 >= z^2 + w^2
+206:             let dif10 = m11 - m00;
+207:             let omm22 = 1.0 - m22;
+208:             if dif10 <= 0.0 {
+209:                 // x^2 >= y^2
+210:                 let four_xsq = omm22 - dif10;
+211:                 let inv4x = 0.5 / math::sqrt(four_xsq);
+212:                 Self::from_xyzw(
+213:                     four_xsq * inv4x,
+214:                     (m01 + m10) * inv4x,
+215:                     (m02 + m20) * inv4x,
+216:                     (m12 - m21) * inv4x,
+217:                 )
+218:             } else {
+219:                 // y^2 >= x^2
+220:                 let four_ysq = omm22 + dif10;
+221:                 let inv4y = 0.5 / math::sqrt(four_ysq);
+222:                 Self::from_xyzw(
+223:                     (m01 + m10) * inv4y,
+224:                     four_ysq * inv4y,
+225:                     (m12 + m21) * inv4y,
+226:                     (m20 - m02) * inv4y,
+227:                 )
+228:             }
+229:         } else {
+230:             // z^2 + w^2 >= x^2 + y^2
+231:             let sum10 = m11 + m00;
+232:             let opm22 = 1.0 + m22;
+233:             if sum10 <= 0.0 {
+234:                 // z^2 >= w^2
+235:                 let four_zsq = opm22 - sum10;
+236:                 let inv4z = 0.5 / math::sqrt(four_zsq);
+237:                 Self::from_xyzw(
+238:                     (m02 + m20) * inv4z,
+239:                     (m12 + m21) * inv4z,
+240:                     four_zsq * inv4z,
+241:                     (m01 - m10) * inv4z,
+242:                 )
+243:             } else {
+244:                 // w^2 >= z^2
+245:                 let four_wsq = opm22 + sum10;
+246:                 let inv4w = 0.5 / math::sqrt(four_wsq);
+247:                 Self::from_xyzw(
+248:                     (m12 - m21) * inv4w,
+249:                     (m20 - m02) * inv4w,
+250:                     (m01 - m10) * inv4w,
+251:                     four_wsq * inv4w,
+252:                 )
+253:             }
+254:         }
+255:     }
+256: 
+257:     /// Creates a quaternion from a 3x3 rotation matrix.
+258:     ///
+259:     /// Note if the input matrix contain scales, shears, or other non-rotation transformations then
+260:     /// the resulting quaternion will be ill-defined.
+261:     ///
+262:     /// # Panics
+263:     ///
+264:     /// Will panic if any input matrix column is not normalized when `glam_assert` is enabled.
+265:     #[inline]
+266:     #[must_use]
+267:     pub fn from_mat3(mat: &Mat3) -> Self {
+268:         Self::from_rotation_axes(mat.x_axis, mat.y_axis, mat.z_axis)
+269:     }

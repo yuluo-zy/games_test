@@ -28,10 +28,25 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<sys::wall::eraser::AnimateWallBulldozeCmd>();
     app.add_event::<sys::wall::eraser::WallBulldozeAudio>();
     app.add_event::<sys::wall::eraser::WallEraserStroke>();
-    // sys::audio
+    // 原 add_audio_events（B 140941450）的 16 个通道属于游戏 App，
+    // 不以 FMOD 是否启用为条件；工具和建筑系统仍会写入这些事件。
+    // 必须先用 App 注册，使后续 World 初始化不能绕过每帧事件维护。
+    app.add_event::<sys::terrain::PlayTerrainSound>();
+    app.add_event::<sys::audio::SuppressPathSound>();
+    app.add_event::<sys::audio::PlayReplayAudio>();
+    app.add_event::<sys::audio::PlayDecoratorSoundCmd>();
+    app.add_event::<sys::audio::PlayStairsAudioCmd>();
     app.add_event::<sys::audio::PlayWallUiSound>();
-    app.add_event::<sys::audio::WallBendAudioParamReset>();
+    app.add_event::<sys::audio::PlayWallAudio>();
     app.add_event::<sys::audio::RequestWallMaterialAudio>();
+    app.add_event::<sys::audio::WallBendAudioParamReset>();
+    app.add_event::<sys::audio::PlayTimberframeSound>();
+    app.add_event::<sys::audio::PlaySheepReactSound>();
+    app.add_event::<sys::audio::PlayMenuUiSound>();
+    app.add_event::<sys::audio::PlayBuildingAudio>();
+    app.add_event::<sys::audio::PlayElevationSupportSoundCmd>();
+    app.add_event::<sys::audio::PlayClutterSoundCmd>();
+    app.add_event::<sys::audio::PlayTreeSoundCmd>();
     // sys::wall::shapes
     app.add_event::<sys::wall::shapes::CreateCircleCmd>();
     app.add_event::<sys::wall::shapes::CreateRectangleCmd>();

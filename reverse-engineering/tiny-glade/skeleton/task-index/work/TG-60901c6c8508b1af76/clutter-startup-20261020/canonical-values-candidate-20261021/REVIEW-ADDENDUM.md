@@ -1,0 +1,1 @@
+独审决定：dims_wall_space/get_collision_bbx_ls原inline完整signature尚未绑定。删除库的旧猜测方法，不按名字更改含义；新消费者只用已证required record.bounds显式读取widthX/top-bottom。Legacy元数据纯bbox方法保其明确旧方言且不生成物理记录。

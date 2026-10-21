@@ -1,0 +1,42 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "postupdate_adaptation_accepted_wsi_success_proof_gap",
+  "scope": "现公开GameFrameDriver独立loading App的PostUpdate初始化及真实WSI有限harness；不是gameplay WSI验收。",
+  "inputs": {
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/game_loop.rs": "72165bb08d9d95fed6512ba106de0d91e8ac3378e40dc7258acdc8416346b627",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/tests/original_loading_present.rs": "c7851ed8a75a201c439dc352035e73695def2cb3e1055bc1545ed3c05d6b4814",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tiny-glade/src/production_renderer.rs": "b42bd882871d13f7c1c0227fc7adbad7d251b30c0c35e5de1b48c01a151e3532",
+    "/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/src/raw/swapchain.rs": "e2d54206f18e884aea48e34dfbb192b5eecf93128251174e56cac4c709d306e6",
+    "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_app-0.16.0/src/sub_app.rs": "6900f05d35c9eda6acdd5b855ca47042eda110eeac78eedc73ca8c88fbe7abfc",
+    "/private/tmp/tg-paged-loading-wsi-v2-20261021.log": "f5cabda09b56f63637c6ae5f036261847416aa1f53ab4ebd8dc8f3adbb35a6f5",
+    "/private/tmp/tg-loading-postupdate-tests-20261021.log": "8fb9ee963b7566b77cc6c7e4b3eccfa0d9fa67a85be9672e77d07a9740114ff7",
+    "/private/tmp/tg-loading-wsi-build-v2-20261021.jsonl": "0066649a365ba8921199ae9eddcd6ed107b8eda3364a6678fff636ca1c4745f4",
+    "/private/tmp/tg-loading-wsi-build-v2-20261021.log": "c06f09b0798cee3054eb25f3f0938a448451141b9553bf145658b723cfb0c9a5"
+  },
+  "actual_build_artifact": [
+    {
+      "path": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_loading_present-26e8598c37c391a5",
+      "current_binary_sha256": "356fcf8366745410ea9b91713161af1ff2287c638b96158575427acd8eeb2e87",
+      "profile_test": true
+    }
+  ],
+  "identity_limit": "build JSON绑定实际目标路径，现场hash该二进制；日志单行不自带运行时binary SHA，执行exit0由root提供。",
+  "source_accepted": "game_loop.rs:123新增app.init_schedule(PostUpdate)后才get_schedule_mut。独立读锁定Bevy0.16实现：只在Schedules缺该label时insert，已有schedule与systems均保留。没有空体替换资源维护或覆盖现调度。",
+  "cpu_results": "原始日志running8且8passed/0failed/0ignored，含每App独立资产注册/加载update实际VAO命令/postUpdate修改队列下一update消费，确实命中。",
+  "wsi_observed": "root报告进程exit0，原日志打印3 production GameFrameDriver loading/presentation frames及shutdown完成。源码实际用winit EventLoop/Window、ProductionRenderer、driver.frame?、真实Vulkan swapchain和关闭；没有GPU skip。",
+  "actionable_finding": {
+    "priority": "P2",
+    "source": "original_loading_present.rs:108; raw/swapchain.rs:162..167,375..379",
+    "problem": "any_present_successful实为inner.any_presented；present_result将ERROR_OUT_OF_DATE/FULL_SCREEN_EXCLUSIVE_LOST归可恢复Ok，finish_present在这些分支也设该flag。当前harness断言无法证明至少一次native present返回Ok。",
+    "minimal_counterexample": "三帧均实际调用vkQueuePresentKHR但全返回OUT_OF_DATE，逻辑仍可置any_presented=true并在正常恢复/关闭后打印PASS。无需推断本次真实运行已发生此情况。",
+    "required_narrow_resolution": "保原错误恢复行为；为验收观察/断言至少一次真实native Ok，或日志绑定实际PresentProgress native结果。不能把可恢复attempt/queued或GPU completion说成实际显示scanout。"
+  },
+  "scope_limit": "当前只接受该loading实际调用及关闭路径执行到PASS；因成功guard过宽，单日志尚不足独证至少一次native Ok，更不证明gameplay世界内容/交互/保存/屏幕图像正确。",
+  "reviewer_execution": {
+    "production_write": false,
+    "cargo": false,
+    "gpu": false,
+    "ui": false
+  }
+}

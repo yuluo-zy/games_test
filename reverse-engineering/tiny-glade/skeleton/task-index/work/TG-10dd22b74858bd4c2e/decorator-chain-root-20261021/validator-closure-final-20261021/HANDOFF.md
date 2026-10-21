@@ -1,0 +1,7 @@
+# 本轮TG69闭包整合入口
+
+INTEGRATION_MANIFEST_V1.json 是唯一导航，列10个原合法scope候选的绝对路径、before/after/增量patch及独审。不要使用旧from-original Circle/Outline patch，也不要使用unmounted旧host全文件。location V5仅把已root合入两actualID行移出patch，after逐字等于已审V4。
+
+先等完整TG69与两leaf正式审查，再由root唯一应用全组并运行CPU编译/相关新增50项源码测试；所有source仍是implemented_unverified。作者只做只读原PE逐字节证据、parse-only和实际before核对；未跑Cargo/rustc/GPU。若现树before变化，逐hunk重基，不能整文件覆盖root改动。
+
+本轮增加完整validator及反馈可调用API，不安装尚未闭合整条原set25/编辑/卸载系统。原复杂11reason与collision分支无删减。满足editor宿主前提后，唯一生产host应在原first flush后validation、随后history/restore/fullvisual、second flush，不使用旧helper当前相反after门。未完前提见manifest，保持明确而不伪装默认成功。

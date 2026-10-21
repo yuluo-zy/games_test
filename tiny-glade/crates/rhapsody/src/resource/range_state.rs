@@ -308,6 +308,7 @@ pub struct RangeStateTable {
     config: RangeStateConfig,
     budget: Arc<AllocatorStats>,
     prepared_queue: Option<QueueId>,
+    prepared_family: Option<u32>,
     prepared_host: bool,
     prepared_dependencies: StagedDependencies,
 }
@@ -349,6 +350,7 @@ impl RangeStateTable {
             config,
             budget,
             prepared_queue: None,
+            prepared_family: None,
             prepared_host: false,
             prepared_dependencies: StagedDependencies::EMPTY,
         };
@@ -430,6 +432,7 @@ impl RangeStateTable {
     }
     pub fn cancel_prepared(&mut self) {
         self.prepared_queue = None;
+        self.prepared_family = None;
         self.prepared_host = false;
         self.prepared_dependencies = StagedDependencies::EMPTY;
         self.scratch.values.clear();
@@ -448,6 +451,37 @@ impl RangeStateTable {
         self.scratch
             .values
             .extend(self.cells.values.iter().copied().map(PreparedCell::from));
+        self.apply_prepared_patches(patches, queue, family)?;
+        self.admit_prepared(queue, family)
+    }
+    /// 仅在同一次提交的成功前缀上应用后缀；调用者持续持有 submission gate。
+    /// 失败先撤销发布资格，已提交状态仍由既有事务保护，不得发布半成功前缀。
+    pub(crate) fn append_prepared(
+        &mut self,
+        patches: &[StatePatch],
+        queue: QueueId,
+        family: u32,
+    ) -> Result<()> {
+        let valid_prefix = self.prepared_queue == Some(queue)
+            && self.prepared_family == Some(family)
+            && !self.prepared_host;
+        self.prepared_queue = None;
+        self.prepared_family = None;
+        if !valid_prefix {
+            self.cancel_prepared();
+            return Err(Error::invalid_usage(
+                "native range append requires a successful prefix on the same queue and family",
+            ));
+        }
+        self.apply_prepared_patches(patches, queue, family)?;
+        self.admit_prepared(queue, family)
+    }
+    fn apply_prepared_patches(
+        &mut self,
+        patches: &[StatePatch],
+        queue: QueueId,
+        family: u32,
+    ) -> Result<()> {
         for patch in patches {
             validate_range(patch.range)?;
             if !contains(self.domain, patch.range) {
@@ -536,6 +570,10 @@ impl RangeStateTable {
                 index += 1;
             }
         }
+        Ok(())
+    }
+    // 每个原 prepare 边界仍准入 committed 容量，保持预算失败的发生顺序。
+    fn admit_prepared(&mut self, queue: QueueId, family: u32) -> Result<()> {
         self.cells.grow(
             self.scratch.values.len(),
             self.scratch.bytes(),
@@ -543,6 +581,7 @@ impl RangeStateTable {
             &self.budget,
         )?;
         self.prepared_queue = Some(queue);
+        self.prepared_family = Some(family);
         Ok(())
     }
     /// External, already-submitted prerequisites observed while preparing this
@@ -675,6 +714,7 @@ impl RangeStateTable {
             Some(point.queue),
             "only a successful prepared native submit can publish"
         );
+        self.prepared_family = None;
         self.cells.values.clear();
         for prepared in &self.scratch.values {
             let mut cell = prepared.cell;
@@ -1522,5 +1562,466 @@ mod tests {
         );
         drop(table);
         assert_eq!(stats.cpu_memory_usage().total(), 0);
+    }
+    // 完整 prepare 路径作为前缀重放 oracle，逐边界比较全部暂存标记及预算历史。
+    fn assert_incremental_matches_replay(
+        domain: NativeRange,
+        initial: NativeState,
+        config: RangeStateConfig,
+        chunks: &[Vec<StatePatch>],
+        queue: QueueId,
+        family: u32,
+        bound_host_budget: bool,
+        expect_failure: bool,
+    ) {
+        let reference_stats = Arc::new(AllocatorStats::default());
+        let incremental_stats = Arc::new(AllocatorStats::default());
+        let build = |stats| {
+            RangeStateTable::new(domain, ResourceSharing::Exclusive, initial, config, stats)
+                .unwrap()
+        };
+        let mut reference = build(reference_stats.clone());
+        let mut incremental = build(incremental_stats.clone());
+        if bound_host_budget {
+            reference_stats
+                .set_host_budget(reference_stats.cpu_memory_usage().total())
+                .unwrap();
+            incremental_stats
+                .set_host_budget(incremental_stats.cpu_memory_usage().total())
+                .unwrap();
+        }
+        let committed = reference.cells().to_vec();
+        let mut prefix = Vec::new();
+        let mut failed = false;
+        for (index, chunk) in chunks.iter().enumerate() {
+            prefix.extend_from_slice(chunk);
+            let reference_result = reference
+                .prepare(&prefix, queue, family)
+                .map_err(|error| (error.kind(), error.to_string()));
+            let incremental_result = if index == 0 {
+                incremental.prepare(chunk, queue, family)
+            } else {
+                incremental.append_prepared(chunk, queue, family)
+            }
+            .map_err(|error| (error.kind(), error.to_string()));
+            assert_eq!(reference_result, incremental_result, "prefix {index}");
+            assert_eq!(
+                reference.cells(),
+                committed,
+                "reference committed before publish"
+            );
+            assert_eq!(
+                incremental.cells(),
+                committed,
+                "incremental committed before publish"
+            );
+            assert_eq!(reference.prepared_queue, incremental.prepared_queue);
+            assert_eq!(reference.prepared_family, incremental.prepared_family);
+            assert_eq!(reference.prepared_host, incremental.prepared_host);
+            assert_eq!(
+                reference.prepared_dependencies,
+                incremental.prepared_dependencies
+            );
+            assert_eq!(
+                reference.scratch.values.len(),
+                incremental.scratch.values.len()
+            );
+            for (a, b) in reference
+                .scratch
+                .values
+                .iter()
+                .zip(&incremental.scratch.values)
+            {
+                assert_eq!(
+                    (a.cell, a.writer, a.readers, a.release),
+                    (b.cell, b.writer, b.readers, b.release)
+                );
+            }
+            assert_eq!(reference.cells.bytes(), incremental.cells.bytes());
+            assert_eq!(reference.scratch.bytes(), incremental.scratch.bytes());
+            assert_eq!(
+                reference_stats.cpu_memory_usage(),
+                incremental_stats.cpu_memory_usage()
+            );
+            assert_eq!(
+                reference_stats.cpu_peak_bytes(),
+                incremental_stats.cpu_peak_bytes()
+            );
+            if reference_result.is_err() {
+                assert!(incremental.prepared_queue.is_none());
+                assert!(incremental.prepared_family.is_none());
+                reference.cancel_prepared();
+                incremental.cancel_prepared();
+                assert_eq!(incremental.prepared_cells().count(), 0);
+                failed = true;
+                break;
+            }
+        }
+        assert_eq!(failed, expect_failure, "expected failure classification");
+        if !failed {
+            let point = SyncPoint { queue, value: 37 };
+            reference.publish(point);
+            incremental.publish(point);
+            assert_eq!(reference.cells(), incremental.cells());
+            assert!(incremental.prepared_family.is_none());
+        }
+        drop(reference);
+        drop(incremental);
+        assert_eq!(reference_stats.cpu_memory_usage().total(), 0);
+        assert_eq!(incremental_stats.cpu_memory_usage().total(), 0);
+    }
+    #[test]
+    fn incremental_prefixes_match_replay_for_overlapping_reads_and_external_frontiers() {
+        let mut initial = NativeState::default();
+        initial.writer.host = write();
+        initial.writer.points.insert(point(1, 7));
+        initial.writer.add(q(1), write());
+        initial.readers.points.insert(point(2, 9));
+        initial.readers.add(q(2), read());
+        let unknown = |range| StatePatch {
+            range,
+            expected_revision: u64::MAX,
+            action: PatchAction::Unknown {
+                queue: q(0),
+                family: 0,
+            },
+        };
+        assert_incremental_matches_replay(
+            bytes(0, 16),
+            initial,
+            RangeStateConfig::default(),
+            &[
+                vec![],
+                vec![access(
+                    bytes(0, 8),
+                    0,
+                    read(),
+                    vk::ImageLayout::UNDEFINED,
+                    0,
+                )],
+                vec![
+                    access(bytes(0, 8), 1, read(), vk::ImageLayout::UNDEFINED, 0),
+                    access(bytes(8, 8), 0, read(), vk::ImageLayout::UNDEFINED, 0),
+                ],
+                vec![access(
+                    bytes(4, 4),
+                    2,
+                    read(),
+                    vk::ImageLayout::UNDEFINED,
+                    0,
+                )],
+                vec![unknown(bytes(8, 8))],
+                vec![access(
+                    bytes(8, 8),
+                    2,
+                    write(),
+                    vk::ImageLayout::UNDEFINED,
+                    0,
+                )],
+                vec![],
+            ],
+            q(0),
+            0,
+            false,
+            false,
+        );
+    }
+    #[test]
+    fn many_private_read_prefixes_match_complete_replay_without_coalescing() {
+        let initial = NativeState {
+            writer: Frontier {
+                host: write(),
+                ..Frontier::EMPTY
+            },
+            ..NativeState::default()
+        };
+        let mut oracle = table(bytes(0, 256), initial);
+        let mut prefix = Vec::new();
+        let mut chunks = vec![vec![]];
+        for step in 0..96 {
+            oracle.prepare(&prefix, q(0), 0).unwrap();
+            let range = bytes((step * 17 % 248) as u64, 8);
+            let chunk: Vec<_> = oracle
+                .prepared_cells()
+                .filter_map(|current| {
+                    intersection(current.range, range).map(|overlap| {
+                        access(
+                            overlap,
+                            current.state.revision,
+                            read(),
+                            vk::ImageLayout::UNDEFINED,
+                            0,
+                        )
+                    })
+                })
+                .collect();
+            prefix.extend_from_slice(&chunk);
+            chunks.push(chunk);
+        }
+        assert_incremental_matches_replay(
+            bytes(0, 256),
+            initial,
+            RangeStateConfig::default(),
+            &chunks,
+            q(0),
+            0,
+            false,
+            false,
+        );
+    }
+    #[test]
+    fn incremental_prefixes_match_replay_for_image_splits_and_pending_release() {
+        let image = |mip, mips, layer, layers| NativeRange::Image {
+            aspects: 1,
+            base_mip: mip,
+            mip_count: mips,
+            base_layer: layer,
+            layer_count: layers,
+        };
+        assert_incremental_matches_replay(
+            image(0, 4, 0, 4),
+            NativeState::default(),
+            RangeStateConfig::default(),
+            &[
+                vec![],
+                vec![access(
+                    image(1, 2, 1, 2),
+                    0,
+                    write(),
+                    vk::ImageLayout::GENERAL,
+                    0,
+                )],
+                vec![access(
+                    image(1, 1, 1, 1),
+                    1,
+                    read(),
+                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                    0,
+                )],
+            ],
+            q(0),
+            0,
+            false,
+            false,
+        );
+        let range = bytes(0, 16);
+        let transfer = RangeTransfer {
+            pair: 19,
+            source_family: 0,
+            destination_family: 1,
+            range,
+            source: write(),
+            destination: read(),
+            old_layout: vk::ImageLayout::UNDEFINED,
+            new_layout: vk::ImageLayout::UNDEFINED,
+        };
+        assert_incremental_matches_replay(
+            range,
+            NativeState {
+                owner: RangeOwner::Owned(0),
+                ..NativeState::default()
+            },
+            RangeStateConfig::default(),
+            &[
+                vec![access(range, 0, write(), vk::ImageLayout::UNDEFINED, 0)],
+                vec![StatePatch {
+                    range,
+                    expected_revision: 1,
+                    action: PatchAction::Release(transfer),
+                }],
+                vec![],
+            ],
+            q(0),
+            0,
+            false,
+            false,
+        );
+        assert_incremental_matches_replay(
+            range,
+            NativeState {
+                revision: 2,
+                owner: RangeOwner::Released {
+                    transfer,
+                    point: point(0, 21),
+                },
+                ..NativeState::default()
+            },
+            RangeStateConfig::default(),
+            &[
+                vec![],
+                vec![StatePatch {
+                    range,
+                    expected_revision: 2,
+                    action: PatchAction::Acquire {
+                        transfer,
+                        release_point: point(0, 21),
+                    },
+                }],
+            ],
+            q(1),
+            1,
+            false,
+            false,
+        );
+    }
+    #[test]
+    fn incremental_prefix_error_matrix_matches_replay_and_cannot_publish() {
+        let range = bytes(0, 16);
+        let transfer = RangeTransfer {
+            pair: 19,
+            source_family: 0,
+            destination_family: 1,
+            range,
+            source: write(),
+            destination: read(),
+            old_layout: vk::ImageLayout::UNDEFINED,
+            new_layout: vk::ImageLayout::UNDEFINED,
+        };
+        let cases = [
+            access(bytes(0, 0), 0, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(12, 8), 0, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(range, 9, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(range, 0, read(), vk::ImageLayout::UNDEFINED, 1),
+            StatePatch {
+                range,
+                expected_revision: 0,
+                action: PatchAction::Access {
+                    scope: read(),
+                    layout: vk::ImageLayout::UNDEFINED,
+                    queue: q(0),
+                    family: 7,
+                },
+            },
+            StatePatch {
+                range: bytes(0, 8),
+                expected_revision: 0,
+                action: PatchAction::Release(transfer),
+            },
+            StatePatch {
+                range,
+                expected_revision: 0,
+                action: PatchAction::Acquire {
+                    transfer,
+                    release_point: point(0, 22),
+                },
+            },
+        ];
+        for patch in cases {
+            assert_incremental_matches_replay(
+                range,
+                NativeState::default(),
+                RangeStateConfig::default(),
+                &[vec![], vec![patch]],
+                q(0),
+                0,
+                false,
+                true,
+            );
+        }
+        for initial in [
+            NativeState {
+                owner: RangeOwner::Owned(7),
+                ..NativeState::default()
+            },
+            NativeState {
+                revision: u64::MAX - 1,
+                ..NativeState::default()
+            },
+            NativeState {
+                owner: RangeOwner::Released {
+                    transfer,
+                    point: point(0, 21),
+                },
+                ..NativeState::default()
+            },
+        ] {
+            assert_incremental_matches_replay(
+                range,
+                initial,
+                RangeStateConfig::default(),
+                &[
+                    vec![],
+                    vec![access(
+                        range,
+                        initial.revision,
+                        read(),
+                        vk::ImageLayout::UNDEFINED,
+                        0,
+                    )],
+                ],
+                q(0),
+                0,
+                false,
+                true,
+            );
+        }
+    }
+    #[test]
+    fn incremental_prefix_budget_failures_match_each_original_admission_boundary() {
+        let chunks = [
+            vec![],
+            vec![access(
+                bytes(4, 4),
+                0,
+                read(),
+                vk::ImageLayout::UNDEFINED,
+                0,
+            )],
+        ];
+        let bytes_initial = size_of::<RangeCell>() + size_of::<PreparedCell>();
+        let cases = [
+            (
+                RangeStateConfig {
+                    max_cells: 2,
+                    max_cpu_bytes: 1 << 20,
+                },
+                false,
+            ),
+            (
+                RangeStateConfig {
+                    max_cells: 4096,
+                    max_cpu_bytes: bytes_initial,
+                },
+                false,
+            ),
+            // scratch 的三格容量已通过，下一次 committed grow 仍必须在同一边界拒绝。
+            (
+                RangeStateConfig {
+                    max_cells: 4096,
+                    max_cpu_bytes: size_of::<RangeCell>() + 4 * size_of::<PreparedCell>(),
+                },
+                false,
+            ),
+            (RangeStateConfig::default(), true),
+        ];
+        for (config, host_budget) in cases {
+            assert_incremental_matches_replay(
+                bytes(0, 16),
+                NativeState::default(),
+                config,
+                &chunks,
+                q(0),
+                0,
+                host_budget,
+                true,
+            );
+        }
+    }
+    #[test]
+    fn incremental_append_rejects_missing_cancelled_host_or_foreign_prefix() {
+        let mut table = table(bytes(0, 16), NativeState::default());
+        assert!(table.append_prepared(&[], q(0), 0).is_err());
+        table.prepare(&[], q(0), 0).unwrap();
+        table.cancel_prepared();
+        assert!(table.append_prepared(&[], q(0), 0).is_err());
+        table.prepare_host(bytes(0, 4), true).unwrap();
+        assert!(table.append_prepared(&[], q(0), 0).is_err());
+        assert!(!table.prepared_host);
+        table.prepare(&[], q(0), 0).unwrap();
+        assert!(table.append_prepared(&[], q(1), 0).is_err());
+        table.prepare(&[], q(0), 0).unwrap();
+        assert!(table.append_prepared(&[], q(0), 1).is_err());
+        assert_eq!(table.prepared_cells().count(), 0);
+        assert_eq!(table.cells()[0].state, NativeState::default());
     }
 }

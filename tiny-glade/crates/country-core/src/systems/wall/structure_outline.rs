@@ -340,11 +340,11 @@ pub fn stair_outline_lines(
     let count = request
         .heights
         .len()
-        .min(request.positions.len())
+        .min(request.curve.points.len())
         .min(request.widths.len())
         .min(request.tangents.len());
-    let centre = |i: usize| x_h_y(request.positions[i], request.heights[i]);
-    let mut points = Vec::with_capacity(request.positions.len() * 2);
+    let centre = |i: usize| x_h_y(request.curve.points[i], request.heights[i]);
+    let mut points = Vec::with_capacity(request.curve.points.len() * 2);
     if kind == 2 {
         points.extend((0..count).map(centre));
     } else {
@@ -380,7 +380,7 @@ pub fn stair_outline_lines(
     };
     let mut lines = vec![line(points, color)];
     if kind == 1 {
-        let n = request.positions.len().min(request.heights.len());
+        let n = request.curve.points.len().min(request.heights.len());
         lines.push(line((0..n).map(centre).collect(), DebugColor::Red));
     }
     lines
@@ -707,11 +707,24 @@ mod tests {
 
     fn request(segment: StairSegment) -> PlayermadeStairsAssemblyParams {
         PlayermadeStairsAssemblyParams {
-            positions: vec![Vec2::new(0.0, 0.0), Vec2::new(2.0, 0.0), Vec2::new(4.0, 0.0)],
+            curve: utils::curve::Curve2::try_new_from_points(
+                vec![Vec2::new(0.0, 0.0), Vec2::new(2.0, 0.0), Vec2::new(4.0, 0.0)], false,
+            ).unwrap(),
             heights: vec![1.0, 2.0, 3.0],
             widths: vec![1.0, 1.0, 1.0],
             tangents: vec![Vec2::X; 3],
+            auxiliary_samples: Vec::new(),
+            interpolated_curve: None,
+            nodes: [
+                (crate::resources::stairs::stairs_assembly_params::StairNodeAnchor::Terrain { height: 1.0 }, 1),
+                (crate::resources::stairs::stairs_assembly_params::StairNodeAnchor::Terrain { height: 3.0 }, 1),
+            ],
+            terrain_contacts: bitvec::bitvec![usize, bitvec::order::Lsb0; 0; 3],
             segment,
+            sub_segments: smallvec::smallvec![
+                crate::resources::stairs::stairs_assembly_params::StairSubSegment { kind: 2, flag: 1, count: 2 },
+            ],
+            dirty: false,
         }
     }
 

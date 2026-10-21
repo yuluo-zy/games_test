@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "bytes": 58460160,
+    "id": "tiny-glade-B-rne",
+    "version": "B",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny_glade.pdb",
+      "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "bytes": 274710528,
+      "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "builder-set_ui_pass",
+  "cache_key": "6c07ea08963d440c4be971670e1d383361baa5ad1481ae333adb365fee9d3d78",
+  "status": "ok",
+  "range": {
+    "rva": "0x89dad0",
+    "length": 39,
+    "start_va": "0x14089dad0",
+    "stop_va_exclusive": "0x14089daf7",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x14089dad0",
+      "rva": "0x89dad0",
+      "bytes": "56",
+      "size": 1,
+      "assembly": "pushq\t%rsi",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089dad1",
+      "rva": "0x89dad1",
+      "bytes": "4883ec20",
+      "size": 4,
+      "assembly": "subq\t$0x20, %rsp",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089dad5",
+      "rva": "0x89dad5",
+      "bytes": "4889ce",
+      "size": 3,
+      "assembly": "movq\t%rcx, %rsi",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089dad8",
+      "rva": "0x89dad8",
+      "bytes": "4180f001",
+      "size": 4,
+      "assembly": "xorb\t$0x1, %r8b",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089dadc",
+      "rva": "0x89dadc",
+      "bytes": "4488828a000000",
+      "size": 7,
+      "assembly": "movb\t%r8b, 0x8a(%rdx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089dae3",
+      "rva": "0x89dae3",
+      "bytes": "41b890000000",
+      "size": 6,
+      "assembly": "movl\t$0x90, %r8d",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089dae9",
+      "rva": "0x89dae9",
+      "bytes": "e812610802",
+      "size": 5,
+      "assembly": "callq\t0x142923c00 <.text+0x2922c00>",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089daee",
+      "rva": "0x89daee",
+      "bytes": "4889f0",
+      "size": 3,
+      "assembly": "movq\t%rsi, %rax",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089daf1",
+      "rva": "0x89daf1",
+      "bytes": "4883c420",
+      "size": 4,
+      "assembly": "addq\t$0x20, %rsp",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089daf5",
+      "rva": "0x89daf5",
+      "bytes": "5e",
+      "size": 1,
+      "assembly": "popq\t%rsi",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x14089daf6",
+      "rva": "0x89daf6",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0x89dad0",
+      "ModuleName": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/country-core/src/systems/ui/signifiers/mod.rs",
+          "FunctionName": "country_core::systems::ui::signifiers::SignifierEntityBuilder::set_ui_pass::h5860ef17db4ba315",
+          "Line": 173,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n14089dad0: 56                          \tpushq\t%rsi\n14089dad1: 48 83 ec 20                 \tsubq\t$0x20, %rsp\n14089dad5: 48 89 ce                    \tmovq\t%rcx, %rsi\n14089dad8: 41 80 f0 01                 \txorb\t$0x1, %r8b\n14089dadc: 44 88 82 8a 00 00 00        \tmovb\t%r8b, 0x8a(%rdx)\n14089dae3: 41 b8 90 00 00 00           \tmovl\t$0x90, %r8d\n14089dae9: e8 12 61 08 02              \tcallq\t0x142923c00 <.text+0x2922c00>\n14089daee: 48 89 f0                    \tmovq\t%rsi, %rax\n14089daf1: 48 83 c4 20                 \taddq\t$0x20, %rsp\n14089daf5: 5e                          \tpopq\t%rsi\n14089daf6: c3                          \tretq\n",
+  "original_target_executed": false
+}

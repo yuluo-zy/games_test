@@ -1,0 +1,39 @@
+# 共享 headless 世界入口补齐帧首完成维护
+
+## 变更范围
+
+这是现有工程入口的一致性修复，不是重写原 renderer。root 明确委派现 source 窄候选；只改 render_headless_gameplay_frame 入口，在 compile_built 成功之后、execute_compiled 之前调用现有 bridge.collect_completed_frames。生产 RenderHost、原 shader/counter/slot/range 算法、在飞帧上限、测试采样点、断言与阈值全部不改。不新建生产文件。
+
+## 原调用合同及当前接缝
+
+原 B render 的已恢复外层位于 country-core/src/systems/render_loop/render_frame.rs。其 render 第295..324行先 build_draw_lists 并 compile loading/world graph；第334行 host.begin_frame 后第336行 host.drain_finished_frames；第341行 execute_main_graph。对应 ProductionRenderHost::drain_finished_frames（production_renderer.rs:1253）调用 ProductionRenderer::collect；后者对真实 App bridge.collect_completed_frames，再清完成present tickets/swapchain并做GC。acquire_swapchain_image另有一次collect，位于主图execute之后。
+
+现 headless 公共producer声明自己使用同一production declare→compile→execute→export链，其调用者拥有App update与temporal推进；之前入口执行完compile就直接execute，缺少这次compile后、execute前的完成维护。测试在每次rows样本之后调用collect，没有在本public入口compile成功与execute之间调用。VulkanGraphSession::begin_frame只有pending达到frames_in_flight时才wait，不会自动清理未达到上限但GPU已经完成的前一帧。
+
+## 两批lease真实owner路径
+
+- BindlessHeap::bind_command/bind_pass将每个实际BindlessLease Arc通过retain_recorded/retain_opaque存入native VulkanCommandBuffer.owners；PreparedBindlessParameters局部Drop不撤销这些命令owner。
+- record_submission将真实SyncPoint同时记到command.last_use及其uses（包含lease.last_use）。
+- collect_completed_frames取得device.poll snapshot，只在队头pending.execution.completion().is_reached(snapshot)时调用wait_frame(frame,0)。GraphExecution.completion来自Transaction累计的所有真实batch/auxiliary receipts的SyncSet，不能仅凭日志cached最后seq推断。
+- wait_frame使用整个completion SyncSet。Timeline.wait会再次poll；已经达到时直接返回，正常单调时间线不会发vkWaitSemaphores。该入口没有idle/主动等待未完成帧。
+- finish_frame observe每个receipt后chain.recycle，recycle_completed_commands调用raw.release_completed_owners清owners。其BindlessLease最后Arc Drop才使slot Live→Retiring；随后真实completed collect才能到Free。未完成的帧完全保留。
+
+## 实际观察与尚未证明部分
+
+/private/tmp/tg-highwater-world-thirty-20261021.log：frame2 live6022，其中images1381、storageimages136、buffers4433；后期约3043（images689/690、storageimages68、buffers2210）。这与两批实际命令owner同时保留一致；旧pool peak错误已修，新真实peak6022固定。frame2 constants pages4、inflight2，也支持前帧owner未recycle的假设。
+
+日志retirement_stats.completed是cached值，无法独立证明“compile成功、execute之前前帧完整completion已到达”。本候选补齐已确认缺失的非阻塞维护，不声称必然让所有合法frames-in-flight下live样本完全相同。若前帧此时尚未完成，它继续活着；原30帧门仍必须照常执行，失败继续披露，不延后采样、不追加wait、不改steady起点。
+
+root验证：原30帧所有原live/peak/memory/pixels断言保持，必要记录同一完整receipt集合与实际poll snapshot，而非cached最后提交值；真实WSI原门按root计划。作者只做源码/日志审核及rustfmt解析，不运行Cargo/GPU。此窄维护调用除原30帧门外，在已有core_render_bridge.rs补1项真实GPU集成回归：先等全部旧receipt完成但不finish旧session，编译新图后调用同一collect；要求旧retire已触发、新retire和新imports仍在，最后执行新图并回读[21,22]。测试内显式wait仅用于建立可重复的旧帧真实完成前提，生产调用不新增wait。
+
+## V2 修正与编译中 owner 安全性
+
+V1 错把 drain 置于 public helper 最前，且合同误述为先drain再compile；独审指出原顺序后，V1撤回采纳建议并保持冻结。V2只修复上述位置，实际producer已有prewarm/compile失败次序不变：只有compile成功才维护。
+
+新编译帧由CompiledCoreGraph.frame→PreparedSessionFrame持有prepared graph的registry、callbacks、retire。CoreGraphFrame导入的FrameImports marker位于新帧retire回调；collect_frame_imports只删除marker强引用为0的旧项，新帧marker仍为强引用。result_cache.prepare已登记本graph，collect_cached_results先以所有frames hits/productions构建pinned tokens；新帧命中的结果不会被旧retired回收。
+
+collect只pop已达到的旧PendingSessionFrame，不改变active_prepared；旧finish_frame回收的OriginSource::Create是旧帧registry的创建资源。新编译时仍被旧pending持有的旧池资源尚未返pool，不能已被新帧pool-hit借用；共享named/imported资源不属于该OriginSource::Create回收分支。clear_pass_resources仅撤managed projection snapshot与clear_idle，不删除新compiled registry/callback/marker。executor::record_compiled第1116行在实际record入口才调用prepare_compiled_resources，再取managed_pass_resources；vulkan.rs:1538..1565按当前compiled registry与backend.resources重新checkout投影。因此compile后旧projection被清掉不会让新图失去record时的资源投影。新token的真实Arc由backend.resources保有，当前图导入marker阻止其被旧collect删掉。
+
+维护失败时先drop(compiled)，走已有CompiledCoreGraph::Drop→cancel_prepared释放本帧未提交声明/回调；随后cancel_unsubmitted只撤本capture_graph_id且submitted=false的截图声明。返回原maintenance Error，附外层context；不吞错误、不提交新图、不重试或等待。取消secondary error仍由既有Drop日志处理。
+
+V2仍不保证真正两帧GPU同时在途时live恒定，须原30实际执行；禁止用V2说明此前失败已经通过。

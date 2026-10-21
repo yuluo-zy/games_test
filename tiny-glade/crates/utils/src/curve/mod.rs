@@ -51,6 +51,9 @@ pub trait CurvePoint:
     + Mul<f32, Output = Self>
     + Div<f32, Output = Self>
 {
+    /// 已核原构造单态的点维度；自定义Point默认保留现稳健参数策略。
+    const ORIGINAL_PARAMETER_DIMENSION: u8 = 0;
+
     fn metric_squared(self) -> f32;
     /// Euclidean length, with a default for existing custom point types.
     fn metric_length(self) -> f32 {
@@ -67,6 +70,8 @@ pub trait CurvePoint:
     fn projected(self) -> Vec2;
 }
 impl CurvePoint for Vec2 {
+    const ORIGINAL_PARAMETER_DIMENSION: u8 = 2;
+
     fn is_finite(self) -> bool {
         self.is_finite()
     }
@@ -107,6 +112,8 @@ impl CurvePoint for Vec2 {
     }
 }
 impl CurvePoint for Vec3 {
+    const ORIGINAL_PARAMETER_DIMENSION: u8 = 3;
+
     fn is_finite(self) -> bool {
         self.is_finite()
     }
@@ -147,17 +154,42 @@ impl CurvePoint for Vec3 {
     }
 }
 pub trait CurveMetric<T: CurvePoint> {
+    /// 只有已证的Point/semantic组合使用原f32构造域。
+    const ORIGINAL_PARAMETER_DOMAIN: bool = false;
+
     fn segment_length(delta: T) -> f32;
+
+    /// 构造参数专用的编译期策略；既有稳健测距API保持不变。
+    fn constructor_segment_length(delta: T) -> f32 {
+        Self::segment_length(delta)
+    }
 }
 impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemantic2D {
+    // 原Vec2构造与1412699d0的Vec3XZ构造共用纯f32参数流程。
+    // XZ只度量x/z，不提前要求Y有限；重复点仍按完整XYZ有序比较。
+    const ORIGINAL_PARAMETER_DOMAIN: bool =
+        T::ORIGINAL_PARAMETER_DIMENSION == 2 || T::ORIGINAL_PARAMETER_DIMENSION == 3;
+
     fn segment_length(delta: T) -> f32 {
         let p = delta.projected();
         p.metric_length()
     }
+
+    fn constructor_segment_length(delta: T) -> f32 {
+        let p = delta.projected();
+        (p.y * p.y + p.x * p.x).sqrt()
+    }
 }
 impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemantic3D {
+    const ORIGINAL_PARAMETER_DOMAIN: bool = T::ORIGINAL_PARAMETER_DIMENSION == 3;
+
     fn segment_length(delta: T) -> f32 {
         delta.metric_length()
+    }
+
+    fn constructor_segment_length(delta: T) -> f32 {
+        // Vec3::metric_squared是pinned glam的纯f32先xy后z，无f64补偿。
+        delta.metric_squared().sqrt()
     }
 }
 impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemanticThresholded3D {
@@ -232,18 +264,31 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         if points.len() < 2 {
             return Err(CurveError::TooFewPoints(points.len() as u8));
         }
-        if points.iter().any(|point| !point.is_finite()) {
+        if !S::ORIGINAL_PARAMETER_DOMAIN && points.iter().any(|point| !point.is_finite()) {
             return Err(CurveError::NonFiniteLength);
         }
+        // 原已证单态先分配，再读取first并逐项累计（包含first自身）。
+        let mut points_u = Vec::with_capacity(points.len());
         let mut previous = points[0];
         let mut length = 0.0;
-        let mut points_u = Vec::with_capacity(points.len());
         for &point in points {
-            length += S::segment_length(previous - point);
+            let delta = previous - point;
+            let distance = if S::ORIGINAL_PARAMETER_DOMAIN {
+                S::constructor_segment_length(delta)
+            } else {
+                S::segment_length(delta)
+            };
+            length += distance;
             points_u.push(length);
             previous = point;
         }
-        if !length.is_finite() || length <= 0.0 {
+        let invalid_length = if S::ORIGINAL_PARAMETER_DOMAIN {
+            // 原NaN/Inf继续到逐项规范化检查，不能提前扫描输入或改为<=0。
+            length == 0.0
+        } else {
+            !length.is_finite() || length <= 0.0
+        };
+        if invalid_length {
             return Err(CurveError::NonFiniteLength);
         }
         for u in &mut points_u {
@@ -269,6 +314,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
         points.dedup();
         Self::try_new_from_points(points, false)
     }
+    #[track_caller]
     pub fn crashy_new_from_points(points: Vec<T>, reject_duplicates: bool) -> Self {
         Self::try_new_from_points(points, reject_duplicates).unwrap()
     }
@@ -689,4 +735,208 @@ mod borrowed_nearest_original_tests {
             }).is_err());
         }
     }
+}
+
+#[cfg(test)]
+mod native_constructor_tests {
+    use super::*;
+
+    #[test]
+    fn original_f32_lengths_keep_point_order_and_the_underflow_overflow_domain() {
+        let curve = Curve2::try_new(
+            vec![Vec2::ZERO, Vec2::new(3.0, 4.0), Vec2::new(6.0, 8.0)],
+            false,
+        )
+        .unwrap();
+        assert_eq!(curve.length, 10.0);
+        assert_eq!(curve.points_u, [0.0, 0.5, 1.0]);
+        let curve = Curve3::try_new(
+            vec![
+                Vec3::ZERO,
+                Vec3::new(0.0, 3.0, 4.0),
+                Vec3::new(12.0, 3.0, 4.0),
+            ],
+            false,
+        )
+        .unwrap();
+        assert_eq!(curve.length, 17.0);
+        assert_eq!(curve.points_u, [0.0, 5.0 / 17.0, 1.0]);
+        for length in [1e-30_f32, f32::MIN_POSITIVE, 1e20, f32::MAX] {
+            assert!(matches!(
+                Curve2::try_new(vec![Vec2::ZERO, Vec2::new(length, 0.0)], false),
+                Err(CurveError::NonFiniteLength)
+            ));
+            assert!(matches!(
+                Curve3::try_new(vec![Vec3::ZERO, Vec3::new(0.0, 0.0, length)], false),
+                Err(CurveError::NonFiniteLength)
+            ));
+        }
+        for nonfinite in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert!(matches!(
+                Curve2::try_new(vec![Vec2::ZERO, Vec2::new(nonfinite, 0.0)], false),
+                Err(CurveError::NonFiniteLength)
+            ));
+            assert!(matches!(
+                Curve3::try_new(vec![Vec3::ZERO, Vec3::new(0.0, nonfinite, 0.0)], false),
+                Err(CurveError::NonFiniteLength)
+            ));
+        }
+    }
+
+    #[test]
+    fn original_normalization_errors_precede_optional_duplicate_rejection() {
+        assert!(matches!(
+            Curve2::try_new(Vec::new(), true),
+            Err(CurveError::TooFewPoints(0))
+        ));
+        assert!(matches!(
+            Curve3::try_new(vec![Vec3::ZERO], true),
+            Err(CurveError::TooFewPoints(1))
+        ));
+        let points = vec![Vec2::ZERO, Vec2::ZERO, Vec2::X];
+        let curve = Curve2::try_new(points.clone(), false).unwrap();
+        assert_eq!(curve.points, points);
+        assert_eq!(curve.points_u, [0.0, 0.0, 1.0]);
+        assert!(matches!(
+            Curve2::try_new(points, true),
+            Err(CurveError::DuplicateSegment(0))
+        ));
+        assert!(matches!(
+            Curve2::try_new(vec![Vec2::ZERO; 3], true),
+            Err(CurveError::NonFiniteLength)
+        ));
+        assert!(matches!(
+            Curve2::try_new(vec![Vec2::ZERO, Vec2::ZERO, Vec2::new(f32::NAN, 0.0)], true),
+            Err(CurveError::NonFiniteLength)
+        ));
+        assert!(matches!(
+            Curve3::try_new(vec![Vec3::ZERO, Vec3::ZERO, Vec3::X], true),
+            Err(CurveError::DuplicateSegment(0))
+        ));
+    }
+
+    #[test]
+    fn original_crashy_false_and_existing_boolean_compatibility_share_the_same_constructor() {
+        let points = vec![Vec2::ZERO, Vec2::ZERO, Vec2::X];
+        assert_eq!(
+            Curve2::crashy_new_from_points(points.clone(), false).points,
+            points
+        );
+        assert!(std::panic::catch_unwind(|| Curve2::crashy_new_from_points(points, true)).is_err());
+        assert!(
+            std::panic::catch_unwind(|| Curve2::crashy_new_from_points(
+                vec![Vec2::ZERO, Vec2::new(1e-30, 0.0)],
+                false
+            ))
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn engineering_metrics_keep_their_host_policy_separate_from_original_constructors() {
+        struct Engineering;
+        impl CurveMetric<Vec2> for Engineering {
+            fn segment_length(delta: Vec2) -> f32 {
+                delta.metric_length()
+            }
+        }
+        let tiny2 = Vec2::new(1e-30, 0.0);
+        let tiny3 = Vec3::new(1e-30, 0.0, 0.0);
+        assert_eq!(tiny2.metric_length(), 1e-30);
+        assert_eq!(tiny3.metric_length(), 1e-30);
+        assert_eq!(
+            <CurveCoordSemantic2D as CurveMetric<Vec2>>::segment_length(tiny2),
+            1e-30
+        );
+        assert_eq!(
+            Curve::<Vec2, Engineering>::try_new(vec![Vec2::ZERO, tiny2], false)
+                .unwrap()
+                .length,
+            1e-30
+        );
+        assert_eq!(
+            Curve3Thresholded::try_new(vec![Vec3::ZERO, tiny3], false)
+                .unwrap()
+                .length,
+            1e-30
+        );
+        // 已证XZ原构造域也保留f32平方下溢失败，工程测距方法仍保持上面的稳健结果。
+        assert!(matches!(
+            Curve3XZ::try_new(vec![Vec3::ZERO, tiny3], false),
+            Err(CurveError::NonFiniteLength)
+        ));
+    }
+    #[test]
+    fn original_xz_parameters_preserve_nonfinite_y_but_xyz_output_still_fails() {
+        for y in [f32::from_bits(0x7fc1_2345), f32::INFINITY, f32::NEG_INFINITY] {
+            let points = vec![Vec3::new(0.0, y, 0.0), Vec3::new(3.0, y, 4.0)];
+            let old_xz = Curve3XZ::try_new_from_points(points.clone(), true).unwrap();
+            assert_eq!(old_xz.length, 5.0);
+            assert_eq!(old_xz.points_u, [0.0, 1.0]);
+            for point in &old_xz.points {
+                assert_eq!(point.y.to_bits(), y.to_bits());
+            }
+            assert_eq!(old_xz.points[0].projected(), Vec2::ZERO);
+            assert_eq!(old_xz.points[1].projected(), Vec2::new(3.0, 4.0));
+            // 原history先用XZ判有效，再独立构造XYZ输出；不能把两个Result合并。
+            assert!(matches!(
+                Curve3::try_new_from_points(points, true),
+                Err(CurveError::NonFiniteLength)
+            ));
+        }
+    }
+
+    #[test]
+    fn original_xz_duplicate_gate_compares_full_xyz_with_ordered_nan_and_signed_zero() {
+        let vertical_then_horizontal = vec![Vec3::ZERO, Vec3::new(0.0, 7.0, 0.0), Vec3::X];
+        let curve = Curve3XZ::try_new_from_points(vertical_then_horizontal, true).unwrap();
+        assert_eq!(curve.length, 1.0);
+        assert_eq!(curve.points_u, [0.0, 0.0, 1.0]);
+
+        let nan_y = f32::from_bits(0x7fc1_2345);
+        let same_bits_but_unordered = vec![
+            Vec3::new(0.0, nan_y, 0.0),
+            Vec3::new(0.0, nan_y, 0.0),
+            Vec3::new(1.0, nan_y, 0.0),
+        ];
+        let curve = Curve3XZ::try_new_from_points(same_bits_but_unordered, true).unwrap();
+        assert_eq!(curve.points_u, [0.0, 0.0, 1.0]);
+        // XZ参数重复不是完整XYZ相等；NaN也不能被按位相同判为重复。
+        for second in [Vec3::ZERO, Vec3::new(-0.0, -0.0, -0.0)] {
+            assert!(matches!(
+                Curve3XZ::try_new_from_points(vec![Vec3::ZERO, second, Vec3::X], true),
+                Err(CurveError::DuplicateSegment(0))
+            ));
+        }
+    }
+
+    #[test]
+    fn original_xz_length_and_normalization_errors_precede_duplicate_rejection() {
+        assert!(matches!(
+            Curve3XZ::try_new_from_points(Vec::new(), true),
+            Err(CurveError::TooFewPoints(0))
+        ));
+        assert!(matches!(
+            Curve3XZ::try_new_from_points(vec![Vec3::splat(f32::NAN)], true),
+            Err(CurveError::TooFewPoints(1))
+        ));
+        assert!(matches!(
+            Curve3XZ::try_new_from_points(vec![Vec3::ZERO, Vec3::new(0.0, 7.0, 0.0)], true),
+            Err(CurveError::NonFiniteLength)
+        ));
+        assert!(matches!(
+            Curve3XZ::try_new_from_points(
+                vec![Vec3::ZERO, Vec3::ZERO, Vec3::new(f32::INFINITY, 0.0, 0.0)],
+                true,
+            ),
+            Err(CurveError::NonFiniteLength)
+        ));
+        for step in [1e-30_f32, f32::MIN_POSITIVE, 1e20, f32::MAX] {
+            assert!(matches!(
+                Curve3XZ::try_new_from_points(vec![Vec3::ZERO, Vec3::new(step, 0.0, 0.0)], false),
+                Err(CurveError::NonFiniteLength)
+            ));
+        }
+    }
+
 }

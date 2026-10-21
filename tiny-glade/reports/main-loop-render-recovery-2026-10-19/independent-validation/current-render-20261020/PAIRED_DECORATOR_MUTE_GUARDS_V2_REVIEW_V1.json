@@ -1,0 +1,40 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept guard-only paired candidate, not complete audio implementation or App mount",
+  "paired_manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-c4a7246ce4d35f5279/clutter-startup-20261020/mute-guard-root-candidate-v2/PAIRED_MUTE_GUARDS_V2.json",
+  "paired_manifest_sha256": "44b63e663f0572cbcf94c6f03808ac48b955b4c27d30c3d60463aa6f62859f15",
+  "source_after": {
+    "op_preview_audio.rs": "1cd08170cf5b8243766e31af02c3abd9afe5cd77bf8943b3705b1f1b38901643",
+    "op_stairs_audio.rs": "c68f0a1f4afc0f2d8b46207f5b13ab3fb0908af9adc9c3d5f44d7c71352a62ee"
+  },
+  "native_fact": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "preview_range": "0x140822e00/2144B",
+    "preview_native_sha256": "9a8cb8ed39b41a857674ccccc5938414c94e2e9e6162405b6fb91192783df781",
+    "stairs_range": "0x14081d9b0/18411B",
+    "stairs_native_sha256": "8a589f096a9e3a767830d832de1d8dc0ffa58c6fae7184b711cf7dae4320c4a9",
+    "scope": "独立读取RNE完整范围hash；仅审两系统入口、缓冲未读数归一化和早退路径，不声称重审全部18KB音频业务。",
+    "branches": [
+      "preview 140822e1b..e6c有未读→140823641写current event_count→3644 epilogue，普通op reader从e7a才开始",
+      "stairs 14081da31..da81有未读→daa1写current event_count→14082133c epilogue，早于后续local状态/主op traversal"
+    ],
+    "schema": "复核retained B typed params：preview第二reader、stairs第四reader确为同一MutePreviewDecoratorOpSounds；旧stairs inventory空行不作证，使用补充最短真实function-system签名。"
+  },
+  "independent_source_checks": [
+    "两manifest所有文件SHA匹配。canonical unit Event定义在preview，stairs复用同type；两个系统分别持久EventReader，入口read().count非零立即return，普通op游标和音频状态均不变。",
+    "本地pin Bevy0.16.0 event/iterators.rs107..110 count实现直接推进全部unread，O(1)；不误用next只消费一条、不清全Events或另一reader。",
+    "V1三个新增fixture Events::write错误已修为pin的Events::send；实际EventWriter::write未变。",
+    "实际双系统持久Schedule两测试覆盖三mute仅跳一次、reader独立、下一次消费保留op一次、事件经过普通两轮update自然过期。未运行。"
+  ],
+  "root_gates": [
+    "所有调用这两个actual systems的App必须先注册同一canonical mute事件；producer与consumer必须共用该type。",
+    "不要借挂当前整套partial configure获取注册；保留本候选guard-only边界。",
+    "root执行新增2个持久Schedule回归，确认无pin/fixture编译错误。"
+  ],
+  "remaining": [
+    "原preview/stairs既有简化dispatch、真实PreviousFrame/geometry/differential/UI等业务未因此完成。",
+    "此新增guard未连完整TG69 callback或生产App；reviewer未Cargo/GPU。"
+  ]
+}

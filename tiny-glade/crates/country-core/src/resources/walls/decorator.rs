@@ -191,17 +191,17 @@ impl DecoratorRank {
     }
 }
 
-/// B DecoratorLocator：装饰定位（0x140833240 = new，I；字段布局 U）。
+/// B 140833240/15B：定位键由实际存储地址和独立装饰 ID 组成。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DecoratorLocator {
-    /// I：目的存储地址（U：完整字段表待取证）。
     pub addr: super::decorator_storage::DecoratorStorageAddr,
+    /// 原构造器 +0x10 的 u32；不能用可变 Info.word2c 代替。
+    pub decorator: u32,
 }
 
 impl DecoratorLocator {
-    /// 0x140833240（I）。
-    pub fn new(addr: super::decorator_storage::DecoratorStorageAddr) -> Self {
-        Self { addr }
+    pub fn new(addr: super::decorator_storage::DecoratorStorageAddr, decorator: u32) -> Self {
+        Self { addr, decorator }
     }
 }
 
@@ -531,10 +531,10 @@ impl DecoratorDst {
 ///
 /// 布局（apply_decorator_place 0x140a20c70 读面 + decorator.rs 判别访问，O；
 /// 2026-10-16 fresh 反编译复核）：`+0x00/+0x08/+0x10 u64` 目的、`+0x22` dst tag、
-/// `+0x2c` DecoratorId、`+0x44` rank、`+0x46` DecoratorType、`+0x47` 状态字节
-/// （insert 0x14155afe0 写 2=live/placed）。**+0x48/+0x4c/+0x50/+0x55/+0x56 属于
-/// 包裹记录（op 事件），非 DecoratorInfo**——+0x4c 是插入键、+0x2c 是记录内
-/// DecoratorId，二者并存（fresh 0x14155afe0）。E2 取证（2026-10-16，fresh
+/// `+0x2c` 可变业务 word、`+0x44` rank、`+0x46` DecoratorType、`+0x47` 原始 flags。
+/// insert 0x14155afe0 写2的是返回 Option<DecoratorInfo> 的 None niche，
+/// 不是向 live map 写 flags=2；存储条目保留传入 flags。独立 map key 由操作和
+/// DecoratorLocator 承载，不是 Info.word2c，其完整业务语义仍未知。E2 取证（fresh
 /// 0x140a20670）：移除拷贝 0x48B = {8×u64@+0x00..0x40, state u8@+0x47}，与
 /// `+0x44..0x47` rank/state 簇一致（rank@+0x44、**+0x45 1 字节 U**、type@+0x46、
 /// state@+0x47）。完整逐字段语义表仍 U（RE-DECORATOR-STORAGE §6.1）；未知字段
@@ -557,7 +557,7 @@ pub struct DecoratorInfo {
     pub u24: u32,
     /// +0x28：u32（U）。
     pub u28: u32,
-    /// +0x2c：DecoratorId。
+    /// +0x2c：可变业务 word；保留旧字段名，完整语义未知，不是独立 map key。
     pub decorator_id: u32,
     /// +0x30：u64（U）。
     pub u30: u64,
@@ -574,8 +574,8 @@ pub struct DecoratorInfo {
     pub u45: u8,
     /// +0x46：DecoratorType（u8）。
     pub ty: u8,
-    /// +0x47：状态字节（fresh 0x14155afe0：insert 写入 2=live/placed；U：状态语义
-    /// 待取证）。
+    /// +0x47：原始 flags；2是 Option 返回值的 None niche，不是 live 条目状态。
+    /// 原始访问器保留该字节，不在这里屏蔽或规范化未知值。
     pub state: u8,
 }
 
@@ -589,6 +589,16 @@ impl DecoratorInfo {
     #[inline]
     pub fn extra_style(self) -> u8 {
         ((self.u40 >> 8) & 0xff) as u8
+    }
+
+    /// 原窗口访问（B 0x1408393b0）：只接受Info+0x41的窗判别，
+    /// 返回Info+0x30的u32载荷；目的地载荷和窗框颜色属于独立字段。
+    #[inline]
+    pub fn window_extra(&self) -> WindowExtra {
+        if self.extra_style() != 6 {
+            panic!("DecoratorExtraInfo::as_window: not a window");
+        }
+        WindowExtra(self.u30 as u32)
     }
 
     /// +0x22：目的 tag。
@@ -704,13 +714,13 @@ impl DecoratorInfo {
         DecoratorType(self.ty)
     }
 
-    /// +0x47：状态字节（2 = live/placed，fresh 0x14155afe0 O）。
+    /// +0x47：原始 flags 直通；2仅在 Option 返回值中充当 None niche。
     #[inline]
     pub fn state(self) -> u8 {
         self.state
     }
 
-    /// +0x2c：DecoratorId。
+    /// +0x2c：旧类型包装访问器；完整业务语义未知，不能用它寻址独立 map key。
     #[inline]
     pub fn decorator_id(self) -> DecoratorId {
         DecoratorId(self.decorator_id)
@@ -1085,6 +1095,37 @@ fn _shared_queue_dependency() -> Option<Arc<()>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn window_extra_keeps_the_canonical_payload_and_does_not_mutate_info() {
+        let mut info = destination_sentinel();
+        // 目的地、框颜色和u30高位均故意使用不同值，防止误读相邻union。
+        info.dst_payload = 0x0606_0606_a5a5_a5a5;
+        info.u28 = 0x0123_4567;
+        info.u40 = (info.u40 & !0xff00) | (6 << 8);
+        for payload in [0, 0x8000_0000, 0xdead_beef, u32::MAX] {
+            info.u30 = 0x7654_3210_0000_0000 | u64::from(payload);
+            let before = info;
+            assert_eq!(info.window_extra(), WindowExtra(payload));
+            assert_eq!(info, before);
+        }
+    }
+
+    #[test]
+    fn window_extra_rejects_other_variants_even_with_window_like_payloads() {
+        for style in 0u8..=u8::MAX {
+            if style == 6 { continue; }
+            let info = DecoratorInfo {
+                dst_payload: 6 << 8,
+                u30: 0x0606_0606_0000_1234,
+                // 相邻三字节均为6，只有真正的Info+0x41保存被测判别。
+                u40: 0x0606_0006 | (u32::from(style) << 8),
+                ..DecoratorInfo::default()
+            };
+            assert!(std::panic::catch_unwind(|| info.window_extra()).is_err(),
+                "非窗判别{style:#x}必须保留原required失败");
+        }
+    }
 
     #[test]
     fn decorator_type_predicate_truth_tables() {

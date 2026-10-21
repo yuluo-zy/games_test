@@ -1,0 +1,9 @@
+# invalidate 只读合同独立复核（lead）
+
+结论：支持完整合同所列双集合、真实顺序和未恢复owner/API边界，可交root决定成组恢复；不表示invalidate source或完整lazy链已实现。复用原本体4290B，独立重读实际三collider→contains→mark/remove→RT/previous汇合段，并读完新增460B dirty fold与583B structural retain正文。无生产/Cargo/GPU。
+
+141478093原dirty==1直接保true；否则查只读S，命中写1再insertT，缺失写0。S空快分支仍逐Params保旧dirty。故T是request影响集，不可union进后续S主循环。retain141268635..668只比边前两u32，index不参与；原dispose后Arc drop、再移除条目控制字，不能只删表。主自身force与missing视觉no-upsert原证一致，false分支先remove_edge再a/b邻接，不重排或去重。RT tag1 packed身份在140b379dc通过shl/or构造，None3的JE跨过drop与dirty；原missing不dirty。previous两个map顺序明确，不涉及sampled_points。
+
+typed八参库存自身binding unknown已明确保留；同时有寄存器、现类型和真实访问佐证owner，不能把库存行数当注册callsite证明。StructuralGraph+180同owner键值表、原remove实体Vec/MagicSupports拥有关系、四表retain和RT missing行为属于确定实现缺口。本组没有填空map或默认实体列表来冒充producer。要求完整相应producer/consumer才可验收。
+
+不据合同扩claim或新业务族。原scope任务TG1a710本轮仍NULL/未写候选；后续实际source必须live重核并按root协调唯一writer及共享owner。contract SHA cb646a2fff69f67b2c9b679bf2a004c1dc00e5e220797a637e60a303603af6dd。

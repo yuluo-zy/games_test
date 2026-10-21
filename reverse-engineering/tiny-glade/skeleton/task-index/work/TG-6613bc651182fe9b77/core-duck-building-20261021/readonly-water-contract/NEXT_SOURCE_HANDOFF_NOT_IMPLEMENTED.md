@@ -1,0 +1,11 @@
+# 下轮唯一cache源码闭包交接：本轮未实现
+
+按本轮root/lead收束裁决：不再写cache源码，不开启607B leaf源码；保留当前cache SHA f67cb1d369f3789f1a4ce0a9057e1f9838189b0d5b29da1dc3acff968e3315c5，duck仍唯一source writer。当前只有完整原证合同，不能说这三支已接通。
+
+本目录冻结合同d19e369a + 算序addendum40d804cd是下轮最小输入。实施顺序：中央协调同utils/lib旧owner的607B export → TG6613同一source恢复roof63/terrain63/dst4 + per-entry dirty顺序 → 真实9资源World测试 → root唯一生产成组应用/运行。禁止以目前None替代分支/缺interp Curve3就合成位置/缺request就skip。
+
+immutable边界避免混淆：当前DecoratorStorage有顶层immutable字段；原cache在terrain14081600b、stair140816792调用同top get_mut140a1cde0（PDB540:47104，323B）。现API的这个门不能挪成只在changed项才检查。Decorators桶自身只有3集合；逐item原get_mut140a1b1e0（PDB540:19252，29B）只call1402c9200后返Info。该calleePDB107:20904等明确为HashMap<DecoratorId,tuple<>,RandomState>::insert/374B，仅modified set操作，不建立第二个immutability字段/门。不把这个依赖容器调用计为游戏业务恢复。
+
+wall/roof仍原directcache.insert，没有compare/get_mut；只有terrain/stair比较并在新值insert成功后立刻标modified。可在同source分离借桶decorators/modified_ids，保持allocation，无每帧collect整桶。最窄patch不得重排原cache→derive注册链。
+
+607B接口与basis/无效输入fallback已锁；未执行原程序bitwise oracle。Info.ty63真实producer仍未锁；raw事件transport不能冒充producer。更大stairs assemble/visual/physics/GPU不在本文件合同计完成。原按步骤要求的CPU失败先后、sameowner、no-match signed-zero、firstOutgoing与两quantizer都待真实源码和测试。

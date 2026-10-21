@@ -1,0 +1,30 @@
+--- a/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -417,6 +417,12 @@
+     let config = app.world().resource::<GameConfig>();
+     let demo = config.dev.demo;
+     let watching = config.dev.live_link();
++    use country_core::resources::walls::decorator_subtype::{
++        DecoratorMeshLibrary, DerivedDecoratorSubtypes,
++    };
++    // 原DecoratorPlugin的两个真实空库；保留run_game已创建的同一owner。
++    app.init_resource::<DerivedDecoratorSubtypes>();
++    app.init_resource::<DecoratorMeshLibrary>();
+     app.init_resource::<PrefabLibrary>();
+     app.init_resource::<MeshAtlasLibrary>();
+     // ForestPlugin (InteractableForestPlacements) is mounted by run_game::add_original_plugins;
+@@ -595,6 +601,14 @@
+         crate::loading_graph::initialize_grading_assets(world, &input_hosts, &input_root)
+             .expect("original gameplay grading LUT startup");
+     }).in_set(GameplayGpuPreStartup::Inputs));
++    // 原独立PreStartup三资源系统；不借此挂载尚未完整恢复的visual host。
++    let decorator_root = installed.clone();
++    app.add_systems(PreStartup,
++        move |mut library: ResMut<DecoratorMeshLibrary>,
++              assets: Res<AssetMeshLibrary>, watch: Res<MeshWatch>| {
++            system_decorator::load_decorators::load_decorators(
++                &decorator_root, &mut library, &assets, &watch, demo);
++        });
+     let prefab_root = installed.join("assets/prefabs");
+     app.add_systems(PreStartup,
+         (move |mut prefabs: ResMut<PrefabLibrary>, mut watcher: Option<ResMut<PrefabWatcher>>| {

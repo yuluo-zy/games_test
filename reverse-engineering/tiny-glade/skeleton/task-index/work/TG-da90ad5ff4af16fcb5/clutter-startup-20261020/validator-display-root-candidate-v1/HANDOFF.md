@@ -1,0 +1,5 @@
+# 原碰撞描边476B必要consumer
+
+基于corelead已冻ec8f typed enum追加真实display，原TGda90旧claim不变，corelead已明确本作者唯一后续writer。没有第二outline类型或registry。原TG2cc/validate-investigation/location-outline-native-pack/collision-outline-display完整476B，Lines全部按原仿射列加法次序变换，原width2/ui_pass true/dashed输入；Sphere半径保持原值、只读translation、alpha1 solidtrue；None原无副作用。
+
+3 tests仅parse未Cargo，其中空Lines仍提交factory是原必要行为，当前旧DebugLine.show会warn跳过导致该项失败；作者正在原TG67旧claim恢复其完整1584B+1472factory/球676B+1585factory。故本包显示方法的业务主体已写，但依赖未闭，不能算完整反馈或mount validator。根owner可先独审方法边界，必须配对下游恢复后编译测试。incremental.patch相对已审ec8f；from-original.patch仅供原生产尚缺文件时一次创建，不可重复两patch。

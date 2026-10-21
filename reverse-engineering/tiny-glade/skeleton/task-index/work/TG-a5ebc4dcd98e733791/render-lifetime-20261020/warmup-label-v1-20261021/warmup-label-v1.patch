@@ -1,0 +1,13 @@
+--- a/tiny-glade/crates/tiny-glade/src/render_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/render_host.rs
+@@ -1483,7 +1483,9 @@
+             name: Arc::from(
+                 original
+                     .source_dependencies
+-                    .first()
++                    .iter()
++                    .find(|path| path.ends_with(".raster.hlsl") || path.ends_with(".cs.hlsl"))
++                    .or_else(|| original.source_dependencies.first())
+                     .map_or("<generated>", String::as_str),
+             ),
+             heap: self.heap.clone(),

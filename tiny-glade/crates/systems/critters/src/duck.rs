@@ -114,9 +114,10 @@ fn plan_sample_shape(key: u64, t: f32) -> f32 {
 /// - `Vec::retain(age < 301)`。
 ///
 /// 残余（登记）：B `DEV_OVERRIDE_IS_DEMO_MODE` 资源不在 crate（host seam）；
-/// duck 出生音频参数（Duck::new 的 uniform_f32 实参）U。
+/// 其余规划与位姿差异见下方；音频 Pitch 使用原 uniform_f32，无额外映射。
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn plan_duck_trajectories(
+    audio_core: Res<crate::audio::CritterAudioCore>,
     mut planner: ResMut<DuckTrajectoryPlanner>,
     mut commands: Commands,
     time: Res<GameTime>,
@@ -271,16 +272,14 @@ pub fn plan_duck_trajectories(
         .and_then(|lib| lib.get_raster_handle_by_name("duck_shader"));
     for plan in &mut plans {
         if plan.key == 0 {
-            for traj in &plan.trajectories {
-                if traj.points.is_empty() {
-                    continue;
-                }
-                // O：Duck::new 前先取 1×uniform_f32（音频参数源 U）。
-                let _audio_param = rng_ctx.uniform_f32();
-                let mut points = traj.points.clone();
-                points.reverse();
-                let base = points.first().copied().unwrap_or_default();
-                let duck = Duck::new_planned(base, points);
+            // B 0x142310ef7..f01：Vec::drain(..)，消费轨迹但保留计划容器容量。
+            for traj in plan.trajectories.drain(..) {
+                // 原序：Pitch 抽样→完整音频构造→复制/反转轨迹→出生进度抽样。
+                let pitch = rng_ctx.uniform_f32();
+                let audio = audio_core.instantiate_duck(pitch);
+                let mut duck = Duck::new_planned(&traj.points, audio);
+                // B 0x142311046..1053：Duck+0xec，负值是原出生等待，不是位置。
+                duck.progress = rng_ctx.uniform_f32() * f32::from_bits(0xbe99_999a);
                 let mut entity = commands.spawn((
                     duck,
                     DuckState::Initial,
@@ -358,16 +357,15 @@ pub fn plan_duck_trajectories(
 /// - `Quat::from_rotation_arc` 的两端向量：fresh 为内联 glam 弧函数，输入平面与
 ///   `x0y` 结果混排，**未逐寄存器闭合** → 本重建用 `from_rotation_arc(Vec3::Y, dir)`
 ///   （与 boids 同型），登记 U。
-/// - `AudioLoop::set_parameter` 两处参数名/值（寄存器）U。
-/// - `set_volume` 源 = `WaterAudioGrid` 双线性采样；core 未暴露其 `FloatGridCells`，
-///   本重建跳过 set_volume 并登记。
+/// - 音频改用原 WaterAudioGrid 密度、Land/TakeOff 和独立 Flap 环；
+///   参数 `landing_t` / `is_taking_off` 来自原指令与字符串。
 /// - `DEV_OVERRIDE_IS_DEMO_MODE`（demo 下逐鸭 despawn）资源不在 crate（host seam）。
 #[allow(clippy::type_complexity)]
 pub fn move_ducks_along_trajectories(
     time: Res<GameTime>,
     mut commands: Commands,
     mut splash: EventWriter<SpawnSplashParticle>,
-    water: Res<country_core::resources::world_raster_defs::WaterRaster>,
+    water: Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>,
     mut query: Query<(
         Entity,
         &mut Duck,
@@ -380,7 +378,6 @@ pub fn move_ducks_along_trajectories(
     )>,
 ) {
     let dt = time.delta;
-    let w = (*water).as_ref();
     for (entity, mut duck, mut state, mut transform, mut velocity, mut multiplier, mut goal, mut grass)
         in &mut query
     {
@@ -473,24 +470,29 @@ pub fn move_ducks_along_trajectories(
         let smooth = (3.0 - s - s) * s * s;
         grass.0 = smooth + smooth;
 
-        // 音频（O 1423133f0/491）：两分支等价 `start_if_not_playing + set_position`。
-        let play = if f4 <= 0.3 || state_byte > 1 {
-            f4 > 0.5 && state_byte == 3
+        // B 0x142313413/48a：落地用 Land，起飞用 TakeOff，不能误播 Quack。
+        let one_shot = if f4 > 0.3 && state_byte <= 1 {
+            Some(&mut duck.audio.land)
+        } else if f4 > 0.5 && state_byte == 3 {
+            Some(&mut duck.audio.takeoff)
         } else {
-            true
+            None
         };
-        if play {
-            duck.audio.quack.start_if_not_playing();
-            duck.audio.quack.set_position(transform.translation);
-            // set_volume(WaterAudioGrid bilinear @130) 未实现（core 未暴露采样），登记。
-            let _ = w;
+        if let Some(one_shot) = one_shot {
+            one_shot.start_if_not_playing();
+            one_shot.set_position(transform.translation);
+            let density = water.bilinear_sample_at_world_xz(
+                transform.translation.x, transform.translation.z, 130.0, 130.0,
+            );
+            // 原 MAXSS 的零源操作数在 NaN 时胜出；旧采样允许大于1，不能上界夹断。
+            let nonnegative = if density > 0.0 { density } else { 0.0 };
+            one_shot.set_volume(nonnegative.sqrt());
         }
-        // loop 控制（O：progress<0.01 || 0.99<=progress || state==2 → stop）。
-        if duck.progress < 0.01 || 0.99 <= duck.progress || state_byte == 2 {
+        // B 0x1423134f1：低界 JC 也接受 unordered，NaN 进停止分支。
+        if !(duck.progress >= 0.01) || 0.99 <= duck.progress || state_byte == 2 {
             duck.audio.stop_loops();
         } else {
-            duck.audio.start_loops(transform.translation);
-            // AudioLoop::set_parameter ×2：参数名/值 U（登记）。
+            duck.audio.start_loops(transform.translation, f4, state_byte == 3);
         }
 
         // O：f4>0.25 && state<2 && (state&1)==0 → state=1 + SpawnSplashParticle(entity)。
@@ -849,17 +851,14 @@ pub struct DevHotkeys {
 }
 
 impl Duck {
-    /// 构造带轨迹的鸭子（plan_duck 出生路径）：progress=0（spawn bundle 不写 +0xec）。
-    pub fn new_planned(base: Vec3, points: Vec<Vec3>) -> Self {
+    /// B 出生：空 Vec 复制源点后反转；空源合法，不读取或伪造首点位置。
+    /// progress 的第二次随机抽样由调用者在复制完成后按原顺序写入。
+    pub fn new_planned(points: &[Vec3], audio: crate::audio::DuckAudio) -> Self {
         let mut duck = Duck::default();
-        duck.trajectory = points;
-        duck.progress = 0.0;
-        duck.moving = false;
-        duck.aux = 0;
-        duck.dwell = [1.0, 1.0];
-        duck.f_f0 = base.x;
-        duck.f_f4 = base.y;
-        duck.f_f8 = base.z;
+        duck.audio = audio;
+        duck.dwell = [0.0; 2];
+        duck.trajectory.extend_from_slice(points);
+        duck.trajectory.reverse();
         duck
     }
 }
@@ -957,5 +956,61 @@ mod ripple_native_tests {
         assert_eq!(payload[128], 1);
         assert!(f32::from_bits(payload[2]).is_nan());
         assert_eq!(std::mem::size_of::<PrevRipple>(), 12);
+    }
+}
+
+
+#[cfg(test)]
+mod recovered_audio_consumption_tests {
+    use super::*;
+    use crate::audio::{AudioHandle, CritterAudioSink, DuckAudio};
+    use country_core::systems::audio::water_ambience_audio::WaterAudioGrid;
+    use std::sync::{Arc, Mutex};
+
+    struct Sink { name: &'static str, calls: Arc<Mutex<Vec<String>>> }
+    impl CritterAudioSink for Sink {
+        fn start_if_not_playing(&mut self) { self.calls.lock().unwrap().push(format!("{}:start", self.name)); }
+        fn stop(&mut self) { self.calls.lock().unwrap().push(format!("{}:stop", self.name)); }
+        fn set_position(&mut self, _: Vec3) { self.calls.lock().unwrap().push(format!("{}:position", self.name)); }
+        fn set_volume(&mut self, value: f32) { self.calls.lock().unwrap().push(format!("{}:volume:{value}", self.name)); }
+        fn set_parameter(&mut self, name: &str, value: f32) { self.calls.lock().unwrap().push(format!("{}:{name}:{value}", self.name)); }
+    }
+    fn handle(name: &'static str, calls: &Arc<Mutex<Vec<String>>>) -> AudioHandle {
+        AudioHandle::Active(Box::new(Sink { name, calls: calls.clone() }))
+    }
+
+    #[test]
+    fn actual_move_system_uses_water_audio_density_and_the_correct_one_shot_and_flap() {
+        for (state, expected, taking_off) in [
+            (DuckState::TrajectoryForward, "land", "flap:is_taking_off:0"),
+            (DuckState::TrajectoryReverse, "takeoff", "flap:is_taking_off:1"),
+        ] {
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            let mut duck = Duck::default();
+            duck.progress = 0.75;
+            duck.trajectory = vec![Vec3::new(-10.0, 0.0, 0.0), Vec3::new(10.0, 0.0, 0.0)];
+            duck.audio = DuckAudio {
+                quack: handle("quack", &calls), takeoff: handle("takeoff", &calls),
+                land: handle("land", &calls), flap: handle("flap", &calls),
+            };
+            let mut world = World::new();
+            let mut time = GameTime::default(); time.delta = 0.01;
+            world.insert_resource(time);
+            let mut water = WaterAudioGrid::new();
+            for cell in &mut water.cells { cell.bits = u64::MAX; }
+            world.insert_resource(water);
+            world.init_resource::<Events<SpawnSplashParticle>>();
+            world.spawn((duck, state, Transform::default(), Velocity::default(),
+                CritterVelocityMultiplier(1.0), CritterGoal { position: Vec3::ZERO, goal_tag: 0 }, ObjectGrassPush(0.0)));
+            let mut schedule = Schedule::default();
+            schedule.add_systems(move_ducks_along_trajectories);
+            schedule.run(&mut world);
+            let calls = calls.lock().unwrap();
+            assert_eq!(&calls[..3], &[format!("{expected}:start"), format!("{expected}:position"), format!("{expected}:volume:1")]);
+            assert!(calls.iter().any(|call| call == "flap:start"));
+            assert!(calls.iter().any(|call| call == taking_off));
+            assert!(!calls.iter().any(|call| call.starts_with("quack:")));
+            assert!(!calls.iter().any(|call| call == "flap:stop"));
+        }
     }
 }

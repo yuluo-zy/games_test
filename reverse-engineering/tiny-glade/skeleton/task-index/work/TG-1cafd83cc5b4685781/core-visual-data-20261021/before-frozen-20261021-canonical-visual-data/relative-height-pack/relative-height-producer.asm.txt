@@ -1,0 +1,38 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140a8cdb3: 48 8b 85 68 02 00 00        	movq	0x268(%rbp), %rax
+140a8cdba: 48 89 85 08 0d 00 00        	movq	%rax, 0xd08(%rbp)
+140a8cdc1: 48 8b 9d 70 02 00 00        	movq	0x270(%rbp), %rbx
+140a8cdc8: 48 8d 0c 9d 00 00 00 00     	leaq	(,%rbx,4), %rcx
+140a8cdd0: 48 85 db                    	testq	%rbx, %rbx
+140a8cdd3: 48 89 9d 18 0d 00 00        	movq	%rbx, 0xd18(%rbp)
+140a8cdda: 48 89 8d d8 0c 00 00        	movq	%rcx, 0xcd8(%rbp)
+140a8cde1: 74 69                       	je	0x140a8ce4c <.text+0xa8be4c>
+140a8cde3: 0f b6 05 1f 7e ba 02        	movzbl	0x2ba7e1f(%rip), %eax   # 0x143634c09
+140a8cdea: ba 04 00 00 00              	movl	$0x4, %edx
+140a8cdef: e8 1c 6e b8 ff              	callq	0x140613c10 <.text+0x612c10>
+140a8cdf4: 48 89 85 38 0d 00 00        	movq	%rax, 0xd38(%rbp)
+140a8cdfb: 48 85 c0                    	testq	%rax, %rax
+140a8cdfe: 0f 84 85 13 00 00           	je	0x140a8e189 <.text+0xa8d189>
+140a8ce04: 48 8b 85 08 0d 00 00        	movq	0xd08(%rbp), %rax
+140a8ce0b: 48 8d 70 08                 	leaq	0x8(%rax), %rsi
+140a8ce0f: 31 ff                       	xorl	%edi, %edi
+140a8ce11: f3 0f 10 4e f8              	movss	-0x8(%rsi), %xmm1
+140a8ce16: f3 44 0f 10 4e fc           	movss	-0x4(%rsi), %xmm9
+140a8ce1c: f3 0f 10 16                 	movss	(%rsi), %xmm2
+140a8ce20: 48 8b 8d e0 0c 00 00        	movq	0xce0(%rbp), %rcx
+140a8ce27: e8 14 c8 f5 ff              	callq	0x1409e9640 <.text+0x9e8640>
+140a8ce2c: f3 44 0f 5c c8              	subss	%xmm0, %xmm9
+140a8ce31: 48 8b 85 38 0d 00 00        	movq	0xd38(%rbp), %rax
+140a8ce38: f3 44 0f 11 0c b8           	movss	%xmm9, (%rax,%rdi,4)
+140a8ce3e: 48 ff c7                    	incq	%rdi
+140a8ce41: 48 83 c6 0c                 	addq	$0xc, %rsi
+140a8ce45: 48 39 fb                    	cmpq	%rdi, %rbx
+140a8ce48: 75 c7                       	jne	0x140a8ce11 <.text+0xa8be11>
+140a8ce4a: eb 0c                       	jmp	0x140a8ce58 <.text+0xa8be58>
+140a8ce4c: b8 04 00 00 00              	movl	$0x4, %eax
+140a8ce51: 48 89 85 38 0d 00 00        	movq	%rax, 0xd38(%rbp)

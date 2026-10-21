@@ -1,0 +1,115 @@
+--- a/tiny-glade/crates/utils/src/curve/mod.rs
++++ b/tiny-glade/crates/utils/src/curve/mod.rs
+@@ -165,7 +165,10 @@
+     }
+ }
+ impl<T: CurvePoint> CurveMetric<T> for CurveCoordSemantic2D {
+-    const ORIGINAL_PARAMETER_DOMAIN: bool = T::ORIGINAL_PARAMETER_DIMENSION == 2;
++    // 原Vec2构造与1412699d0的Vec3XZ构造共用纯f32参数流程。
++    // XZ只度量x/z，不提前要求Y有限；重复点仍按完整XYZ有序比较。
++    const ORIGINAL_PARAMETER_DOMAIN: bool =
++        T::ORIGINAL_PARAMETER_DIMENSION == 2 || T::ORIGINAL_PARAMETER_DIMENSION == 3;
+ 
+     fn segment_length(delta: T) -> f32 {
+         let p = delta.projected();
+@@ -830,7 +833,7 @@
+     }
+ 
+     #[test]
+-    fn engineering_metrics_and_unverified_constructor_semantics_keep_their_original_host_domain() {
++    fn engineering_metrics_keep_their_host_policy_separate_from_original_constructors() {
+         struct Engineering;
+         impl CurveMetric<Vec2> for Engineering {
+             fn segment_length(delta: Vec2) -> f32 {
+@@ -857,11 +860,83 @@
+                 .length,
+             1e-30
+         );
+-        assert_eq!(
+-            Curve3XZ::try_new(vec![Vec3::ZERO, tiny3], false)
+-                .unwrap()
+-                .length,
+-            1e-30
+-        );
+-    }
+-}
++        // 已证XZ原构造域也保留f32平方下溢失败，工程测距方法仍保持上面的稳健结果。
++        assert!(matches!(
++            Curve3XZ::try_new(vec![Vec3::ZERO, tiny3], false),
++            Err(CurveError::NonFiniteLength)
++        ));
++    }
++    #[test]
++    fn original_xz_parameters_preserve_nonfinite_y_but_xyz_output_still_fails() {
++        for y in [f32::from_bits(0x7fc1_2345), f32::INFINITY, f32::NEG_INFINITY] {
++            let points = vec![Vec3::new(0.0, y, 0.0), Vec3::new(3.0, y, 4.0)];
++            let old_xz = Curve3XZ::try_new_from_points(points.clone(), true).unwrap();
++            assert_eq!(old_xz.length, 5.0);
++            assert_eq!(old_xz.points_u, [0.0, 1.0]);
++            for point in &old_xz.points {
++                assert_eq!(point.y.to_bits(), y.to_bits());
++            }
++            assert_eq!(old_xz.points[0].projected(), Vec2::ZERO);
++            assert_eq!(old_xz.points[1].projected(), Vec2::new(3.0, 4.0));
++            // 原history先用XZ判有效，再独立构造XYZ输出；不能把两个Result合并。
++            assert!(matches!(
++                Curve3::try_new_from_points(points, true),
++                Err(CurveError::NonFiniteLength)
++            ));
++        }
++    }
++
++    #[test]
++    fn original_xz_duplicate_gate_compares_full_xyz_with_ordered_nan_and_signed_zero() {
++        let vertical_then_horizontal = vec![Vec3::ZERO, Vec3::new(0.0, 7.0, 0.0), Vec3::X];
++        let curve = Curve3XZ::try_new_from_points(vertical_then_horizontal, true).unwrap();
++        assert_eq!(curve.length, 1.0);
++        assert_eq!(curve.points_u, [0.0, 0.0, 1.0]);
++
++        let nan_y = f32::from_bits(0x7fc1_2345);
++        let same_bits_but_unordered = vec![
++            Vec3::new(0.0, nan_y, 0.0),
++            Vec3::new(0.0, nan_y, 0.0),
++            Vec3::new(1.0, nan_y, 0.0),
++        ];
++        let curve = Curve3XZ::try_new_from_points(same_bits_but_unordered, true).unwrap();
++        assert_eq!(curve.points_u, [0.0, 0.0, 1.0]);
++        // XZ参数重复不是完整XYZ相等；NaN也不能被按位相同判为重复。
++        for second in [Vec3::ZERO, Vec3::new(-0.0, -0.0, -0.0)] {
++            assert!(matches!(
++                Curve3XZ::try_new_from_points(vec![Vec3::ZERO, second, Vec3::X], true),
++                Err(CurveError::DuplicateSegment(0))
++            ));
++        }
++    }
++
++    #[test]
++    fn original_xz_length_and_normalization_errors_precede_duplicate_rejection() {
++        assert!(matches!(
++            Curve3XZ::try_new_from_points(Vec::new(), true),
++            Err(CurveError::TooFewPoints(0))
++        ));
++        assert!(matches!(
++            Curve3XZ::try_new_from_points(vec![Vec3::splat(f32::NAN)], true),
++            Err(CurveError::TooFewPoints(1))
++        ));
++        assert!(matches!(
++            Curve3XZ::try_new_from_points(vec![Vec3::ZERO, Vec3::new(0.0, 7.0, 0.0)], true),
++            Err(CurveError::NonFiniteLength)
++        ));
++        assert!(matches!(
++            Curve3XZ::try_new_from_points(
++                vec![Vec3::ZERO, Vec3::ZERO, Vec3::new(f32::INFINITY, 0.0, 0.0)],
++                true,
++            ),
++            Err(CurveError::NonFiniteLength)
++        ));
++        for step in [1e-30_f32, f32::MIN_POSITIVE, 1e20, f32::MAX] {
++            assert!(matches!(
++                Curve3XZ::try_new_from_points(vec![Vec3::ZERO, Vec3::new(step, 0.0, 0.0)], false),
++                Err(CurveError::NonFiniteLength)
++            ));
++        }
++    }
++
++}

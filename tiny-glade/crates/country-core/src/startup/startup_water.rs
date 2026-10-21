@@ -220,7 +220,9 @@ mod tests {
     use bevy_ecs::world::{CommandQueue, World};
 
     fn original_assets() -> std::path::PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade")
+        std::env::var_os("TG_INSTALL_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade"))
     }
 
     #[test]

@@ -247,9 +247,9 @@ pub fn snap_balcony_door(
 }
 
 fn snap_collision_height(meshes: &DecoratorMeshLibrary, key: DecoratorLibKey) -> f32 {
-    let (minimum, maximum) = meshes.get_collision_bbx_ls(key)
-        .unwrap_or_else(|| panic!("The decorator mesh library doesn't contain {key:?}"));
-    maximum.y - minimum.y
+    let collision = meshes.collision_record(key);
+    // 同一canonical记录的真实垂直界；不复制三角形或重造bbox。
+    collision.bounds.top - collision.bounds.bottom
 }
 
 fn snap_roof_contains(roof: &Roof, point: Vec2, probe: Vec2) -> bool {
@@ -314,7 +314,6 @@ mod snap_balcony_door_regressions {
     use bevy_ecs::world::World;
     use country_core::resources::roofs::geometry::surface::Curve2;
     use country_core::resources::walls::WallState;
-    use country_core::resources::walls::decorator_subtype::DecoratorSubtype;
     use country_core::resources::walls::height_cache::RegularWallHeightCache;
     use country_core::resources::walls::publication_fields::WallShapeSnapshot;
     use country_core::resources::walls::publication_source::TerrainHeightGrid512;
@@ -332,8 +331,21 @@ mod snap_balcony_door_regressions {
         for (subtype, height) in [(4, 2.0), (0, 4.0), (9, 4.0), (6, 6.0)] {
             meshes.insert_collision_and_interaction_as_same(
                 DecoratorLibKey::new(subtype, 1),
-                Arc::new(DerivedDecoratorInfo::new(
-                    DecoratorSubtype(subtype), Vec3::ZERO, Vec3::new(1.0, height, 1.0))),
+                {
+                    use country_core::resources::walls::decorator_subtype::DecoratorCollision;
+                    use country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume;
+                    use country_core::utils::components::transform::Transform;
+                    let size = Vec3::new(1.0, height, 1.0);
+                    let center = size * 0.5;
+                    let transform = Transform { translation: center, ..Transform::identity() };
+                    DecoratorCollision {
+                        triangles: box_trigger_volume(1.0, height, 1.0, &transform),
+                        mesh: Arc::new(RaycastMeshData::new_cuboid_at(size, center)),
+                        bounds: utils::geometry::Rectangle3d::new(center, size, Vec2::X),
+                    }
+                },
+                country_core::resources::walls::decorator_subtype::DecoratorOutline::None,
+                country_core::resources::walls::decorator_subtype::DecoratorCollisionOutline::None,
             );
         }
         ecs.insert_resource(meshes);

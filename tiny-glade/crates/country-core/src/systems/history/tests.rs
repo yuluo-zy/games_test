@@ -157,7 +157,7 @@ fn stairs_history_edit_serde_matches_native_single_edge_shape() {
     let delete = StairsHistoryEdit::SupportsDelete(StairGraphEdge::new(7, 8));
     assert_eq!(
         serde_json::to_string(&delete).unwrap(),
-        r#"{"SupportsDelete":{"edge":{"a":7,"b":8}}}"#
+        r#"{"SupportsDelete":{"edge":[7,8]}}"#
     );
 }
 

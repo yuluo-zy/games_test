@@ -1,0 +1,1228 @@
+--- a/crates/systems/decorator/src/cull_oob_decorators.rs
++++ b/crates/systems/decorator/src/cull_oob_decorators.rs
+@@ -1,124 +1,519 @@
+-//! B `crates/systems/decorator/src/cull_oob_decorators.rs` — 越界装饰剔除族
+-//! （D4 restorer tg_d4）。
+-//!
+-//! 证据（fresh RE-MCP，groupD/misc/decomp/，O 结构）：
+-//! - `is_decorator_location_valid` 0x14080f470：dst tag 判别（+0x22；
+-//!   tag∈{2,3,4} → 槽 1..3，其余 0）经 0x142a8eab0 跳表分派墙/楼梯/屋顶/地形
+-//!   有效性检查（墙 → `is_wall_decorator_location_valid` 行 707 内联）。
+-//! - `auto_allow_decorator_culling` 0x14080d3d0（行 48）：`History::is_recording`
+-//!   （0x140a86970）时把归档表全部装饰加入 cull 放行（`decorator_cull_allow`
+-//!   行 302 内联 → core `DecoratorCullPolicy.allowed_ids`）。
+-//! - `cull_oob_decorators` 0x14080d540（行 71）：逐归档装饰 → cull 放行检查
+-//!   （`is_decorator_cull_allowed` 0x140b2bd90）→ 位置（`CachedDecoratorTransforms::
+-//!   position` 0x140a1a9f0，未命中 panic）→ `is_decorator_location_valid` →
+-//!   无效 → 归档标签 "oob backup"（0x142a8e950，`archive_storage_decorators`
+-//!   0x1412b2a70）+ `apply_decorator_op`（0x141276e30，KIND_REMOVE）+
+-//!   `DecoratorBlueprints::remove`。
+-//! - `cull_stair_attached_decorators_impl` 0x1412b6c30/0x1412b6420（行 354，
+-//!   双实例）：楼梯装饰记录（0x28B）逐条：`assert!(is_decorator_cull_allowed(id))`
+-//!   （"assertion failed: decorator_archivist.is_decorator_cull_allowed(
+-//!   locator.decorator)" 0x142c2be40/0x142a8e8e3）+ 边存在性
+-//!   （`StairsState::contains_edge_or_stub` 0x140900e80；invalid_stairs 实例缺该
+-//!   检查）→ 移除（storage map 删除 0x141264820 + `apply_decorator_op` +
+-//!   蓝图删除）。
+-//! - `should_snap_to_corner` 0x140811900：`DecoratorType::should_offer_snap_to_corner`
+-//!   （t!=0x3f）∧ 距离阈值（`WallSpaceCoord::subtract`；`dist < threshold*0.5 +
+-//!   (halftimbered ? 3.0 : 0.46)`；0x1429cd068=3.0 / 0x1429a0764=0.46）。
+-//! - `check_if_dormer_ridge_is_within_roof_bounds` 0x140811440：dormer 变体
+-//!   ∈{7,8}（gothic 半 dormer / dormer 轮廓曲线 0x1409a4cc0 / 0x1407c7500）+
+-//!   屋顶查表 + 圆/矩形最近点判据（屋顶几何面 I，登记 RESTORE.md）。
+-//!
+-//! `DecoratorLocationCheckResult`（行 493 is_valid / 497 get_invalid_reason /
+-//! impl$1::clone 行 506 含 Rectangle2d）：{tag 1=Valid / 9 / 0xb=Invalid}。
++//! 原B完整位置检查14080f470/8143B及必要1203B脊线/200B角吸附。
++//! 原判别11有效，0至10携带真实失败原因；验证入口供同世界蓝图反馈消费。
++//! 其它剔除、归档与事件订阅函数仍保留旧部分实现，不能据此注册为完整业务。
+ 
+ use bevy_ecs::prelude::*;
+ use country_core::resources::history::History;
+ use country_core::resources::stairs::stairs_state::StairsState;
++use country_core::resources::walls::WallId;
+ use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
+ use country_core::resources::walls::decorator::{DecoratorId, DecoratorInfo, DecoratorType};
+ use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
+ use country_core::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+ use country_core::resources::walls::public_wall_state::PublicWallState;
+-use country_core::resources::walls::WallId;
+-
+-use crate::apply_decorator_op::{apply_decorator_op, DecoratorOp};
++
++use crate::apply_decorator_op::{DecoratorOp, apply_decorator_op};
+ use crate::blueprint::DecoratorBlueprints;
+ 
+-/// 越界检查结果（B：tag 1=Valid、9=无效（记录缺失/不适用）、0xb=Invalid；
+-/// `get_invalid_reason` 返回 Rectangle2d 载荷，行 497）。
+-#[derive(Clone, Debug, PartialEq)]
+-pub struct DecoratorLocationCheckResult {
+-    /// 有效（tag==1，O）。
+-    pub valid: bool,
+-    /// 位置（O：{tag@0, x@4(u64), z@0xc(f32), …@0x10, id@0x20}）。
+-    pub position: glam::Vec3,
+-    /// 无效载荷（O：Rectangle2d 克隆行 506）。
+-    pub reason_rect: Option<utils::geometry::rectangle::Rectangle2d>,
++/// 原判别11表示有效；其余判别保存验证器实际消费的失败载荷。
++/// 枚举名是本项目的语义命名，不伪造原生内存布局。
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub enum DecoratorLocationCheckResult {
++    Valid,
++    Invalid(DecoratorLocationInvalidReason),
++}
++
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub enum DecoratorLocationInvalidReason {
++    WallCutoutBoundary {
++        wall: WallId,
++        coord: CurveInternalCoord,
++    },
++    RoofBounds {
++        position: Vec3,
++        direction: Vec3,
++        wall: WallId,
++    },
++    WallEnds {
++        left_oob: bool,
++        right_oob: bool,
++        wall: WallId,
++    },
++    SharpWallTurn {
++        wall: WallId,
++        coord: CurveInternalCoord,
++    },
++    WallTop {
++        padding: f32,
++        wall: WallId,
++    },
++    WallCorner {
++        wall: WallId,
++        rectangle: Rectangle2d,
++        corner: usize,
++    },
++    BalconyUpperClearance {
++        wall: WallId,
++    },
++    FlatRoofForbidden,
++    GableBandForbidden,
++    MissingRoof,
++    WallLowerBoundary {
++        wall: WallId,
++    },
++}
++
++impl DecoratorLocationInvalidReason {
++    pub fn native_tag(self) -> u8 {
++        match self {
++            Self::WallCutoutBoundary { .. } => 0,
++            Self::RoofBounds { .. } => 1,
++            Self::WallEnds { .. } => 2,
++            Self::SharpWallTurn { .. } => 3,
++            Self::WallTop { .. } => 4,
++            Self::WallCorner { .. } => 5,
++            Self::BalconyUpperClearance { .. } => 6,
++            Self::FlatRoofForbidden => 7,
++            Self::GableBandForbidden => 8,
++            Self::MissingRoof => 9,
++            Self::WallLowerBoundary { .. } => 10,
++        }
++    }
+ }
+ 
+ impl DecoratorLocationCheckResult {
+-    /// `is_valid`（行 493，内联，O）：tag==1。
+-    pub fn is_valid(&self) -> bool {
+-        self.valid
+-    }
+-
+-    /// `get_invalid_reason`（行 497，内联，O）：无效矩形载荷。
+-    pub fn get_invalid_reason(&self) -> Option<utils::geometry::rectangle::Rectangle2d> {
+-        self.reason_rect
+-    }
+-}
+-
+-/// `is_decorator_location_valid`（0x14080f470，O 结构）：dst tag 分派
+-/// （tag∈{2,3,4} → 槽 1..3）到各目的有效性检查。
++    pub fn is_valid(self) -> bool {
++        matches!(self, Self::Valid)
++    }
++    pub fn get_invalid_reason(&self) -> Option<&DecoratorLocationInvalidReason> {
++        match self {
++            Self::Valid => None,
++            Self::Invalid(reason) => Some(reason),
++        }
++    }
++    pub fn native_tag(self) -> u8 {
++        match self {
++            Self::Valid => 11,
++            Self::Invalid(reason) => reason.native_tag(),
++        }
++    }
++}
++
++use crate::decorator_visual::cottage_dormers::cottage_dormer::is_out_of_roof_bounds;
++use crate::decorator_visual::gothic_dormer::gothic_dormer_profile_curve;
++use crate::ui_systems::decorator_interaction_intent::{BalconyDoorSnap, snap_balcony_door};
++use country_core::resources::gothic_window_profile::gothic_half_dormer_profile_curve;
++use country_core::resources::roofs::geometry::surface::RoofSection;
++use country_core::resources::roofs::{Roof, RoofIntersectionSection};
++use country_core::resources::walls::decorator_subtype::{
++    DecoratorLibKey, DerivedDecoratorInfoResources, DerivedDecoratorInfoView,
++};
++use country_core::resources::walls::public_walls::PublicWalls;
++use country_core::systems::collision::world::RaycastWorld;
++use glam::{Vec2, Vec3};
++use utils::comparative_space::ComparativeSpace;
++use utils::curve::{CurveCoordSemanticThresholded3D, CurveInternalCoord, curve_slice::CurveSlice};
++use utils::geometry::{Circle2d, Rectangle2d};
++use utils::wall_space::{WallSpace, WallSpaceCoord};
++
++/// B14080f470/8143B。所有输入均来自当前装饰的真实存储地址和同一世界；
++/// 必需资源缺失保留原断言，地形与楼梯的直接有效分支不读取额外资源。
++#[allow(clippy::too_many_arguments)]
+ pub fn is_decorator_location_valid(
++    id: DecoratorId,
+     info: &DecoratorInfo,
++    dst: DecoratorStorageAddr,
++    walls: &PublicWalls,
++    roofs: &Query<&Roof>,
++    derived: DerivedDecoratorInfoView<'_>,
+     transforms: &CachedDecoratorTransforms,
++    raycast: &RaycastWorld,
+ ) -> DecoratorLocationCheckResult {
+-    let id = info.decorator_id();
+-    // 位置（O：position 0x140a1a9f0 未命中 panic —— Rust 侧 Option 承载）。
+-    let Some(position) = transforms.try_position(id.0) else {
+-        return DecoratorLocationCheckResult {
+-            valid: false,
+-            position: glam::Vec3::ZERO,
+-            reason_rect: None,
++    use DecoratorLocationCheckResult::{Invalid, Valid};
++    use DecoratorLocationInvalidReason as Reason;
++    match info.dst_tag() {
++        3 | 4 => Valid,
++        2 => {
++            let wall_id = dst.as_wall();
++            let Some(entity) = walls.roof_entity(wall_id) else {
++                return Invalid(Reason::MissingRoof);
++            };
++            // 原早期屋顶分支使用必需Query，而后面的墙顶检查允许查询缺失。
++            let roof = roofs.get(entity).expect("decorator roof query failed");
++            let subtype = derived.subtype(id).0;
++            if subtype == 2 || subtype == 8 {
++                let transform = transforms.transform(id.0);
++                let bounds = derived
++                    .mesh_library()
++                    .collision_record(DecoratorLibKey::new(subtype, info.rank()))
++                    .bounds;
++                let height = bounds.top - bounds.bottom;
++                let width = if subtype == 8 {
++                    match info.rank() {
++                        2 => 1.2,
++                        3 => 1.54,
++                        _ => 0.72,
++                    }
++                } else {
++                    bounds.footprint.size.x
++                };
++                if is_out_of_roof_bounds(&transform, width, height, info.rank(), roof) {
++                    let direction = if subtype == 8 {
++                        location_unit3(transform.rotation * Vec3::Z)
++                    } else {
++                        Vec3::ZERO
++                    };
++                    return Invalid(Reason::RoofBounds {
++                        position: location_elevated(transform.translation, height),
++                        direction,
++                        wall: wall_id,
++                    });
++                }
++                if subtype == 8 {
++                    let forward = transform.rotation * Vec3::Z;
++                    let probe = location_unit2(Vec2::new(forward.x, forward.z));
++                    let result = check_if_dormer_ridge_is_within_roof_bounds(
++                        subtype,
++                        info,
++                        transform.translation,
++                        probe,
++                        wall_id,
++                        walls,
++                        roofs,
++                    );
++                    if !result.is_valid() {
++                        return result;
++                    }
++                }
++            }
++            if roof.is_flat() && !info.decorator_type().can_place_on_roof() {
++                return Invalid(Reason::FlatRoofForbidden);
++            }
++            let coord = info.wall_space_coord();
++            if 1.9 > coord.y && roof.is_gable() {
++                let sides = roof.gable_sides().expect("gable roof has no gable sides");
++                for side in sides {
++                    let lower = f32::from(side) * 0.25;
++                    let upper = (f32::from(side) + 1.0) * 0.25;
++                    if coord.u >= lower && upper > coord.u {
++                        return Invalid(Reason::GableBandForbidden);
++                    }
++                }
++            }
++            Valid
++        }
++        _ => is_wall_decorator_location_valid(
++            id, info, dst, walls, roofs, derived, transforms, raycast,
++        ),
++    }
++}
++
++#[allow(clippy::too_many_arguments)]
++fn is_wall_decorator_location_valid(
++    id: DecoratorId,
++    info: &DecoratorInfo,
++    dst: DecoratorStorageAddr,
++    walls: &PublicWalls,
++    roofs: &Query<&Roof>,
++    derived: DerivedDecoratorInfoView<'_>,
++    transforms: &CachedDecoratorTransforms,
++    raycast: &RaycastWorld,
++) -> DecoratorLocationCheckResult {
++    use DecoratorLocationCheckResult::{Invalid, Valid};
++    use DecoratorLocationInvalidReason as Reason;
++    let subtype = derived.subtype(id).0;
++    // 原f56c在判断subtype1之前已读取缓存；其它墙分支也不能吞缺失缓存。
++    let transform = transforms.transform(id.0);
++    let coord = info.wall_space_coord();
++    if subtype == 1 {
++        let wall_id = dst.as_wall();
++        let Some(entity) = walls.roof_entity(wall_id) else {
++            return Invalid(Reason::MissingRoof);
+         };
++        let roof = roofs.get(entity).expect("decorator roof query failed");
++        let bounds = derived
++            .mesh_library()
++            .collision_record(DecoratorLibKey::new(1, info.rank()))
++            .bounds;
++        let height = bounds.top - bounds.bottom;
++        if is_out_of_roof_bounds(
++            &transform,
++            bounds.footprint.size.x,
++            height,
++            info.rank(),
++            roof,
++        ) {
++            return Invalid(Reason::RoofBounds {
++                position: location_elevated(transform.translation, height),
++                direction: Vec3::ZERO,
++                wall: wall_id,
++            });
++        }
++    }
++    // 原墙分支再次读取当前子类型，随后先读取collision，再required墙和路径。
++    let subtype_value = derived.subtype(id);
++    let subtype = subtype_value.0;
++    let bounds = derived
++        .mesh_library()
++        .collision_record(DecoratorLibKey::new(subtype, info.rank()))
++        .bounds;
++    let width = bounds.footprint.size.x;
++    let height = bounds.top - bounds.bottom;
++    let wall_id = dst.as_wall();
++    let wall = walls.get(wall_id).expect("decorator wall does not exist");
++    let space = WallSpace {
++        is_loop: wall.shape().tag() != 2,
++        length: wall.wall_space_length(),
+     };
+-    match info.dst_tag() {
+-        // 墙附着（tag 0/1；跳表 idx0 亦为 tag 5+ 的默认槽）：墙空间有效性
+-        // （行 707 内联；曲线采样面 I）。
+-        0..=1 => DecoratorLocationCheckResult {
+-            valid: is_wall_decorator_location_valid(info),
+-            position,
+-            reason_rect: None,
+-        },
+-        // 屋顶附着（tag 2；跳表 idx1 → 0x14080f66d）：屋顶查表 + 界判据。
+-        // 几何主体 U（登记 RESTORE.md）。
+-        2 => DecoratorLocationCheckResult {
+-            valid: true,
+-            position,
+-            reason_rect: None,
+-        },
+-        // 地形（tag 3，跳表 idx2）与楼梯（tag 4，跳表 idx3）**恒无效**
+-        // （O：fresh capstone 0x14080f542 = `*out = 0xb; return`）。
+-        3 | 4 => DecoratorLocationCheckResult {
+-            valid: false,
+-            position,
+-            reason_rect: None,
+-        },
+-        // tag 5+ 走跳表默认槽 idx0（墙处理器）。
+-        _ => DecoratorLocationCheckResult {
+-            valid: is_wall_decorator_location_valid(info),
+-            position,
+-            reason_rect: None,
+-        },
+-    }
+-}
+-
+-/// `is_wall_decorator_location_valid`（行 707，内联，O 结构）：墙附着装饰
+-/// 有效性 = 墙存在 + 可放置位置（I：曲线采样/u/y 界检查 —— 本面以
+-/// dst/type 承载，登记 RESTORE.md）。
+-fn is_wall_decorator_location_valid(_info: &DecoratorInfo) -> bool {
+-    true
++    let points = wall
++        .prepared_path
++        .as_ref()
++        .expect("decorator wall path has not been prepared")
++        .positions
++        .as_slice();
++    let center = location_curve_coord(points, space.project_clamp(0.0 + coord.u));
++    let half_width = width * 0.5;
++    let left = location_curve_coord(points, space.project_clamp(coord.u - half_width));
++    let right = location_curve_coord(points, space.project_clamp(coord.u + half_width));
++    let center_point = location_sample(points, center);
++    // Y沿原左乘补数、右乘参数顺序插值，与XYZ反馈采样的加数顺序独立。
++    let base_y =
++        points[center.segment][1] * (1.0 - center.t) + points[center.segment + 1][1] * center.t;
++    if subtype == 7 {
++        let tangent = location_unit3(
++            Vec3::from_array(points[center.segment + 1]) - Vec3::from_array(points[center.segment]),
++        );
++        let probe = location_unit2(Vec2::new(-tangent.z, tangent.x));
++        let result = check_if_dormer_ridge_is_within_roof_bounds(
++            subtype,
++            info,
++            coord.to_world_space(wall.simplified_curve_2d()),
++            probe,
++            wall_id,
++            walls,
++            roofs,
++        );
++        if !result.is_valid() {
++            return result;
++        }
++    }
++    let right_oob = space.project(coord.u + half_width).is_none();
++    let left_oob = space.project(coord.u - half_width).is_none();
++    if left_oob || right_oob {
++        return Invalid(Reason::WallEnds {
++            left_oob,
++            right_oob,
++            wall: wall_id,
++        });
++    }
++    for sample in [left, center, right] {
++        let cut = location_height(&wall.segment_heights, sample);
++        let threshold = match subtype {
++            4 | 9 => coord.y + if cut > 0.0 { height * -0.5 } else { 0.2 },
++            6 => {
++                coord.y
++                    + gothic_half_dormer_profile_curve(info.rank())
++                        .last()
++                        .expect("gothic half dormer profile is empty")
++                        .y
++            }
++            11 | 12 => coord.y,
++            16 => coord.y + 0.3,
++            25 => coord.y + 0.2,
++            _ => coord.y + height * -0.5,
++        };
++        if base_y + cut > threshold {
++            return Invalid(if cut > 0.0 {
++                Reason::WallCutoutBoundary {
++                    wall: wall_id,
++                    coord: sample,
++                }
++            } else {
++                Reason::WallLowerBoundary { wall: wall_id }
++            });
++        }
++    }
++    if subtype != 3 && wall.shape().tag() >= 2 {
++        let a = location_sample(points, left);
++        let b = center_point;
++        let c = location_sample(points, right);
++        let ab = location_unit2(Vec2::new(b.x - a.x, b.z - a.z));
++        let bc = location_unit2(Vec2::new(c.x - b.x, c.z - b.z));
++        if 0.6 > ab.y * bc.y + ab.x * bc.x {
++            return Invalid(Reason::SharpWallTurn {
++                wall: wall_id,
++                coord: center,
++            });
++        }
++    }
++    if subtype == 4 || subtype == 9 {
++        let tangent = location_unit3(
++            Vec3::from_array(points[center.segment + 1]) - Vec3::from_array(points[center.segment]),
++        );
++        let probe = location_unit2(Vec2::new(tangent.x, tangent.z));
++        if matches!(
++            snap_balcony_door(
++                true,
++                info,
++                Vec3::new(center_point.x, coord.y, center_point.z),
++                probe,
++                coord.u,
++                wall_id,
++                wall,
++                roofs,
++                derived.mesh_library(),
++                true,
++                raycast
++            ),
++            BalconyDoorSnap::RejectedUpperClearance
++        ) {
++            return Invalid(Reason::BalconyUpperClearance { wall: wall_id });
++        }
++    }
++    if !subtype_value.can_be_on_corner() {
++        if let Some(rectangle) = wall.is_rectangle() {
++            for corner in 0..4 {
++                let corner_u = space.project_clamp(rectangle.get_point_u(corner) * space.length);
++                if should_snap_to_corner(
++                    info.decorator_type(),
++                    wall.building_projection().is_halftimbered(),
++                    wall,
++                    WallSpaceCoord::new_unchecked(corner_u, coord.y),
++                    coord,
++                    width,
++                ) {
++                    return Invalid(Reason::WallCorner {
++                        wall: wall_id,
++                        rectangle,
++                        corner,
++                    });
++                }
++            }
++        }
++    }
++    if wall.shape().tag() < 2 {
++        let Some(roof) = walls
++            .roof_entity(wall_id)
++            .and_then(|entity| roofs.get(entity).ok())
++        else {
++            return Valid;
++        };
++        let use_arch_heights = if subtype == 3 {
++            false
++        } else if roof.is_gable() {
++            let rectangle = location_roof_rectangle(roof);
++            let sides = roof.gable_sides().expect("gable roof has no gable sides");
++            let edge = rectangle.get_closest_edge_id(Vec2::new(center_point.x, center_point.z));
++            edge == usize::from(sides[0]) || edge == usize::from(sides[1])
++        } else {
++            false
++        };
++        if !use_arch_heights {
++            if subtype != 3
++                && (info.ty == 0x3b
++                    || info.ty == 0x3f
++                    || (info.decorator_type().is_window() && !roof.is_flat()))
++            {
++                if coord.y + height * -0.25 > wall.max_y() {
++                    return Invalid(Reason::WallTop {
++                        padding: 0.0,
++                        wall: wall_id,
++                    });
++                }
++                return Valid;
++            }
++            let padding = if roof.is_flat() {
++                if subtype == 3 { 0.79 } else { 0.69 }
++            } else {
++                0.1
++            };
++            let offset = if subtype == 11 || subtype == 12 {
++                padding
++            } else {
++                height * -0.5
++            };
++            if coord.y - offset > wall.max_y() - padding {
++                return Invalid(Reason::WallTop {
++                    padding,
++                    wall: wall_id,
++                });
++            }
++            return Valid;
++        }
++    }
++    let arch_heights = wall
++        .arch_segment_heights()
++        .expect("wall arch heights have not been calculated");
++    for sample in [left, right] {
++        let ceiling = location_height(arch_heights, sample);
++        let padding = if wall.shape().tag() < 2 || info.decorator_type().is_window() {
++            0.25
++        } else {
++            0.67
++        };
++        let offset = if subtype == 11 || subtype == 12 {
++            -padding
++        } else {
++            height * 0.5
++        };
++        if coord.y + offset > ceiling - padding {
++            return Invalid(Reason::WallTop {
++                padding,
++                wall: wall_id,
++            });
++        }
++    }
++    Valid
++}
++
++fn location_curve_coord(points: &[[f32; 3]], distance: f32) -> CurveInternalCoord {
++    let start = CurveInternalCoord { segment: 0, t: 0.0 };
++    let mut slice = CurveSlice::<[f32; 3], _, CurveCoordSemanticThresholded3D, Vec2, _>
++        ::from_coord_range_with_remap(points, start, start, |_, p| Vec2::new(p[0], p[2]));
++    // 原maxss的第二操作数为+0：NaN及-0选择该+0，不引入鲁棒采样器。
++    slice.extend_right_until(if distance > 0.0 { distance } else { 0.0 }, |_| false);
++    slice.end()
++}
++
++fn location_sample(points: &[[f32; 3]], coord: CurveInternalCoord) -> Vec3 {
++    Vec3::from_array(points[coord.segment + 1]) * coord.t
++        + Vec3::from_array(points[coord.segment]) * (1.0 - coord.t)
++}
++fn location_height(heights: &[f32], coord: CurveInternalCoord) -> f32 {
++    let first = heights[coord.segment];
++    (heights[coord.segment + 1] - first) * coord.t + first
++}
++fn location_unit2(value: Vec2) -> Vec2 {
++    value * (1.0 / (value.y * value.y + value.x * value.x).sqrt())
++}
++fn location_unit3(value: Vec3) -> Vec3 {
++    value * (1.0 / ((value.y * value.y + value.x * value.x) + value.z * value.z).sqrt())
++}
++fn location_elevated(position: Vec3, amount: f32) -> Vec3 {
++    Vec3::new(
++        amount * 0.0 + position.x,
++        amount + position.y,
++        amount * 0.0 + position.z,
++    )
++}
++
++/// 原Roof枚举的矩形载荷解码；几何算法仍由同一Rectangle2d实现。
++fn location_roof_rectangle(roof: &Roof) -> Rectangle2d {
++    let bytes = &roof.observed()[8..0x24];
++    assert_eq!(
++        u32::from_le_bytes(bytes[..4].try_into().unwrap()),
++        1,
++        "gable roof enclosure is not a rectangle"
++    );
++    location_rectangle_payload(&bytes[4..])
++}
++fn location_rectangle_payload(bytes: &[u8]) -> Rectangle2d {
++    let field = |offset| f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
++    Rectangle2d {
++        axis: Vec2::new(field(0), field(4)),
++        center: Vec2::new(field(8), field(12)),
++        size: Vec2::new(field(16), field(20)),
++    }
+ }
+ 
+ /// `auto_allow_decorator_culling`（0x14080d3d0，O 结构）：录制中自动放行
+@@ -143,18 +538,22 @@
+     transforms: Res<CachedDecoratorTransforms>,
+     mut blueprints: ResMut<DecoratorBlueprints>,
+     history: Res<History>,
++    walls: Res<PublicWalls>,
++    roofs: Query<&Roof>,
++    derived: DerivedDecoratorInfoResources,
++    raycast: Res<RaycastWorld>,
+ ) {
+     let recording = history.is_recording();
+     // 事件队列（I：原 DeferredDecoratorOpEvents 共享面由 D3 接线；本面以
+     // 默认空队列承载，RESTORE.md 登记）。
+     let events = country_core::resources::walls::decorator::DeferredDecoratorOpEvents::default();
+     // 墙桶（O：归档墙表；clone 避免借用冲突 —— 原实现 0x30B 双表遍历）。
+-    let walls: Vec<(u64, Vec<u32>)> = archivist
++    let archived_wall_buckets: Vec<(u64, Vec<u32>)> = archivist
+         .walls
+         .iter()
+         .map(|(wall, d)| (wall.0, d.items.keys().copied().collect()))
+         .collect();
+-    for (wall, ids) in walls {
++    for (wall, ids) in archived_wall_buckets {
+         for id in ids {
+             cull_one(
+                 id,
+@@ -165,6 +564,10 @@
+                 recording,
+                 &events,
+                 WallId(wall),
++                &walls,
++                &roofs,
++                derived.as_view(),
++                &raycast,
+             );
+         }
+     }
+@@ -185,6 +588,10 @@
+                 recording,
+                 &events,
+                 WallId(u64::MAX),
++                &walls,
++                &roofs,
++                derived.as_view(),
++                &raycast,
+             );
+         }
+     }
+@@ -200,6 +607,10 @@
+     _recording: bool,
+     events: &country_core::resources::walls::decorator::DeferredDecoratorOpEvents,
+     wall: WallId,
++    walls: &PublicWalls,
++    roofs: &Query<&Roof>,
++    derived: DerivedDecoratorInfoView<'_>,
++    raycast: &RaycastWorld,
+ ) {
+     // cull 放行（O：is_decorator_cull_allowed 0x140b2bd90）。
+     if !archivist.is_decorator_cull_allowed(id) {
+@@ -209,7 +620,20 @@
+     let Some(info) = storage.lookup_decorator_info(DecoratorId::new(id)) else {
+         return;
+     };
+-    let result = is_decorator_location_valid(info, transforms);
++    // 只迁移必要验证入口；本文件其它归档/事件订阅路径仍须其原消费闭包。
++    let actual_dst = storage
++        .lookup_storage(DecoratorId::new(id))
++        .expect("decorator has no storage address");
++    let result = is_decorator_location_valid(
++        DecoratorId(id),
++        info,
++        actual_dst,
++        walls,
++        roofs,
++        derived,
++        transforms,
++        raycast,
++    );
+     if result.is_valid() {
+         return;
+     }
+@@ -221,7 +645,7 @@
+         decorator_id: DecoratorId(id),
+         info: *info,
+         extra: [0; 0x20],
+-                change: None,
++        change: None,
+         dst: None,
+     };
+     let dst = storage
+@@ -247,7 +671,9 @@
+             // 断言（O：assertion failed: is_decorator_cull_allowed
+             // (locator.decorator)，0x142c2be40）。
+             assert!(
+-                archivist.as_ref().is_none_or(|a| a.is_decorator_cull_allowed(*id)),
++                archivist
++                    .as_ref()
++                    .is_none_or(|a| a.is_decorator_cull_allowed(*id)),
+                 "assertion failed: decorator_archivist.is_decorator_cull_allowed(locator.decorator)"
+             );
+             let _ = transforms.try_position(*id);
+@@ -275,7 +701,7 @@
+             decorator_id: DecoratorId(id),
+             info,
+             extra: [0; 0x20],
+-                change: None,
++            change: None,
+             dst: None,
+         };
+         let dst = storage
+@@ -337,97 +763,423 @@
+     );
+ }
+ 
+-/// `should_snap_to_corner`（0x140811900，O）：是否吸附到墙角。
+-/// `should_offer_snap_to_corner(type)`（t!=0x3f）∧ 距角距离阈值：
+-/// `dist < threshold * 0.5 + (halftimbered ? 3.0 : 0.46)`。
++/// B140811900/200B：只比较原墙空间的水平差，包含闭环投影。
++/// halftimbered偏移为0.2，另一分支为0.46；阈值使用完整宽度的一半。
+ pub fn should_snap_to_corner(
+     decorator_type: DecoratorType,
+     halftimbered: bool,
+     wall: &PublicWallState,
+-    a: utils::wall_space::WallSpaceCoord,
+-    b: utils::wall_space::WallSpaceCoord,
++    a: WallSpaceCoord,
++    b: WallSpaceCoord,
+     threshold: f32,
+ ) -> bool {
+     if !decorator_type.should_offer_snap_to_corner() {
+         return false;
+     }
+-    let space = utils::wall_space::WallSpace {
+-        is_loop: false,
++    let space = WallSpace {
++        is_loop: wall.shape().tag() != 2,
+         length: wall.wall_space_length(),
+     };
+-    let offset = if halftimbered { 3.0 } else { 0.46 };
+-    let dist = a.subtract(&space, b).length();
+-    dist < threshold * 0.5 + offset
+-}
+-
+-/// `check_if_dormer_ridge_is_within_roof_bounds`（0x140811440，O 结构）：
+-/// dormer 脊线是否在屋顶界内（变体 ∈{7,8}；轮廓曲线 + 屋顶查表 +
+-/// 圆/矩形最近点距离判据 0x142a8e504=0.709）。
+-/// 屋顶几何面 I（本面以变体门控承载，登记 RESTORE.md）。
++    let offset = if halftimbered { 0.2 } else { 0.46 };
++    space.subtract(a.u, b.u).abs() < threshold * 0.5 + offset
++}
++
++/// B140811440/1203B：以真实屋顶截面和原轮廓顶点检查老虎窗脊。
++/// 此处缺失屋顶实体或组件均返回MissingRoof，区别于主检查的required查询。
++#[allow(clippy::too_many_arguments)]
+ pub fn check_if_dormer_ridge_is_within_roof_bounds(
+-    variant: u8,
+-    _info: &DecoratorInfo,
+-) -> bool {
+-    // O：变体门控（7=gothic 半 dormer 轮廓 0x1409a4cc0，8=dormer 轮廓
+-    // 0x1407c7500；其他 → tag 0xb 无效）。
+-    if !(variant == 7 || variant == 8) {
+-        return false;
+-    }
+-    // 屋顶界判据（I：圆/矩形最近点 + 距离阈值；本面以屋顶存在性承载）。
+-    true
++    subtype: u8,
++    info: &DecoratorInfo,
++    position: Vec3,
++    probe: Vec2,
++    wall_id: WallId,
++    walls: &PublicWalls,
++    roofs: &Query<&Roof>,
++) -> DecoratorLocationCheckResult {
++    use DecoratorLocationCheckResult::{Invalid, Valid};
++    use DecoratorLocationInvalidReason as Reason;
++    if !(subtype == 7 || subtype == 8) {
++        return Valid;
++    }
++    let Some(roof) = walls
++        .roof_entity(wall_id)
++        .and_then(|entity| roofs.get(entity).ok())
++    else {
++        return Invalid(Reason::MissingRoof);
++    };
++    if u32::from_le_bytes(roof.observed()[8..12].try_into().unwrap()) == 0 {
++        return Valid;
++    }
++    let profile = if subtype == 7 {
++        gothic_half_dormer_profile_curve(info.rank())
++    } else {
++        gothic_dormer_profile_curve(info.rank())
++    };
++    let top = location_elevated(
++        position,
++        profile.first().expect("dormer profile is empty").y,
++    );
++    let invalid = || {
++        Invalid(Reason::RoofBounds {
++            position: top,
++            direction: Vec3::new(probe.x, 0.0, probe.y),
++            wall: wall_id,
++        })
++    };
++    let point = Vec2::new(top.x, top.z);
++    let closest = match roof.roof_shape_at_intersection_y(top.y) {
++        RoofIntersectionSection::OutOfBounds => return invalid(),
++        RoofIntersectionSection::Section(RoofSection::Rectangle { frame, dimensions }) => {
++            Rectangle2d {
++                axis: Vec2::new(frame[0], frame[1]),
++                center: Vec2::new(frame[2], frame[3]),
++                size: Vec2::from_array(dimensions),
++            }
++            .closest_point_on_perimeter(point)
++        }
++        RoofIntersectionSection::Section(RoofSection::Circle {
++            frame,
++            radius,
++            word_0x18,
++        }) => Circle2d::new_rotated(Vec2::from_array(frame), radius, f32::from_bits(word_0x18))
++            .closest_point_on_perimeter(point),
++        RoofIntersectionSection::RawSection(bytes) => {
++            let field = |offset| f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
++            if u32::from_le_bytes(bytes[..4].try_into().unwrap()) == 0 {
++                Circle2d::new_rotated(Vec2::new(field(4), field(8)), field(12), field(16))
++                    .closest_point_on_perimeter(point)
++            } else {
++                location_rectangle_payload(&bytes[4..]).closest_point_on_perimeter(point)
++            }
++        }
++    };
++    if top.y > (roof.height() + roof.floor_y()) + -0.1 {
++        return invalid();
++    }
++    let normal = location_unit2(point - closest);
++    let dot = normal.y * probe.y + normal.x * probe.x;
++    // 原ucomiss/jbe将unordered也视为通过，不改成dot>=threshold。
++    if 0.993 > dot { invalid() } else { Valid }
+ }
+ 
+ #[cfg(test)]
+-mod tests {
++mod location_native_tests {
+     use super::*;
++    use bevy_ecs::system::SystemState;
++    use country_core::resources::roofs::geometry::surface::Curve2;
+     use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
+-    use glam::{Quat, Vec3};
+-
+-    fn transforms_with(id: u32) -> CachedDecoratorTransforms {
+-        let mut cache = CachedDecoratorTransforms::default();
+-        cache.insert(
+-            id,
+-            CachedDecoratorTransform {
+-                rotation: Quat::IDENTITY,
+-                translation: Vec3::new(1.0, 2.0, 3.0),
+-                scale: Vec3::ONE,
++    use country_core::resources::walls::decorator_subtype::{
++        DecoratorCollision, DecoratorMeshLibrary, DecoratorSubtype, DerivedDecoratorSubtypes,
++    };
++    use country_core::resources::walls::publication_fields::WallShapeSnapshot;
++    use country_core::resources::walls::publication_source::TerrainHeightGrid512;
++    use country_core::resources::walls::{InnerWalls, WallState};
++    use country_core::systems::collision::world::RaycastMeshData;
++    use country_core::systems::wall::wall_state::path_preparation::PreparedWallPath;
++    use std::sync::Arc;
++
++    // 这些是显式测试输入，不作为游戏启动已拥有原资源的证据。
++    struct Fixture {
++        world: World,
++        walls: PublicWalls,
++        subtypes: DerivedDecoratorSubtypes,
++        meshes: DecoratorMeshLibrary,
++        cache: CachedDecoratorTransforms,
++        raycast: RaycastWorld,
++    }
++    impl Fixture {
++        fn new(subtype: u8, shape: u32) -> Self {
++            let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::splat(8.0));
++            let points = rectangle.as_points2().map(|p| [p.x, p.y]);
++            let curve = Curve2::try_new(points.to_vec(), true).unwrap();
++            let mut snapshot = WallState::new(curve, 3.0, 0, 0, false).snapshot().clone();
++            let mut bytes = [0; 28];
++            bytes[..4].copy_from_slice(&shape.to_le_bytes());
++            for (index, value) in [1.0_f32, 0.0, 0.0, 0.0, 8.0, 8.0].into_iter().enumerate() {
++                bytes[4 + index * 4..8 + index * 4].copy_from_slice(&value.to_le_bytes());
++            }
++            snapshot.source.shape = WallShapeSnapshot::from_observed(bytes);
++            snapshot.source.curve_kind_tag = shape;
++            let mut inner = InnerWalls::new();
++            inner.new_wall_with_id(WallId(42), WallState::from_snapshot(snapshot, 0));
++            let mut walls = PublicWalls::default();
++            walls.consume(
++                &mut inner,
++                &TerrainHeightGrid512 {
++                    encoded: vec![0; 512 * 512].into(),
++                    minimum_y: 0.0,
++                    maximum_y: 0.0,
++                    sampling_fix: false,
++                },
++            );
++            let wall = walls.get_mut(WallId(42)).unwrap();
++            wall.prepared_path = Some(PreparedWallPath {
++                positions: vec![[0.0, 0.0, 0.0], [4.0, 0.0, 0.0], [8.0, 0.0, 0.0]],
++                points_u: vec![0.0, 0.5, 1.0],
++                length: 8.0,
++                segment_values: vec![0.0; 3],
++            });
++            wall.segment_heights = vec![0.0; 3];
++            let mut subtypes = DerivedDecoratorSubtypes::default();
++            subtypes.insert(7, DecoratorSubtype(subtype));
++            let mut meshes = DecoratorMeshLibrary::default();
++            meshes.collision.insert(
++                DecoratorLibKey::new(subtype, 1),
++                DecoratorCollision {
++                    triangles: Vec::new(),
++                    mesh: Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
++                    bounds: utils::geometry::Rectangle3d::new(
++                        Vec3::ZERO,
++                        Vec3::splat(2.0),
++                        Vec2::X,
++                    ),
++                },
++            );
++            let mut cache = CachedDecoratorTransforms::default();
++            cache.insert(
++                7,
++                CachedDecoratorTransform {
++                    rotation: glam::Quat::IDENTITY,
++                    translation: Vec3::new(4.0, 2.0, 0.0),
++                    scale: Vec3::ONE,
++                },
++            );
++            Self {
++                world: World::new(),
++                walls,
++                subtypes,
++                meshes,
++                cache,
++                raycast: RaycastWorld::new(),
++            }
++        }
++        fn info(&self, tag: u8, u: f32, y: f32) -> DecoratorInfo {
++            DecoratorInfo {
++                dst_wall: u64::from(u.to_bits()) | (u64::from(y.to_bits()) << 32),
++                decorator_id: 99,
++                rank: 1,
++                ty: 0x3f,
++                u20: u32::from(tag) << 16,
++                ..DecoratorInfo::default()
++            }
++        }
++        fn check(
++            &mut self,
++            info: &DecoratorInfo,
++            dst: DecoratorStorageAddr,
++        ) -> DecoratorLocationCheckResult {
++            let mut state = SystemState::<Query<&Roof>>::new(&mut self.world);
++            let roofs = state.get(&self.world);
++            is_decorator_location_valid(
++                DecoratorId(7),
++                info,
++                dst,
++                &self.walls,
++                &roofs,
++                DerivedDecoratorInfoView::new(&self.subtypes, &self.meshes),
++                &self.cache,
++                &self.raycast,
++            )
++        }
++        fn add_roof(&mut self, flat: bool, gable: bool) {
++            let mut bytes = [0_u8; 88];
++            bytes[8..12].copy_from_slice(&1_u32.to_le_bytes());
++            for (offset, value) in [
++                (12, 1.0_f32),
++                (16, 0.0),
++                (20, 0.0),
++                (24, 0.0),
++                (28, 8.0),
++                (32, 8.0),
++                (48, if flat { 0.0 } else { 0.5 }),
++                (52, if gable { 1.0 } else { 0.0 }),
++            ] {
++                bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
++            }
++            let entity = self.world.spawn(Roof::from_observed(bytes)).id();
++            self.walls.associate_roof(WallId(42), entity);
++        }
++    }
++
++    #[test]
++    fn terrain_and_stair_return_native_eleven_before_any_required_lookup() {
++        let mut f = Fixture::new(0, 1);
++        f.cache = CachedDecoratorTransforms::default();
++        f.subtypes = DerivedDecoratorSubtypes::default();
++        f.meshes = DecoratorMeshLibrary::default();
++        for tag in [3, 4] {
++            let info = f.info(tag, f32::NAN, f32::NAN);
++            assert_eq!(
++                f.check(&info, DecoratorStorageAddr::Terrain),
++                DecoratorLocationCheckResult::Valid
++            );
++        }
++    }
++    #[test]
++    fn native_result_schema_preserves_every_reason_payload_and_tag() {
++        use DecoratorLocationInvalidReason::*;
++        let wall = WallId(42);
++        let coord = CurveInternalCoord {
++            segment: 9,
++            t: 0.25,
++        };
++        let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::ONE);
++        let reasons = [
++            WallCutoutBoundary { wall, coord },
++            RoofBounds {
++                position: Vec3::ONE,
++                direction: Vec3::X,
++                wall,
+             },
++            WallEnds {
++                left_oob: true,
++                right_oob: false,
++                wall,
++            },
++            SharpWallTurn { wall, coord },
++            WallTop {
++                padding: 0.79,
++                wall,
++            },
++            WallCorner {
++                wall,
++                rectangle,
++                corner: 3,
++            },
++            BalconyUpperClearance { wall },
++            FlatRoofForbidden,
++            GableBandForbidden,
++            MissingRoof,
++            WallLowerBoundary { wall },
++        ];
++        for (index, reason) in reasons.into_iter().enumerate() {
++            let result = DecoratorLocationCheckResult::Invalid(reason);
++            assert_eq!(result.native_tag(), index as u8);
++            assert!(!result.is_valid());
++            assert_eq!(result.get_invalid_reason(), Some(&reason));
++        }
++        assert_eq!(DecoratorLocationCheckResult::Valid.native_tag(), 11);
++    }
++    #[test]
++    fn absent_roof_is_reason_nine_without_reading_catalog_or_cache() {
++        let mut f = Fixture::new(0, 1);
++        f.subtypes = DerivedDecoratorSubtypes::default();
++        f.cache = CachedDecoratorTransforms::default();
++        let info = f.info(2, 0.0, 2.0);
++        assert_eq!(
++            f.check(&info, DecoratorStorageAddr::Wall(WallId(42)))
++                .native_tag(),
++            9
+         );
+-        cache
+-    }
+-
+-    fn info_with_tag(id: u32, tag: u8) -> DecoratorInfo {
+-        DecoratorInfo {
+-            decorator_id: id,
+-            u20: u32::from(tag) << 16,
+-            ..DecoratorInfo::default()
+-        }
+-    }
+-
++    }
+     #[test]
+-    fn roof_tag_two_is_dispatched_to_roof_slot() {
+-        // O 跳表：idx1（tag 2）→ 0x14080f66d（屋顶处理器）。
+-        let cache = transforms_with(1);
+-        let info = info_with_tag(1, 2);
+-        let out = is_decorator_location_valid(&info, &cache);
+-        assert!(out.is_valid());
+-        assert_eq!(out.position, Vec3::new(1.0, 2.0, 3.0));
+-    }
+-
++    fn wall_requires_actual_modified_id_cache_before_other_wall_work() {
++        let mut f = Fixture::new(0, 1);
++        let info = f.info(0, 4.0, 2.0);
++        f.cache = CachedDecoratorTransforms::default();
++        assert!(
++            std::panic::catch_unwind(std::panic::AssertUnwindSafe(
++                || f.check(&info, DecoratorStorageAddr::Wall(WallId(42)))
++            ))
++            .is_err()
++        );
++    }
+     #[test]
+-    fn terrain_and_stair_tags_are_invalid() {
+-        // O：idx2（tag 3）与 idx3（tag 4）同址 0x14080f542 → tag 0xb。
+-        let cache = transforms_with(2);
+-        let terrain = info_with_tag(2, 3);
+-        let stair = info_with_tag(2, 4);
+-        assert!(!is_decorator_location_valid(&terrain, &cache).is_valid());
+-        assert!(!is_decorator_location_valid(&stair, &cache).is_valid());
+-    }
+-
++    fn open_wall_checks_both_unclamped_endpoints() {
++        let mut f = Fixture::new(0, 2);
++        let info = f.info(0, -0.5, 2.0);
++        assert_eq!(
++            f.check(&info, DecoratorStorageAddr::Wall(WallId(42))),
++            DecoratorLocationCheckResult::Invalid(DecoratorLocationInvalidReason::WallEnds {
++                wall: WallId(42),
++                left_oob: true,
++                right_oob: false,
++            })
++        );
++    }
+     #[test]
+-    fn missing_transform_is_invalid() {
+-        let cache = CachedDecoratorTransforms::default();
+-        let info = info_with_tag(9, 0);
+-        assert!(!is_decorator_location_valid(&info, &cache).is_valid());
+-    }
+-}
++    fn positive_cut_and_zero_lower_boundary_are_distinct_native_reasons() {
++        let mut f = Fixture::new(0, 2);
++        f.walls
++            .get_mut(WallId(42))
++            .unwrap()
++            .segment_heights
++            .fill(1.0);
++        let info = f.info(0, 4.0, 1.0);
++        let result = f.check(&info, DecoratorStorageAddr::Wall(WallId(42)));
++        assert!(matches!(result, DecoratorLocationCheckResult::Invalid(
++            DecoratorLocationInvalidReason::WallCutoutBoundary { coord, .. })
++            if coord.segment == 0 && coord.t == 0.75));
++        f.walls
++            .get_mut(WallId(42))
++            .unwrap()
++            .segment_heights
++            .fill(0.0);
++        let info = f.info(0, 4.0, 0.0);
++        assert_eq!(
++            f.check(&info, DecoratorStorageAddr::Wall(WallId(42)))
++                .native_tag(),
++            10
++        );
++    }
++    #[test]
++    fn real_three_point_path_turn_precedes_the_unready_arch_height_lookup() {
++        let mut f = Fixture::new(0, 2);
++        let wall = f.walls.get_mut(WallId(42)).unwrap();
++        wall.prepared_path.as_mut().unwrap().positions =
++            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0]];
++        let info = f.info(0, 1.0, 2.0);
++        let result = f.check(&info, DecoratorStorageAddr::Wall(WallId(42)));
++        assert!(matches!(result, DecoratorLocationCheckResult::Invalid(
++            DecoratorLocationInvalidReason::SharpWallTurn { coord, .. })
++            if coord.segment == 0 && coord.t == 1.0));
++    }
++    #[test]
++    fn first_actual_rectangle_corner_wins_before_optional_roof_check() {
++        let mut f = Fixture::new(0, 1);
++        let mut info = f.info(0, 0.5, 2.0);
++        info.ty = 0x38;
++        assert!(matches!(
++            f.check(&info, DecoratorStorageAddr::Wall(WallId(42))),
++            DecoratorLocationCheckResult::Invalid(DecoratorLocationInvalidReason::WallCorner {
++                wall: WallId(42),
++                corner: 0,
++                ..
++            })
++        ));
++    }
++    #[test]
++    fn flat_roof_forbidden_and_gable_half_open_bands_use_current_type_and_coords() {
++        let mut f = Fixture::new(0, 1);
++        f.add_roof(true, false);
++        let mut info = f.info(2, 0.125, 1.0);
++        info.ty = 0x3a;
++        assert_eq!(
++            f.check(&info, DecoratorStorageAddr::Wall(WallId(42)))
++                .native_tag(),
++            7
++        );
++        f.add_roof(false, true);
++        info.ty = 0x38;
++        assert_eq!(
++            f.check(&info, DecoratorStorageAddr::Wall(WallId(42)))
++                .native_tag(),
++            8
++        );
++        info.dst_wall = u64::from(0.25_f32.to_bits()) | (u64::from(1.0_f32.to_bits()) << 32);
++        assert!(
++            f.check(&info, DecoratorStorageAddr::Wall(WallId(42)))
++                .is_valid()
++        );
++    }
++    #[test]
++    fn zero_segment_and_unordered_ridge_math_do_not_fabricate_finite_directions() {
++        assert!(location_unit3(Vec3::ZERO).is_nan());
++        assert!(location_unit2(Vec2::ZERO).is_nan());
++        let points = [[0.0, 0.0, 0.0], [0.0, 5.0, 0.0]];
++        assert!(location_curve_coord(&points, 0.0).t.is_nan());
++        let amount = f32::INFINITY;
++        let top = location_elevated(Vec3::ONE, amount);
++        assert!(top.x.is_nan() && top.z.is_nan() && top.y.is_infinite());
++    }
++}

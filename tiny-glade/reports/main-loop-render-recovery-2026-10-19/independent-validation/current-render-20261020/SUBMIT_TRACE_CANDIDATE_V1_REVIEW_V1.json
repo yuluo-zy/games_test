@@ -1,0 +1,44 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "decision": "有界可选诊断无静态阻断，可由root实际单帧采样；不是性能修复或恢复功能",
+  "manifest_sha256": "6bdc525051fb24ff0ae390508c90b4d19a76e9e3409426be083af4a3bf901493",
+  "patch_sha256": "fe2586fc13a5e442962dd112fb44d630ef7674740e2cb560798f798e38b53302",
+  "sources": [
+    {
+      "source": "tiny-glade/crates/rhapsody/src/raw/command_buffer.rs",
+      "baseline_sha256": "673b3a531ebbc80000a068eae600ef36b0d70514ff48122d0c2279022b794f1a",
+      "candidate_sha256": "7110f4f7d6f53a92b7dd342c4b57f304643a4f416bb2c7350e5083eaa547f3ee",
+      "production_at_review_sha256": "673b3a531ebbc80000a068eae600ef36b0d70514ff48122d0c2279022b794f1a"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/rg/vulkan.rs",
+      "baseline_sha256": "01cb0a81e191a87d250cd5404de2e12a09ebca4e52410beb128dd494d0c10964",
+      "candidate_sha256": "d6149b76fbfef86c481008e9434b062ebf6e250758851a939bfb8d9b8d58e654",
+      "production_at_review_sha256": "01cb0a81e191a87d250cd5404de2e12a09ebca4e52410beb128dd494d0c10964"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/device/submission.rs",
+      "baseline_sha256": "b6f86d0e75603ed78437ae9a25c7b7f5b420faeeb7b1c4af4ab3e8e0847df40d",
+      "candidate_sha256": "b57be6a0c0b572a2ad2ef26db041cfa34860503c70f466fc11f691b33f5629b1",
+      "production_at_review_sha256": "b6f86d0e75603ed78437ae9a25c7b7f5b420faeeb7b1c4af4ab3e8e0847df40d"
+    },
+    {
+      "source": "tiny-glade/crates/rhapsody/src/sync/timeline.rs",
+      "baseline_sha256": "504e0b5e0d3353ddfcb94ce1226e3e62c9e4028c2948c301afb31a16c1987a6a",
+      "candidate_sha256": "86bc8a02f95e1550fd8093300cf3325e9743ce42ae2643c243dcdfac9246703c",
+      "production_at_review_sha256": "504e0b5e0d3353ddfcb94ce1226e3e62c9e4028c2948c301afb31a16c1987a6a"
+    }
+  ],
+  "source_review": [
+    "所有变化只新增SubmitTrace/计数/mark，vkQueueSubmit和vkQueueSubmit2仅将原结果临时保存后原样map_err；wait_semaphores原TIMEOUT/错误匹配不变",
+    "rg原validate1→uses merge→resource locks→validate2→prepare→dependencies→device submit次序不变，capture与Prepared错误清理仍按原Result传播",
+    "原metadata大循环不逐cell计时，只有启用才统计三个metadata总长度；fixed phases12/counts6容量有界，当前各scope使用未超限",
+    "disabled初始化后的热路只有OnceLock读取和Option分支，不取Instant，不遍历metadata；new第一调用读取var_os可能分配OsString，不能称全进程从首次调用绝对零分配",
+    "启用输出忽略io::Result，不覆盖Vulkan错误；输出位于原锁生命周期内，会延长持锁时间，诊断用于阶段数量级归因，不作为无探针性能基准"
+  ],
+  "schema": "仅stderr诊断scope/phase/count，未改游戏/渲染API或原生算法",
+  "native_fact": "本诊断属于当前Rust工程观测，不声称逆向原生新业务；不用原码统计代替GPU实测",
+  "current_runtime": "作者仅rustfmt parse；独审未Cargo/GPU/生产写，root将唯一执行",
+  "next_validation": "进程启动前RHAPSODY_SUBMIT_TRACE=1，以同一严格真实world输入测一帧，区分prepare_states与actual queue/wait；保原稳态失败断言和全部draws"
+}

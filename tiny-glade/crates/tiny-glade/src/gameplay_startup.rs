@@ -17,6 +17,216 @@ use country_core::{
 };
 use crate::{render_host::HostTables, run_game::ApplicationShaderLibrary};
 
+#[cfg(any(windows, feature = "native-audio"))]
+pub(crate) type GameplayAudioStudio = country_core::resources::native_audio::NativeStudio;
+#[cfg(not(any(windows, feature = "native-audio")))]
+pub(crate) type GameplayAudioStudio = country_core::resources::audio_resources::DisabledStudio;
+
+/// 无 FMOD 的宿主仍执行原作加载与卸载状态机，事件实例进入真实 Disabled 分支。
+#[cfg(not(any(windows, feature = "native-audio")))]
+pub(crate) fn install_disabled_audio(app: &mut App) {
+    use country_core::{
+        resources::audio_resources::{AudioCore, DisabledEvent},
+        systems::audio::game_loading_audio::{
+            GameLoadingAudioState, init_game_loading_audio, loading_audio,
+        },
+    };
+    app.insert_resource(AudioCore::<GameplayAudioStudio> {
+        studio: None,
+        banks: Default::default(),
+    });
+    // 仍执行完整原构造；禁用状态来自此宿主真实的 None Studio。
+    let core = app.world().resource::<AudioCore<GameplayAudioStudio>>();
+    let shared = AudioCore::<GameplayAudioStudio> {
+        studio: None,
+        banks: core.banks.clone(),
+    };
+    app.insert_resource(system_critters::audio::CritterAudioCore::from_audio_core(shared));
+    app.insert_resource(GameLoadingAudioState::<DisabledEvent>::empty_after_samples());
+    app.add_systems(
+        bevy_app::Startup,
+        init_game_loading_audio::<GameplayAudioStudio>,
+    );
+    app.add_systems(
+        bevy_app::Update,
+        loading_audio::<GameplayAudioStudio>.in_set(crate::run_game::GameSystemSet(38)),
+    );
+}
+
+/// 原 Startup 注册链 140941191→140b65bc0→140b63200，以及 Update
+/// 1409411a0 的两个 Option 资源条件与 set38；使用宿主实际持有的同一音频后端。
+pub(crate) fn install_water_audio<
+    S: country_core::resources::audio_resources::Studio + Send + Sync + 'static,
+>(
+    app: &mut App,
+) {
+    use country_core::systems::audio::{water_ambience_audio, water_audio};
+    app.add_systems(
+        bevy_app::Startup,
+        (
+            water_audio::water_audio_init_system::<S>,
+            water_ambience_audio::water_ambience_audio_init_system::<S>,
+        ),
+    );
+    app.add_systems(
+        bevy_app::Update,
+        (
+            water_audio::water_audio_system::<S>.run_if(
+                |state: Option<Res<water_audio::WaterAudioState<S::Event>>>| state.is_some(),
+            ),
+            water_ambience_audio::water_ambience_audio_system::<S>.run_if(
+                |state: Option<Res<water_ambience_audio::WaterAmbienceAudio<S::Event>>>| {
+                    state.is_some()
+                },
+            ),
+        )
+            .chain_ignore_deferred()
+            .in_set(crate::run_game::GameSystemSet(38)),
+    );
+}
+
+#[cfg(all(test, not(any(windows, feature = "native-audio"))))]
+mod disabled_audio_tests {
+    use super::*;
+    use country_core::{
+        resources::{
+            audio_resources::{AudioCore, AudioInstance, DisabledEvent},
+            time::GameTime,
+        },
+        systems::{
+            audio::game_loading_audio::GameLoadingAudioState,
+            save::load_game::{StartupRevealFinished, StartupRevealStarted},
+        },
+    };
+
+    #[test]
+    fn water_startup_publishes_the_shared_grid_even_without_fmod() {
+        use country_core::systems::audio::{
+            water_ambience_audio::{WaterAmbienceAudio, WaterAudioGrid},
+            water_audio::WaterAudioState,
+        };
+        let mut app = App::new();
+        app.insert_resource(AudioCore::<GameplayAudioStudio> {
+            studio: None,
+            banks: Default::default(),
+        });
+        install_water_audio::<GameplayAudioStudio>(&mut app);
+        app.world_mut().run_schedule(bevy_app::Startup);
+        let grid = app.world().resource::<WaterAudioGrid>();
+        assert_eq!(grid.cells.len(), 100);
+        assert!(
+            grid.cells
+                .iter()
+                .all(|cell| cell.bits == 0 && cell.sums == [0; 2])
+        );
+        assert_eq!(
+            app.world()
+                .resource::<WaterAmbienceAudio<DisabledEvent>>()
+                .loops
+                .len(),
+            100
+        );
+        assert_eq!(
+            app.world()
+                .resource::<WaterAudioState<DisabledEvent>>()
+                .loops
+                .len(),
+            4
+        );
+    }
+
+    #[test]
+    fn demo_skips_both_water_audio_owners_and_their_update_consumers() {
+        use country_core::systems::{
+            audio::{
+                water_ambience_audio::{WaterAmbienceAudio, WaterAudioGrid},
+                water_audio::WaterAudioState,
+            },
+            backend::input::translate_input::DemoModeEnabled,
+        };
+        let mut app = App::new();
+        app.insert_resource(AudioCore::<GameplayAudioStudio> {
+            studio: None,
+            banks: Default::default(),
+        });
+        app.insert_resource(DemoModeEnabled(true));
+        install_water_audio::<GameplayAudioStudio>(&mut app);
+        // Demo 无状态资源时，原 resource_exists 条件必须阻止 Update 借用其它游戏资源。
+        app.update();
+        assert!(!app.world().contains_resource::<WaterAudioGrid>());
+        assert!(
+            !app.world()
+                .contains_resource::<WaterAmbienceAudio<DisabledEvent>>()
+        );
+        assert!(
+            !app.world()
+                .contains_resource::<WaterAudioState<DisabledEvent>>()
+        );
+    }
+
+    #[test]
+    fn host_disabled_audio_keeps_startup_reveal_and_unload_lifecycle() {
+        let mut app = App::new();
+        app.init_resource::<GameTime>();
+        app.add_event::<StartupRevealStarted>();
+        app.add_event::<StartupRevealFinished>();
+        install_disabled_audio(&mut app);
+        assert!(
+            app.world()
+                .resource::<GameLoadingAudioState<DisabledEvent>>()
+                .snapshot
+                .is_none()
+        );
+
+        app.update();
+        assert!(matches!(
+            app.world()
+                .resource::<GameLoadingAudioState<DisabledEvent>>()
+                .snapshot,
+            Some(AudioInstance::Disabled)
+        ));
+        let core = app.world().resource::<AudioCore<GameplayAudioStudio>>();
+        assert!(core.studio.is_none());
+        assert!(core.banks.is_empty());
+        assert!(matches!(
+            core.instantiate_audio("event:/Critters/Sheep"),
+            AudioInstance::Disabled
+        ));
+
+        app.world_mut().send_event(StartupRevealStarted);
+        app.world_mut().send_event(StartupRevealFinished);
+        app.update();
+        assert!(
+            app.world()
+                .resource::<GameLoadingAudioState<DisabledEvent>>()
+                .snapshot
+                .is_none()
+        );
+
+        // 执行卸载消费者使用的真实状态方法，随后由宿主 set38 消费计时。
+        app.world_mut().resource_scope(
+            |world, mut state: Mut<GameLoadingAudioState<DisabledEvent>>| {
+                state.arm_after_unload(world.resource::<AudioCore<GameplayAudioStudio>>());
+            },
+        );
+        app.world_mut().resource_mut::<GameTime>().delta = 1.0;
+        app.update();
+        let state = app
+            .world()
+            .resource::<GameLoadingAudioState<DisabledEvent>>();
+        assert!(state.loading);
+        assert!(matches!(state.snapshot, Some(AudioInstance::Disabled)));
+        app.world_mut().resource_mut::<GameTime>().delta = 0.125;
+        app.update();
+        let state = app
+            .world()
+            .resource::<GameLoadingAudioState<DisabledEvent>>();
+        assert!(!state.loading);
+        assert!(state.snapshot.is_none());
+        assert_eq!(state.timer, 1.125);
+    }
+}
+
 #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GameplayGpuPreStartup { Inputs, Atlases, Nani }
 
@@ -47,6 +257,13 @@ pub fn install_gameplay_device_runtime(
     crate::screenshot::shared_texture_capture::install(app);
     #[cfg(any(windows, feature = "native-audio"))]
     crate::audio_host::install(app, &installed)?;
+    install_water_audio::<GameplayAudioStudio>(app);
+    // 原 None Studio 仍执行完整日照更新；feature 只选择音频后端。
+    #[cfg(not(any(windows, feature = "native-audio")))]
+    app.add_systems(bevy_app::Update,
+        country_core::systems::time_of_day::time_of_day::<GameplayAudioStudio>
+            .in_set(crate::run_game::GameSystemSet(36))
+            .run_if(crate::run_game::is_gameplay_active));
     crate::world_terrain::install_terrain_startup(app, hosts.shaders.clone(), installed.clone());
     crate::world_terrain::install_grass_startup(app, hosts.shaders.clone());
     install_world_visual_startups(app, hosts.shaders.clone(), installed.clone(), demo_flag(app));
@@ -200,6 +417,12 @@ pub fn install_gameplay_gpu_startup(
     let config = app.world().resource::<GameConfig>();
     let demo = config.dev.demo;
     let watching = config.dev.live_link();
+    use country_core::resources::walls::decorator_subtype::{
+        DecoratorMeshLibrary, DerivedDecoratorSubtypes,
+    };
+    // 原DecoratorPlugin的两个真实空库；保留run_game已创建的同一owner。
+    app.init_resource::<DerivedDecoratorSubtypes>();
+    app.init_resource::<DecoratorMeshLibrary>();
     app.init_resource::<PrefabLibrary>();
     app.init_resource::<MeshAtlasLibrary>();
     // ForestPlugin (InteractableForestPlacements) is mounted by run_game::add_original_plugins;
@@ -260,7 +483,7 @@ pub fn install_gameplay_gpu_startup(
         bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
         (move |session: Res<country_core::resources::session::ActiveSession>,
                settings: Res<country_core::resources::glade_settings::GladeSettings>,
-               audio: Res<country_core::resources::audio_resources::AudioCore<country_core::resources::native_audio::NativeStudio>>,
+               audio: Res<country_core::resources::audio_resources::AudioCore<GameplayAudioStudio>>,
                meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
                shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
             system_critters::startup_critters::startup_critters(
@@ -282,7 +505,7 @@ pub fn install_gameplay_gpu_startup(
         bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
         (move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
             shaders: Res<ApplicationShaderLibrary>, ssbos: Res<AssetSsboLibrary>,
-            audio: Res<country_core::resources::audio_resources::AudioCore<country_core::resources::native_audio::NativeStudio>>,
+            audio: Res<country_core::resources::audio_resources::AudioCore<GameplayAudioStudio>>,
             mut birds: ResMut<system_critters::bird_spots::BirdSpotManager>,
             mut pending: Option<ResMut<country_core::resources::critters::sheep::control::PendingSheepSnapshot>>,
             mut commands: Commands| {
@@ -378,6 +601,14 @@ pub fn install_gameplay_gpu_startup(
         crate::loading_graph::initialize_grading_assets(world, &input_hosts, &input_root)
             .expect("original gameplay grading LUT startup");
     }).in_set(GameplayGpuPreStartup::Inputs));
+    // 原独立PreStartup三资源系统；不借此挂载尚未完整恢复的visual host。
+    let decorator_root = installed.clone();
+    app.add_systems(PreStartup,
+        move |mut library: ResMut<DecoratorMeshLibrary>,
+              assets: Res<AssetMeshLibrary>, watch: Res<MeshWatch>| {
+            system_decorator::load_decorators::load_decorators(
+                &decorator_root, &mut library, &assets, &watch, demo);
+        });
     let prefab_root = installed.join("assets/prefabs");
     app.add_systems(PreStartup,
         (move |mut prefabs: ResMut<PrefabLibrary>, mut watcher: Option<ResMut<PrefabWatcher>>| {

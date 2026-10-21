@@ -1,0 +1,268 @@
+// 原 validate_blueprints539B 与实际回调8161B；完整依赖必须来自同一个 App World。
+#[allow(clippy::too_many_arguments)]
+pub fn validate_blueprints(
+    blueprints: Res<DecoratorBlueprints>,
+    walls: Res<country_core::resources::walls::public_walls::PublicWalls>,
+    mut storage: ResMut<DecoratorStorage>,
+    deferred: Res<crate::deferred_decorator_history::DeferredDecoratorEditHistory>,
+    raycast: Res<RaycastWorld>,
+    roofs: bevy_ecs::system::Query<&country_core::resources::roofs::roof_shape::Roof>,
+    derived: country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoResources,
+    mut backup: ResMut<crate::backup::DecoratorBackup>,
+    dispatcher: Res<crate::ui_systems::ui_decorator_affordance_dispatch::DecoratorAffordanceDispatcher>,
+    mut stream: ResMut<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,
+    transforms: Res<country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>,
+    mut outlines: bevy_ecs::event::EventWriter<country_core::systems::wall::structure_outline::OutlineWallCmd>,
+    cursor: Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,
+    mut mute: bevy_ecs::event::EventWriter<crate::audio::op_preview_audio::MutePreviewDecoratorOpSounds>,
+) {
+    // 原顺序无条件标记 Storage changed 并只清元数据，随后才检查待提交 records。
+    storage.clear_modification_tracking();
+    if deferred.records.is_empty() {
+        return;
+    }
+    let mut specific_feedback = false;
+    let derived = derived.as_view();
+    let rejected = deferred.potentially_surviving_affected_decorators().any(|locator| {
+        !validate_affected_decorator(
+            locator, &blueprints, &storage, &walls, &roofs, derived, &transforms,
+            &raycast, &mut stream, &mut outlines, &mut specific_feedback,
+        )
+    });
+    if rejected && backup.created {
+        if !specific_feedback {
+            if let Some(ty) = dispatcher.decorator_ty() {
+                crate::ui_systems::ui_place_decorator::show_decorator_icon(ty.0, cursor.0, &mut stream);
+            }
+        }
+        backup.state = 2;
+        mute.write(crate::audio::op_preview_audio::MutePreviewDecoratorOpSounds);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_affected_decorator(
+    locator: &country_core::resources::walls::decorator::DecoratorLocator,
+    blueprints: &DecoratorBlueprints,
+    storage: &DecoratorStorage,
+    walls: &country_core::resources::walls::public_walls::PublicWalls,
+    roofs: &bevy_ecs::system::Query<&country_core::resources::roofs::roof_shape::Roof>,
+    derived: country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoView<'_>,
+    transforms: &country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
+    raycast: &RaycastWorld,
+    stream: &mut country_core::systems::ui::signifiers::signifier_create::UiSignifierStream,
+    outlines: &mut bevy_ecs::event::EventWriter<country_core::systems::wall::structure_outline::OutlineWallCmd>,
+    specific_feedback: &mut bool,
+) -> bool {
+    use crate::cull_oob_decorators::{DecoratorLocationCheckResult, is_decorator_location_valid};
+    let id = DecoratorId(locator.decorator);
+    // 原140a1c5f0按地址与id直接查桶，不先把同地址编辑折叠或通过另一d2s索引改地址。
+    let Some(info) = storage.get(locator.addr).and_then(|bucket| bucket.get(id)) else {
+        return true;
+    };
+    let Some(blueprint) = blueprints.get(id.0) else {
+        return false;
+    };
+    let result = is_decorator_location_valid(id, info, locator.addr, walls, roofs, derived, transforms, raycast);
+    // 原回调在分派 Valid/Invalid 前仍必需读取 subtype 与当前缓存变换。
+    let subtype = derived.subtype(id).0;
+    let transform = transforms.transform(id.0);
+    if let DecoratorLocationCheckResult::Invalid(reason) = result {
+        show_intended_placement(subtype, info.rank(), &transform, derived, stream, false);
+        *specific_feedback = true;
+        show_invalid_location_feedback(id, reason, &transform, walls, stream, outlines);
+        return false;
+    }
+    let DecoratorStorageAddr::Wall(wall) = locator.addr else {
+        return true;
+    };
+    let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
+        return true;
+    };
+    let shape = validation_overlap_shape(collision);
+    let Some(source) = raycast.decorator_overlaps_with_others(&shape, id, wall, false) else {
+        return true;
+    };
+    *specific_feedback = true;
+    if source.tag() == 3 {
+        let other_id = DecoratorId(u32::from_le_bytes(source.0[4..8].try_into().unwrap()));
+        let other_addr = match u64::from_le_bytes(source.0[8..16].try_into().unwrap()) {
+            0 => DecoratorStorageAddr::Wall(country_core::resources::walls::WallId(u64::from_le_bytes(source.0[16..24].try_into().unwrap()))),
+            1 => DecoratorStorageAddr::Terrain,
+            2 => DecoratorStorageAddr::Stair,
+            tag => panic!("invalid decorator source storage tag {tag}"),
+        };
+        let other = storage.get(other_addr).and_then(|bucket| bucket.get(other_id))
+            .expect("blocking decorator source has no owning record");
+        let family = other.ty.wrapping_sub(0x38);
+        // 原898c..89a1：非该建筑装饰族继续迭代，但保留前面已写的 specific 标志。
+        if family >= 8 || family == 6 {
+            return true;
+        }
+        let other_subtype = derived.subtype(other_id).0;
+        // 原查找次序先 required collision_outline，后 required transform。
+        let other_outline = derived.mesh_library().get_collision_outline(
+            country_core::resources::walls::decorator_subtype::DecoratorLibKey::new(other_subtype, other.rank()));
+        let mut other_transform = transforms.transform(other_id.0);
+        if other_subtype == 3 {
+            if let Some(transform) = blueprints.get(other_id.0).and_then(|blueprint| blueprint.transform) {
+                other_transform = transform;
+            }
+        }
+        let affine = validation_affine(&other_transform);
+        other_outline.display(&affine, stream, true);
+    }
+    show_intended_placement(subtype, info.rank(), &transform, derived, stream, false);
+    false
+}
+
+/// 原140b26a80 tuple专化：external * mesh.local；不同于另一 into_transformed_shape 专化。
+fn validation_overlap_shape(mesh: &PositionedDecoratorMesh) -> country_core::systems::collision::world::OffsetColliderTransform {
+    let external = utils::iso_transform::IsoTransform::from_translation_rotation(mesh.position, mesh.rotation);
+    let pose = mesh.mesh.local_transform().nested_in(&external);
+    country_core::systems::collision::world::OffsetColliderTransform {
+        position: pose.translation,
+        rotation: pose.rotation,
+        shape: Arc::clone(&mesh.mesh.shape.as_ref().expect("blueprint collision has no physical shape").0),
+    }
+}
+
+fn validation_affine(transform: &country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform) -> glam::Affine3A {
+    glam::Affine3A::from_scale_rotation_translation(transform.scale, transform.rotation, transform.translation)
+}
+
+fn show_intended_placement(
+    subtype: u8,
+    rank: u8,
+    transform: &country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform,
+    derived: country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoView<'_>,
+    stream: &mut country_core::systems::ui::signifiers::signifier_create::UiSignifierStream,
+    dashed: bool,
+) {
+    let outline = derived.mesh_library().get_collision_outline(
+        country_core::resources::walls::decorator_subtype::DecoratorLibKey::new(subtype, rank));
+    let affine = validation_affine(transform);
+    outline.display(&affine, stream, dashed);
+}
+
+/// 原434B：prepared XZ 与真实 arch heights zip，减 padding 后按原闭合门追加首点。
+fn show_max_wall_y(
+    wall: &country_core::resources::walls::public_wall_state::PublicWallState,
+    padding: f32,
+    stream: &mut country_core::systems::ui::signifiers::signifier_create::UiSignifierStream,
+) {
+    let path = &wall.prepared_path.as_ref().expect("wall path has not been prepared").positions;
+    let heights = wall.arch_segment_heights().expect("wall arch heights have not been calculated");
+    let mut points: Vec<_> = path.iter().zip(heights).map(|(p,h)| Vec3::new(p[0], *h - padding, p[2])).collect();
+    if wall.shape().tag() != 2 {
+        points.push(*points.first().expect("empty maximum-wall-y outline"));
+    }
+    validation_debug_line(points, stream);
+}
+
+fn validation_debug_line(points: Vec<Vec3>, stream: &mut country_core::systems::ui::signifiers::signifier_create::UiSignifierStream) {
+    country_core::utils::debug_viz::DebugLine::new(points).dashed().line_width(3.0).show(stream);
+}
+
+fn feedback_point_coord(points: &[[f32; 3]], index: usize) -> (Vec3, utils::curve::CurveInternalCoord) {
+    use utils::curve::{CurveCoordSemanticThresholded3D, CurveInternalCoord, curve_slice::CurveSlice};
+    let coord = CurveInternalCoord::new_for_point_count(index, 0.0, points.len());
+    let view = CurveSlice::<[f32; 3], _, CurveCoordSemanticThresholded3D, Vec3, _>::from_coord_range_with_remap(
+        points, coord, coord, |_, point| Vec3::from_array(*point));
+    (view.sample_at_coord(coord), coord)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn show_invalid_location_feedback(
+    id: DecoratorId,
+    reason: crate::cull_oob_decorators::DecoratorLocationInvalidReason,
+    transform: &country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform,
+    walls: &country_core::resources::walls::public_walls::PublicWalls,
+    stream: &mut country_core::systems::ui::signifiers::signifier_create::UiSignifierStream,
+    outlines: &mut bevy_ecs::event::EventWriter<country_core::systems::wall::structure_outline::OutlineWallCmd>,
+) {
+    use crate::cull_oob_decorators::DecoratorLocationInvalidReason as Reason;
+    match reason {
+        Reason::WallCutoutBoundary { wall, coord } => {
+            let wall = walls.get(wall).expect("invalid location wall does not exist");
+            let path = &wall.prepared_path.as_ref().expect("wall path has not been prepared").positions;
+            let mut points = Vec::with_capacity(9);
+            for offset in -4..=4 {
+                let index = (coord.segment as u32).wrapping_add_signed(offset) as i32;
+                // 原此分支用独立第三高度表的 len 作范围门，不是 prepared point len。
+                if index < 0 || index >= wall.segment_heights.len() as i32 { continue; }
+                let (mut point, coordinate) = feedback_point_coord(path, index as usize);
+                let first = wall.segment_heights[coordinate.segment];
+                let height = (wall.segment_heights[coordinate.segment + 1] - first) * coordinate.t + first;
+                point.y = height + point.y;
+                points.push(point);
+            }
+            validation_debug_line(points, stream);
+        }
+        Reason::RoofBounds { position, direction, wall } => {
+            validation_debug_line(vec![position, position - direction * 2.0], stream);
+            outlines.write(country_core::systems::wall::structure_outline::OutlineWallCmd { wall, strength: 2.0, kind: 0 });
+        }
+        Reason::WallEnds { left_oob, right_oob, wall } => {
+            let wall = walls.get(wall).expect("invalid location wall does not exist");
+            if left_oob {
+                let bottom = Vec3::from_array(*wall.geometry.outline.first().expect("wall original outline is empty"));
+                let top = *wall.arch_segment_heights().expect("wall arch heights missing").first().expect("wall arch heights empty");
+                validation_debug_line(vec![bottom, Vec3::new(bottom.x, top, bottom.z)], stream);
+            }
+            if right_oob {
+                let bottom = Vec3::from_array(*wall.geometry.outline.last().expect("wall original outline is empty"));
+                let top = *wall.arch_segment_heights().expect("wall arch heights missing").last().expect("wall arch heights empty");
+                validation_debug_line(vec![bottom, Vec3::new(bottom.x, top, bottom.z)], stream);
+            }
+        }
+        Reason::SharpWallTurn { wall, coord } => {
+            let wall = walls.get(wall).expect("invalid location wall does not exist");
+            let path = &wall.prepared_path.as_ref().expect("wall path has not been prepared").positions;
+            let mut points = Vec::with_capacity(9);
+            for offset in -4..=4 {
+                let index = (coord.segment as u32).wrapping_add_signed(offset) as i32;
+                if index < 0 || index >= path.len() as i32 { continue; }
+                let (point, _) = feedback_point_coord(path, index as usize);
+                points.push(Vec3::new(point.x, transform.translation.y, point.z));
+            }
+            validation_debug_line(points, stream);
+        }
+        Reason::WallTop { padding, wall } => show_max_wall_y(walls.get(wall).expect("invalid location wall does not exist"), padding, stream),
+        Reason::BalconyUpperClearance { wall } => show_max_wall_y(walls.get(wall).expect("invalid location wall does not exist"), 0.0, stream),
+        Reason::WallCorner { wall, rectangle, corner } => {
+            let wall = walls.get(wall).expect("invalid location wall does not exist");
+            let point = rectangle.get_point(corner);
+            // 原595B最近坐标 kernel 复用唯一curve原语，不重新建一条不同长度缓存的curve。
+            let coordinate = utils::curve::approx_curve_coord(&wall.geometry.outline, point, |p| glam::Vec2::new(p[0], p[2]));
+            let first = wall.geometry.outline[coordinate.segment][1];
+            let next = wall.geometry.outline[coordinate.segment + 1][1];
+            let bottom = next * coordinate.t + first * (1.0 - coordinate.t);
+            validation_debug_line(vec![Vec3::new(point.x,bottom,point.y), Vec3::new(point.x,wall.max_y(),point.y)], stream);
+            show_delete_scribble(id, transform, stream);
+        }
+        Reason::WallLowerBoundary { wall } => {
+            let wall = walls.get(wall).expect("invalid location wall does not exist");
+            validation_debug_line(wall.geometry.outline.iter().copied().map(Vec3::from_array).collect(), stream);
+        }
+        Reason::FlatRoofForbidden | Reason::GableBandForbidden | Reason::MissingRoof => {}
+    }
+}
+
+/// 原473B闭包：真实命名网格/位置/旋转/scale.5/duration0，归共享builder与资源owner。
+fn show_delete_scribble(
+    id: DecoratorId,
+    transform: &country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform,
+    stream: &mut country_core::systems::ui::signifiers::signifier_create::UiSignifierStream,
+) {
+    use country_core::systems::ui::signifiers::signifier_factory::{SignifierEntityBuilder, SignifierFactory};
+    let position = transform.translation;
+    let rotation = transform.rotation;
+    let name = format!("despawn_decorator_{id:?}_{position:?}");
+    let factory = SignifierFactory::from_closure(&name, Arc::new(move |meshes,shaders,commands| {
+        vec![SignifierEntityBuilder::from_mesh_name("decorator_delete_scribble")
+            .animation_duration(0.0).position(position).rotation(rotation).scale(0.5)
+            .build(meshes,shaders,commands)]
+    }));
+    stream.write_factory(&factory);
+}

@@ -1,0 +1,20 @@
+--- a/tiny-glade/crates/tiny-glade/src/run_game.rs
++++ b/tiny-glade/crates/tiny-glade/src/run_game.rs
+@@ -890,6 +890,17 @@
+         system_decorator::decorator_visual::deco_differential_state::ChimneyAssemblyParams>>();
+     app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
+         system_decorator::decorator_visual::deco_differential_state::DoorStairsAssemblyParams>>();
++    // B DecoratorPlugin 的八成员组第六项属于原 set0x24（36），不推导组内顺序。
++    // 窗灯控制与组件由装饰物生产者、逐帧系统和 Nani 玻璃共同使用。
++    app.init_resource::<country_core::resources::window_lights::GlobalWindowLightsControl>();
++    app.add_event::<country_core::resources::events::LightWindowCmd>();
++    app.add_systems(bevy_app::Update,
++        system_decorator::window_lights::window_lights.in_set(GameSystemSet(36)));
++    // 仅安装原卸载函数中窗灯资源的重建片段，不代替其余 owner 的完整清理。
++    app.add_systems(
++        bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
++        system_decorator::window_lights::window_lights_on_glade_unload,
++    );
+     // Original native assembly uses this canonical event; it is not PlayClutterSoundCmd.
+     app.add_event::<country_core::systems::audio::PlayDecoratorSoundCmd>();
+     app.init_resource::<LiveDecoratorArchivist>();

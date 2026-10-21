@@ -1,0 +1,156 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140c9a210: 48 83 ec 58                 	subq	$0x58, %rsp
+140c9a214: 44 0f 29 44 24 40           	movaps	%xmm8, 0x40(%rsp)
+140c9a21a: 0f 29 7c 24 30              	movaps	%xmm7, 0x30(%rsp)
+140c9a21f: 0f 29 74 24 20              	movaps	%xmm6, 0x20(%rsp)
+140c9a224: f3 0f 10 62 10              	movss	0x10(%rdx), %xmm4
+140c9a229: f3 0f 10 5a 14              	movss	0x14(%rdx), %xmm3
+140c9a22e: 0f 28 c4                    	movaps	%xmm4, %xmm0
+140c9a231: f3 0f 59 c3                 	mulss	%xmm3, %xmm0
+140c9a235: 0f 57 c9                    	xorps	%xmm1, %xmm1
+140c9a238: 0f 2e c1                    	ucomiss	%xmm1, %xmm0
+140c9a23b: 0f 86 f4 01 00 00           	jbe	0x140c9a435 <.text+0xc99435>
+140c9a241: 49 83 f8 03                 	cmpq	$0x3, %r8
+140c9a245: 0f 87 02 02 00 00           	ja	0x140c9a44d <.text+0xc9944d>
+140c9a24b: f2 0f 10 32                 	movsd	(%rdx), %xmm6
+140c9a24f: f3 0f 16 c6                 	movshdup	%xmm6, %xmm0            # xmm0 = xmm6[1,1,3,3]
+140c9a253: 0f 57 05 96 b6 c8 01        	xorps	0x1c8b696(%rip), %xmm0  # 0x1429258f0
+140c9a25a: f2 0f 10 6a 08              	movsd	0x8(%rdx), %xmm5
+140c9a25f: 0f 28 ce                    	movaps	%xmm6, %xmm1
+140c9a262: 0f 16 c8                    	movlhps	%xmm0, %xmm1            # xmm1 = xmm1[0],xmm0[0]
+140c9a265: 0f c6 f1 24                 	shufps	$0x24, %xmm1, %xmm6     # xmm6 = xmm6[0,1],xmm1[2,0]
+140c9a269: f3 0f 10 05 ff b5 c8 01     	movss	0x1c8b5ff(%rip), %xmm0  # 0x142925870
+140c9a271: 0f 28 fc                    	movaps	%xmm4, %xmm7
+140c9a274: f3 0f 59 f8                 	mulss	%xmm0, %xmm7
+140c9a278: f3 0f 59 c3                 	mulss	%xmm3, %xmm0
+140c9a27c: 0f 28 d7                    	movaps	%xmm7, %xmm2
+140c9a27f: 0f c6 d0 00                 	shufps	$0x0, %xmm0, %xmm2      # xmm2 = xmm2[0,0],xmm0[0,0]
+140c9a283: 0f 59 d6                    	mulps	%xmm6, %xmm2
+140c9a286: 0f 28 ca                    	movaps	%xmm2, %xmm1
+140c9a289: 66 0f 15 ca                 	unpckhpd	%xmm2, %xmm1            # xmm1 = xmm1[1],xmm2[1]
+140c9a28d: 0f 58 ca                    	addps	%xmm2, %xmm1
+140c9a290: 0f 58 cd                    	addps	%xmm5, %xmm1
+140c9a293: f3 0f 10 15 4d fe cb 01     	movss	0x1cbfe4d(%rip), %xmm2  # 0x14295a0e8
+140c9a29b: f3 0f 59 e2                 	mulss	%xmm2, %xmm4
+140c9a29f: 44 0f 28 c4                 	movaps	%xmm4, %xmm8
+140c9a2a3: 44 0f c6 c0 00              	shufps	$0x0, %xmm0, %xmm8      # xmm8 = xmm8[0,0],xmm0[0,0]
+140c9a2a8: 44 0f 59 c6                 	mulps	%xmm6, %xmm8
+140c9a2ac: 41 0f 28 c0                 	movaps	%xmm8, %xmm0
+140c9a2b0: 66 41 0f 15 c0              	unpckhpd	%xmm8, %xmm0            # xmm0 = xmm0[1],xmm8[1]
+140c9a2b5: 41 0f 58 c0                 	addps	%xmm8, %xmm0
+140c9a2b9: 0f 58 c5                    	addps	%xmm5, %xmm0
+140c9a2bc: f3 0f 59 da                 	mulss	%xmm2, %xmm3
+140c9a2c0: 0f c6 e3 00                 	shufps	$0x0, %xmm3, %xmm4      # xmm4 = xmm4[0,0],xmm3[0,0]
+140c9a2c4: 0f 59 e6                    	mulps	%xmm6, %xmm4
+140c9a2c7: 0f 28 d4                    	movaps	%xmm4, %xmm2
+140c9a2ca: 66 0f 15 d4                 	unpckhpd	%xmm4, %xmm2            # xmm2 = xmm2[1],xmm4[1]
+140c9a2ce: 0f 58 d4                    	addps	%xmm4, %xmm2
+140c9a2d1: 0f 58 d5                    	addps	%xmm5, %xmm2
+140c9a2d4: 0f c6 fb 00                 	shufps	$0x0, %xmm3, %xmm7      # xmm7 = xmm7[0,0],xmm3[0,0]
+140c9a2d8: 0f 59 fe                    	mulps	%xmm6, %xmm7
+140c9a2db: 0f 28 e7                    	movaps	%xmm7, %xmm4
+140c9a2de: 66 0f 15 e7                 	unpckhpd	%xmm7, %xmm4            # xmm4 = xmm4[1],xmm7[1]
+140c9a2e2: 0f 58 e7                    	addps	%xmm7, %xmm4
+140c9a2e5: 0f 58 e5                    	addps	%xmm5, %xmm4
+140c9a2e8: 48 8d 05 f1 47 e9 01        	leaq	0x1e947f1(%rip), %rax   # 0x142b2eae0
+140c9a2ef: 4a 63 14 80                 	movslq	(%rax,%r8,4), %rdx
+140c9a2f3: 48 01 c2                    	addq	%rax, %rdx
+140c9a2f6: ff e2                       	jmpq	*%rdx
+140c9a2f8: 0f 5c e2                    	subps	%xmm2, %xmm4
+140c9a2fb: 0f 28 cc                    	movaps	%xmm4, %xmm1
+140c9a2fe: 0f 59 cc                    	mulps	%xmm4, %xmm1
+140c9a301: f3 0f 16 d9                 	movshdup	%xmm1, %xmm3            # xmm3 = xmm1[1,1,3,3]
+140c9a305: f3 0f 58 d9                 	addss	%xmm1, %xmm3
+140c9a309: 0f 57 c9                    	xorps	%xmm1, %xmm1
+140c9a30c: f3 0f 51 cb                 	sqrtss	%xmm3, %xmm1
+140c9a310: f3 0f 10 1d ec b5 c8 01     	movss	0x1c8b5ec(%rip), %xmm3  # 0x142925904
+140c9a318: f3 0f 5e d9                 	divss	%xmm1, %xmm3
+140c9a31c: f3 0f 12 db                 	movsldup	%xmm3, %xmm3            # xmm3 = xmm3[0,0,2,2]
+140c9a320: 0f 59 dc                    	mulps	%xmm4, %xmm3
+140c9a323: 0f 5c c2                    	subps	%xmm2, %xmm0
+140c9a326: 0f 28 c8                    	movaps	%xmm0, %xmm1
+140c9a329: 0f 59 c8                    	mulps	%xmm0, %xmm1
+140c9a32c: f3 0f 16 e9                 	movshdup	%xmm1, %xmm5            # xmm5 = xmm1[1,1,3,3]
+140c9a330: f3 0f 58 e9                 	addss	%xmm1, %xmm5
+140c9a334: e9 c4 00 00 00              	jmp	0x140c9a3fd <.text+0xc993fd>
+140c9a339: 0f 5c c1                    	subps	%xmm1, %xmm0
+140c9a33c: 0f 28 d0                    	movaps	%xmm0, %xmm2
+140c9a33f: 0f 59 d0                    	mulps	%xmm0, %xmm2
+140c9a342: f3 0f 16 da                 	movshdup	%xmm2, %xmm3            # xmm3 = xmm2[1,1,3,3]
+140c9a346: f3 0f 58 da                 	addss	%xmm2, %xmm3
+140c9a34a: 0f 57 d2                    	xorps	%xmm2, %xmm2
+140c9a34d: f3 0f 51 d3                 	sqrtss	%xmm3, %xmm2
+140c9a351: f3 0f 10 1d ab b5 c8 01     	movss	0x1c8b5ab(%rip), %xmm3  # 0x142925904
+140c9a359: f3 0f 5e da                 	divss	%xmm2, %xmm3
+140c9a35d: f3 0f 12 db                 	movsldup	%xmm3, %xmm3            # xmm3 = xmm3[0,0,2,2]
+140c9a361: 0f 59 d8                    	mulps	%xmm0, %xmm3
+140c9a364: 0f 5c e1                    	subps	%xmm1, %xmm4
+140c9a367: 0f 28 c4                    	movaps	%xmm4, %xmm0
+140c9a36a: 0f 59 c4                    	mulps	%xmm4, %xmm0
+140c9a36d: f3 0f 16 e8                 	movshdup	%xmm0, %xmm5            # xmm5 = xmm0[1,1,3,3]
+140c9a371: f3 0f 58 e8                 	addss	%xmm0, %xmm5
+140c9a375: 0f 28 c4                    	movaps	%xmm4, %xmm0
+140c9a378: e9 80 00 00 00              	jmp	0x140c9a3fd <.text+0xc993fd>
+140c9a37d: 0f 5c cc                    	subps	%xmm4, %xmm1
+140c9a380: 0f 28 c1                    	movaps	%xmm1, %xmm0
+140c9a383: 0f 59 c1                    	mulps	%xmm1, %xmm0
+140c9a386: f3 0f 16 d8                 	movshdup	%xmm0, %xmm3            # xmm3 = xmm0[1,1,3,3]
+140c9a38a: f3 0f 58 d8                 	addss	%xmm0, %xmm3
+140c9a38e: 0f 57 c0                    	xorps	%xmm0, %xmm0
+140c9a391: f3 0f 51 c3                 	sqrtss	%xmm3, %xmm0
+140c9a395: f3 0f 10 1d 67 b5 c8 01     	movss	0x1c8b567(%rip), %xmm3  # 0x142925904
+140c9a39d: f3 0f 5e d8                 	divss	%xmm0, %xmm3
+140c9a3a1: f3 0f 12 db                 	movsldup	%xmm3, %xmm3            # xmm3 = xmm3[0,0,2,2]
+140c9a3a5: 0f 59 d9                    	mulps	%xmm1, %xmm3
+140c9a3a8: 0f 5c d4                    	subps	%xmm4, %xmm2
+140c9a3ab: 0f 28 c2                    	movaps	%xmm2, %xmm0
+140c9a3ae: 0f 59 c2                    	mulps	%xmm2, %xmm0
+140c9a3b1: f3 0f 16 e8                 	movshdup	%xmm0, %xmm5            # xmm5 = xmm0[1,1,3,3]
+140c9a3b5: f3 0f 58 e8                 	addss	%xmm0, %xmm5
+140c9a3b9: 0f 28 c2                    	movaps	%xmm2, %xmm0
+140c9a3bc: eb 3f                       	jmp	0x140c9a3fd <.text+0xc993fd>
+140c9a3be: 0f 5c d0                    	subps	%xmm0, %xmm2
+140c9a3c1: 0f 28 da                    	movaps	%xmm2, %xmm3
+140c9a3c4: 0f 59 da                    	mulps	%xmm2, %xmm3
+140c9a3c7: f3 0f 16 e3                 	movshdup	%xmm3, %xmm4            # xmm4 = xmm3[1,1,3,3]
+140c9a3cb: f3 0f 58 e3                 	addss	%xmm3, %xmm4
+140c9a3cf: 0f 57 db                    	xorps	%xmm3, %xmm3
+140c9a3d2: f3 0f 51 dc                 	sqrtss	%xmm4, %xmm3
+140c9a3d6: f3 0f 10 25 26 b5 c8 01     	movss	0x1c8b526(%rip), %xmm4  # 0x142925904
+140c9a3de: f3 0f 5e e3                 	divss	%xmm3, %xmm4
+140c9a3e2: f3 0f 12 dc                 	movsldup	%xmm4, %xmm3            # xmm3 = xmm4[0,0,2,2]
+140c9a3e6: 0f 59 da                    	mulps	%xmm2, %xmm3
+140c9a3e9: 0f 5c c8                    	subps	%xmm0, %xmm1
+140c9a3ec: 0f 28 c1                    	movaps	%xmm1, %xmm0
+140c9a3ef: 0f 59 c1                    	mulps	%xmm1, %xmm0
+140c9a3f2: f3 0f 16 e8                 	movshdup	%xmm0, %xmm5            # xmm5 = xmm0[1,1,3,3]
+140c9a3f6: f3 0f 58 e8                 	addss	%xmm0, %xmm5
+140c9a3fa: 0f 28 c1                    	movaps	%xmm1, %xmm0
+140c9a3fd: 0f 57 c9                    	xorps	%xmm1, %xmm1
+140c9a400: f3 0f 51 cd                 	sqrtss	%xmm5, %xmm1
+140c9a404: f3 0f 10 15 f8 b4 c8 01     	movss	0x1c8b4f8(%rip), %xmm2  # 0x142925904
+140c9a40c: f3 0f 5e d1                 	divss	%xmm1, %xmm2
+140c9a410: f3 0f 12 ca                 	movsldup	%xmm2, %xmm1            # xmm1 = xmm2[0,0,2,2]
+140c9a414: 0f 59 c8                    	mulps	%xmm0, %xmm1
+140c9a417: 0f 16 d9                    	movlhps	%xmm1, %xmm3            # xmm3 = xmm3[0],xmm1[0]
+140c9a41a: 0f 11 19                    	movups	%xmm3, (%rcx)
+140c9a41d: 48 89 c8                    	movq	%rcx, %rax
+140c9a420: 0f 28 74 24 20              	movaps	0x20(%rsp), %xmm6
+140c9a425: 0f 28 7c 24 30              	movaps	0x30(%rsp), %xmm7
+140c9a42a: 44 0f 28 44 24 40           	movaps	0x40(%rsp), %xmm8
+140c9a430: 48 83 c4 58                 	addq	$0x58, %rsp
+140c9a434: c3                          	retq
+140c9a435: 48 8d 0d 30 42 e9 01        	leaq	0x1e94230(%rip), %rcx   # 0x142b2e66c
+140c9a43c: 4c 8d 05 8d 42 e9 01        	leaq	0x1e9428d(%rip), %r8    # 0x142b2e6d0
+140c9a443: ba 23 00 00 00              	movl	$0x23, %edx
+140c9a448: e8 e3 ef c3 01              	callq	0x1428d9430 <.text+0x28d8430>
+140c9a44d: 48 8d 0d cc 43 e9 01        	leaq	0x1e943cc(%rip), %rcx   # 0x142b2e820
+140c9a454: 4c 8d 05 25 44 e9 01        	leaq	0x1e94425(%rip), %r8    # 0x142b2e880
+140c9a45b: ba 28 00 00 00              	movl	$0x28, %edx
+140c9a460: e8 cb ef c3 01              	callq	0x1428d9430 <.text+0x28d8430>
+140c9a465: cc                          	int3

@@ -1,0 +1,25 @@
+--- a/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/decorator.rs
+@@ -191,17 +191,17 @@
+     }
+ }
+ 
+-/// B DecoratorLocator：装饰定位（0x140833240 = new，I；字段布局 U）。
++/// B 140833240/15B：定位键由实际存储地址和独立装饰 ID 组成。
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+ pub struct DecoratorLocator {
+-    /// I：目的存储地址（U：完整字段表待取证）。
+     pub addr: super::decorator_storage::DecoratorStorageAddr,
++    /// 原构造器 +0x10 的 u32；不能用可变 Info.word2c 代替。
++    pub decorator: u32,
+ }
+ 
+ impl DecoratorLocator {
+-    /// 0x140833240（I）。
+-    pub fn new(addr: super::decorator_storage::DecoratorStorageAddr) -> Self {
+-        Self { addr }
++    pub fn new(addr: super::decorator_storage::DecoratorStorageAddr, decorator: u32) -> Self {
++        Self { addr, decorator }
+     }
+ }
+ 

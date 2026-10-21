@@ -1,0 +1,75 @@
+--- a/tiny-glade/crates/systems/decorator/src/restore_archived_decorators.rs
++++ b/tiny-glade/crates/systems/decorator/src/restore_archived_decorators.rs
+@@ -126,7 +126,7 @@
+ 
+ /// 单装饰归档状态覆盖（0x140817a40 步骤 4 内联）：archivist 条目的
+ /// `ObservedDecoratorInfo` 解码为 `DecoratorInfo` → 目标桶 insert → 按
+-/// `state==2` 选择 d2s insert/update。
++/// 插入返回的旧Option选择 d2s insert/update，不改输入flags。
+ ///
+ /// 返回是否写入（归档条目缺失 → false，不伪造默认状态）。
+ pub fn overwrite_decorator_state_from_archivist<C: Send + Sync + 'static>(
+@@ -144,8 +144,8 @@
+     let decorator_info = crate::apply_decorator_op::bytes_to_info(&info.0);
+     let addr = addr_from_address(address);
+     let bucket = storage.get_or_insert_default(addr);
+-    bucket.insert(DecoratorId(id), decorator_info);
+-    if decorator_info.state == 2 {
++    let old = bucket.insert(DecoratorId(id), decorator_info);
++    if old.is_none() {
+         storage.decorator_to_storage.insert(DecoratorId(id), addr);
+     } else {
+         storage.decorator_to_storage.update(DecoratorId(id), addr);
+@@ -182,7 +182,7 @@
+         let mut archivist = DecoratorArchivist::<()>::default();
+         let info = country_core::resources::walls::decorator::DecoratorInfo {
+             decorator_id: 5,
+-            state: 2,
++            state: 0,
+             ..Default::default()
+         };
+         let mut tracked = TrackedDecorators::default();
+@@ -202,7 +202,7 @@
+         let entry = storage
+             .lookup_decorator_info(DecoratorId(5))
+             .expect("restored entry");
+-        assert_eq!(entry.state, 2);
++        assert_eq!(entry.state, 0);
+         assert_eq!(
+             storage.lookup_storage(DecoratorId(5)),
+             Some(DecoratorStorageAddr::Wall(WallId(9)))
+@@ -221,4 +221,33 @@
+         ));
+         assert!(storage.lookup_decorator_info(DecoratorId(5)).is_none());
+     }
+-}
++
++    #[test]
++    fn overwrite_uses_old_option_for_both_legal_flags_and_preserves_partial_failure() {
++        use std::panic::{AssertUnwindSafe, catch_unwind};
++        use country_core::resources::walls::decorator::DecoratorInfo;
++        for flag in [0, 1] {
++            let address = DecoratorStorageAddress::Wall(ArchivedWallId(9));
++            let addr = DecoratorStorageAddr::Wall(WallId(9));
++            let id = DecoratorId(5);
++            let info = DecoratorInfo { decorator_id: id.0, state: flag, u45: 1 - flag, u28: 0x7fc1_2345, ..Default::default() };
++            let mut archive = DecoratorArchivist::<()>::default();
++            let mut tracked = TrackedDecorators::default();
++            tracked.items.insert(id.0, ObservedDecoratorInfo(crate::apply_decorator_op::info_to_bytes(info)));
++            archive.walls.insert(ArchivedWallId(9), tracked);
++            let mut storage = DecoratorStorage::default();
++            assert!(overwrite_decorator_state_from_archivist(&mut storage, &archive, address, id.0));
++            assert_eq!(storage.lookup_decorator_info(id), Some(&info));
++            assert_eq!(storage.lookup_storage(id), Some(addr));
++            // 已有旧值必须走update，重复恢复不触发insert冲突。
++            assert!(overwrite_decorator_state_from_archivist(&mut storage, &archive, address, id.0));
++            assert_eq!(storage.lookup_decorator_info(id), Some(&info));
++            let mut conflict = DecoratorStorage::default();
++            conflict.decorator_to_storage.insert(id, DecoratorStorageAddr::Terrain);
++            assert!(catch_unwind(AssertUnwindSafe(|| overwrite_decorator_state_from_archivist(&mut conflict, &archive, address, id.0))).is_err());
++            assert_eq!(conflict.get(addr).unwrap().get(id), Some(&info));
++            assert!(conflict.get(addr).unwrap().modified_ids.contains(&id.0));
++        }
++    }
++
++}

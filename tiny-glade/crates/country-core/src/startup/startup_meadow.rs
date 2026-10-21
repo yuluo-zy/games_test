@@ -159,7 +159,9 @@ mod tests {
         use crate::render::{mesh::Mesh, shader::RasterShaderProgram, test_device::TestDevice};
         use crate::resources::session::{GladeType, SessionId, SessionMeta};
         use bevy_ecs::world::{CommandQueue, World};
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade");
+        let root = std::env::var_os("TG_INSTALL_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade"));
         let meshes = AssetMeshLibrary::new();
         let shaders = AssetShaderLibrary::new();
         let watch = MeshWatch::new(false);

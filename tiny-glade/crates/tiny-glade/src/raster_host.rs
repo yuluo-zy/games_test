@@ -46,7 +46,7 @@ use country_core::{
 };
 use hashbrown::HashMap as HbMap;
 use parking_lot::Mutex;
-use rhapsody::bindless::{BindlessParameters, BindlessResource};
+use rhapsody::bindless::BindlessResource;
 use rhapsody::{
     pipeline::RasterPipelineOpts, resource::DynamicConstants, resource::DynamicConstantsChunk,
     rg::AshCommandBackend, rg::Attachment, rg::AttachmentArray, rg::AttachmentCache,
@@ -441,6 +441,19 @@ impl RasterShared {
     /// and written by the raster callback. It must not be replaced per pass.
     pub fn dynamic_constants(&self) -> &Mutex<DynamicConstants> {
         &self.dynamic
+    }
+
+    /// 只克隆本 App 已有 owner；禁止把另一个设备的常量页接入当前 session。
+    pub(crate) fn dynamic_constants_owner(
+        &self,
+        expected_device: &Arc<rhapsody::device::Device>,
+    ) -> rhapsody::Result<Arc<Mutex<DynamicConstants>>> {
+        if !Arc::ptr_eq(&self.device, expected_device) {
+            return Err(rhapsody::Error::invalid_usage(
+                "App constants belong to another device",
+            ));
+        }
+        Ok(self.dynamic.clone())
     }
 
     pub fn new(
@@ -1589,6 +1602,8 @@ impl PassHost for RasterPassHost {
             api.set_default_view_and_scissor(extent);
             api.set_stencil_ref(0);
 
+            let mut page_cursor = shared.shaders.page_cursor();
+            let frozen_globals = shared.shaders.frame_globals_snapshot();
             for (draw, pipeline) in prepared.iter().zip(&pipelines) {
                 // SAFETY: 管线属于本设备，命令缓冲在录制中。
                 unsafe {
@@ -1598,9 +1613,15 @@ impl PassHost for RasterPassHost {
                         pipeline.raw_handle(),
                     )
                 };
-                let parameters = match bindless_parameters(&shared, &ctx, draw, &bindings, managed)
-                    .and_then(|parameters| parameters.finish(&mut shared.dynamic.lock()))
-                {
+                let parameters = match bindless_parameters(
+                    &shared,
+                    &ctx,
+                    draw,
+                    &bindings,
+                    managed,
+                    &mut page_cursor,
+                    frozen_globals.clone(),
+                ) {
                     Ok(parameters) => parameters,
                     Err(error) => {
                         ctx.report_error(error);
@@ -2005,7 +2026,9 @@ fn bindless_parameters(
     draw: &PreparedDraw,
     pass_bindings: &[RenderPassBinding],
     managed: &ManagedPassResources,
-) -> rhapsody::Result<BindlessParameters> {
+    cursor: &mut rhapsody::bindless::BindlessPageCursor,
+    globals: Option<Arc<crate::frame_setup::FrameGlobals>>,
+) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
     let mut resources = Vec::new();
     for (binding, owned) in &draw.packet.bindings {
         if owned.state != country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED {
@@ -2104,11 +2127,24 @@ fn bindless_parameters(
     // B EguiBackend::draw 0x1400def7e..0x1400defd0 stores the 8-byte
     // screen-size push payload in DrawPacket's byte Vec. Other shaders may use
     // an empty push block; ABI validation retains that distinction.
-    let mut parameters = draw.entry.bindings.parameters(&draw.packet.unknown_bytes)?;
-    for (binding, resource) in resources {
-        parameters.write(BindingLocation { set: 0, binding }, 0, resource)?;
-    }
-    Ok(parameters)
+    let snapshot = draw.entry.bindings.snapshot_with_globals(globals);
+    snapshot.prepare(
+        cursor,
+        &draw.packet.unknown_bytes,
+        resources.iter().map(|(binding, resource)| {
+            (
+                BindingLocation {
+                    set: 0,
+                    binding: *binding,
+                },
+                0,
+                resource,
+                false,
+            )
+        }),
+        None,
+        &shared.dynamic,
+    )
 }
 
 #[cfg(test)]

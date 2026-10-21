@@ -1,0 +1,170 @@
+--- a/tiny-glade/crates/utils/src/geometry/circle.rs
++++ b/tiny-glade/crates/utils/src/geometry/circle.rs
+@@ -89,9 +89,12 @@
+         let d = p - self.center;
+         d.y * d.y + d.x * d.x < self.radius * self.radius
+     }
++    /// B140c97b40/84B：保留先归一化、再乘半径的运算顺序。
++    /// 零、极小和非有限输入按原浮点结果传播，不替换为默认方向。
+     pub fn closest_point_on_perimeter(self, p: Vec2) -> Vec2 {
+         let d = p - self.center;
+-        d.normalize_or(Vec2::X) * self.radius + self.center
++        let reciprocal = 1.0 / (d.y * d.y + d.x * d.x).sqrt();
++        (d * reciprocal) * self.radius + self.center
+     }
+     pub fn with_expanded_diameter(self, delta: f32) -> Self {
+         Self {
+@@ -120,22 +123,21 @@
+             None
+         }
+     }
++    /// B 140c97a40：只有两次有序严格大于返回None；退化/NaN载荷仍可为Some。
+     pub fn intersect_circle(self, other: Self) -> Option<(Vec2, Vec2)> {
+         let d = self.center - other.center;
+         let distance = (d.y * d.y + d.x * d.x).sqrt();
+-        if !(distance <= self.radius + other.radius
+-            && (self.radius - other.radius).abs() <= distance)
+-        {
+-            return None;
+-        }
+-        // Concentric circles have either zero or infinitely many intersections.
+-        if distance == 0.0 || !distance.is_finite() {
+-            return None;
+-        }
++        if distance > self.radius + other.radius {
++            return None;
++        }
++        if (self.radius - other.radius).abs() > distance {
++            return None;
++        }
++        // 原调用者读取Option的tag；不能把零距离或NaN载荷改成None。
+         let a = (distance * distance + (self.radius * self.radius - other.radius * other.radius))
+             / (distance + distance);
+         let delta = other.center - self.center;
+-        let factor = (self.radius * self.radius - a * a).max(0.0).sqrt() / distance;
++        let factor = (self.radius * self.radius - a * a).sqrt() / distance;
+         let mid = delta * (a / distance) + self.center;
+         let offset = Vec2::new(-delta.y * factor, delta.x * factor);
+         Some((mid + offset, mid - offset))
+@@ -244,3 +246,121 @@
+ }
+ impl ExactSizeIterator for CirclePoints2<'_> {}
+ impl std::iter::FusedIterator for CirclePoints2<'_> {}
++
++#[cfg(test)]
++mod native_circle_intersection_tests {
++    use super::*;
++
++    #[test]
++    fn original_point_order_and_both_tangency_boundaries_are_preserved() {
++        let a = Circle2d::new(Vec2::ZERO, 5.0);
++        let b = Circle2d::new(Vec2::new(6.0, 0.0), 5.0);
++        // 原乘加序的3-4-5交点，两个返回点的顺序同机器码。
++        assert_eq!(
++            a.intersect_circle(b),
++            Some((Vec2::new(3.0, 4.0), Vec2::new(3.0, -4.0)))
++        );
++        let a = Circle2d::new(Vec2::ZERO, 2.0);
++        for center in [Vec2::X, Vec2::new(3.0, 0.0)] {
++            assert_eq!(
++                a.intersect_circle(Circle2d::new(center, 1.0)),
++                Some((Vec2::new(2.0, 0.0), Vec2::new(2.0, 0.0)))
++            );
++        }
++        assert!(
++            a.intersect_circle(Circle2d::new(Vec2::new(3.01, 0.0), 1.0))
++                .is_none()
++        );
++        assert!(
++            a.intersect_circle(Circle2d::new(Vec2::new(0.99, 0.0), 1.0))
++                .is_none()
++        );
++    }
++
++    #[test]
++    fn original_unordered_and_zero_distance_paths_keep_some_nan_payload() {
++        let circle = Circle2d::new(Vec2::ZERO, 1.0);
++        for (a, b) in [
++            (circle, circle),
++            (
++                Circle2d::new(Vec2::ZERO, 0.0),
++                Circle2d::new(Vec2::ZERO, 0.0),
++            ),
++            (Circle2d::new(Vec2::new(f32::NAN, 0.0), 1.0), circle),
++            (Circle2d::new(Vec2::ZERO, f32::NAN), circle),
++            (
++                Circle2d::new(Vec2::new(f32::INFINITY, 0.0), f32::INFINITY),
++                Circle2d::new(Vec2::ZERO, f32::INFINITY),
++            ),
++        ] {
++            let (first, second) = a.intersect_circle(b).expect("原两次JA不会拒绝unordered");
++            assert!(
++                [first.x, first.y, second.x, second.y]
++                    .into_iter()
++                    .all(f32::is_nan)
++            );
++        }
++        // 半径和有限时，无限距离由第一条有序严格大于拒绝。
++        assert!(
++            Circle2d::new(Vec2::new(f32::INFINITY, 0.0), 1.0)
++                .intersect_circle(circle)
++                .is_none()
++        );
++        // 同中心不同半径由第二条严格大于拒绝，不能泛化成所有同心圆Some。
++        assert!(
++            Circle2d::new(Vec2::ZERO, 2.0)
++                .intersect_circle(circle)
++                .is_none()
++        );
++    }
++
++    #[test]
++    fn original_tag_distinguishes_trap_roof_border_intersection_from_no_intersection() {
++        let probe_radius = f32::from_bits(0x3f6e147a);
++        let roof = Circle2d::new(Vec2::ZERO, 3.0);
++        let inside = Circle2d::new(Vec2::ZERO, probe_radius);
++        let touching_border = Circle2d::new(Vec2::new(2.5, 0.0), probe_radius);
++        assert!(roof.intersect_circle(inside).is_none());
++        assert!(roof.intersect_circle(touching_border).is_some());
++        // 原trap的bef30只按tag拒绝；同圆的Some(NaN)也必须拒绝。
++        assert!(inside.intersect_circle(inside).is_some());
++        // 原函数没有“必须在大圆内”额外条件，分离的圆同样是None。
++        assert!(
++            roof.intersect_circle(Circle2d::new(Vec2::new(5.0, 0.0), probe_radius))
++                .is_none()
++        );
++    }
++}
++
++#[cfg(test)]
++mod native_closest_perimeter_tests {
++    use super::*;
++
++    #[test]
++    fn finite_radius_five_preserves_original_scaled_direction() {
++        let circle = Circle2d::new(Vec2::new(1.0, 2.0), 5.0);
++        assert_eq!(circle.closest_point_on_perimeter(Vec2::new(4.0, 6.0)), Vec2::new(4.0, 6.0));
++    }
++
++    #[test]
++    fn center_and_zero_radius_keep_original_unordered_result() {
++        for radius in [0.0, 1.0] {
++            let circle = Circle2d::new(Vec2::new(3.0, 4.0), radius);
++            assert!(circle.closest_point_on_perimeter(circle.center).is_nan());
++        }
++    }
++
++    #[test]
++    fn overflowing_length_returns_original_center_instead_of_robust_direction() {
++        let circle = Circle2d::new(Vec2::new(2.0, 3.0), 4.0);
++        assert_eq!(circle.closest_point_on_perimeter(Vec2::splat(1.0e30)), circle.center);
++    }
++
++    #[test]
++    fn underflow_and_nan_are_not_replaced_with_x_axis() {
++        let circle = Circle2d::new(Vec2::ZERO, 1.0);
++        let underflow = circle.closest_point_on_perimeter(Vec2::new(1.0e-30, 0.0));
++        assert!(underflow.x.is_infinite() && underflow.y.is_nan());
++        assert!(circle.closest_point_on_perimeter(Vec2::new(f32::NAN, 1.0)).is_nan());
++    }
++}

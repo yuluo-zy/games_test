@@ -87,6 +87,7 @@ pub fn ui_change_chimney_height<C: Send + Sync + 'static>(
         // 释放（O：bVar20∈{2,3} → apply + 推 0x28B 高度 op）。
         2 | 3 => {
             let op = DecoratorOp {
+                decorator_id,
                 // 原生 op 首字段 = 存储地址判别（0/1/2；非 3/4 → change）。
                 kind: match dst {
                     DecoratorStorageAddr::Wall(_) => 0,

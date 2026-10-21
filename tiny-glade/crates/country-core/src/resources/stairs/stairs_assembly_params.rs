@@ -1,16 +1,19 @@
-//! B stairs assembly geometry leaves. The full assembly-request owner and its
-//! graph-to-geometry producer are separate; no missing request fields default.
+//! 楼梯请求的权威值、历史表与几何基础；完整 producer 位于现有 decorator 模块。
 use glam::Vec2;
 
-/// B 0x140959e80 returns the supplied packed Vec2 and angle unchanged.
+use crate::resources::walls::WallId;
+use super::stairs_state::StairSegment;
+
+/// B 0x140959e80 原样传递墙身份与角度；首 qword 是 WallId，不是 Vec2。
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StairWallAnchor {
-    pub position: Vec2,
+    pub wall: WallId,
     pub angle: f32,
 }
 impl StairWallAnchor {
-    pub fn new(position: Vec2, angle: f32) -> Self {
-        Self { position, angle }
+    pub fn new(wall: WallId, angle: f32) -> Self {
+        Self { wall, angle }
     }
     /// B 0x140959e90 calls sinf then cosf and XORs both results with 0x80000000.
     /// The old chapter omitted those flips. These point into the wall.
@@ -21,8 +24,7 @@ impl StairWallAnchor {
     }
 }
 
-/// Reads only the confirmed StairNodeAnchor::Wall payload. Retaining a slice
-/// keeps the other variants and their still-unresolved payload layout intact.
+/// 兼容既有原字节读取入口，只把已证 Wall payload 转为 canonical WallId 锚点。
 pub struct ObservedStairNodeAnchor<'a>(&'a [u8]);
 impl<'a> ObservedStairNodeAnchor<'a> {
     pub fn from_observed(bytes: &'a [u8]) -> Self {
@@ -42,27 +44,71 @@ impl<'a> ObservedStairNodeAnchor<'a> {
             "StairNodeAnchor::Wall requires its payload"
         );
         Some(StairWallAnchor::new(
-            Vec2::new(read(self.0, 8), read(self.0, 12)),
+            WallId(u64::from_le_bytes(self.0[8..16].try_into().unwrap())),
             read(self.0, 16),
         ))
     }
 }
 
-/// Native `country_core::resources::stairs::stairs_assembly_params::AlignKind`
-/// (`enum2`), size **24 B** (fresh 2026-10-17).
-///
-/// Layout anchored from the two method bodies:
-/// - 0x140959f00 `position_offset`: tag `[+0]`, flag `[+1]`, byte `[+2]`,
-///   first `Vec2` `[+4]`, second `Vec2` `[+0xc]`; unsupported tags panic.
-/// - 0x140959f50 `outgoing_dir`: tag 0 → `(+4, +8)`, tag 1 → `(+0xc, +0x10)`,
-///   otherwise panic with `"AlignKind::None has no defined outgoing_dir"`
-///   (string @0x142ab4cf8, source path
-///   `crates/country-core/src/resources/stairs/stairs_assembly_params.rs`).
-///
-/// The 20 payload bytes are followed by 4 alignment bytes, giving the observed
-/// 24 B value size. The producer records that reuse an `indexmap::Bucket`
-/// (`0x28` stride) write producer-specific bytes in the value area; they are not
-/// evidence against this layout (see `ui_edit_terrain::StairsPlacementEntry`).
+/// 原 derive 输出的三种节点锚点；非活动 payload 不制造默认业务值。
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StairNodeAnchor {
+    Terrain { height: f32 } = 0,
+    Roof { height: f32 } = 1,
+    Wall(StairWallAnchor) = 2,
+}
+
+impl StairNodeAnchor {
+    /// B 0x140959ef0 只有 Wall 变体返回其 payload。
+    pub fn try_as_wall(&self) -> Option<&StairWallAnchor> {
+        match self {
+            Self::Wall(anchor) => Some(anchor),
+            Self::Terrain { .. } | Self::Roof { .. } => None,
+        }
+    }
+}
+
+/// B 0x140959e70：规范化 segment 的第一个节点在高 32 位。
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct StairGraphEdgeIdentity(u64);
+
+impl From<StairSegment> for StairGraphEdgeIdentity {
+    fn from(segment: StairSegment) -> Self {
+        let (a, b) = segment.nodes();
+        Self((u64::from(a.0) << 32) | u64::from(b.0))
+    }
+}
+
+impl StairGraphEdgeIdentity {
+    pub fn packed(self) -> u64 {
+        self.0
+    }
+}
+
+/// 原段记录 stride4；flag 是实际 producer 写入的业务位，不是 padding。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StairSubSegment {
+    pub kind: u8,
+    pub flag: u8,
+    pub count: u16,
+}
+
+pub type StairSubSegments = smallvec::SmallVec<[StairSubSegment; 1]>;
+
+/// 原请求 owner +0x198 的旧段表；由 producer 统一维护，消费者只借用。
+pub type StairSubSegmentMap = hashbrown::HashMap<
+    StairGraphEdgeIdentity,
+    StairSubSegments,
+    std::hash::RandomState,
+>;
+
+/// 原 B 的 AlignKind 值为20字节、对齐4；末尾不能混入外层候选的score。
+/// 原字段：tag/flag/byte2，first@4，second@0xc；两个数学方法按原字段读取。
+/// 完整证据：14080beb0三项候选stride24（kind20+score4），
+/// 14080c360返回项stride24（DecoratorId4+kind20），见本轮类型合同。
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct AlignKind {
@@ -70,7 +116,7 @@ pub struct AlignKind {
     pub tag: u8,
     /// +0x1 boolean payload used by the variant formulas.
     pub flag: u8,
-    /// +0x2 second discriminator byte (variant 0 requires `flag == 0 || byte2 == 1`).
+    /// +0x2 原 tag0 在 `flag != 0 || byte2 == 1` 时产生位移。
     pub byte_2: u8,
     /// +0x3 padding.
     pub pad_0: u8,
@@ -78,13 +124,11 @@ pub struct AlignKind {
     pub first: Vec2,
     /// +0xc second Vec2 payload.
     pub second: Vec2,
-    /// +0x14 terminal padding (native size 24).
-    pub pad_14: [u8; 4],
 }
 
 impl AlignKind {
-    /// Size asserted against the native 24 B value.
-    pub const NATIVE_SIZE: usize = 0x18;
+    /// 原值20字节；容器或外层tuple的padding不计入本值。
+    pub const NATIVE_SIZE: usize = 0x14;
 
     /// B 0x140959f00. The f32 scale argument is in XMM1. Unsupported variants
     /// return the original zero.
@@ -92,7 +136,7 @@ impl AlignKind {
         let mut out = Vec2::ZERO;
         match self.tag {
             0 => {
-                if self.flag == 0 || self.byte_2 == 1 {
+                if self.flag != 0 || self.byte_2 == 1 {
                     out = self.first * scale;
                 }
             }
@@ -103,7 +147,7 @@ impl AlignKind {
                 }
                 out = direction * (scale * 0.5);
             }
-            _ => panic!("AlignKind::None has no defined position_offset"),
+            _ => {}
         }
         out
     }
@@ -155,7 +199,7 @@ impl PreferredNodeAlignment {
 
 /// The confirmed 20 bytes read by AlignKind's two geometry methods. Variant
 /// names are unproven, so the original tag and boolean bytes remain explicit.
-/// Kept as the byte-view facade over the 24 B [`AlignKind`].
+/// 保留为20字节 [`AlignKind`] 的字节外观。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ObservedAlignKind([u8; 20]);
 impl ObservedAlignKind {
@@ -217,49 +261,107 @@ fn read(bytes: &[u8], offset: usize) -> f32 {
     f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
 }
 
-/// One 0x150-byte element of `PlayermadeStairsAssemblyRequests` (native
-/// `PlayermadeStairsAssemblyParams`, the type `length_ws` 0x140959ca0 belongs to).
-///
-/// Only the fields consumed by `structure_outline` (0x140959fc0, element walk
-/// 0x14095a387 and `FUN_14095fca0`) are modelled; the remaining bytes of the
-/// native record (`AlignKind`s, anchors, ...) belong to the assembly producer
-/// (`playermade_stairs_assemble`) and are **not recovered here**:
-///
-/// | native offset | field |
-/// |---|---|
-/// | `+0x08/+0x10` | `positions` (`Vec<Vec2>`, xz of the sampled stair path) |
-/// | `+0x40/+0x48` | `heights` (`Vec<f32>`, same sample count) |
-/// | `+0x58/+0x60` | `widths` (`Vec<f32>`, outline adds 0.3 and uses half) |
-/// | `+0x70/+0x78` | `tangents` (`Vec<Vec2>`, normalized and rotated to a left normal) |
-/// | `+0x128/+0x12c` | `segment` (two u32 endpoints compared with `OutlineStairsCmd::segment`) |
-///
-/// Field names for the four vectors are inferred from their arithmetic use.
-#[derive(Clone, Debug, PartialEq)]
+/// 原请求中实际发布的端点位置和出射方向；这是有向边的值。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AdjustedStairEdge {
+    pub position: Vec2,
+    pub outgoing_dir: Vec2,
+}
+
+/// 原采样历史的位级元数据；f32 风格字段按原 u32 比较，保留 NaN payload。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StairSamplesMetadata {
+    pub info_28: u32,
+    pub extra_08: u32,
+    pub extra_0c: u32,
+    pub removed_support: bool,
+    pub extra_10: u8,
+}
+
+/// 原历史 value 为 0x70；桶的 0x78 stride 还包含一个独立的八字节 key。
+#[derive(Clone, Debug)]
+pub struct SampledStairsPoints {
+    pub points: Vec<glam::Vec3>,
+    pub tangents: Vec<Vec2>,
+    pub widths: Vec<f32>,
+    /// 第四 Vec 目前只锁定四字节元素；原 interpolate 仅保留或释放，不猜其数值类型。
+    pub auxiliary_words: Vec<u32>,
+    pub metadata: StairSamplesMetadata,
+}
+
+/// 原完整装配器实际写入两种值；专名还未锁定，保留观测 variant。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StairArchWallSupportType {
+    Kind0,
+    Kind1,
+}
+
+/// 原 prev_requests 返回的真实子对象，统一拥有三个前帧表。
+#[derive(Clone, Debug, Default)]
+pub struct PreviousStairsAssemblyRequests {
+    pub sampled_points: hashbrown::HashMap<
+        StairGraphEdgeIdentity, SampledStairsPoints, std::hash::RandomState,
+    >,
+    pub arch_wall_supports: hashbrown::HashMap<
+        StairGraphEdgeIdentity, StairArchWallSupportType, std::hash::RandomState,
+    >,
+    pub sub_segments: StairSubSegmentMap,
+}
+
+/// 原 0x150 请求的完整值；曲线是唯一采样路径，不维护 positions 镜像。
+#[derive(Clone, Debug)]
 pub struct PlayermadeStairsAssemblyParams {
-    pub positions: Vec<Vec2>,
+    pub curve: utils::curve::Curve2,
     pub heights: Vec<f32>,
     pub widths: Vec<f32>,
     pub tangents: Vec<Vec2>,
-    pub segment: super::stairs_state::StairSegment,
+    /// 原装配器以 MOVSS/UCOMISS 消费；具体业务专名仍待完整装配器复原。
+    pub auxiliary_samples: Vec<f32>,
+    pub interpolated_curve: Option<utils::curve::Curve3>,
+    pub nodes: [(StairNodeAnchor, u8); 2],
+    pub terrain_contacts: bitvec::vec::BitVec<usize, bitvec::order::Lsb0>,
+    pub segment: StairSegment,
+    pub sub_segments: StairSubSegments,
+    pub dirty: bool,
 }
 
-/// B `country_core::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests`
-/// (a `Res<>` of `structure_outline`; element stride 0x150, vec ptr `+8`, len `+0x10`).
-/// Its producer (`playermade_stairs_assemble`) is a separate, still-unrecovered owner.
-#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default, PartialEq)]
+impl PlayermadeStairsAssemblyParams {
+    pub fn length_ws(&self) -> f32 {
+        length_ws(&self.curve.points, &self.heights)
+    }
+}
+
+/// 请求、双向业务图和历史表的唯一 owner；两个图各自保留有向边语义。
+#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct PlayermadeStairsAssemblyRequests {
     pub requests: Vec<PlayermadeStairsAssemblyParams>,
+    pub alignments: petgraph::graphmap::DiGraphMap<
+        crate::resources::walls::decorator::DecoratorId, AlignKind, std::hash::RandomState,
+    >,
+    pub adjusted_edges: petgraph::graphmap::DiGraphMap<
+        crate::resources::walls::decorator::DecoratorId, AdjustedStairEdge, std::hash::RandomState,
+    >,
+    pub previous: PreviousStairsAssemblyRequests,
+}
+
+impl PlayermadeStairsAssemblyRequests {
+    /// 原 0x140274480 返回 +0x138 的历史子对象，不能返回 current Vec。
+    pub fn prev_requests(&self) -> &PreviousStairsAssemblyRequests {
+        &self.previous
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resources::walls::decorator::DecoratorId;
 
-    /// Native 24 B `AlignKind` value (methods 0x140959f00 / 0x140959f50).
+    /// 原两个候选容器都独立证明kind20字节、对齐4。
     #[test]
-    fn align_kind_is_twenty_four_bytes_with_fresh_offsets() {
+    fn align_kind_is_twenty_bytes_with_fresh_offsets() {
         assert_eq!(core::mem::size_of::<AlignKind>(), AlignKind::NATIVE_SIZE);
-        assert_eq!(core::mem::size_of::<AlignKind>(), 24);
+        assert_eq!(core::mem::size_of::<AlignKind>(), 20);
+        assert_eq!(core::mem::align_of::<AlignKind>(), 4);
         assert_eq!(core::mem::offset_of!(AlignKind, tag), 0);
         assert_eq!(core::mem::offset_of!(AlignKind, flag), 1);
         assert_eq!(core::mem::offset_of!(AlignKind, byte_2), 2);
@@ -283,8 +385,7 @@ mod tests {
         assert_eq!(core::mem::offset_of!(PreferredNodeAlignment, byte_1d), 0x1d);
     }
 
-    /// 0x140959f00: variant 0 `(flag==0 || byte2==1)` scales `first`; variant 1
-    /// adds `second` when `flag != 0` and halves the scale.
+    /// 原 tag0 的两个独立使能位，以及 tag1 的加向量与半宽顺序。
     #[test]
     fn align_kind_position_offset_matches_fresh_branches() {
         let base = AlignKind {
@@ -294,15 +395,14 @@ mod tests {
             pad_0: 0,
             first: Vec2::new(1.0, 2.0),
             second: Vec2::new(3.0, 4.0),
-            pad_14: [0; 4],
         };
-        assert_eq!(base.position_offset(2.0), Vec2::new(2.0, 4.0));
-        let suppressed = AlignKind {
+        assert_eq!(base.position_offset(2.0), Vec2::ZERO);
+        let flag_enabled = AlignKind {
             flag: 1,
             byte_2: 0,
             ..base
         };
-        assert_eq!(suppressed.position_offset(2.0), Vec2::ZERO);
+        assert_eq!(flag_enabled.position_offset(2.0), Vec2::new(2.0, 4.0));
         let enabled = AlignKind {
             flag: 1,
             byte_2: 1,
@@ -333,7 +433,6 @@ mod tests {
             pad_0: 0,
             first: Vec2::new(5.0, 6.0),
             second: Vec2::new(7.0, 8.0),
-            pad_14: [0; 4],
         };
         assert_eq!(base.outgoing_dir(), Vec2::new(5.0, 6.0));
         let variant_one = AlignKind { tag: 1, ..base };
@@ -349,4 +448,55 @@ mod tests {
         };
         let _ = value.outgoing_dir();
     }
+    #[test]
+    fn canonical_offset_and_observed_facade_agree_on_all_enable_branches() {
+        for flag in [0, 1] {
+            for byte_2 in [0, 1] {
+                let value = AlignKind {
+                    flag,
+                    byte_2,
+                    first: Vec2::new(2.0, -3.0),
+                    ..AlignKind::default()
+                };
+                let mut bytes = [0; 20];
+                bytes[1] = flag;
+                bytes[2] = byte_2;
+                bytes[4..8].copy_from_slice(&2.0f32.to_le_bytes());
+                bytes[8..12].copy_from_slice(&(-3.0f32).to_le_bytes());
+                assert_eq!(
+                    value.position_offset(4.0),
+                    ObservedAlignKind::from_observed(bytes).position_offset(4.0)
+                );
+            }
+        }
+        let none = AlignKind { tag: 2, ..AlignKind::default() };
+        assert_eq!(none.position_offset(f32::NAN), Vec2::ZERO);
+    }
+
+    #[test]
+    fn wall_anchor_preserves_full_wall_id_without_float_conversion() {
+        let id = WallId(0xffee_ddcc_aabb_8899);
+        let mut observed = [0; 24];
+        observed[..4].copy_from_slice(&2u32.to_le_bytes());
+        observed[8..16].copy_from_slice(&id.0.to_le_bytes());
+        observed[16..20].copy_from_slice(&0.75f32.to_le_bytes());
+        let anchor = ObservedStairNodeAnchor::from_observed(&observed)
+            .try_as_wall().unwrap();
+        assert_eq!(anchor, StairWallAnchor::new(id, 0.75));
+        assert_eq!(StairNodeAnchor::Wall(anchor).try_as_wall(), Some(&anchor));
+        assert!(StairNodeAnchor::Roof { height: 2.0 }.try_as_wall().is_none());
+    }
+
+    #[test]
+    fn segment_identity_packs_sorted_ids_in_original_word_order() {
+        let forward = StairSegment::new(DecoratorId(7), DecoratorId(29));
+        let backward = StairSegment::new(DecoratorId(29), DecoratorId(7));
+        let a = StairGraphEdgeIdentity::from(forward);
+        assert_eq!(a, StairGraphEdgeIdentity::from(backward));
+        assert_eq!(a.packed(), (7u64 << 32) | 29);
+        assert_eq!(core::mem::size_of::<StairSubSegment>(), 4);
+        assert_eq!(core::mem::offset_of!(StairSubSegment, flag), 1);
+        assert_eq!(core::mem::offset_of!(StairSubSegment, count), 2);
+    }
+
 }

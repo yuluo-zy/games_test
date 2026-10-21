@@ -1,0 +1,1 @@
+root经core_business_lead明确授权这10个legacy visual编译必要typed owner/required subtype+Info.rank/同Arc blueprint最窄迁移；保现手工视觉分支与已知旧算法缺口，不写生产/Cargo/GPU/Git，不扩remove_ivy。旧owner保持claim；NULL已normalclaim core-visual-data-20261021。

@@ -1,0 +1,47 @@
+141256fdd: 49 8b 46 38                 	movq	0x38(%r14), %rax
+141256fe1: 48 89 45 60                 	movq	%rax, 0x60(%rbp)
+141256fe5: 66 0f d7 c0                 	pmovmskb	%xmm0, %eax
+141256fe9: f7 d0                       	notl	%eax
+141256feb: 4c 8d 72 10                 	leaq	0x10(%rdx), %r14
+141256fef: 0f 10 05 9a b0 9c 01        	movups	0x19cb09a(%rip), %xmm0  # 0x142c22090
+141256ff6: 48 8b 4d 50                 	movq	0x50(%rbp), %rcx
+141256ffa: 0f 11 41 10                 	movups	%xmm0, 0x10(%rcx)
+141256ffe: f3 0f 6f 05 7a b0 9c 01     	movdqu	0x19cb07a(%rip), %xmm0  # 0x142c22080
+141257006: f3 0f 7f 01                 	movdqu	%xmm0, (%rcx)
+14125700a: 48 8d 3d ef a2 9c 01        	leaq	0x19ca2ef(%rip), %rdi   # 0x142c21300
+141257011: 48 89 55 68                 	movq	%rdx, 0x68(%rbp)
+141257015: 49 89 d7                    	movq	%rdx, %r15
+141257018: 0f 1f 84 00 00 00 00 00     	nopl	(%rax,%rax)
+141257020: 48 83 eb 01                 	subq	$0x1, %rbx
+141257024: 72 6e                       	jb	0x141257094 <.text+0x1256094>
+141257026: 66 85 c0                    	testw	%ax, %ax
+141257029: 74 15                       	je	0x141257040 <.text+0x1256040>
+14125702b: 8d 70 ff                    	leal	-0x1(%rax), %esi
+14125702e: 21 c6                       	andl	%eax, %esi
+141257030: eb 36                       	jmp	0x141257068 <.text+0x1256068>
+141257032: 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00   	nopw	%cs:(%rax,%rax)
+141257040: 66 41 0f 6f 06              	movdqa	(%r14), %xmm0
+141257045: 66 0f d7 c0                 	pmovmskb	%xmm0, %eax
+141257049: 49 81 c7 00 fb ff ff        	addq	$-0x500, %r15           # imm = 0xFB00
+141257050: 49 83 c6 10                 	addq	$0x10, %r14
+141257054: 3d ff ff 00 00              	cmpl	$0xffff, %eax           # imm = 0xFFFF
+141257059: 74 e5                       	je	0x141257040 <.text+0x1256040>
+14125705b: b9 fe ff ff ff              	movl	$0xfffffffe, %ecx       # imm = 0xFFFFFFFE
+141257060: 29 c1                       	subl	%eax, %ecx
+141257062: f7 d0                       	notl	%eax
+141257064: 89 c6                       	movl	%eax, %esi
+141257066: 21 ce                       	andl	%ecx, %esi
+141257068: f3 0f bc c0                 	tzcntl	%eax, %eax
+14125706c: 48 f7 d8                    	negq	%rax
+14125706f: 48 8d 04 80                 	leaq	(%rax,%rax,4), %rax
+141257073: 48 c1 e0 04                 	shlq	$0x4, %rax
+141257077: 41 80 7c 07 ff 02           	cmpb	$0x2, -0x1(%r15,%rax)
+14125707d: 74 15                       	je	0x141257094 <.text+0x1256094>
+14125707f: 4c 01 f8                    	addq	%r15, %rax
+141257082: 8b 50 b0                    	movl	-0x50(%rax), %edx
+141257085: 4c 89 e1                    	movq	%r12, %rcx
+141257088: 49 89 f8                    	movq	%rdi, %r8
+14125708b: e8 b0 43 7c ff              	callq	0x140a1b440 <.text+0xa1a440>
+141257090: 89 f0                       	movl	%esi, %eax
+141257092: eb 8c                       	jmp	0x141257020 <.text+0x1256020>
+141257094: 48 8b 7d 60                 	movq	0x60(%rbp), %rdi

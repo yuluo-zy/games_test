@@ -1,0 +1,86 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept bounded complete validation consumer source for root CPU validation; no App mount approval",
+  "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020/window-validation-root-candidate-v1/SOURCE_CANDIDATE_MANIFEST_V1.json",
+  "manifest_sha256": "3f4d668b4365acb8db6d77d8d326ad1e132107378f89defb12a65c55cbe063d1",
+  "source_before_sha256": "a72b3901990f3256baf669451b532d033c8c6cb439e26e25d8ef2a6346838ec9",
+  "source_after_sha256": "3cd01fb81ff0fb652c80c4ac0d39495eb43ee166657fb62b48737811c76c16e3",
+  "patch_sha256": "cb2584fe1306d892e48a73ce6104fc5cc0406559ce5c640ddee536ad18a9cab0",
+  "native_scope": {
+    "version": "B original RNE only; no C behavioral comparison",
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "independent_ranges": [
+      {
+        "start_va": "0x140827130",
+        "code_size": 539,
+        "instruction_count": 125,
+        "range_sha256": "b791ad8a5995c3cf76dd8fcb9bfb4124e4e68454d15755a4087eff6f525d0510"
+      },
+      {
+        "start_va": "0x1412b84f0",
+        "code_size": 8161,
+        "instruction_count": 1630,
+        "range_sha256": "b411290a27827070c0bbcde9c119261d87fa5c18b5e0594edda52dd5f7fa3cdc"
+      },
+      {
+        "start_va": "0x1412ba810",
+        "code_size": 473,
+        "instruction_count": 109,
+        "range_sha256": "0b67eb31112e12d149a0545b3fe9c1c408b9e8c67a6010946ff49ffe7eafa40f"
+      },
+      {
+        "start_va": "0x140827350",
+        "code_size": 434,
+        "instruction_count": 109,
+        "range_sha256": "c6715f2cd1cd475fbfbd9599a95fd1882a880a0ecae9ce3010704860662a8cf9"
+      },
+      {
+        "start_va": "0x141261700",
+        "code_size": 445,
+        "instruction_count": 132,
+        "range_sha256": "3a9c38acc68d5bcfe0fb216cf56e30885e30927dcd9f1125188a72484254d738"
+      },
+      {
+        "start_va": "0x1412ba7d0",
+        "code_size": 56,
+        "instruction_count": 13,
+        "range_sha256": "17826dcb31e756a1b040ed4aa445e4a3b47e09401abb64ef1133cd75a1b5a6e3"
+      }
+    ],
+    "method": "独立读PE，六asm每条bytes逐项比较并核全部范围连续/总长度；不以作者proof的true代替复核。独读142c2c390十一reason、142a91c00六type投影跳表均一致。",
+    "tuple_normal_path": {
+      "range": "0x140b26a80..0x140b26bc0 inclusive 321B; not complete unwind/panic extent",
+      "sha256": "9f11c729186070cbe5312c74a9ca50e7da7895dbf052c5a14108561d95eef70f",
+      "proof": "实际PDB symbolizer确认tuple<Vec3,Quat>::ToOffsetColliderBuilder；b26ac0调用IsoTransform::from_translation_rotation；b26acd将mesh+0x50作self、external作parent再call c91b80 nested_in；b26add lock inc shape Arc，确认external*local/共享shape。"
+    }
+  },
+  "source_checks": [
+    "清单全部文件SHA一致，真实生产before一致；仅现blueprint增加consumer，不造第二库/World/物理图。",
+    "入口无条件ResMut Storage clear_modification_tracking，仅清tracking保authority，然后records空门。canonical affected实际HashMap<DecoratorLocator,()>直接keys().any短路，同当前owner顺序，不排序/重seed；作者合同HashSet仅简称，按实际Map审。",
+    "86bc按locator.addr+显式id取桶，missing info继续/missing blueprint拒绝；8815 location之后仍8820 required subtype、8838 cache，再8844分Valid/Invalid。",
+    "Invalid先required collision outline并显示intended非dashed，成功入队后8d1a specific=true，再执行完整reason反馈；失败不回滚既有副作用。",
+    "Valid仅Wall+actual Mesh进入同RaycastWorld slot2，external*local同Arc且ordered=false。hit先specific=true；source3 required实际record；8936..89a1 type56..63但!=62门失败继续下一locator且保specific，不按旧粗合同全部拒绝。",
+    "accepted other先subtype→collision_outline→cache，subtype3可由actual blueprint.transform覆盖；先blocking dashed，再intended非dashed后拒绝；其它source hit仅intended拒绝。",
+    "仅拒绝且backup.created时才可无specific fallback icon，随后backup.state=2，再一次canonical单位Mute；不制造backup、不直接restore、不清pending/records。",
+    "Cut±4使用wrapping signed32及独立segment_heights.len门；prepared邻点与height邻点都required，末点规约prev/t1。8e71/7d长度失配必须panic。weighted pathY+((h1-h0)*t+h0)保持；Turn门改用prepared.len，Y取cache。",
+    "Ends原geometry.outline首尾/arch首尾，上端绝对Y；RoofBounds保零direction重复点，先线再真实OutlineWallCmd{strength2,kind0}；Lower拷贝原outline全部点。",
+    "Top/Upper prepared XZ zip arch最短长度且h-padding；shape.tag!=2才required首点闭合。Corner Rectangle corner→唯一approx_curve_coord→nextY*t+firstY*(1-t)→真实maxY再scribble；无bbox/default。7/8/9无额外反馈但保前置intended。",
+    "共享DebugLine white/dashed/width3；scribble真实mesh+ID/pos名字、duration0/rotation/position/scale.5，沿共享builder初始ZERO动画策略。"
+  ],
+  "tests": "新增14源码测试含actualWorld/authority/required failure/同墙两id/feedback/真实Rapier upsert+flush+slot2 type62continue/corneroverride。reviewer未执行。",
+  "dependencies": [
+    "已独审location V4/V5 after d9bab992、Circle84、display/debug factories、pairedMute V2、icon leaves；须成组。",
+    "core_business_lead两leaf独审REVIEW.json SHAe9dcbb0358ad99a250f3eb6a522892ab5a1055d7d8df4dbee57703ad75f1afe8覆盖typed dispatcher type accessor与startup add_event；非Move/Rotate legacy ty producer仍未闭。"
+  ],
+  "root_gates": [
+    "实际编译system-decorator+14候选测试/companion；无Cargo/rustc/GPU由reviewer运行。",
+    "不mount旧整个build_recovered_visual_systems；原set25 cache/derive/clear/generators/collider/flush/validate/history/fullvisual/第二flush，真实geometry/cache producer及stairs caller门分别验。"
+  ],
+  "remaining": [
+    "完整编辑/restore consumer/卸载删除/gothic/其它UI业务不因此完成。",
+    "无C等价声明，无任意NaN payload逐bit跨ISA新证明；保原f32运算和panic边界，不简化。"
+  ]
+}

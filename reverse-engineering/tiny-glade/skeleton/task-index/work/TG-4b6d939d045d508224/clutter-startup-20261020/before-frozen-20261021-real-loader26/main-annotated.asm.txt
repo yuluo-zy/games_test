@@ -1,0 +1,2241 @@
+1407b66e0 pushq	%rbp
+1407b66e1 pushq	%r15
+1407b66e3 pushq	%r14
+1407b66e5 pushq	%r13
+1407b66e7 pushq	%r12
+1407b66e9 pushq	%rsi
+1407b66ea pushq	%rdi
+1407b66eb pushq	%rbx
+1407b66ec subq	$0x978, %rsp            # imm = 0x978
+1407b66f3 leaq	0x80(%rsp), %rbp
+1407b66fb movaps	%xmm6, 0x8e0(%rbp)
+1407b6702 movq	$-0x2, 0x8d8(%rbp)
+1407b670d movq	%r8, %rdi
+1407b6710 movq	%rdx, 0x8b0(%rbp)
+1407b6717 movq	%rcx, 0x878(%rbp)
+1407b671e leaq	0x22cd8fb(%rip), %rdx   # 0x142a84020 ; assets/meshes/decoratorsReading assets/meshes/decoratorscrates/systems/deco
+1407b6725 leaq	-0x18(%rbp), %rcx
+1407b6729 movl	$0x18, %r8d
+1407b672f callq	0x140d68f80 <.text+0xd67f80> ; std::sys::pal::windows::fs::readdir::had2c62ef47d5ba85 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\sys\pal\windows\fs.rs:1164:0
+1407b6734 movq	-0x18(%rbp), %rbx
+1407b6738 movq	-0x10(%rbp), %rsi
+1407b673c cmpq	$0x2, %rbx
+1407b6740 je	0x1407b936c <.text+0x7b836c>
+1407b6746 leaq	-0x8(%rbp), %rdx
+1407b674a leaq	0x290(%rbp), %rcx
+1407b6751 movl	$0x260, %r8d            # imm = 0x260
+1407b6757 callq	0x142923c00 <.text+0x2922c00> ; memcpy | ??:0:0
+1407b675c movq	%rbx, 0x280(%rbp)
+1407b6763 movq	%rsi, 0x288(%rbp)
+1407b676a leaq	0x500(%rbp), %r12
+1407b6771 movq	(%rdi), %rax
+1407b6774 movq	%rax, 0x880(%rbp)
+1407b677b leaq	-0x18(%rbp), %rdi
+1407b677f leaq	0x748(%rbp), %r13
+1407b6786 movsd	0x2177f22(%rip), %xmm6  # 0x14292e6b0
+1407b678e leaq	-0x6ac905(%rip), %r15   # 0x140109e90 <.text+0x108e90>
+1407b6795 leaq	0x22cecd4(%rip), %rbx   # 0x142a85470
+1407b679c leaq	0x270(%rbp), %r14
+1407b67a3 movq	0x8b0(%rbp), %rsi
+1407b67aa nopw	(%rax,%rax)
+1407b67b0 movq	%rdi, %rcx
+1407b67b3 leaq	0x280(%rbp), %rdx
+1407b67ba callq	0x140d59e80 <.text+0xd58e80> ; _$LT$std..fs..ReadDir$u20$as$u20$core..iter..traits..iterator..Iterator$GT$::next::h7975e8d01f6fe948 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\fs.rs:2145:0
+1407b67bf testb	$0x1, -0x18(%rbp)
+1407b67c3 je	0x1407b6b40 <.text+0x7b5b40>
+1407b67c9 movq	-0x10(%rbp), %rcx
+1407b67cd movq	-0x8(%rbp), %rax
+1407b67d1 testq	%rcx, %rcx
+1407b67d4 je	0x1407b8fae <.text+0x7b7fae>
+1407b67da movq	%rcx, 0x4f0(%rbp)
+1407b67e1 movq	%rax, 0x4f8(%rbp)
+1407b67e8 movl	$0x248, %r8d            # imm = 0x248
+1407b67ee movq	%r12, %rcx
+1407b67f1 leaq	(%rbp), %rdx
+1407b67f5 callq	0x142923c00 <.text+0x2922c00> ; memcpy | ??:0:0
+1407b67fa movq	%r13, %rcx
+1407b67fd leaq	0x4f0(%rbp), %rdx
+1407b6804 callq	0x140d5a130 <.text+0xd59130> ; std::fs::DirEntry::file_name::hcf93312c8ce5e4e1 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\fs.rs:2283:0
+1407b6809 movq	%r13, %rcx
+1407b680c callq	0x140d76ed0 <.text+0xd75ed0> ; _$LT$std..sys_common..wtf8..Wtf8Buf$u20$as$u20$core..ops..deref..DerefMut$GT$::deref_mut::h9b613fcc7b4c7bef | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\sys\os_str\wtf8.rs:100:0
+1407b6811 movq	%rdx, %r8
+1407b6814 leaq	0x800(%rbp), %rcx
+1407b681b movq	%rax, %rdx
+1407b681e callq	0x140d58e70 <.text+0xd57e70> ; std::sys::os_str::wtf8::Slice::to_str::h59c3f7142388df2c | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\ffi\os_str.rs:1401:0
+1407b6823 cmpl	$0x1, 0x800(%rbp)
+1407b682a je	0x1407b8f9d <.text+0x7b7f9d>
+1407b6830 movq	0x810(%rbp), %rax
+1407b6837 subq	$0x5, %rax
+1407b683b jb	0x1407b6b00 <.text+0x7b5b00>
+1407b6841 movq	0x808(%rbp), %rcx
+1407b6848 movl	(%rcx,%rax), %edx
+1407b684b bswapl	%edx
+1407b684d cmpl	$0x2e6a736f, %edx       # imm = 0x2E6A736F
+1407b6853 jne	0x1407b6870 <.text+0x7b5870>
+1407b6855 movzbl	0x4(%rcx,%rax), %r8d
+1407b685b movl	$0x6e, %edx
+1407b6860 subl	%r8d, %edx
+1407b6863 testl	%edx, %edx
+1407b6865 jne	0x1407b6b00 <.text+0x7b5b00>
+1407b686b jmp	0x1407b6889 <.text+0x7b5889>
+1407b686d nopl	(%rax)
+1407b6870 cmpl	$0x2e6a7370, %edx       # imm = 0x2E6A7370
+1407b6876 movl	$0x0, %edx
+1407b687b adcl	$-0x1, %edx
+1407b687e orl	$0x1, %edx
+1407b6881 testl	%edx, %edx
+1407b6883 jne	0x1407b6b00 <.text+0x7b5b00>
+1407b6889 movq	%rcx, 0x768(%rbp)
+1407b6890 movq	%rax, 0x770(%rbp)
+1407b6897 leaq	0x780(%rbp), %rcx
+1407b689e leaq	0x4f0(%rbp), %rdx
+1407b68a5 callq	0x140d59f10 <.text+0xd58f10> ; std::fs::DirEntry::path::h020ffec1f4531257 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\fs.rs:2181:0
+1407b68aa leaq	0x800(%rbp), %rcx
+1407b68b1 leaq	0x780(%rbp), %rdx
+1407b68b8 callq	0x141286bf0 <.text+0x1285bf0> ; country_core::utils::load_json::load_json_as_mesh::h219a6545f6a1a760 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/utils/load_json.rs:5:0
+1407b68bd xorl	%eax, %eax
+1407b68bf cmpq	0x800(%rbp), %rax
+1407b68c6 jo	0x1407b9255 <.text+0x7b8255>
+1407b68cc movq	0x870(%rbp), %rax
+1407b68d3 movq	%rax, 0x7f0(%rbp)
+1407b68da movups	0x860(%rbp), %xmm0
+1407b68e1 movaps	%xmm0, 0x7e0(%rbp)
+1407b68e8 movups	0x850(%rbp), %xmm0
+1407b68ef movaps	%xmm0, 0x7d0(%rbp)
+1407b68f6 movups	0x840(%rbp), %xmm0
+1407b68fd movaps	%xmm0, 0x7c0(%rbp)
+1407b6904 movups	0x800(%rbp), %xmm0
+1407b690b movups	0x810(%rbp), %xmm1
+1407b6912 movups	0x820(%rbp), %xmm2
+1407b6919 movups	0x830(%rbp), %xmm3
+1407b6920 movaps	%xmm3, 0x7b0(%rbp)
+1407b6927 movaps	%xmm2, 0x7a0(%rbp)
+1407b692e movaps	%xmm1, 0x790(%rbp)
+1407b6935 movaps	%xmm0, 0x780(%rbp)
+1407b693c movq	0x770(%rbp), %rdx
+1407b6943 cmpq	$0x7, %rdx
+1407b6947 jb	0x1407b69ea <.text+0x7b59ea>
+1407b694d movq	0x768(%rbp), %rdi
+1407b6954 je	0x1407b6960 <.text+0x7b5960>
+1407b6956 cmpb	$-0x41, 0x7(%rdi)
+1407b695a jle	0x1407b92fb <.text+0x7b82fb>
+1407b6960 movzbl	0x2e7e2a2(%rip), %eax   # 0x143634c09
+1407b6967 movl	$0x7, %ecx
+1407b696c movl	$0x1, %edx
+1407b6971 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b6976 testq	%rax, %rax
+1407b6979 je	0x1407b92d9 <.text+0x7b82d9>
+1407b697f movl	(%rdi), %ecx
+1407b6981 movl	0x3(%rdi), %edx
+1407b6984 movl	%edx, 0x3(%rax)
+1407b6987 movl	%ecx, (%rax)
+1407b6989 movl	(%rax), %esi
+1407b698b movl	$0x6c74756f, %ecx       # imm = 0x6C74756F
+1407b6990 xorl	%ecx, %esi
+1407b6992 movl	0x3(%rax), %edi
+1407b6995 movl	$0x656e696c, %ecx       # imm = 0x656E696C
+1407b699a xorl	%ecx, %edi
+1407b699c movl	$0x7, %edx
+1407b69a1 movl	$0x1, %r8d
+1407b69a7 movq	%rax, %rcx
+1407b69aa callq	0x140613c20 <.text+0x612c20> ; __rust_dealloc | ??:0:0
+1407b69af orl	%esi, %edi
+1407b69b1 movq	0x8b0(%rbp), %rsi
+1407b69b8 leaq	-0x18(%rbp), %rdi
+1407b69bc jne	0x1407b69ea <.text+0x7b59ea>
+1407b69be movsd	%xmm6, 0x800(%rbp)
+1407b69c6 movl	$0x3f800000, 0x808(%rbp) # imm = 0x3F800000
+1407b69d0 movb	$0x1, 0x8cb(%rbp)
+1407b69d7 leaq	0x780(%rbp), %rcx
+1407b69de leaq	0x800(%rbp), %rdx
+1407b69e5 callq	0x140a07540 <.text+0xa06540> ; country_core::render::mesh::Mesh::add_color::hd19827cf0d9ab595 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/render/mesh.rs:66:0
+1407b69ea movq	0x7f0(%rbp), %rax
+1407b69f1 movq	%rax, 0x870(%rbp)
+1407b69f8 movaps	0x7e0(%rbp), %xmm0
+1407b69ff movaps	%xmm0, 0x860(%rbp)
+1407b6a06 movaps	0x7d0(%rbp), %xmm0
+1407b6a0d movaps	%xmm0, 0x850(%rbp)
+1407b6a14 movaps	0x7c0(%rbp), %xmm0
+1407b6a1b movaps	%xmm0, 0x840(%rbp)
+1407b6a22 movaps	0x780(%rbp), %xmm0
+1407b6a29 movaps	0x790(%rbp), %xmm1
+1407b6a30 movaps	0x7a0(%rbp), %xmm2
+1407b6a37 movaps	0x7b0(%rbp), %xmm3
+1407b6a3e movaps	%xmm3, 0x830(%rbp)
+1407b6a45 movaps	%xmm2, 0x820(%rbp)
+1407b6a4c movaps	%xmm1, 0x810(%rbp)
+1407b6a53 movaps	%xmm0, 0x800(%rbp)
+1407b6a5a leaq	0x768(%rbp), %rax
+1407b6a61 movq	%rax, 0x270(%rbp)
+1407b6a68 movq	%r15, 0x278(%rbp)
+1407b6a6f movq	%rbx, -0x48(%rbp)
+1407b6a73 movq	$0x1, -0x40(%rbp)
+1407b6a7b movq	%r14, -0x38(%rbp)
+1407b6a7f movq	$0x1, -0x30(%rbp)
+1407b6a87 movq	$0x0, -0x28(%rbp)
+1407b6a8f leaq	0x258(%rbp), %rcx
+1407b6a96 leaq	-0x48(%rbp), %rdx
+1407b6a9a callq	0x140d79f90 <.text+0xd78f90> ; alloc::fmt::format::format_inner::hdcc110f646744b43 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\fmt.rs:645:0
+1407b6a9f movq	0x258(%rbp), %rax
+1407b6aa6 movq	%rax, 0x8a8(%rbp)
+1407b6aad movq	0x260(%rbp), %rdx
+1407b6ab4 movq	0x268(%rbp), %r8
+1407b6abb movq	(%rsi), %rax
+1407b6abe movq	%rax, 0x20(%rsp)
+1407b6ac3 leaq	0x800(%rbp), %rcx
+1407b6aca movq	%rdx, 0x8a0(%rbp)
+1407b6ad1 movq	0x880(%rbp), %r9
+1407b6ad8 callq	0x140b1aca0 <.text+0xb19ca0> ; country_core::startup::load_mesh_into_library::h9943ce76e264ec52 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/startup/mod.rs:268:0
+1407b6add movq	0x8a8(%rbp), %rdx
+1407b6ae4 testq	%rdx, %rdx
+1407b6ae7 je	0x1407b6b00 <.text+0x7b5b00>
+1407b6ae9 movl	$0x1, %r8d
+1407b6aef movq	0x8a0(%rbp), %rcx
+1407b6af6 callq	0x140613c20 <.text+0x612c20> ; __rust_dealloc | ??:0:0
+1407b6afb nopl	(%rax,%rax)
+1407b6b00 movq	0x748(%rbp), %rdx
+1407b6b07 testq	%rdx, %rdx
+1407b6b0a je	0x1407b6b1e <.text+0x7b5b1e>
+1407b6b0c movq	0x750(%rbp), %rcx
+1407b6b13 movl	$0x1, %r8d
+1407b6b19 callq	0x140613c20 <.text+0x612c20> ; __rust_dealloc | ??:0:0
+1407b6b1e movq	0x4f0(%rbp), %rax
+1407b6b25 lock
+1407b6b26 decq	(%rax)
+1407b6b29 jne	0x1407b67b0 <.text+0x7b57b0>
+1407b6b2f leaq	0x4f0(%rbp), %rcx
+1407b6b36 callq	0x140d53bc0 <.text+0xd52bc0> ; alloc::sync::Arc$LT$T$C$A$GT$::drop_slow::h4dd45c385a4a8a39 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\sync.rs:1899:0
+1407b6b3b jmp	0x1407b67b0 <.text+0x7b57b0>
+1407b6b40 cmpq	$0x0, 0x280(%rbp)
+1407b6b48 je	0x1407b6b56 <.text+0x7b5b56>
+1407b6b4a leaq	0x288(%rbp), %rcx
+1407b6b51 callq	0x140d685b0 <.text+0xd675b0> ; _$LT$std..sys..pal..windows..fs..FindNextFileHandle$u20$as$u20$core..ops..drop..Drop$GT$::drop::h379a42b30f3254c5 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\sys\pal\windows\fs.rs:148:0
+1407b6b56 movq	0x290(%rbp), %rax
+1407b6b5d lock
+1407b6b5e decq	(%rax)
+1407b6b61 leaq	0x800(%rbp), %r14
+1407b6b68 jne	0x1407b6b76 <.text+0x7b5b76>
+1407b6b6a leaq	0x290(%rbp), %rcx
+1407b6b71 callq	0x140d53bc0 <.text+0xd52bc0> ; alloc::sync::Arc$LT$T$C$A$GT$::drop_slow::h4dd45c385a4a8a39 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\sync.rs:1899:0
+1407b6b76 callq	0x140002370 <.text+0x1370> ; iced_core::widget::Widget::overlay::he4d05474b0fe046b (.llvm.8046225761361234231) | /home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.16.0/src/system/schedule_system.rs:51:0
+1407b6b7b movl	%eax, %edx
+1407b6b7d movq	0x878(%rbp), %rcx
+1407b6b84 movl	0x1c(%rcx), %eax
+1407b6b87 movl	%eax, 0x8a8(%rbp)
+1407b6b8d movq	(%rcx), %rax
+1407b6b90 movq	%rax, 0x880(%rbp)
+1407b6b97 movq	0x10(%rcx), %rax
+1407b6b9b movq	%rax, 0x8a0(%rbp)
+1407b6ba2 movss	0x216ecc6(%rip), %xmm6  # 0x142925870
+1407b6baa nopw	(%rax,%rax)
+1407b6bb0 cmpb	$0x1a, %dl
+1407b6bb3 je	0x1407b8f54 <.text+0x7b7f54>
+1407b6bb9 movl	%edx, %r12d
+1407b6bbc movb	%dl, -0x18(%rbp)
+1407b6bbf movq	%rdi, %rcx
+1407b6bc2 callq	0x1408b99e0 <.text+0x8b89e0> ; country_core::resources::walls::decorator_subtype::_::_$LT$impl$u20$enum_iterator..Sequence$u20$for$u20$country_core..resources..walls..decorator_subtype..DecoratorSubtype$GT$::next::he55a25ddd306d1e9 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/clutter_meshes.rs:135:0
+1407b6bc7 movl	%eax, %edx
+1407b6bc9 movzbl	%r12b, %esi
+1407b6bcd leaq	0x22cea38(%rip), %rcx   # 0x142a8560c
+1407b6bd4 movslq	(%rcx,%rsi,4), %rax
+1407b6bd8 addq	%rcx, %rax
+1407b6bdb jmpq	*%rax
+CASE [19, 20, 21, 25]
+1407b6bdd movb	%dl, 0x878(%rbp)
+1407b6be3 movl	0x8a8(%rbp), %eax
+1407b6be9 movq	0x8a0(%rbp), %rcx
+1407b6bf0 movl	%eax, (%rcx)
+1407b6bf2 movb	$0x1, %cl
+1407b6bf4 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b6bf9 movl	%eax, %ecx
+1407b6bfb movl	%r12d, %edx
+1407b6bfe callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b6c03 movl	%eax, %r14d
+1407b6c06 movl	%edx, %r15d
+1407b6c09 movaps	%xmm6, %xmm0
+1407b6c0c xorl	%edx, %edx
+1407b6c0e callq	0x140b4af60 <.text+0xb49f60> ; country_core::geometry::sphere::Sphere::new::h982d3950a326db44 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/geometry/sphere.rs:17:0
+1407b6c13 movq	%rdi, %rcx
+1407b6c16 movq	%rax, %rdx
+1407b6c19 movaps	%xmm0, %xmm2
+1407b6c1c callq	0x140a06b00 <.text+0xa05b00> ; country_core::geometry::sphere::_$LT$impl$u20$core..convert..TryFrom$LT$country_core..geometry..sphere..Sphere$GT$$u20$for$u20$country_core..render..mesh..Mesh$GT$::try_from::h36f793655e25b7fd | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/geometry/sphere.rs:37:0
+1407b6c21 xorl	%eax, %eax
+1407b6c23 cmpq	-0x18(%rbp), %rax
+1407b6c27 jo	0x1407b9293 <.text+0x7b8293>
+1407b6c2d movq	0x58(%rbp), %rax
+1407b6c31 movq	%rax, 0x2f0(%rbp)
+1407b6c38 movups	0x48(%rbp), %xmm0
+1407b6c3c movaps	%xmm0, 0x2e0(%rbp)
+1407b6c43 movups	0x38(%rbp), %xmm0
+1407b6c47 movaps	%xmm0, 0x2d0(%rbp)
+1407b6c4e movups	0x28(%rbp), %xmm0
+1407b6c52 movaps	%xmm0, 0x2c0(%rbp)
+1407b6c59 movups	-0x18(%rbp), %xmm0
+1407b6c5d movups	-0x8(%rbp), %xmm1
+1407b6c61 movups	0x8(%rbp), %xmm2
+1407b6c65 movups	0x18(%rbp), %xmm3
+1407b6c69 movaps	%xmm3, 0x2b0(%rbp)
+1407b6c70 movaps	%xmm2, 0x2a0(%rbp)
+1407b6c77 movaps	%xmm1, 0x290(%rbp)
+1407b6c7e movaps	%xmm0, 0x280(%rbp)
+1407b6c85 movq	%rdi, %rcx
+1407b6c88 leaq	0x280(%rbp), %rdx
+1407b6c8f callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b6c94 movl	$0x38, %r8d
+1407b6c9a movl	$0x10, %r9d
+1407b6ca0 leaq	0x2b8(%rbp), %rcx
+1407b6ca7 leaq	0x2d8(%rbp), %rdx
+1407b6cae callq	0x141263de0 <.text+0x1262de0> ; hashbrown::raw::RawTableInner::drop_inner_table::h7ac3db01194f8306 | /rust/deps\hashbrown-0.15.2\src\raw\mod.rs:2124:0
+1407b6cb3 movq	0x280(%rbp), %rdx
+1407b6cba testq	%rdx, %rdx
+1407b6cbd je	0x1407b6cd5 <.text+0x7b5cd5>
+1407b6cbf movq	0x288(%rbp), %rcx
+1407b6cc6 shlq	$0x2, %rdx
+1407b6cca movl	$0x4, %r8d
+1407b6cd0 callq	0x140613c20 <.text+0x612c20> ; __rust_dealloc | ??:0:0
+1407b6cd5 movq	0x298(%rbp), %rdx
+1407b6cdc movq	%rdx, %rax
+1407b6cdf negq	%rax
+1407b6ce2 jo	0x1407b6cf8 <.text+0x7b5cf8>
+1407b6ce4 jae	0x1407b6cf8 <.text+0x7b5cf8>
+1407b6ce6 movq	0x2a0(%rbp), %rcx
+1407b6ced movl	$0x1, %r8d
+1407b6cf3 callq	0x140613c20 <.text+0x612c20> ; __rust_dealloc | ??:0:0
+1407b6cf8 movabsq	$0x3f00000000000002, %rax # imm = 0x3F00000000000002
+1407b6d02 movq	%rax, 0x280(%rbp)
+1407b6d09 cmpb	$0x13, %r12b
+1407b6d0d je	0x1407b7406 <.text+0x7b6406>
+1407b6d13 cmpl	$0x14, %esi
+1407b6d16 jne	0x1407b7428 <.text+0x7b6428>
+1407b6d1c movb	$0x1, 0x8c9(%rbp)
+1407b6d23 movl	$0x2e, %r8d
+1407b6d29 leaq	0x4f0(%rbp), %rcx
+1407b6d30 leaq	0x22ce63d(%rip), %rdx   # 0x142a85374 ; decorators/chimney_collision_outline_vent_pipedecorators/chimney_collision_
+1407b6d37 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b6d3c jmp	0x1407b7448 <.text+0x7b6448>
+CASE [22, 23]
+1407b6d41 movq	0x2e75350(%rip), %rax   # 0x14362c098
+1407b6d48 cmpb	$0x0, (%rax)
+1407b6d4b jne	0x1407b6bb0 <.text+0x7b5bb0>
+1407b6d51 movb	%dl, 0x878(%rbp)
+1407b6d57 movb	$0x3a, %cl
+1407b6d59 callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b6d5e movq	%rax, 0x778(%rbp)
+1407b6d65 movl	$0x1, %ebx
+1407b6d6a xorl	%r13d, %r13d
+1407b6d6d testb	$0x1, %r13b
+1407b6d71 jne	0x1407b8e90 <.text+0x7b7e90>
+1407b6d77 nopw	(%rax,%rax)
+1407b6d80 cmpq	0x778(%rbp), %rbx
+1407b6d87 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b6d8d setae	%r13b
+1407b6d91 movq	%rbx, %rsi
+1407b6d94 adcq	$0x0, %rsi
+1407b6d98 movl	0x8a8(%rbp), %eax
+1407b6d9e movq	0x8a0(%rbp), %rcx
+1407b6da5 movl	%eax, (%rcx)
+1407b6da7 movl	%ebx, %ecx
+1407b6da9 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b6dae movl	%eax, %ecx
+1407b6db0 movl	%r12d, %edx
+1407b6db3 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b6db8 movl	%eax, %r15d
+1407b6dbb movl	%edx, %edi
+1407b6dbd cmpq	$0x3, %rbx
+1407b6dc1 jne	0x1407b6e20 <.text+0x7b5e20>
+1407b6dc3 movl	$0x23, %r9d
+1407b6dc9 leaq	0x280(%rbp), %rcx
+1407b6dd0 movq	0x8b0(%rbp), %r14
+1407b6dd7 movq	%r14, %rdx
+1407b6dda leaq	0x22ce416(%rip), %r8    # 0x142a851f7 ; decorators/arrow_slit_1x3_collisiondecorators/arrow_slit_1x1_collisiondecor
+1407b6de1 callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b6de6 movb	$0x1, 0x8ca(%rbp)
+1407b6ded movl	$0x25, %r9d
+1407b6df3 leaq	-0x18(%rbp), %rcx
+1407b6df7 movq	%r14, %rdx
+1407b6dfa leaq	0x22ce4a9(%rip), %r8    # 0x142a852aa ; decorators/arrow_slit_1x3_interactiondecorators/arrow_slit_1x1_outlinedecor
+1407b6e01 callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b6e06 leaq	0x800(%rbp), %r14
+1407b6e0d leaq	0x22ce4fd(%rip), %rdx   # 0x142a85311 ; decorators/arrow_slit_1x3_outline
+1407b6e14 jmp	0x1407b6ebd <.text+0x7b5ebd>
+1407b6e19 nopl	(%rax)
+1407b6e20 movq	0x8b0(%rbp), %rax
+1407b6e27 movq	(%rax), %rdx
+1407b6e2a cmpq	$0x1, %rbx
+1407b6e2e je	0x1407b6e60 <.text+0x7b5e60>
+1407b6e30 cmpq	$0x2, %rbx
+1407b6e34 jne	0x1407b918f <.text+0x7b818f>
+1407b6e3a movl	$0x23, %r9d
+1407b6e40 leaq	0x280(%rbp), %rcx
+1407b6e47 leaq	0x22ce3ef(%rip), %r8    # 0x142a8523d ; decorators/arrow_slit_1x2_collisiondecorators/arrow_slit_1x1_interactiondec
+1407b6e4e callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b6e53 leaq	0x22ce42b(%rip), %r8    # 0x142a85285 ; decorators/arrow_slit_1x2_interactiondecorators/arrow_slit_1x3_interactiond
+1407b6e5a jmp	0x1407b6e80 <.text+0x7b5e80>
+1407b6e5c nopl	(%rax)
+1407b6e60 movl	$0x23, %r9d
+1407b6e66 leaq	0x280(%rbp), %rcx
+1407b6e6d leaq	0x22ce3a6(%rip), %r8    # 0x142a8521a ; decorators/arrow_slit_1x1_collisiondecorators/arrow_slit_1x2_collisiondecor
+1407b6e74 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b6e79 leaq	0x22ce3e0(%rip), %r8    # 0x142a85260 ; decorators/arrow_slit_1x1_interactiondecorators/arrow_slit_1x2_interactiond
+1407b6e80 leaq	0x800(%rbp), %r14
+1407b6e87 movq	0x8b0(%rbp), %rax
+1407b6e8e movq	(%rax), %rdx
+1407b6e91 movb	$0x1, 0x8ca(%rbp)
+1407b6e98 movl	$0x25, %r9d
+1407b6e9e leaq	-0x18(%rbp), %rcx
+1407b6ea2 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b6ea7 cmpq	$0x1, %rbx
+1407b6eab leaq	0x22ce43e(%rip), %rdx   # 0x142a852f0 ; decorators/arrow_slit_1x2_outlinedecorators/arrow_slit_1x3_outline
+1407b6eb2 leaq	0x22ce416(%rip), %rax   # 0x142a852cf ; decorators/arrow_slit_1x1_outlinedecorators/arrow_slit_1x2_outlinedecorator
+1407b6eb9 cmoveq	%rax, %rdx
+1407b6ebd movb	$0x1, 0x8be(%rbp)
+1407b6ec4 movl	$0x21, %r8d
+1407b6eca movq	%r14, %rcx
+1407b6ecd callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b6ed2 movq	0x810(%rbp), %rax
+1407b6ed9 leaq	0x4f8(%rbp), %rcx
+1407b6ee0 movq	%rax, 0x10(%rcx)
+1407b6ee4 movups	0x800(%rbp), %xmm0
+1407b6eeb movups	%xmm0, (%rcx)
+1407b6eee movl	$0x1, 0x4f0(%rbp)
+1407b6ef8 leaq	0x22ce701(%rip), %rax   # 0x142a85600
+1407b6eff movslq	-0x4(%rax,%rbx,4), %rdx
+1407b6f04 addq	%rax, %rdx
+1407b6f07 movb	$0x1, 0x88e(%rbp)
+1407b6f0e movl	$0x21, %r8d
+1407b6f14 movq	%r14, %rcx
+1407b6f17 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b6f1c movq	0x810(%rbp), %rax
+1407b6f23 movq	%rax, 0x790(%rbp)
+1407b6f2a movups	0x800(%rbp), %xmm0
+1407b6f31 movaps	%xmm0, 0x780(%rbp)
+1407b6f38 movb	$0x0, 0x88e(%rbp)
+1407b6f3f leaq	0x780(%rbp), %rax
+1407b6f46 movq	%rax, 0x30(%rsp)
+1407b6f4b leaq	0x4f0(%rbp), %rax
+1407b6f52 movq	%rax, 0x28(%rsp)
+1407b6f57 leaq	-0x18(%rbp), %rax
+1407b6f5b movq	%rax, 0x20(%rsp)
+1407b6f60 movq	0x880(%rbp), %rcx
+1407b6f67 movl	%r15d, %edx
+1407b6f6a movl	%edi, %r8d
+1407b6f6d leaq	0x280(%rbp), %r9
+1407b6f74 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b6f79 movq	%rsi, %rbx
+1407b6f7c testb	$0x1, %r13b
+1407b6f80 je	0x1407b6d80 <.text+0x7b5d80>
+1407b6f86 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [5, 10]
+1407b6f8b movb	%dl, 0x878(%rbp)
+1407b6f91 movb	$0x38, %cl
+1407b6f93 callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b6f98 testq	%rax, %rax
+1407b6f9b je	0x1407b8e90 <.text+0x7b7e90>
+1407b6fa1 movq	%rax, %rdi
+1407b6fa4 movl	$0x1, %ebx
+1407b6fa9 movl	$0x1, %esi
+1407b6fae nop
+1407b6fb0 cmpq	%rdi, %rbx
+1407b6fb3 adcq	$0x0, %rsi
+1407b6fb7 movl	0x8a8(%rbp), %eax
+1407b6fbd movq	0x8a0(%rbp), %rcx
+1407b6fc4 movl	%eax, (%rcx)
+1407b6fc6 movl	%ebx, %ecx
+1407b6fc8 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b6fcd movl	%eax, %ecx
+1407b6fcf movl	%r12d, %edx
+1407b6fd2 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b6fd7 movl	%eax, %r14d
+1407b6fda movl	%edx, %r15d
+1407b6fdd movq	0x8b0(%rbp), %rax
+1407b6fe4 movq	(%rax), %rdx
+1407b6fe7 movl	$0x26, %r9d
+1407b6fed leaq	-0x18(%rbp), %rcx
+1407b6ff1 leaq	0x22cdf28(%rip), %r8    # 0x142a84f20 ; decorators/trap_door_cottage_collisiondecorators/trap_door_cottage_outlined
+1407b6ff8 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b6ffd movzbl	0x2e7dc05(%rip), %eax   # 0x143634c09
+1407b7004 movl	$0x24, %ecx
+1407b7009 movl	$0x1, %edx
+1407b700e callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b7013 testq	%rax, %rax
+1407b7016 je	0x1407b8f7b <.text+0x7b7f7b>
+1407b701c movups	0x22cdf33(%rip), %xmm0  # 0x142a84f56 ; door_cottage_outlinedecorators/trap_door_cottage_collision_outlinedecorator
+1407b7023 movups	%xmm0, 0x10(%rax)
+1407b7027 movups	0x22cdf18(%rip), %xmm0  # 0x142a84f46 ; decorators/trap_door_cottage_outlinedecorators/trap_door_cottage_collision_
+1407b702e movups	%xmm0, (%rax)
+1407b7031 movl	$0x656e696c, 0x20(%rax) # imm = 0x656E696C
+1407b7038 movq	$0x24, 0x288(%rbp)
+1407b7043 movq	%rax, 0x290(%rbp)
+1407b704a movq	$0x24, 0x298(%rbp)
+1407b7055 movl	$0x0, 0x280(%rbp)
+1407b705f movb	$0x1, 0x896(%rbp)
+1407b7066 movl	$0x2e, %r8d
+1407b706c leaq	0x4f0(%rbp), %rcx
+1407b7073 leaq	0x22cdef0(%rip), %rdx   # 0x142a84f6a ; decorators/trap_door_cottage_collision_outlinedecorators/flag_wall_collisio
+1407b707a callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b707f movq	0x500(%rbp), %rax
+1407b7086 movq	%rax, 0x810(%rbp)
+1407b708d movups	0x4f0(%rbp), %xmm0
+1407b7094 movaps	%xmm0, 0x800(%rbp)
+1407b709b movb	$0x0, 0x896(%rbp)
+1407b70a2 leaq	0x800(%rbp), %rax
+1407b70a9 movq	%rax, 0x28(%rsp)
+1407b70ae leaq	0x280(%rbp), %rax
+1407b70b5 movq	%rax, 0x20(%rsp)
+1407b70ba movq	0x880(%rbp), %rcx
+1407b70c1 movl	%r14d, %edx
+1407b70c4 movl	%r15d, %r8d
+1407b70c7 leaq	-0x18(%rbp), %r9
+1407b70cb callq	0x140b25ef0 <.text+0xb24ef0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert_collision_and_interaction_as_same::h600cb4bfc28f189d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:143:0
+1407b70d0 cmpq	%rdi, %rbx
+1407b70d3 jae	0x1407b8e90 <.text+0x7b7e90>
+1407b70d9 movq	%rsi, %rbx
+1407b70dc cmpq	%rdi, %rsi
+1407b70df jbe	0x1407b6fb0 <.text+0x7b5fb0>
+1407b70e5 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [13, 14]
+1407b70ea movb	%dl, 0x878(%rbp)
+1407b70f0 movl	0x8a8(%rbp), %eax
+1407b70f6 movq	0x8a0(%rbp), %rcx
+1407b70fd movl	%eax, (%rcx)
+1407b70ff movb	$0x1, %cl
+1407b7101 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b7106 movl	%eax, %ecx
+1407b7108 movl	%r12d, %edx
+1407b710b callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b7110 movb	%al, %bl
+1407b7112 movq	%rdi, %r14
+1407b7115 movb	%dl, %dil
+1407b7118 movq	0x8b0(%rbp), %rsi
+1407b711f movq	(%rsi), %rdx
+1407b7122 movl	$0x1e, %r9d
+1407b7128 leaq	0x280(%rbp), %rcx
+1407b712f leaq	0x22cdf0e(%rip), %r8    # 0x142a85044 ; decorators/flag_roof_collisiondecorators/flag_roof_interactiondecorators/fl
+1407b7136 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b713b movq	(%rsi), %rdx
+1407b713e movb	$0x1, 0x8bf(%rbp)
+1407b7145 movl	$0x20, %r9d
+1407b714b movq	%r14, %rcx
+1407b714e leaq	0x22cdf0d(%rip), %r8    # 0x142a85062 ; decorators/flag_roof_interactiondecorators/flag_roof_collision_outlinedecor
+1407b7155 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b715a movabsq	$0x3e99999a00000002, %rax # imm = 0x3E99999A00000002
+1407b7164 movq	%rax, 0x4f0(%rbp)
+1407b716b movb	$0x1, 0x893(%rbp)
+1407b7172 movl	$0x26, %r8d
+1407b7178 leaq	0x800(%rbp), %rcx
+1407b717f leaq	0x22cdefc(%rip), %rdx   # 0x142a85082 ; decorators/flag_roof_collision_outlinedecorators/flag_terrain_collisiondeco
+1407b7186 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b718b movq	0x810(%rbp), %rax
+1407b7192 movq	%rax, 0x790(%rbp)
+1407b7199 movups	0x800(%rbp), %xmm0
+1407b71a0 movaps	%xmm0, 0x780(%rbp)
+1407b71a7 movb	$0x0, 0x893(%rbp)
+1407b71ae leaq	0x780(%rbp), %rax
+1407b71b5 movq	%rax, 0x30(%rsp)
+1407b71ba leaq	0x4f0(%rbp), %rax
+1407b71c1 movq	%rax, 0x28(%rsp)
+1407b71c6 leaq	-0x18(%rbp), %rax
+1407b71ca movq	%rax, 0x20(%rsp)
+1407b71cf movq	0x880(%rbp), %rcx
+1407b71d6 movl	%ebx, %edx
+1407b71d8 movl	%edi, %r8d
+1407b71db leaq	0x280(%rbp), %r9
+1407b71e2 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b71e7 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [6, 7]
+1407b71ec movq	0x2e74ea5(%rip), %rax   # 0x14362c098
+1407b71f3 cmpb	$0x0, (%rax)
+1407b71f6 jne	0x1407b6bb0 <.text+0x7b5bb0>
+1407b71fc movb	%dl, 0x878(%rbp)
+1407b7202 movb	$0x39, %cl
+1407b7204 callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b7209 movq	%rax, 0x778(%rbp)
+1407b7210 movl	$0x1, %edi
+1407b7215 xorl	%esi, %esi
+1407b7217 testb	$0x1, %sil
+1407b721b jne	0x1407b8e90 <.text+0x7b7e90>
+1407b7221 00	nopw	%cs:(%rax,%rax)
+1407b7230 cmpq	0x778(%rbp), %rdi
+1407b7237 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b723d setae	%sil
+1407b7241 movq	%rdi, %r13
+1407b7244 adcq	$0x0, %r13
+1407b7248 movl	0x8a8(%rbp), %eax
+1407b724e movq	0x8a0(%rbp), %rcx
+1407b7255 movl	%eax, (%rcx)
+1407b7257 movl	%edi, %ecx
+1407b7259 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b725e movl	%eax, %ecx
+1407b7260 movl	%r12d, %edx
+1407b7263 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b7268 movl	%eax, %ebx
+1407b726a movl	%edx, %r15d
+1407b726d cmpq	$0x3, %rdi
+1407b7271 je	0x1407b72e0 <.text+0x7b62e0>
+1407b7273 cmpq	$0x2, %rdi
+1407b7277 je	0x1407b72b0 <.text+0x7b62b0>
+1407b7279 cmpq	$0x1, %rdi
+1407b727d jne	0x1407b9045 <.text+0x7b8045>
+1407b7283 movl	$0x26, %r9d
+1407b7289 leaq	0x280(%rbp), %rcx
+1407b7290 movq	0x8b0(%rbp), %r14
+1407b7297 movq	%r14, %rdx
+1407b729a leaq	0x22cd5df(%rip), %r8    # 0x142a84880 ; decorators/window_gothic_1x1_collisiondecorators/window_gothic_2x1_collisio
+1407b72a1 callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b72a6 leaq	0x22cd645(%rip), %r8    # 0x142a848f2 ; decorators/window_gothic_1x1_interactiondecorators/window_gothic_2x1_intera
+1407b72ad jmp	0x1407b730a <.text+0x7b630a>
+1407b72af nop
+1407b72b0 movl	$0x26, %r9d
+1407b72b6 leaq	0x280(%rbp), %rcx
+1407b72bd movq	0x8b0(%rbp), %r14
+1407b72c4 movq	%r14, %rdx
+1407b72c7 leaq	0x22cd5d8(%rip), %r8    # 0x142a848a6 ; decorators/window_gothic_2x1_collisiondecorators/window_gothic_3x1_collisio
+1407b72ce callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b72d3 leaq	0x22cd640(%rip), %r8    # 0x142a8491a ; decorators/window_gothic_2x1_interactiondecorators/window_gothic_3x1_intera
+1407b72da jmp	0x1407b730a <.text+0x7b630a>
+1407b72dc nopl	(%rax)
+1407b72e0 movl	$0x26, %r9d
+1407b72e6 leaq	0x280(%rbp), %rcx
+1407b72ed movq	0x8b0(%rbp), %r14
+1407b72f4 movq	%r14, %rdx
+1407b72f7 leaq	0x22cd5ce(%rip), %r8    # 0x142a848cc ; decorators/window_gothic_3x1_collisiondecorators/window_gothic_1x1_interact
+1407b72fe callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b7303 leaq	0x22cd638(%rip), %r8    # 0x142a84942 ; decorators/window_gothic_3x1_interactiondecorators/window_gothic_1x1_outlin
+1407b730a movb	$0x1, 0x8c8(%rbp)
+1407b7311 movl	$0x28, %r9d
+1407b7317 leaq	-0x18(%rbp), %rcx
+1407b731b movq	%r14, %rdx
+1407b731e callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b7323 leaq	0x22ce28e(%rip), %rax   # 0x142a855b8
+1407b732a movslq	-0x4(%rax,%rdi,4), %rdx
+1407b732f addq	%rax, %rdx
+1407b7332 movb	$0x1, 0x8c7(%rbp)
+1407b7339 movl	$0x24, %r8d
+1407b733f leaq	0x800(%rbp), %r14
+1407b7346 movq	%r14, %rcx
+1407b7349 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b734e movq	0x810(%rbp), %rax
+1407b7355 leaq	0x4f8(%rbp), %rcx
+1407b735c movq	%rax, 0x10(%rcx)
+1407b7360 movups	0x800(%rbp), %xmm0
+1407b7367 movups	%xmm0, (%rcx)
+1407b736a movl	$0x1, 0x4f0(%rbp)
+1407b7374 leaq	0x22ce249(%rip), %rax   # 0x142a855c4
+1407b737b movslq	-0x4(%rax,%rdi,4), %rdx
+1407b7380 addq	%rax, %rdx
+1407b7383 movb	$0x1, 0x899(%rbp)
+1407b738a movl	$0x2e, %r8d
+1407b7390 movq	%r14, %rcx
+1407b7393 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7398 movq	0x810(%rbp), %rax
+1407b739f movq	%rax, 0x790(%rbp)
+1407b73a6 movups	0x800(%rbp), %xmm0
+1407b73ad movaps	%xmm0, 0x780(%rbp)
+1407b73b4 movb	$0x0, 0x899(%rbp)
+1407b73bb leaq	0x780(%rbp), %rax
+1407b73c2 movq	%rax, 0x30(%rsp)
+1407b73c7 leaq	0x4f0(%rbp), %rax
+1407b73ce movq	%rax, 0x28(%rsp)
+1407b73d3 leaq	-0x18(%rbp), %rax
+1407b73d7 movq	%rax, 0x20(%rsp)
+1407b73dc movq	0x880(%rbp), %rcx
+1407b73e3 movl	%ebx, %edx
+1407b73e5 movl	%r15d, %r8d
+1407b73e8 leaq	0x280(%rbp), %r9
+1407b73ef callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b73f4 movq	%r13, %rdi
+1407b73f7 testb	$0x1, %sil
+1407b73fb je	0x1407b7230 <.text+0x7b6230>
+1407b7401 jmp	0x1407b8e90 <.text+0x7b7e90>
+1407b7406 movb	$0x1, 0x8c9(%rbp)
+1407b740d movl	$0x24, %r8d
+1407b7413 leaq	0x4f0(%rbp), %rcx
+1407b741a leaq	0x22cdf2f(%rip), %rdx   # 0x142a85350 ; decorators/chimney_collision_outlinedecorators/chimney_collision_outline_ve
+1407b7421 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7426 jmp	0x1407b7448 <.text+0x7b6448>
+1407b7428 movb	$0x1, 0x8c9(%rbp)
+1407b742f movl	$0x29, %r8d
+1407b7435 leaq	0x4f0(%rbp), %rcx
+1407b743c leaq	0x22cdf5f(%rip), %rdx   # 0x142a853a2 ; decorators/chimney_collision_outline_roofdecorators/lantern_terrain_rotate_
+1407b7443 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7448 movq	0x500(%rbp), %rax
+1407b744f movq	%rax, 0x810(%rbp)
+1407b7456 movups	0x4f0(%rbp), %xmm0
+1407b745d movaps	%xmm0, 0x800(%rbp)
+1407b7464 movb	$0x0, 0x8c9(%rbp)
+1407b746b leaq	0x800(%rbp), %rax
+1407b7472 movq	%rax, 0x28(%rsp)
+1407b7477 leaq	0x280(%rbp), %rax
+1407b747e movq	%rax, 0x20(%rsp)
+1407b7483 movq	0x880(%rbp), %rcx
+1407b748a movl	%r14d, %edx
+1407b748d movl	%r15d, %r8d
+1407b7490 movq	%rdi, %r9
+1407b7493 callq	0x140b25ef0 <.text+0xb24ef0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert_collision_and_interaction_as_same::h600cb4bfc28f189d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:143:0
+1407b7498 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [16]
+1407b749d movb	%dl, 0x878(%rbp)
+1407b74a3 movl	0x8a8(%rbp), %eax
+1407b74a9 movq	0x8a0(%rbp), %rcx
+1407b74b0 movl	%eax, (%rcx)
+1407b74b2 movb	$0x1, %cl
+1407b74b4 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b74b9 movl	%eax, %ecx
+1407b74bb movb	$0x10, %dl
+1407b74bd callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b74c2 movl	%eax, %ebx
+1407b74c4 movl	%edx, %edi
+1407b74c6 movq	0x8b0(%rbp), %rsi
+1407b74cd movq	(%rsi), %rcx
+1407b74d0 movl	$0x21, %r8d
+1407b74d6 leaq	0x22cdc0f(%rip), %rdx   # 0x142a850ec ; decorators/lantern_wall_collisiondecorators/lantern_wall_interactiondecorat
+1407b74dd callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b74e2 testq	%rax, %rax
+1407b74e5 je	0x1407b8f6f <.text+0x7b7f6f>
+1407b74eb leaq	0x280(%rbp), %rcx
+1407b74f2 movq	%rax, %rdx
+1407b74f5 callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b74fa movq	(%rsi), %rcx
+1407b74fd movb	$0x1, 0x8cd(%rbp)
+1407b7504 movl	$0x23, %r8d
+1407b750a leaq	0x22cdbfc(%rip), %rdx   # 0x142a8510d ; decorators/lantern_wall_interactiondecorators/lantern_wall_collision_outlin
+1407b7511 callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b7516 testq	%rax, %rax
+1407b7519 je	0x1407b933c <.text+0x7b833c>
+1407b751f movb	$0x1, 0x8cd(%rbp)
+1407b7526 leaq	-0x18(%rbp), %rcx
+1407b752a movq	%rax, %rdx
+1407b752d callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b7532 movabsq	$0x3e99999a00000002, %rax # imm = 0x3E99999A00000002
+1407b753c movq	%rax, 0x4f0(%rbp)
+1407b7543 movb	$0x1, 0x891(%rbp)
+1407b754a movl	$0x29, %r8d
+1407b7550 movq	%r14, %rcx
+1407b7553 leaq	0x22cdbd6(%rip), %rdx   # 0x142a85130 ; decorators/lantern_wall_collision_outlinedecorators/lantern_terrain_collisi
+1407b755a callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b755f movq	0x810(%rbp), %rax
+1407b7566 movq	%rax, 0x790(%rbp)
+1407b756d movups	0x800(%rbp), %xmm0
+1407b7574 movaps	%xmm0, 0x780(%rbp)
+1407b757b movb	$0x0, 0x891(%rbp)
+1407b7582 leaq	0x780(%rbp), %rax
+1407b7589 movq	%rax, 0x30(%rsp)
+1407b758e leaq	0x4f0(%rbp), %rax
+1407b7595 movq	%rax, 0x28(%rsp)
+1407b759a leaq	-0x18(%rbp), %rax
+1407b759e movq	%rax, 0x20(%rsp)
+1407b75a3 movq	0x880(%rbp), %rcx
+1407b75aa movl	%ebx, %edx
+1407b75ac movl	%edi, %r8d
+1407b75af leaq	0x280(%rbp), %r9
+1407b75b6 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b75bb jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [11]
+1407b75c0 movb	%dl, 0x878(%rbp)
+1407b75c6 movl	0x8a8(%rbp), %eax
+1407b75cc movq	0x8a0(%rbp), %rcx
+1407b75d3 movl	%eax, (%rcx)
+1407b75d5 movb	$0x1, %cl
+1407b75d7 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b75dc movl	%eax, %ecx
+1407b75de movb	$0xb, %dl
+1407b75e0 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b75e5 movb	%al, %bl
+1407b75e7 movq	%rdi, %r14
+1407b75ea movb	%dl, %dil
+1407b75ed movq	0x8b0(%rbp), %rsi
+1407b75f4 movq	(%rsi), %rdx
+1407b75f7 movl	$0x1e, %r9d
+1407b75fd leaq	0x280(%rbp), %rcx
+1407b7604 leaq	0x22cd98d(%rip), %r8    # 0x142a84f98 ; decorators/flag_wall_collisiondecorators/flag_wall_interactiondecorators/fl
+1407b760b callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7610 movq	(%rsi), %rdx
+1407b7613 movb	$0x1, 0x8c1(%rbp)
+1407b761a movl	$0x20, %r9d
+1407b7620 movq	%r14, %rcx
+1407b7623 leaq	0x22cd98c(%rip), %r8    # 0x142a84fb6 ; decorators/flag_wall_interactiondecorators/flag_wall_collision_outlinedecor
+1407b762a callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b762f movabsq	$0x3e99999a00000002, %rax # imm = 0x3E99999A00000002
+1407b7639 movq	%rax, 0x4f0(%rbp)
+1407b7640 movb	$0x1, 0x895(%rbp)
+1407b7647 movl	$0x26, %r8d
+1407b764d leaq	0x800(%rbp), %rcx
+1407b7654 leaq	0x22cd97b(%rip), %rdx   # 0x142a84fd6 ; decorators/flag_wall_collision_outlinedecorators/flag_corner_collisiondecor
+1407b765b callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7660 movq	0x810(%rbp), %rax
+1407b7667 movq	%rax, 0x790(%rbp)
+1407b766e movups	0x800(%rbp), %xmm0
+1407b7675 movaps	%xmm0, 0x780(%rbp)
+1407b767c movb	$0x0, 0x895(%rbp)
+1407b7683 leaq	0x780(%rbp), %rax
+1407b768a movq	%rax, 0x30(%rsp)
+1407b768f leaq	0x4f0(%rbp), %rax
+1407b7696 movq	%rax, 0x28(%rsp)
+1407b769b leaq	-0x18(%rbp), %rax
+1407b769f movq	%rax, 0x20(%rsp)
+1407b76a4 movq	0x880(%rbp), %rcx
+1407b76ab movl	%ebx, %edx
+1407b76ad movl	%edi, %r8d
+1407b76b0 leaq	0x280(%rbp), %r9
+1407b76b7 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b76bc jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [24]
+1407b76c1 movb	%dl, 0x878(%rbp)
+1407b76c7 movl	0x8a8(%rbp), %eax
+1407b76cd movq	0x8a0(%rbp), %rcx
+1407b76d4 movl	%eax, (%rcx)
+1407b76d6 movb	$0x1, %cl
+1407b76d8 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b76dd movl	%eax, %ecx
+1407b76df movb	$0x18, %dl
+1407b76e1 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b76e6 movb	%al, %bl
+1407b76e8 movq	%rdi, %rsi
+1407b76eb movb	%dl, %dil
+1407b76ee leaq	0x280(%rbp), %r14
+1407b76f5 movq	%r14, %rcx
+1407b76f8 callq	0x140b25ca0 <.text+0xb24ca0> ; country_core::resources::walls::decorator_subtype::DecoratorCollision::empty::hab6fb65f838ae7d2 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:122:0
+1407b76fd movb	$0x1, 0x88d(%rbp)
+1407b7704 movq	%rsi, %rcx
+1407b7707 callq	0x140b25ca0 <.text+0xb24ca0> ; country_core::resources::walls::decorator_subtype::DecoratorCollision::empty::hab6fb65f838ae7d2 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:122:0
+1407b770c movabsq	$0x3e4ccccd00000002, %rax # imm = 0x3E4CCCCD00000002
+1407b7716 movq	%rax, 0x4f0(%rbp)
+1407b771d movabsq	$-0x7fffffffffffffff, %rax # imm = 0x8000000000000001
+1407b7727 movq	%rax, 0x800(%rbp)
+1407b772e movb	$0x0, 0x88d(%rbp)
+1407b7735 leaq	0x800(%rbp), %rax
+1407b773c movq	%rax, 0x30(%rsp)
+1407b7741 leaq	0x4f0(%rbp), %rax
+1407b7748 movq	%rax, 0x28(%rsp)
+1407b774d movq	%rsi, 0x20(%rsp)
+1407b7752 movq	0x880(%rbp), %rcx
+1407b7759 movl	%ebx, %edx
+1407b775b movl	%edi, %r8d
+1407b775e movq	%r14, %r9
+1407b7761 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b7766 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [12]
+1407b776b movb	%dl, 0x878(%rbp)
+1407b7771 movl	0x8a8(%rbp), %eax
+1407b7777 movq	0x8a0(%rbp), %rcx
+1407b777e movl	%eax, (%rcx)
+1407b7780 movb	$0x1, %cl
+1407b7782 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b7787 movl	%eax, %ecx
+1407b7789 movb	$0xc, %dl
+1407b778b callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b7790 movl	%eax, %ebx
+1407b7792 movl	%edx, %edi
+1407b7794 movq	0x8b0(%rbp), %rsi
+1407b779b movq	(%rsi), %rcx
+1407b779e movl	$0x20, %r8d
+1407b77a4 leaq	0x22cd851(%rip), %rdx   # 0x142a84ffc ; decorators/flag_corner_collisiondecorators/flag_corner_collision_outlinedec
+1407b77ab callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b77b0 testq	%rax, %rax
+1407b77b3 je	0x1407b8f6f <.text+0x7b7f6f>
+1407b77b9 leaq	0x280(%rbp), %rcx
+1407b77c0 movq	%rax, %rdx
+1407b77c3 callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b77c8 movq	(%rsi), %rdx
+1407b77cb movb	$0x1, 0x8c0(%rbp)
+1407b77d2 movl	$0x20, %r9d
+1407b77d8 leaq	-0x18(%rbp), %rcx
+1407b77dc leaq	0x22cd7d3(%rip), %r8    # 0x142a84fb6 ; decorators/flag_wall_interactiondecorators/flag_wall_collision_outlinedecor
+1407b77e3 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b77e8 movabsq	$0x3e99999a00000002, %rax # imm = 0x3E99999A00000002
+1407b77f2 movq	%rax, 0x4f0(%rbp)
+1407b77f9 movb	$0x1, 0x894(%rbp)
+1407b7800 movl	$0x28, %r8d
+1407b7806 movq	%r14, %rcx
+1407b7809 leaq	0x22cd80c(%rip), %rdx   # 0x142a8501c ; decorators/flag_corner_collision_outlinedecorators/flag_roof_collisiondecor
+1407b7810 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7815 movq	0x810(%rbp), %rax
+1407b781c movq	%rax, 0x790(%rbp)
+1407b7823 movups	0x800(%rbp), %xmm0
+1407b782a movaps	%xmm0, 0x780(%rbp)
+1407b7831 movb	$0x0, 0x894(%rbp)
+1407b7838 leaq	0x780(%rbp), %rax
+1407b783f movq	%rax, 0x30(%rsp)
+1407b7844 leaq	0x4f0(%rbp), %rax
+1407b784b movq	%rax, 0x28(%rsp)
+1407b7850 leaq	-0x18(%rbp), %rax
+1407b7854 movq	%rax, 0x20(%rsp)
+1407b7859 movq	0x880(%rbp), %rcx
+1407b7860 movl	%ebx, %edx
+1407b7862 movl	%edi, %r8d
+1407b7865 leaq	0x280(%rbp), %r9
+1407b786c callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b7871 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [8]
+1407b7876 movq	0x2e7481b(%rip), %rax   # 0x14362c098
+1407b787d cmpb	$0x0, (%rax)
+1407b7880 jne	0x1407b6bb0 <.text+0x7b5bb0>
+1407b7886 movb	%dl, 0x878(%rbp)
+1407b788c movb	$0x39, %cl
+1407b788e callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b7893 movq	%rax, %r14
+1407b7896 movl	$0x1, %edi
+1407b789b xorl	%esi, %esi
+1407b789d testb	$0x1, %sil
+1407b78a1 jne	0x1407b8e90 <.text+0x7b7e90>
+1407b78a7 nopw	(%rax,%rax)
+1407b78b0 cmpq	%r14, %rdi
+1407b78b3 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b78b9 setae	%sil
+1407b78bd movq	%rdi, %r12
+1407b78c0 adcq	$0x0, %r12
+1407b78c4 movl	0x8a8(%rbp), %eax
+1407b78ca movq	0x8a0(%rbp), %rcx
+1407b78d1 movl	%eax, (%rcx)
+1407b78d3 movl	%edi, %ecx
+1407b78d5 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b78da movl	%eax, %ecx
+1407b78dc movb	$0x8, %dl
+1407b78de callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b78e3 movl	%eax, %ebx
+1407b78e5 movl	%edx, %r15d
+1407b78e8 cmpq	$0x3, %rdi
+1407b78ec je	0x1407b7960 <.text+0x7b6960>
+1407b78ee cmpq	$0x2, %rdi
+1407b78f2 je	0x1407b7930 <.text+0x7b6930>
+1407b78f4 cmpq	$0x1, %rdi
+1407b78f8 jne	0x1407b9225 <.text+0x7b8225>
+1407b78fe movl	$0x2d, %r9d
+1407b7904 leaq	0x280(%rbp), %rcx
+1407b790b movq	0x8b0(%rbp), %r13
+1407b7912 movq	%r13, %rdx
+1407b7915 leaq	0x22cd15c(%rip), %r8    # 0x142a84a78 ; decorators/window_gothic_1x1_dormer_collisiondecorators/window_gothic_2x1_d
+1407b791c callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b7921 leaq	0x22cd1d7(%rip), %r8    # 0x142a84aff ; decorators/window_gothic_1x1_dormer_interactiondecorators/window_gothic_2x1
+1407b7928 jmp	0x1407b798a <.text+0x7b698a>
+1407b792a nopw	(%rax,%rax)
+1407b7930 movl	$0x2d, %r9d
+1407b7936 leaq	0x280(%rbp), %rcx
+1407b793d movq	0x8b0(%rbp), %r13
+1407b7944 movq	%r13, %rdx
+1407b7947 leaq	0x22cd157(%rip), %r8    # 0x142a84aa5 ; decorators/window_gothic_2x1_dormer_collisiondecorators/window_gothic_3x1_d
+1407b794e callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b7953 leaq	0x22cd1d4(%rip), %r8    # 0x142a84b2e ; decorators/window_gothic_2x1_dormer_interactiondecorators/window_gothic_3x1
+1407b795a jmp	0x1407b798a <.text+0x7b698a>
+1407b795c nopl	(%rax)
+1407b7960 movl	$0x2d, %r9d
+1407b7966 leaq	0x280(%rbp), %rcx
+1407b796d movq	0x8b0(%rbp), %r13
+1407b7974 movq	%r13, %rdx
+1407b7977 leaq	0x22cd154(%rip), %r8    # 0x142a84ad2 ; decorators/window_gothic_3x1_dormer_collisiondecorators/window_gothic_1x1_d
+1407b797e callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b7983 leaq	0x22cd1d3(%rip), %r8    # 0x142a84b5d ; decorators/window_gothic_3x1_dormer_interactiondecorators/window_gothic_1x1
+1407b798a movb	$0x1, 0x8c6(%rbp)
+1407b7991 movl	$0x2f, %r9d
+1407b7997 leaq	-0x18(%rbp), %rcx
+1407b799b movq	%r13, %rdx
+1407b799e callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b79a3 leaq	0x22cdc26(%rip), %rax   # 0x142a855d0
+1407b79aa movslq	-0x4(%rax,%rdi,4), %rdx
+1407b79af addq	%rax, %rdx
+1407b79b2 movb	$0x1, 0x8c5(%rbp)
+1407b79b9 movl	$0x2b, %r8d
+1407b79bf leaq	0x800(%rbp), %r13
+1407b79c6 movq	%r13, %rcx
+1407b79c9 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b79ce movq	0x810(%rbp), %rax
+1407b79d5 leaq	0x4f8(%rbp), %rcx
+1407b79dc movq	%rax, 0x10(%rcx)
+1407b79e0 movups	0x800(%rbp), %xmm0
+1407b79e7 movups	%xmm0, (%rcx)
+1407b79ea movl	$0x1, 0x4f0(%rbp)
+1407b79f4 leaq	0x22cdbe1(%rip), %rax   # 0x142a855dc
+1407b79fb movslq	-0x4(%rax,%rdi,4), %rdx
+1407b7a00 addq	%rax, %rdx
+1407b7a03 movb	$0x1, 0x898(%rbp)
+1407b7a0a movl	$0x35, %r8d
+1407b7a10 movq	%r13, %rcx
+1407b7a13 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7a18 movq	0x810(%rbp), %rax
+1407b7a1f movq	%rax, 0x790(%rbp)
+1407b7a26 movups	0x800(%rbp), %xmm0
+1407b7a2d movaps	%xmm0, 0x780(%rbp)
+1407b7a34 movb	$0x0, 0x898(%rbp)
+1407b7a3b leaq	0x780(%rbp), %rax
+1407b7a42 movq	%rax, 0x30(%rsp)
+1407b7a47 leaq	0x4f0(%rbp), %rax
+1407b7a4e movq	%rax, 0x28(%rsp)
+1407b7a53 leaq	-0x18(%rbp), %rax
+1407b7a57 movq	%rax, 0x20(%rsp)
+1407b7a5c movq	0x880(%rbp), %rcx
+1407b7a63 movl	%ebx, %edx
+1407b7a65 movl	%r15d, %r8d
+1407b7a68 leaq	0x280(%rbp), %r9
+1407b7a6f callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b7a74 movq	%r12, %rdi
+1407b7a77 testb	$0x1, %sil
+1407b7a7b je	0x1407b78b0 <.text+0x7b68b0>
+1407b7a81 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [4]
+1407b7a86 movb	%dl, 0x878(%rbp)
+1407b7a8c movb	$0x38, %cl
+1407b7a8e callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b7a93 movq	%rax, %r12
+1407b7a96 movl	$0x1, %edi
+1407b7a9b xorl	%ebx, %ebx
+1407b7a9d testb	$0x1, %bl
+1407b7aa0 jne	0x1407b8e90 <.text+0x7b7e90>
+1407b7aa6 nopw	%cs:(%rax,%rax)
+1407b7ab0 cmpq	%r12, %rdi
+1407b7ab3 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b7ab9 setae	%bl
+1407b7abc movq	%rdi, %r13
+1407b7abf adcq	$0x0, %r13
+1407b7ac3 movl	0x8a8(%rbp), %eax
+1407b7ac9 movq	0x8a0(%rbp), %rcx
+1407b7ad0 movl	%eax, (%rcx)
+1407b7ad2 movl	%edi, %ecx
+1407b7ad4 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b7ad9 movl	%eax, %ecx
+1407b7adb movb	$0x4, %dl
+1407b7add callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b7ae2 movl	%eax, %r14d
+1407b7ae5 movl	%edx, %r15d
+1407b7ae8 movq	0x8b0(%rbp), %rsi
+1407b7aef movq	(%rsi), %rdx
+1407b7af2 cmpq	$0x1, %rdi
+1407b7af6 je	0x1407b7c50 <.text+0x7b6c50>
+1407b7afc cmpq	$0x2, %rdi
+1407b7b00 je	0x1407b7bb0 <.text+0x7b6bb0>
+1407b7b06 cmpq	$0x3, %rdi
+1407b7b0a jne	0x1407b8ffd <.text+0x7b7ffd>
+1407b7b10 movl	$0x27, %r9d
+1407b7b16 leaq	0x280(%rbp), %rdi
+1407b7b1d movq	%rdi, %rcx
+1407b7b20 leaq	0x22ccccb(%rip), %r8    # 0x142a847f2 ; decorators/balcony_door_rank3_collisiondecorators/balcony_door_rank3_intera
+1407b7b27 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7b2c movq	(%rsi), %rdx
+1407b7b2f movb	$0x1, 0x8d0(%rbp)
+1407b7b36 movl	$0x29, %r9d
+1407b7b3c leaq	-0x18(%rbp), %rsi
+1407b7b40 movq	%rsi, %rcx
+1407b7b43 leaq	0x22ccccf(%rip), %r8    # 0x142a84819 ; decorators/balcony_door_rank3_interactiondecorators/outline_balcony_door_ra
+1407b7b4a callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7b4f movb	$0x1, 0x8cf(%rbp)
+1407b7b56 movl	$0x25, %r8d
+1407b7b5c leaq	0x800(%rbp), %rcx
+1407b7b63 leaq	0x22cccd8(%rip), %rdx   # 0x142a84842 ; decorators/outline_balcony_door_rank3
+1407b7b6a callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7b6f movq	0x810(%rbp), %rax
+1407b7b76 leaq	0x4f8(%rbp), %rcx
+1407b7b7d movq	%rax, 0x10(%rcx)
+1407b7b81 movups	0x800(%rbp), %xmm0
+1407b7b88 movups	%xmm0, (%rcx)
+1407b7b8b movl	$0x1, 0x4f0(%rbp)
+1407b7b95 leaq	0x22ccca6(%rip), %rdx   # 0x142a84842 ; decorators/outline_balcony_door_rank3
+1407b7b9c jmp	0x1407b7cdc <.text+0x7b6cdc>
+1407b7ba1 00	nopw	%cs:(%rax,%rax)
+1407b7bb0 movl	$0x27, %r9d
+1407b7bb6 leaq	0x280(%rbp), %rdi
+1407b7bbd movq	%rdi, %rcx
+1407b7bc0 leaq	0x22ccbb6(%rip), %r8    # 0x142a8477d ; decorators/balcony_door_rank2_collisiondecorators/balcony_door_rank2_intera
+1407b7bc7 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7bcc movq	(%rsi), %rdx
+1407b7bcf movb	$0x1, 0x8d0(%rbp)
+1407b7bd6 movl	$0x29, %r9d
+1407b7bdc leaq	-0x18(%rbp), %rsi
+1407b7be0 movq	%rsi, %rcx
+1407b7be3 leaq	0x22ccbba(%rip), %r8    # 0x142a847a4 ; decorators/balcony_door_rank2_interactiondecorators/outline_balcony_door_ra
+1407b7bea callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7bef movb	$0x1, 0x8cf(%rbp)
+1407b7bf6 movl	$0x25, %r8d
+1407b7bfc leaq	0x800(%rbp), %rcx
+1407b7c03 leaq	0x22ccbc3(%rip), %rdx   # 0x142a847cd ; decorators/outline_balcony_door_rank2decorators/balcony_door_rank3_collisio
+1407b7c0a callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7c0f movq	0x810(%rbp), %rax
+1407b7c16 leaq	0x4f8(%rbp), %rcx
+1407b7c1d movq	%rax, 0x10(%rcx)
+1407b7c21 movups	0x800(%rbp), %xmm0
+1407b7c28 movups	%xmm0, (%rcx)
+1407b7c2b movl	$0x1, 0x4f0(%rbp)
+1407b7c35 leaq	0x22ccb91(%rip), %rdx   # 0x142a847cd ; decorators/outline_balcony_door_rank2decorators/balcony_door_rank3_collisio
+1407b7c3c jmp	0x1407b7cdc <.text+0x7b6cdc>
+1407b7c41 00	nopw	%cs:(%rax,%rax)
+1407b7c50 movl	$0x27, %r9d
+1407b7c56 leaq	0x280(%rbp), %rdi
+1407b7c5d movq	%rdi, %rcx
+1407b7c60 leaq	0x22ccaa1(%rip), %r8    # 0x142a84708 ; decorators/balcony_door_rank1_collisiondecorators/balcony_door_rank1_intera
+1407b7c67 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7c6c movq	(%rsi), %rdx
+1407b7c6f movb	$0x1, 0x8d0(%rbp)
+1407b7c76 movl	$0x29, %r9d
+1407b7c7c leaq	-0x18(%rbp), %rsi
+1407b7c80 movq	%rsi, %rcx
+1407b7c83 leaq	0x22ccaa5(%rip), %r8    # 0x142a8472f ; decorators/balcony_door_rank1_interactiondecorators/outline_balcony_door_ra
+1407b7c8a callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7c8f movb	$0x1, 0x8cf(%rbp)
+1407b7c96 movl	$0x25, %r8d
+1407b7c9c leaq	0x800(%rbp), %rcx
+1407b7ca3 leaq	0x22ccaae(%rip), %rdx   # 0x142a84758 ; decorators/outline_balcony_door_rank1decorators/balcony_door_rank2_collisio
+1407b7caa callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7caf movq	0x810(%rbp), %rax
+1407b7cb6 leaq	0x4f8(%rbp), %rcx
+1407b7cbd movq	%rax, 0x10(%rcx)
+1407b7cc1 movups	0x800(%rbp), %xmm0
+1407b7cc8 movups	%xmm0, (%rcx)
+1407b7ccb movl	$0x1, 0x4f0(%rbp)
+1407b7cd5 leaq	0x22cca7c(%rip), %rdx   # 0x142a84758 ; decorators/outline_balcony_door_rank1decorators/balcony_door_rank2_collisio
+1407b7cdc movb	$0x1, 0x89a(%rbp)
+1407b7ce3 movl	$0x25, %r8d
+1407b7ce9 leaq	0x800(%rbp), %rcx
+1407b7cf0 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7cf5 movq	0x810(%rbp), %rax
+1407b7cfc movq	%rax, 0x790(%rbp)
+1407b7d03 movups	0x800(%rbp), %xmm0
+1407b7d0a movaps	%xmm0, 0x780(%rbp)
+1407b7d11 movb	$0x0, 0x89a(%rbp)
+1407b7d18 leaq	0x780(%rbp), %rax
+1407b7d1f movq	%rax, 0x30(%rsp)
+1407b7d24 leaq	0x4f0(%rbp), %rax
+1407b7d2b movq	%rax, 0x28(%rsp)
+1407b7d30 movq	%rsi, 0x20(%rsp)
+1407b7d35 movq	0x880(%rbp), %rcx
+1407b7d3c movl	%r14d, %edx
+1407b7d3f movl	%r15d, %r8d
+1407b7d42 movq	%rdi, %r9
+1407b7d45 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b7d4a movq	%r13, %rdi
+1407b7d4d testb	$0x1, %bl
+1407b7d50 je	0x1407b7ab0 <.text+0x7b6ab0>
+1407b7d56 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [15]
+1407b7d5b movb	%dl, 0x878(%rbp)
+1407b7d61 movl	0x8a8(%rbp), %eax
+1407b7d67 movq	0x8a0(%rbp), %rcx
+1407b7d6e movl	%eax, (%rcx)
+1407b7d70 movb	$0x1, %cl
+1407b7d72 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b7d77 movl	%eax, %ecx
+1407b7d79 movb	$0xf, %dl
+1407b7d7b callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b7d80 movb	%al, %bl
+1407b7d82 movb	%dl, %dil
+1407b7d85 movq	0x8b0(%rbp), %rsi
+1407b7d8c movq	(%rsi), %rdx
+1407b7d8f movl	$0x21, %r9d
+1407b7d95 leaq	0x280(%rbp), %rcx
+1407b7d9c leaq	0x22cd305(%rip), %r8    # 0x142a850a8 ; decorators/flag_terrain_collisiondecorators/flag_terrain_interactiondecorat
+1407b7da3 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7da8 movq	(%rsi), %rcx
+1407b7dab movb	$0x1, 0x8ce(%rbp)
+1407b7db2 movl	$0x23, %r8d
+1407b7db8 leaq	0x22cd30a(%rip), %rdx   # 0x142a850c9 ; decorators/flag_terrain_interactiondecorators/lantern_wall_collisiondecorat
+1407b7dbf callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b7dc4 testq	%rax, %rax
+1407b7dc7 je	0x1407b9354 <.text+0x7b8354>
+1407b7dcd movb	$0x1, 0x8ce(%rbp)
+1407b7dd4 leaq	-0x18(%rbp), %rcx
+1407b7dd8 movq	%rax, %rdx
+1407b7ddb callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b7de0 movabsq	$0x3e99999a00000002, %rax # imm = 0x3E99999A00000002
+1407b7dea movq	%rax, 0x4f0(%rbp)
+1407b7df1 movb	$0x1, 0x892(%rbp)
+1407b7df8 movl	$0x21, %r8d
+1407b7dfe movq	%r14, %rcx
+1407b7e01 leaq	0x22cd2a0(%rip), %rdx   # 0x142a850a8 ; decorators/flag_terrain_collisiondecorators/flag_terrain_interactiondecorat
+1407b7e08 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b7e0d movq	0x810(%rbp), %rax
+1407b7e14 movq	%rax, 0x790(%rbp)
+1407b7e1b movups	0x800(%rbp), %xmm0
+1407b7e22 movaps	%xmm0, 0x780(%rbp)
+1407b7e29 movb	$0x0, 0x892(%rbp)
+1407b7e30 leaq	0x780(%rbp), %rax
+1407b7e37 movq	%rax, 0x30(%rsp)
+1407b7e3c leaq	0x4f0(%rbp), %rax
+1407b7e43 movq	%rax, 0x28(%rsp)
+1407b7e48 leaq	-0x18(%rbp), %rax
+1407b7e4c movq	%rax, 0x20(%rsp)
+1407b7e51 movq	0x880(%rbp), %rcx
+1407b7e58 movl	%ebx, %edx
+1407b7e5a movl	%edi, %r8d
+1407b7e5d leaq	0x280(%rbp), %r9
+1407b7e64 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b7e69 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [2]
+1407b7e6e movb	%dl, 0x878(%rbp)
+1407b7e74 movb	$0x38, %cl
+1407b7e76 callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b7e7b testq	%rax, %rax
+1407b7e7e je	0x1407b8e90 <.text+0x7b7e90>
+1407b7e84 movq	%rax, %r14
+1407b7e87 movl	$0x1, %r15d
+1407b7e8d movl	$0x1, %edi
+1407b7e92 nopw	%cs:(%rax,%rax)
+1407b7ea0 cmpq	%r14, %r15
+1407b7ea3 adcq	$0x0, %rdi
+1407b7ea7 movl	0x8a8(%rbp), %eax
+1407b7ead movq	0x8a0(%rbp), %rcx
+1407b7eb4 movl	%eax, (%rcx)
+1407b7eb6 movl	%r15d, %ecx
+1407b7eb9 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b7ebe movl	%eax, %ecx
+1407b7ec0 movb	$0x2, %dl
+1407b7ec2 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b7ec7 movl	%eax, %r12d
+1407b7eca movl	%edx, %ebx
+1407b7ecc movq	0x8b0(%rbp), %rax
+1407b7ed3 movq	(%rax), %rdx
+1407b7ed6 cmpq	$0x1, %r15
+1407b7eda je	0x1407b8010 <.text+0x7b7010>
+1407b7ee0 cmpq	$0x2, %r15
+1407b7ee4 je	0x1407b7f80 <.text+0x7b6f80>
+1407b7eea cmpq	$0x3, %r15
+1407b7eee jne	0x1407b91a7 <.text+0x7b81a7>
+1407b7ef4 movl	$0x29, %r9d
+1407b7efa leaq	-0x18(%rbp), %rcx
+1407b7efe leaq	0x22cc59d(%rip), %r8    # 0x142a844a2 ; decorators/window_cottage_3x1_full_dormerdecorators/outline_window_cottage_
+1407b7f05 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7f0a movzbl	0x2e7ccf8(%rip), %eax   # 0x143634c09
+1407b7f11 movl	$0x31, %ecx
+1407b7f16 movl	$0x1, %edx
+1407b7f1b callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b7f20 testq	%rax, %rax
+1407b7f23 je	0x1407b91e1 <.text+0x7b81e1>
+1407b7f29 movups	0x22cc5bb(%rip), %xmm0  # 0x142a844eb ; e_3x1_full_dormerdecorators/window_cottage_3x1_full_dormer_collision_outlin
+1407b7f30 movups	%xmm0, 0x20(%rax)
+1407b7f34 movups	0x22cc5a0(%rip), %xmm0  # 0x142a844db ; ne_window_cottage_3x1_full_dormerdecorators/window_cottage_3x1_full_dormer_
+1407b7f3b movups	%xmm0, 0x10(%rax)
+1407b7f3f movups	0x22cc585(%rip), %xmm0  # 0x142a844cb ; decorators/outline_window_cottage_3x1_full_dormerdecorators/window_cottage_
+1407b7f46 movups	%xmm0, (%rax)
+1407b7f49 movb	$0x72, 0x30(%rax)
+1407b7f4d movq	$0x31, 0x288(%rbp)
+1407b7f58 movq	%rax, 0x290(%rbp)
+1407b7f5f movq	$0x31, 0x298(%rbp)
+1407b7f6a movl	$0x0, 0x280(%rbp)
+1407b7f74 leaq	0x22cc581(%rip), %rdx   # 0x142a844fc ; decorators/window_cottage_3x1_full_dormer_collision_outline
+1407b7f7b jmp	0x1407b8097 <.text+0x7b7097>
+1407b7f80 movl	$0x29, %r9d
+1407b7f86 leaq	-0x18(%rbp), %rcx
+1407b7f8a leaq	0x22cc47c(%rip), %r8    # 0x142a8440d ; decorators/window_cottage_2x1_full_dormerdecorators/outline_window_cottage_
+1407b7f91 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b7f96 movzbl	0x2e7cc6c(%rip), %eax   # 0x143634c09
+1407b7f9d movl	$0x31, %ecx
+1407b7fa2 movl	$0x1, %edx
+1407b7fa7 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b7fac testq	%rax, %rax
+1407b7faf je	0x1407b9203 <.text+0x7b8203>
+1407b7fb5 movups	0x22cc49a(%rip), %xmm0  # 0x142a84456 ; e_2x1_full_dormerdecorators/window_cottage_2x1_full_dormer_collision_outlin
+1407b7fbc movups	%xmm0, 0x20(%rax)
+1407b7fc0 movups	0x22cc47f(%rip), %xmm0  # 0x142a84446 ; ne_window_cottage_2x1_full_dormerdecorators/window_cottage_2x1_full_dormer_
+1407b7fc7 movups	%xmm0, 0x10(%rax)
+1407b7fcb movups	0x22cc464(%rip), %xmm0  # 0x142a84436 ; decorators/outline_window_cottage_2x1_full_dormerdecorators/window_cottage_
+1407b7fd2 movups	%xmm0, (%rax)
+1407b7fd5 movb	$0x72, 0x30(%rax)
+1407b7fd9 movq	$0x31, 0x288(%rbp)
+1407b7fe4 movq	%rax, 0x290(%rbp)
+1407b7feb movq	$0x31, 0x298(%rbp)
+1407b7ff6 movl	$0x0, 0x280(%rbp)
+1407b8000 leaq	0x22cc460(%rip), %rdx   # 0x142a84467 ; decorators/window_cottage_2x1_full_dormer_collision_outlinedecorators/windo
+1407b8007 jmp	0x1407b8097 <.text+0x7b7097>
+1407b800c nopl	(%rax)
+1407b8010 movl	$0x29, %r9d
+1407b8016 leaq	-0x18(%rbp), %rcx
+1407b801a leaq	0x22cc357(%rip), %r8    # 0x142a84378 ; decorators/window_cottage_1x1_full_dormerdecorators/outline_window_cottage_
+1407b8021 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b8026 movzbl	0x2e7cbdc(%rip), %eax   # 0x143634c09
+1407b802d movl	$0x31, %ecx
+1407b8032 movl	$0x1, %edx
+1407b8037 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b803c testq	%rax, %rax
+1407b803f je	0x1407b91bf <.text+0x7b81bf>
+1407b8045 movups	0x22cc375(%rip), %xmm0  # 0x142a843c1 ; e_1x1_full_dormerdecorators/window_cottage_1x1_full_dormer_collision_outlin
+1407b804c movups	%xmm0, 0x20(%rax)
+1407b8050 movups	0x22cc35a(%rip), %xmm0  # 0x142a843b1 ; ne_window_cottage_1x1_full_dormerdecorators/window_cottage_1x1_full_dormer_
+1407b8057 movups	%xmm0, 0x10(%rax)
+1407b805b movups	0x22cc33f(%rip), %xmm0  # 0x142a843a1 ; decorators/outline_window_cottage_1x1_full_dormerdecorators/window_cottage_
+1407b8062 movups	%xmm0, (%rax)
+1407b8065 movb	$0x72, 0x30(%rax)
+1407b8069 movq	$0x31, 0x288(%rbp)
+1407b8074 movq	%rax, 0x290(%rbp)
+1407b807b movq	$0x31, 0x298(%rbp)
+1407b8086 movl	$0x0, 0x280(%rbp)
+1407b8090 leaq	0x22cc33b(%rip), %rdx   # 0x142a843d2 ; decorators/window_cottage_1x1_full_dormer_collision_outlinedecorators/windo
+1407b8097 movb	$0x1, 0x89c(%rbp)
+1407b809e movl	$0x3b, %r8d
+1407b80a4 leaq	0x4f0(%rbp), %rcx
+1407b80ab callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b80b0 movq	0x500(%rbp), %rax
+1407b80b7 movq	%rax, 0x810(%rbp)
+1407b80be movups	0x4f0(%rbp), %xmm0
+1407b80c5 movaps	%xmm0, 0x800(%rbp)
+1407b80cc movb	$0x0, 0x89c(%rbp)
+1407b80d3 leaq	0x800(%rbp), %rax
+1407b80da movq	%rax, 0x28(%rsp)
+1407b80df leaq	0x280(%rbp), %rax
+1407b80e6 movq	%rax, 0x20(%rsp)
+1407b80eb movq	0x880(%rbp), %rcx
+1407b80f2 movl	%r12d, %edx
+1407b80f5 movl	%ebx, %r8d
+1407b80f8 leaq	-0x18(%rbp), %r9
+1407b80fc callq	0x140b25ef0 <.text+0xb24ef0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert_collision_and_interaction_as_same::h600cb4bfc28f189d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:143:0
+1407b8101 cmpq	%r14, %r15
+1407b8104 jae	0x1407b8e90 <.text+0x7b7e90>
+1407b810a movq	%rdi, %r15
+1407b810d cmpq	%r14, %rdi
+1407b8110 jbe	0x1407b7ea0 <.text+0x7b6ea0>
+1407b8116 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [3]
+1407b811b movb	%dl, 0x878(%rbp)
+1407b8121 movb	$0x38, %cl
+1407b8123 callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b8128 movq	%rax, %r12
+1407b812b movl	$0x1, %edi
+1407b8130 xorl	%ebx, %ebx
+1407b8132 testb	$0x1, %bl
+1407b8135 jne	0x1407b8e90 <.text+0x7b7e90>
+1407b813b nopl	(%rax,%rax)
+1407b8140 cmpq	%r12, %rdi
+1407b8143 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b8149 setae	%bl
+1407b814c movq	%rdi, %r13
+1407b814f adcq	$0x0, %r13
+1407b8153 movl	0x8a8(%rbp), %eax
+1407b8159 movq	0x8a0(%rbp), %rcx
+1407b8160 movl	%eax, (%rcx)
+1407b8162 movl	%edi, %ecx
+1407b8164 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b8169 movl	%eax, %ecx
+1407b816b movb	$0x3, %dl
+1407b816d callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b8172 movl	%eax, %r14d
+1407b8175 movl	%edx, %r15d
+1407b8178 cmpq	$0x1, %rdi
+1407b817c je	0x1407b8330 <.text+0x7b7330>
+1407b8182 cmpq	$0x2, %rdi
+1407b8186 movq	0x8b0(%rbp), %rsi
+1407b818d je	0x1407b8260 <.text+0x7b7260>
+1407b8193 cmpq	$0x3, %rdi
+1407b8197 jne	0x1407b8fe5 <.text+0x7b7fe5>
+1407b819d movq	(%rsi), %rcx
+1407b81a0 movl	$0x2e, %r8d
+1407b81a6 leaq	0x22cc4b7(%rip), %rdx   # 0x142a84664 ; decorators/window_cottage_corner_3x1_collisiondecorators/window_cottage_cor
+1407b81ad callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b81b2 testq	%rax, %rax
+1407b81b5 leaq	-0x18(%rbp), %rdi
+1407b81b9 je	0x1407b8f6f <.text+0x7b7f6f>
+1407b81bf leaq	0x280(%rbp), %rcx
+1407b81c6 movq	%rax, %rdx
+1407b81c9 callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b81ce movq	(%rsi), %rdx
+1407b81d1 movb	$0x1, 0x8d2(%rbp)
+1407b81d8 movl	$0x30, %r9d
+1407b81de movq	%rdi, %rcx
+1407b81e1 leaq	0x22cc4aa(%rip), %r8    # 0x142a84692 ; decorators/window_cottage_corner_3x1_interactiondecorators/outline_window_c
+1407b81e8 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b81ed movzbl	0x2e7ca15(%rip), %eax   # 0x143634c09
+1407b81f4 movl	$0x2c, %ecx
+1407b81f9 movl	$0x1, %edx
+1407b81fe callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b8203 testq	%rax, %rax
+1407b8206 je	0x1407b90c3 <.text+0x7b80c3>
+1407b820c movups	0x22cc4cb(%rip), %xmm0  # 0x142a846de ; ttage_corner_3x1
+1407b8213 movups	%xmm0, 0x1c(%rax)
+1407b8217 movups	0x22cc4b4(%rip), %xmm0  # 0x142a846d2 ; ne_window_cottage_corner_3x1
+1407b821e movups	%xmm0, 0x10(%rax)
+1407b8222 movups	0x22cc499(%rip), %xmm0  # 0x142a846c2 ; decorators/outline_window_cottage_corner_3x1
+1407b8229 movups	%xmm0, (%rax)
+1407b822c movq	$0x2c, 0x4f8(%rbp)
+1407b8237 movq	%rax, 0x500(%rbp)
+1407b823e movq	$0x2c, 0x508(%rbp)
+1407b8249 movl	$0x0, 0x4f0(%rbp)
+1407b8253 leaq	0x22cc468(%rip), %rdx   # 0x142a846c2 ; decorators/outline_window_cottage_corner_3x1
+1407b825a jmp	0x1407b83f4 <.text+0x7b73f4>
+1407b825f nop
+1407b8260 movq	(%rsi), %rcx
+1407b8263 movl	$0x2e, %r8d
+1407b8269 leaq	0x22cc36a(%rip), %rdx   # 0x142a845da ; decorators/window_cottage_corner_2x1_collisiondecorators/window_cottage_cor
+1407b8270 callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b8275 testq	%rax, %rax
+1407b8278 je	0x1407b8f6f <.text+0x7b7f6f>
+1407b827e leaq	0x280(%rbp), %rcx
+1407b8285 movq	%rax, %rdx
+1407b8288 callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b828d movq	(%rsi), %rdx
+1407b8290 movb	$0x1, 0x8d2(%rbp)
+1407b8297 movl	$0x30, %r9d
+1407b829d leaq	-0x18(%rbp), %rdi
+1407b82a1 movq	%rdi, %rcx
+1407b82a4 leaq	0x22cc35d(%rip), %r8    # 0x142a84608 ; decorators/window_cottage_corner_2x1_interactiondecorators/outline_window_c
+1407b82ab callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b82b0 movzbl	0x2e7c952(%rip), %eax   # 0x143634c09
+1407b82b7 movl	$0x2c, %ecx
+1407b82bc movl	$0x1, %edx
+1407b82c1 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b82c6 testq	%rax, %rax
+1407b82c9 je	0x1407b9129 <.text+0x7b8129>
+1407b82cf movups	0x22cc37e(%rip), %xmm0  # 0x142a84654 ; ttage_corner_2x1decorators/window_cottage_corner_3x1_collisiondecorators/wi
+1407b82d6 movups	%xmm0, 0x1c(%rax)
+1407b82da movups	0x22cc367(%rip), %xmm0  # 0x142a84648 ; ne_window_cottage_corner_2x1decorators/window_cottage_corner_3x1_collisiond
+1407b82e1 movups	%xmm0, 0x10(%rax)
+1407b82e5 movups	0x22cc34c(%rip), %xmm0  # 0x142a84638 ; decorators/outline_window_cottage_corner_2x1decorators/window_cottage_corne
+1407b82ec movups	%xmm0, (%rax)
+1407b82ef movq	$0x2c, 0x4f8(%rbp)
+1407b82fa movq	%rax, 0x500(%rbp)
+1407b8301 movq	$0x2c, 0x508(%rbp)
+1407b830c movl	$0x0, 0x4f0(%rbp)
+1407b8316 leaq	0x22cc31b(%rip), %rdx   # 0x142a84638 ; decorators/outline_window_cottage_corner_2x1decorators/window_cottage_corne
+1407b831d jmp	0x1407b83f4 <.text+0x7b73f4>
+1407b8322 nopw	%cs:(%rax,%rax)
+1407b8330 movq	0x8b0(%rbp), %rsi
+1407b8337 movq	(%rsi), %rcx
+1407b833a movl	$0x2e, %r8d
+1407b8340 leaq	0x22cc209(%rip), %rdx   # 0x142a84550 ; decorators/window_cottage_corner_1x1_collisiondecorators/window_cottage_cor
+1407b8347 callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b834c testq	%rax, %rax
+1407b834f je	0x1407b8f6f <.text+0x7b7f6f>
+1407b8355 leaq	0x280(%rbp), %rcx
+1407b835c movq	%rax, %rdx
+1407b835f callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b8364 movq	(%rsi), %rdx
+1407b8367 movb	$0x1, 0x8d2(%rbp)
+1407b836e movl	$0x30, %r9d
+1407b8374 leaq	-0x18(%rbp), %rdi
+1407b8378 movq	%rdi, %rcx
+1407b837b leaq	0x22cc1fc(%rip), %r8    # 0x142a8457e ; decorators/window_cottage_corner_1x1_interactiondecorators/outline_window_c
+1407b8382 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b8387 movzbl	0x2e7c87b(%rip), %eax   # 0x143634c09
+1407b838e movl	$0x2c, %ecx
+1407b8393 movl	$0x1, %edx
+1407b8398 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b839d testq	%rax, %rax
+1407b83a0 je	0x1407b914b <.text+0x7b814b>
+1407b83a6 movups	0x22cc21d(%rip), %xmm0  # 0x142a845ca ; ttage_corner_1x1decorators/window_cottage_corner_2x1_collisiondecorators/wi
+1407b83ad movups	%xmm0, 0x1c(%rax)
+1407b83b1 movups	0x22cc206(%rip), %xmm0  # 0x142a845be ; ne_window_cottage_corner_1x1decorators/window_cottage_corner_2x1_collisiond
+1407b83b8 movups	%xmm0, 0x10(%rax)
+1407b83bc movups	0x22cc1eb(%rip), %xmm0  # 0x142a845ae ; decorators/outline_window_cottage_corner_1x1decorators/window_cottage_corne
+1407b83c3 movups	%xmm0, (%rax)
+1407b83c6 movq	$0x2c, 0x4f8(%rbp)
+1407b83d1 movq	%rax, 0x500(%rbp)
+1407b83d8 movq	$0x2c, 0x508(%rbp)
+1407b83e3 movl	$0x0, 0x4f0(%rbp)
+1407b83ed leaq	0x22cc1ba(%rip), %rdx   # 0x142a845ae ; decorators/outline_window_cottage_corner_1x1decorators/window_cottage_corne
+1407b83f4 movb	$0x1, 0x89b(%rbp)
+1407b83fb movl	$0x2c, %r8d
+1407b8401 leaq	0x800(%rbp), %rcx
+1407b8408 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b840d movq	0x810(%rbp), %rax
+1407b8414 movq	%rax, 0x790(%rbp)
+1407b841b movups	0x800(%rbp), %xmm0
+1407b8422 movaps	%xmm0, 0x780(%rbp)
+1407b8429 movb	$0x0, 0x89b(%rbp)
+1407b8430 leaq	0x780(%rbp), %rax
+1407b8437 movq	%rax, 0x30(%rsp)
+1407b843c leaq	0x4f0(%rbp), %rax
+1407b8443 movq	%rax, 0x28(%rsp)
+1407b8448 movq	%rdi, 0x20(%rsp)
+1407b844d movq	0x880(%rbp), %rcx
+1407b8454 movl	%r14d, %edx
+1407b8457 movl	%r15d, %r8d
+1407b845a leaq	0x280(%rbp), %r9
+1407b8461 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b8466 movq	%r13, %rdi
+1407b8469 testb	$0x1, %bl
+1407b846c je	0x1407b8140 <.text+0x7b7140>
+1407b8472 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [0]
+1407b8477 movb	%dl, 0x878(%rbp)
+1407b847d movb	$0x38, %cl
+1407b847f callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b8484 movq	%rax, %r12
+1407b8487 movl	$0x1, %edi
+1407b848c xorl	%ebx, %ebx
+1407b848e testb	$0x1, %bl
+1407b8491 jne	0x1407b8e90 <.text+0x7b7e90>
+1407b8497 nopw	(%rax,%rax)
+1407b84a0 cmpq	%r12, %rdi
+1407b84a3 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b84a9 setae	%bl
+1407b84ac movq	%rdi, %r13
+1407b84af adcq	$0x0, %r13
+1407b84b3 movl	0x8a8(%rbp), %eax
+1407b84b9 movq	0x8a0(%rbp), %rcx
+1407b84c0 movl	%eax, (%rcx)
+1407b84c2 movl	%edi, %ecx
+1407b84c4 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b84c9 movl	%eax, %ecx
+1407b84cb xorl	%edx, %edx
+1407b84cd callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b84d2 movl	%eax, %r14d
+1407b84d5 movl	%edx, %r15d
+1407b84d8 movq	0x8b0(%rbp), %rsi
+1407b84df movq	(%rsi), %rdx
+1407b84e2 cmpq	$0x1, %rdi
+1407b84e6 je	0x1407b8660 <.text+0x7b7660>
+1407b84ec cmpq	$0x2, %rdi
+1407b84f0 je	0x1407b85b0 <.text+0x7b75b0>
+1407b84f6 cmpq	$0x3, %rdi
+1407b84fa jne	0x1407b9015 <.text+0x7b8015>
+1407b8500 movl	$0x27, %r9d
+1407b8506 leaq	0x280(%rbp), %rdi
+1407b850d movq	%rdi, %rcx
+1407b8510 leaq	0x22cbccd(%rip), %r8    # 0x142a841e4 ; decorators/window_cottage_3x1_collisiondecorators/window_cottage_3x1_intera
+1407b8517 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b851c movq	(%rsi), %rdx
+1407b851f movb	$0x1, 0x8d7(%rbp)
+1407b8526 movl	$0x29, %r9d
+1407b852c leaq	-0x18(%rbp), %rsi
+1407b8530 movq	%rsi, %rcx
+1407b8533 leaq	0x22cbcd1(%rip), %r8    # 0x142a8420b ; decorators/window_cottage_3x1_interactiondecorators/outline_cottage_window_
+1407b853a callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b853f movzbl	0x2e7c6c3(%rip), %eax   # 0x143634c09
+1407b8546 movl	$0x23, %ecx
+1407b854b movl	$0x1, %edx
+1407b8550 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b8555 testq	%rax, %rax
+1407b8558 je	0x1407b916d <.text+0x7b816d>
+1407b855e movups	0x22cbcdf(%rip), %xmm0  # 0x142a84244 ; ne_cottage_window_3decorators/window_cottage_3x1_collision_outlineinternal 
+1407b8565 movups	%xmm0, 0x10(%rax)
+1407b8569 movups	0x22cbcc4(%rip), %xmm0  # 0x142a84234 ; decorators/outline_cottage_window_3decorators/window_cottage_3x1_collision_
+1407b8570 movups	%xmm0, (%rax)
+1407b8573 movl	$0x335f776f, 0x1f(%rax) # imm = 0x335F776F
+1407b857a movq	$0x23, 0x4f8(%rbp)
+1407b8585 movq	%rax, 0x500(%rbp)
+1407b858c movq	$0x23, 0x508(%rbp)
+1407b8597 movl	$0x0, 0x4f0(%rbp)
+1407b85a1 leaq	0x22cbcaf(%rip), %rdx   # 0x142a84257 ; decorators/window_cottage_3x1_collision_outlineinternal error: entered unre
+1407b85a8 jmp	0x1407b8708 <.text+0x7b7708>
+1407b85ad nopl	(%rax)
+1407b85b0 movl	$0x27, %r9d
+1407b85b6 leaq	0x280(%rbp), %rdi
+1407b85bd movq	%rdi, %rcx
+1407b85c0 leaq	0x22cbb7b(%rip), %r8    # 0x142a84142 ; decorators/window_cottage_2x1_collisiondecorators/window_cottage_2x1_intera
+1407b85c7 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b85cc movq	(%rsi), %rdx
+1407b85cf movb	$0x1, 0x8d7(%rbp)
+1407b85d6 movl	$0x29, %r9d
+1407b85dc leaq	-0x18(%rbp), %rsi
+1407b85e0 movq	%rsi, %rcx
+1407b85e3 leaq	0x22cbb7f(%rip), %r8    # 0x142a84169 ; decorators/window_cottage_2x1_interactiondecorators/outline_cottage_window_
+1407b85ea callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b85ef movzbl	0x2e7c613(%rip), %eax   # 0x143634c09
+1407b85f6 movl	$0x23, %ecx
+1407b85fb movl	$0x1, %edx
+1407b8600 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b8605 testq	%rax, %rax
+1407b8608 je	0x1407b907f <.text+0x7b807f>
+1407b860e movups	0x22cbb8d(%rip), %xmm0  # 0x142a841a2 ; ne_cottage_window_2decorators/window_cottage_2x1_collision_outlinedecorator
+1407b8615 movups	%xmm0, 0x10(%rax)
+1407b8619 movups	0x22cbb72(%rip), %xmm0  # 0x142a84192 ; decorators/outline_cottage_window_2decorators/window_cottage_2x1_collision_
+1407b8620 movups	%xmm0, (%rax)
+1407b8623 movl	$0x325f776f, 0x1f(%rax) # imm = 0x325F776F
+1407b862a movq	$0x23, 0x4f8(%rbp)
+1407b8635 movq	%rax, 0x500(%rbp)
+1407b863c movq	$0x23, 0x508(%rbp)
+1407b8647 movl	$0x0, 0x4f0(%rbp)
+1407b8651 leaq	0x22cbb5d(%rip), %rdx   # 0x142a841b5 ; decorators/window_cottage_2x1_collision_outlinedecorators/window_cottage_3x
+1407b8658 jmp	0x1407b8708 <.text+0x7b7708>
+1407b865d nopl	(%rax)
+1407b8660 movl	$0x27, %r9d
+1407b8666 leaq	0x280(%rbp), %rdi
+1407b866d movq	%rdi, %rcx
+1407b8670 leaq	0x22cba29(%rip), %r8    # 0x142a840a0 ; decorators/window_cottage_1x1_collisiondecorators/window_cottage_1x1_intera
+1407b8677 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b867c movq	(%rsi), %rdx
+1407b867f movb	$0x1, 0x8d7(%rbp)
+1407b8686 movl	$0x29, %r9d
+1407b868c leaq	-0x18(%rbp), %rsi
+1407b8690 movq	%rsi, %rcx
+1407b8693 leaq	0x22cba2d(%rip), %r8    # 0x142a840c7 ; decorators/window_cottage_1x1_interactiondecorators/outline_cottage_window_
+1407b869a callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b869f movzbl	0x2e7c563(%rip), %eax   # 0x143634c09
+1407b86a6 movl	$0x23, %ecx
+1407b86ab movl	$0x1, %edx
+1407b86b0 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b86b5 testq	%rax, %rax
+1407b86b8 je	0x1407b90a1 <.text+0x7b80a1>
+1407b86be movups	0x22cba3b(%rip), %xmm0  # 0x142a84100 ; ne_cottage_window_1decorators/window_cottage_1x1_collision_outlinedecorator
+1407b86c5 movups	%xmm0, 0x10(%rax)
+1407b86c9 movups	0x22cba20(%rip), %xmm0  # 0x142a840f0 ; decorators/outline_cottage_window_1decorators/window_cottage_1x1_collision_
+1407b86d0 movups	%xmm0, (%rax)
+1407b86d3 movl	$0x315f776f, 0x1f(%rax) # imm = 0x315F776F
+1407b86da movq	$0x23, 0x4f8(%rbp)
+1407b86e5 movq	%rax, 0x500(%rbp)
+1407b86ec movq	$0x23, 0x508(%rbp)
+1407b86f7 movl	$0x0, 0x4f0(%rbp)
+1407b8701 leaq	0x22cba0b(%rip), %rdx   # 0x142a84113 ; decorators/window_cottage_1x1_collision_outlinedecorators/window_cottage_2x
+1407b8708 movb	$0x1, 0x89e(%rbp)
+1407b870f movl	$0x2f, %r8d
+1407b8715 leaq	0x800(%rbp), %rcx
+1407b871c callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b8721 movq	0x810(%rbp), %rax
+1407b8728 movq	%rax, 0x790(%rbp)
+1407b872f movups	0x800(%rbp), %xmm0
+1407b8736 movaps	%xmm0, 0x780(%rbp)
+1407b873d movb	$0x0, 0x89e(%rbp)
+1407b8744 leaq	0x780(%rbp), %rax
+1407b874b movq	%rax, 0x30(%rsp)
+1407b8750 leaq	0x4f0(%rbp), %rax
+1407b8757 movq	%rax, 0x28(%rsp)
+1407b875c movq	%rsi, 0x20(%rsp)
+1407b8761 movq	0x880(%rbp), %rcx
+1407b8768 movl	%r14d, %edx
+1407b876b movl	%r15d, %r8d
+1407b876e movq	%rdi, %r9
+1407b8771 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b8776 movq	%r13, %rdi
+1407b8779 testb	$0x1, %bl
+1407b877c je	0x1407b84a0 <.text+0x7b74a0>
+1407b8782 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [1]
+1407b8787 movb	%dl, 0x878(%rbp)
+1407b878d movb	$0x38, %cl
+1407b878f callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b8794 movq	%rax, %r12
+1407b8797 movl	$0x1, %edi
+1407b879c xorl	%ebx, %ebx
+1407b879e testb	$0x1, %bl
+1407b87a1 jne	0x1407b8e90 <.text+0x7b7e90>
+1407b87a7 nopw	(%rax,%rax)
+1407b87b0 cmpq	%r12, %rdi
+1407b87b3 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b87b9 setae	%bl
+1407b87bc movq	%rdi, %r13
+1407b87bf adcq	$0x0, %r13
+1407b87c3 movl	0x8a8(%rbp), %eax
+1407b87c9 movq	0x8a0(%rbp), %rcx
+1407b87d0 movl	%eax, (%rcx)
+1407b87d2 movl	%edi, %ecx
+1407b87d4 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b87d9 movl	%eax, %ecx
+1407b87db movb	$0x1, %dl
+1407b87dd callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b87e2 movl	%eax, %r14d
+1407b87e5 movl	%edx, %r15d
+1407b87e8 movq	0x8b0(%rbp), %rsi
+1407b87ef movq	(%rsi), %rdx
+1407b87f2 cmpq	$0x1, %rdi
+1407b87f6 je	0x1407b8970 <.text+0x7b7970>
+1407b87fc cmpq	$0x2, %rdi
+1407b8800 je	0x1407b88c0 <.text+0x7b78c0>
+1407b8806 cmpq	$0x3, %rdi
+1407b880a jne	0x1407b902d <.text+0x7b802d>
+1407b8810 movl	$0x32, %r9d
+1407b8816 leaq	0x280(%rbp), %rdi
+1407b881d movq	%rdi, %rcx
+1407b8820 leaq	0x22cbb05(%rip), %r8    # 0x142a8432c ; decorators/window_cottage_3x1_halfdormer_collision
+1407b8827 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b882c movq	(%rsi), %rdx
+1407b882f movb	$0x1, 0x8d5(%rbp)
+1407b8836 movl	$0x29, %r9d
+1407b883c leaq	-0x18(%rbp), %rsi
+1407b8840 movq	%rsi, %rcx
+1407b8843 leaq	0x22cb9c1(%rip), %r8    # 0x142a8420b ; decorators/window_cottage_3x1_interactiondecorators/outline_cottage_window_
+1407b884a callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b884f movzbl	0x2e7c3b3(%rip), %eax   # 0x143634c09
+1407b8856 movl	$0x23, %ecx
+1407b885b movl	$0x1, %edx
+1407b8860 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b8865 testq	%rax, %rax
+1407b8868 je	0x1407b905d <.text+0x7b805d>
+1407b886e movups	0x22cb9cf(%rip), %xmm0  # 0x142a84244 ; ne_cottage_window_3decorators/window_cottage_3x1_collision_outlineinternal 
+1407b8875 movups	%xmm0, 0x10(%rax)
+1407b8879 movups	0x22cb9b4(%rip), %xmm0  # 0x142a84234 ; decorators/outline_cottage_window_3decorators/window_cottage_3x1_collision_
+1407b8880 movups	%xmm0, (%rax)
+1407b8883 movl	$0x335f776f, 0x1f(%rax) # imm = 0x335F776F
+1407b888a movq	$0x23, 0x4f8(%rbp)
+1407b8895 movq	%rax, 0x500(%rbp)
+1407b889c movq	$0x23, 0x508(%rbp)
+1407b88a7 movl	$0x0, 0x4f0(%rbp)
+1407b88b1 leaq	0x22cb99f(%rip), %rdx   # 0x142a84257 ; decorators/window_cottage_3x1_collision_outlineinternal error: entered unre
+1407b88b8 jmp	0x1407b8a18 <.text+0x7b7a18>
+1407b88bd nopl	(%rax)
+1407b88c0 movl	$0x32, %r9d
+1407b88c6 leaq	0x280(%rbp), %rdi
+1407b88cd movq	%rdi, %rcx
+1407b88d0 leaq	0x22cba23(%rip), %r8    # 0x142a842fa ; decorators/window_cottage_2x1_halfdormer_collisiondecorators/window_cottage
+1407b88d7 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b88dc movq	(%rsi), %rdx
+1407b88df movb	$0x1, 0x8d5(%rbp)
+1407b88e6 movl	$0x29, %r9d
+1407b88ec leaq	-0x18(%rbp), %rsi
+1407b88f0 movq	%rsi, %rcx
+1407b88f3 leaq	0x22cb86f(%rip), %r8    # 0x142a84169 ; decorators/window_cottage_2x1_interactiondecorators/outline_cottage_window_
+1407b88fa callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b88ff movzbl	0x2e7c303(%rip), %eax   # 0x143634c09
+1407b8906 movl	$0x23, %ecx
+1407b890b movl	$0x1, %edx
+1407b8910 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b8915 testq	%rax, %rax
+1407b8918 je	0x1407b90e5 <.text+0x7b80e5>
+1407b891e movups	0x22cb87d(%rip), %xmm0  # 0x142a841a2 ; ne_cottage_window_2decorators/window_cottage_2x1_collision_outlinedecorator
+1407b8925 movups	%xmm0, 0x10(%rax)
+1407b8929 movups	0x22cb862(%rip), %xmm0  # 0x142a84192 ; decorators/outline_cottage_window_2decorators/window_cottage_2x1_collision_
+1407b8930 movups	%xmm0, (%rax)
+1407b8933 movl	$0x325f776f, 0x1f(%rax) # imm = 0x325F776F
+1407b893a movq	$0x23, 0x4f8(%rbp)
+1407b8945 movq	%rax, 0x500(%rbp)
+1407b894c movq	$0x23, 0x508(%rbp)
+1407b8957 movl	$0x0, 0x4f0(%rbp)
+1407b8961 leaq	0x22cb84d(%rip), %rdx   # 0x142a841b5 ; decorators/window_cottage_2x1_collision_outlinedecorators/window_cottage_3x
+1407b8968 jmp	0x1407b8a18 <.text+0x7b7a18>
+1407b896d nopl	(%rax)
+1407b8970 movl	$0x32, %r9d
+1407b8976 leaq	0x280(%rbp), %rdi
+1407b897d movq	%rdi, %rcx
+1407b8980 leaq	0x22cb941(%rip), %r8    # 0x142a842c8 ; decorators/window_cottage_1x1_halfdormer_collisiondecorators/window_cottage
+1407b8987 callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b898c movq	(%rsi), %rdx
+1407b898f movb	$0x1, 0x8d5(%rbp)
+1407b8996 movl	$0x29, %r9d
+1407b899c leaq	-0x18(%rbp), %rsi
+1407b89a0 movq	%rsi, %rcx
+1407b89a3 leaq	0x22cb71d(%rip), %r8    # 0x142a840c7 ; decorators/window_cottage_1x1_interactiondecorators/outline_cottage_window_
+1407b89aa callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b89af movzbl	0x2e7c253(%rip), %eax   # 0x143634c09
+1407b89b6 movl	$0x23, %ecx
+1407b89bb movl	$0x1, %edx
+1407b89c0 callq	0x140613c10 <.text+0x612c10> ; __rust_alloc | ??:0:0
+1407b89c5 testq	%rax, %rax
+1407b89c8 je	0x1407b9107 <.text+0x7b8107>
+1407b89ce movups	0x22cb72b(%rip), %xmm0  # 0x142a84100 ; ne_cottage_window_1decorators/window_cottage_1x1_collision_outlinedecorator
+1407b89d5 movups	%xmm0, 0x10(%rax)
+1407b89d9 movups	0x22cb710(%rip), %xmm0  # 0x142a840f0 ; decorators/outline_cottage_window_1decorators/window_cottage_1x1_collision_
+1407b89e0 movups	%xmm0, (%rax)
+1407b89e3 movl	$0x315f776f, 0x1f(%rax) # imm = 0x315F776F
+1407b89ea movq	$0x23, 0x4f8(%rbp)
+1407b89f5 movq	%rax, 0x500(%rbp)
+1407b89fc movq	$0x23, 0x508(%rbp)
+1407b8a07 movl	$0x0, 0x4f0(%rbp)
+1407b8a11 leaq	0x22cb6fb(%rip), %rdx   # 0x142a84113 ; decorators/window_cottage_1x1_collision_outlinedecorators/window_cottage_2x
+1407b8a18 movb	$0x1, 0x89d(%rbp)
+1407b8a1f movl	$0x2f, %r8d
+1407b8a25 leaq	0x800(%rbp), %rcx
+1407b8a2c callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b8a31 movq	0x810(%rbp), %rax
+1407b8a38 movq	%rax, 0x790(%rbp)
+1407b8a3f movups	0x800(%rbp), %xmm0
+1407b8a46 movaps	%xmm0, 0x780(%rbp)
+1407b8a4d movb	$0x0, 0x89d(%rbp)
+1407b8a54 leaq	0x780(%rbp), %rax
+1407b8a5b movq	%rax, 0x30(%rsp)
+1407b8a60 leaq	0x4f0(%rbp), %rax
+1407b8a67 movq	%rax, 0x28(%rsp)
+1407b8a6c movq	%rsi, 0x20(%rsp)
+1407b8a71 movq	0x880(%rbp), %rcx
+1407b8a78 movl	%r14d, %edx
+1407b8a7b movl	%r15d, %r8d
+1407b8a7e movq	%rdi, %r9
+1407b8a81 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b8a86 movq	%r13, %rdi
+1407b8a89 testb	$0x1, %bl
+1407b8a8c je	0x1407b87b0 <.text+0x7b77b0>
+1407b8a92 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [17]
+1407b8a97 movb	%dl, 0x878(%rbp)
+1407b8a9d movl	0x8a8(%rbp), %eax
+1407b8aa3 movq	0x8a0(%rbp), %rcx
+1407b8aaa movl	%eax, (%rcx)
+1407b8aac movb	$0x1, %cl
+1407b8aae callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b8ab3 movl	%eax, %ecx
+1407b8ab5 movb	$0x11, %dl
+1407b8ab7 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b8abc movl	%eax, %ebx
+1407b8abe movl	%edx, %edi
+1407b8ac0 movq	0x8b0(%rbp), %rsi
+1407b8ac7 movq	(%rsi), %rcx
+1407b8aca movl	$0x24, %r8d
+1407b8ad0 leaq	0x22cc682(%rip), %rdx   # 0x142a85159 ; decorators/lantern_terrain_collisiondecorators/lantern_terrain_interactiond
+1407b8ad7 callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b8adc testq	%rax, %rax
+1407b8adf je	0x1407b8f6f <.text+0x7b7f6f>
+1407b8ae5 leaq	0x280(%rbp), %rcx
+1407b8aec movq	%rax, %rdx
+1407b8aef callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b8af4 movq	(%rsi), %rcx
+1407b8af7 movb	$0x1, 0x8cc(%rbp)
+1407b8afe movl	$0x26, %r8d
+1407b8b04 leaq	0x22cc672(%rip), %rdx   # 0x142a8517d ; decorators/lantern_terrain_interactiondecorators/lantern_flat_roof_collisio
+1407b8b0b callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b8b10 testq	%rax, %rax
+1407b8b13 je	0x1407b9324 <.text+0x7b8324>
+1407b8b19 movb	$0x1, 0x8cc(%rbp)
+1407b8b20 leaq	-0x18(%rbp), %rcx
+1407b8b24 movq	%rax, %rdx
+1407b8b27 callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b8b2c movabsq	$0x3ecccccd00000002, %rax # imm = 0x3ECCCCCD00000002
+1407b8b36 movq	%rax, 0x4f0(%rbp)
+1407b8b3d movb	$0x1, 0x890(%rbp)
+1407b8b44 movl	$0x24, %r8d
+1407b8b4a movq	%r14, %rcx
+1407b8b4d leaq	0x22cc605(%rip), %rdx   # 0x142a85159 ; decorators/lantern_terrain_collisiondecorators/lantern_terrain_interactiond
+1407b8b54 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b8b59 movq	0x810(%rbp), %rax
+1407b8b60 movq	%rax, 0x790(%rbp)
+1407b8b67 movups	0x800(%rbp), %xmm0
+1407b8b6e movaps	%xmm0, 0x780(%rbp)
+1407b8b75 movb	$0x0, 0x890(%rbp)
+1407b8b7c leaq	0x780(%rbp), %rax
+1407b8b83 movq	%rax, 0x30(%rsp)
+1407b8b88 leaq	0x4f0(%rbp), %rax
+1407b8b8f movq	%rax, 0x28(%rsp)
+1407b8b94 leaq	-0x18(%rbp), %rax
+1407b8b98 movq	%rax, 0x20(%rsp)
+1407b8b9d movq	0x880(%rbp), %rcx
+1407b8ba4 movl	%ebx, %edx
+1407b8ba6 movl	%edi, %r8d
+1407b8ba9 leaq	0x280(%rbp), %r9
+1407b8bb0 callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b8bb5 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [9]
+1407b8bba movq	0x2e734d7(%rip), %rax   # 0x14362c098
+1407b8bc1 cmpb	$0x0, (%rax)
+1407b8bc4 jne	0x1407b6bb0 <.text+0x7b5bb0>
+1407b8bca movb	%dl, 0x878(%rbp)
+1407b8bd0 movb	$0x39, %cl
+1407b8bd2 callq	0x140833130 <.text+0x832130> ; country_core::resources::walls::decorator::DecoratorType::max_rank::h3ee0b0393a04172d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:37:0
+1407b8bd7 movq	%rax, %r14
+1407b8bda movl	$0x1, %edi
+1407b8bdf xorl	%esi, %esi
+1407b8be1 testb	$0x1, %sil
+1407b8be5 jne	0x1407b8e90 <.text+0x7b7e90>
+1407b8beb nopl	(%rax,%rax)
+1407b8bf0 cmpq	%r14, %rdi
+1407b8bf3 ja	0x1407b8e90 <.text+0x7b7e90>
+1407b8bf9 setae	%sil
+1407b8bfd movq	%rdi, %r12
+1407b8c00 adcq	$0x0, %r12
+1407b8c04 movl	0x8a8(%rbp), %eax
+1407b8c0a movq	0x8a0(%rbp), %rcx
+1407b8c11 movl	%eax, (%rcx)
+1407b8c13 movl	%edi, %ecx
+1407b8c15 callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b8c1a movl	%eax, %ecx
+1407b8c1c movb	$0x9, %dl
+1407b8c1e callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b8c23 movl	%eax, %ebx
+1407b8c25 movl	%edx, %r15d
+1407b8c28 cmpq	$0x3, %rdi
+1407b8c2c je	0x1407b8ca0 <.text+0x7b7ca0>
+1407b8c2e cmpq	$0x2, %rdi
+1407b8c32 je	0x1407b8c70 <.text+0x7b7c70>
+1407b8c34 cmpq	$0x1, %rdi
+1407b8c38 jne	0x1407b923d <.text+0x7b823d>
+1407b8c3e movl	$0x2e, %r9d
+1407b8c44 leaq	0x280(%rbp), %rcx
+1407b8c4b movq	0x8b0(%rbp), %r13
+1407b8c52 movq	%r13, %rdx
+1407b8c55 leaq	0x22cc06c(%rip), %r8    # 0x142a84cc8 ; decorators/balcony_door_gothic_rank1_collisiondecorators/balcony_door_gothi
+1407b8c5c callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b8c61 leaq	0x22cc0ea(%rip), %r8    # 0x142a84d52 ; decorators/balcony_door_gothic_rank1_interactiondecorators/balcony_door_got
+1407b8c68 jmp	0x1407b8cca <.text+0x7b7cca>
+1407b8c6a nopw	(%rax,%rax)
+1407b8c70 movl	$0x2e, %r9d
+1407b8c76 leaq	0x280(%rbp), %rcx
+1407b8c7d movq	0x8b0(%rbp), %r13
+1407b8c84 movq	%r13, %rdx
+1407b8c87 leaq	0x22cc068(%rip), %r8    # 0x142a84cf6 ; decorators/balcony_door_gothic_rank2_collisiondecorators/balcony_door_gothi
+1407b8c8e callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b8c93 leaq	0x22cc0e8(%rip), %r8    # 0x142a84d82 ; decorators/balcony_door_gothic_rank2_interactiondecorators/balcony_door_got
+1407b8c9a jmp	0x1407b8cca <.text+0x7b7cca>
+1407b8c9c nopl	(%rax)
+1407b8ca0 movl	$0x2e, %r9d
+1407b8ca6 leaq	0x280(%rbp), %rcx
+1407b8cad movq	0x8b0(%rbp), %r13
+1407b8cb4 movq	%r13, %rdx
+1407b8cb7 leaq	0x22cc066(%rip), %r8    # 0x142a84d24 ; decorators/balcony_door_gothic_rank3_collisiondecorators/balcony_door_gothi
+1407b8cbe callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b8cc3 leaq	0x22cc0e8(%rip), %r8    # 0x142a84db2 ; decorators/balcony_door_gothic_rank3_interactiondecorators/balcony_door_got
+1407b8cca movb	$0x1, 0x8c4(%rbp)
+1407b8cd1 movl	$0x30, %r9d
+1407b8cd7 leaq	-0x18(%rbp), %rcx
+1407b8cdb movq	%r13, %rdx
+1407b8cde callq	0x1407bb160 <.text+0x7ba160> ; system_decorator::load_decorators::load_decorators::closure$3 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:90:0
+1407b8ce3 leaq	0x22cc8fe(%rip), %rax   # 0x142a855e8
+1407b8cea movslq	-0x4(%rax,%rdi,4), %rdx
+1407b8cef addq	%rax, %rdx
+1407b8cf2 movb	$0x1, 0x8c3(%rbp)
+1407b8cf9 movl	$0x2c, %r8d
+1407b8cff leaq	0x800(%rbp), %r13
+1407b8d06 movq	%r13, %rcx
+1407b8d09 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b8d0e movq	0x810(%rbp), %rax
+1407b8d15 leaq	0x4f8(%rbp), %rcx
+1407b8d1c movq	%rax, 0x10(%rcx)
+1407b8d20 movups	0x800(%rbp), %xmm0
+1407b8d27 movups	%xmm0, (%rcx)
+1407b8d2a movl	$0x1, 0x4f0(%rbp)
+1407b8d34 leaq	0x22cc8b9(%rip), %rax   # 0x142a855f4
+1407b8d3b movslq	-0x4(%rax,%rdi,4), %rdx
+1407b8d40 addq	%rax, %rdx
+1407b8d43 movb	$0x1, 0x897(%rbp)
+1407b8d4a movl	$0x36, %r8d
+1407b8d50 movq	%r13, %rcx
+1407b8d53 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b8d58 movq	0x810(%rbp), %rax
+1407b8d5f movq	%rax, 0x790(%rbp)
+1407b8d66 movups	0x800(%rbp), %xmm0
+1407b8d6d movaps	%xmm0, 0x780(%rbp)
+1407b8d74 movb	$0x0, 0x897(%rbp)
+1407b8d7b leaq	0x780(%rbp), %rax
+1407b8d82 movq	%rax, 0x30(%rsp)
+1407b8d87 leaq	0x4f0(%rbp), %rax
+1407b8d8e movq	%rax, 0x28(%rsp)
+1407b8d93 leaq	-0x18(%rbp), %rax
+1407b8d97 movq	%rax, 0x20(%rsp)
+1407b8d9c movq	0x880(%rbp), %rcx
+1407b8da3 movl	%ebx, %edx
+1407b8da5 movl	%r15d, %r8d
+1407b8da8 leaq	0x280(%rbp), %r9
+1407b8daf callq	0x140b262a0 <.text+0xb252a0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert::h4ec2bfa09ca84246 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:156:0
+1407b8db4 movq	%r12, %rdi
+1407b8db7 testb	$0x1, %sil
+1407b8dbb je	0x1407b8bf0 <.text+0x7b7bf0>
+1407b8dc1 jmp	0x1407b8e90 <.text+0x7b7e90>
+CASE [18]
+1407b8dc6 movb	%dl, 0x878(%rbp)
+1407b8dcc movl	0x8a8(%rbp), %eax
+1407b8dd2 movq	0x8a0(%rbp), %rcx
+1407b8dd9 movl	%eax, (%rcx)
+1407b8ddb movb	$0x1, %cl
+1407b8ddd callq	0x140833250 <.text+0x832250> ; rhapsody::rg::resource::ResourceHandle::raw::hbbde6dbbde14d6b6 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator.rs:270:0
+1407b8de2 movl	%eax, %ecx
+1407b8de4 movb	$0x12, %dl
+1407b8de6 callq	0x140b25c90 <.text+0xb24c90> ; rhapsody::rg::recorder::PassResourceAccessType::new::hf50a77ef4a3b2c03 | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:104:0
+1407b8deb movb	%al, %bl
+1407b8ded movq	%rdi, %rsi
+1407b8df0 movb	%dl, %dil
+1407b8df3 movq	0x8b0(%rbp), %rax
+1407b8dfa movq	(%rax), %rdx
+1407b8dfd movl	$0x26, %r9d
+1407b8e03 movq	%rsi, %rcx
+1407b8e06 leaq	0x22cc396(%rip), %r8    # 0x142a851a3 ; decorators/lantern_flat_roof_collisiondecorators/lantern_flat_roof_collisio
+1407b8e0d callq	0x1407bb4b0 <.text+0x7ba4b0> ; system_decorator::load_decorators::load_collision_as_bbx | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:645:0
+1407b8e12 movabsq	$0x3ecccccd00000002, %rax # imm = 0x3ECCCCCD00000002
+1407b8e1c movq	%rax, 0x280(%rbp)
+1407b8e23 movb	$0x1, 0x88f(%rbp)
+1407b8e2a movl	$0x2e, %r8d
+1407b8e30 leaq	0x4f0(%rbp), %rcx
+1407b8e37 leaq	0x22cc38b(%rip), %rdx   # 0x142a851c9 ; decorators/lantern_flat_roof_collision_outlinedecorators/arrow_slit_1x3_col
+1407b8e3e callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b8e43 movq	0x500(%rbp), %rax
+1407b8e4a movq	%rax, 0x810(%rbp)
+1407b8e51 movups	0x4f0(%rbp), %xmm0
+1407b8e58 movaps	%xmm0, 0x800(%rbp)
+1407b8e5f movb	$0x0, 0x88f(%rbp)
+1407b8e66 movq	%r14, 0x28(%rsp)
+1407b8e6b leaq	0x280(%rbp), %rax
+1407b8e72 movq	%rax, 0x20(%rsp)
+1407b8e77 movq	0x880(%rbp), %rcx
+1407b8e7e movl	%ebx, %edx
+1407b8e80 movl	%edi, %r8d
+1407b8e83 movq	%rsi, %r9
+1407b8e86 callq	0x140b25ef0 <.text+0xb24ef0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert_collision_and_interaction_as_same::h600cb4bfc28f189d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:143:0
+1407b8e8b nopl	(%rax,%rax)
+1407b8e90 movl	0x8a8(%rbp), %eax
+1407b8e96 movq	0x8a0(%rbp), %rcx
+1407b8e9d movl	%eax, (%rcx)
+1407b8e9f movq	0x8b0(%rbp), %rax
+1407b8ea6 movq	(%rax), %rcx
+1407b8ea9 movl	$0x2b, %r8d
+1407b8eaf leaq	0x22cc515(%rip), %rsi   # 0x142a853cb ; decorators/lantern_terrain_rotate_collision
+1407b8eb6 movq	%rsi, %rdx
+1407b8eb9 callq	0x14092d450 <.text+0x92c450> ; country_core::asset_libraries::mesh_library::AssetMeshLibrary::get_by_name::h84f596f525ee3b6c | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/asset_libraries/mesh_library.rs:84:0
+1407b8ebe testq	%rax, %rax
+1407b8ec1 je	0x1407b8f6f <.text+0x7b7f6f>
+1407b8ec7 leaq	-0x18(%rbp), %rdi
+1407b8ecb movq	%rdi, %rcx
+1407b8ece movq	%rax, %rdx
+1407b8ed1 callq	0x1407baad0 <.text+0x7b9ad0> ; system_decorator::load_decorators::load_decorators::closure$0 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:60:0
+1407b8ed6 movl	$0x3, 0x280(%rbp)
+1407b8ee0 movb	$0x1, 0x88c(%rbp)
+1407b8ee7 movl	$0x2b, %r8d
+1407b8eed leaq	0x4f0(%rbp), %rcx
+1407b8ef4 movq	%rsi, %rdx
+1407b8ef7 callq	0x1407baf00 <.text+0x7b9f00> ; system_decorator::load_decorators::load_decorators::closure$1 | /home/h3/code/pouncelight/country-slice-private/crates/systems/decorator/src/load_decorators.rs:76:0
+1407b8efc leaq	0x800(%rbp), %r14
+1407b8f03 movq	0x500(%rbp), %rax
+1407b8f0a movq	%rax, 0x810(%rbp)
+1407b8f11 movups	0x4f0(%rbp), %xmm0
+1407b8f18 movaps	%xmm0, 0x800(%rbp)
+1407b8f1f movb	$0x0, 0x88c(%rbp)
+1407b8f26 movq	%r14, 0x28(%rsp)
+1407b8f2b leaq	0x280(%rbp), %rax
+1407b8f32 movq	%rax, 0x20(%rsp)
+1407b8f37 movq	0x880(%rbp), %rcx
+1407b8f3e movb	$0x1a, %dl
+1407b8f40 movq	%rdi, %r9
+1407b8f43 callq	0x140b25ef0 <.text+0xb24ef0> ; country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary::insert_collision_and_interaction_as_same::h600cb4bfc28f189d | /home/h3/code/pouncelight/country-slice-private/crates/country-core/src/resources/walls/decorator_subtype.rs:143:0
+1407b8f48 movzbl	0x878(%rbp), %edx
+1407b8f4f jmp	0x1407b6bb0 <.text+0x7b5bb0>
+1407b8f54 movaps	0x8e0(%rbp), %xmm6
+1407b8f5b addq	$0x978, %rsp            # imm = 0x978
+1407b8f62 popq	%rbx
+1407b8f63 popq	%rdi
+1407b8f64 popq	%rsi
+1407b8f65 popq	%r12
+1407b8f67 popq	%r13
+1407b8f69 popq	%r14
+1407b8f6b popq	%r15
+1407b8f6d popq	%rbp
+1407b8f6e retq
+1407b8f6f leaq	0x22cc582(%rip), %rcx   # 0x142a854f8
+1407b8f76 callq	0x1428d9310 <.text+0x28d8310> ; core::option::unwrap_failed::h837cefa1ab459360 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\option.rs:2014:0
+1407b8f7b movb	$0x1, 0x8c2(%rbp)
+1407b8f82 leaq	0x22cb07f(%rip), %r8    # 0x142a84008
+1407b8f89 movl	$0x1, %ecx
+1407b8f8e movl	$0x24, %edx
+1407b8f93 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b8f98 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b8f9d leaq	0x22cc46c(%rip), %rcx   # 0x142a85410
+1407b8fa4 callq	0x1428d9310 <.text+0x28d8310> ; core::option::unwrap_failed::h837cefa1ab459360 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\option.rs:2014:0
+1407b8fa9 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b8fae movq	%rax, 0x800(%rbp)
+1407b8fb5 leaq	0x22cc43c(%rip), %rax   # 0x142a853f8
+1407b8fbc movq	%rax, 0x20(%rsp)
+1407b8fc1 leaq	0x22caf80(%rip), %rcx   # 0x142a83f48 ; called `Result::unwrap()` on an `Err` value
+1407b8fc8 leaq	0x22cafc9(%rip), %r9    # 0x142a83f98
+1407b8fcf leaq	0x800(%rbp), %r8
+1407b8fd6 movl	$0x2b, %edx
+1407b8fdb callq	0x1428d9760 <.text+0x28d8760> ; core::result::unwrap_failed::h96d74ae09566f4b3 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\result.rs:1703:0
+1407b8fe0 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b8fe5 leaq	0x22cb29a(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b8fec leaq	0x22cb6fd(%rip), %r8    # 0x142a846f0
+1407b8ff3 movl	$0x28, %edx
+1407b8ff8 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b8ffd leaq	0x22cb282(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b9004 leaq	0x22cb85d(%rip), %r8    # 0x142a84868
+1407b900b movl	$0x28, %edx
+1407b9010 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b9015 leaq	0x22cb26a(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b901c leaq	0x22cb28d(%rip), %r8    # 0x142a842b0
+1407b9023 movl	$0x28, %edx
+1407b9028 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b902d leaq	0x22cb252(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b9034 leaq	0x22cb325(%rip), %r8    # 0x142a84360
+1407b903b movl	$0x28, %edx
+1407b9040 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b9045 leaq	0x22cb23a(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b904c leaq	0x22cba0d(%rip), %r8    # 0x142a84a60
+1407b9053 movl	$0x28, %edx
+1407b9058 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b905d movb	$0x1, 0x8d4(%rbp)
+1407b9064 leaq	0x22caf9d(%rip), %r8    # 0x142a84008
+1407b906b movl	$0x1, %ecx
+1407b9070 movl	$0x23, %edx
+1407b9075 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b907a jmp	0x1407b93fe <.text+0x7b83fe>
+1407b907f movb	$0x1, 0x8d6(%rbp)
+1407b9086 leaq	0x22caf7b(%rip), %r8    # 0x142a84008
+1407b908d movl	$0x1, %ecx
+1407b9092 movl	$0x23, %edx
+1407b9097 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b909c jmp	0x1407b93fe <.text+0x7b83fe>
+1407b90a1 movb	$0x1, 0x8d6(%rbp)
+1407b90a8 leaq	0x22caf59(%rip), %r8    # 0x142a84008
+1407b90af movl	$0x1, %ecx
+1407b90b4 movl	$0x23, %edx
+1407b90b9 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b90be jmp	0x1407b93fe <.text+0x7b83fe>
+1407b90c3 movb	$0x1, 0x8d1(%rbp)
+1407b90ca leaq	0x22caf37(%rip), %r8    # 0x142a84008
+1407b90d1 movl	$0x1, %ecx
+1407b90d6 movl	$0x2c, %edx
+1407b90db callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b90e0 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b90e5 movb	$0x1, 0x8d4(%rbp)
+1407b90ec leaq	0x22caf15(%rip), %r8    # 0x142a84008
+1407b90f3 movl	$0x1, %ecx
+1407b90f8 movl	$0x23, %edx
+1407b90fd callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b9102 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b9107 movb	$0x1, 0x8d4(%rbp)
+1407b910e leaq	0x22caef3(%rip), %r8    # 0x142a84008
+1407b9115 movl	$0x1, %ecx
+1407b911a movl	$0x23, %edx
+1407b911f callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b9124 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b9129 movb	$0x1, 0x8d1(%rbp)
+1407b9130 leaq	0x22caed1(%rip), %r8    # 0x142a84008
+1407b9137 movl	$0x1, %ecx
+1407b913c movl	$0x2c, %edx
+1407b9141 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b9146 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b914b movb	$0x1, 0x8d1(%rbp)
+1407b9152 leaq	0x22caeaf(%rip), %r8    # 0x142a84008
+1407b9159 movl	$0x1, %ecx
+1407b915e movl	$0x2c, %edx
+1407b9163 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b9168 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b916d movb	$0x1, 0x8d6(%rbp)
+1407b9174 leaq	0x22cae8d(%rip), %r8    # 0x142a84008
+1407b917b movl	$0x1, %ecx
+1407b9180 movl	$0x23, %edx
+1407b9185 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b918a jmp	0x1407b93fe <.text+0x7b83fe>
+1407b918f leaq	0x22cb0f0(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b9196 leaq	0x22cc19b(%rip), %r8    # 0x142a85338
+1407b919d movl	$0x28, %edx
+1407b91a2 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b91a7 leaq	0x22cb0d8(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b91ae leaq	0x22cb383(%rip), %r8    # 0x142a84538
+1407b91b5 movl	$0x28, %edx
+1407b91ba callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b91bf movb	$0x1, 0x8d3(%rbp)
+1407b91c6 leaq	0x22cae3b(%rip), %r8    # 0x142a84008
+1407b91cd movl	$0x1, %ecx
+1407b91d2 movl	$0x31, %edx
+1407b91d7 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b91dc jmp	0x1407b93fe <.text+0x7b83fe>
+1407b91e1 movb	$0x1, 0x8d3(%rbp)
+1407b91e8 leaq	0x22cae19(%rip), %r8    # 0x142a84008
+1407b91ef movl	$0x1, %ecx
+1407b91f4 movl	$0x31, %edx
+1407b91f9 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b91fe jmp	0x1407b93fe <.text+0x7b83fe>
+1407b9203 movb	$0x1, 0x8d3(%rbp)
+1407b920a leaq	0x22cadf7(%rip), %r8    # 0x142a84008
+1407b9211 movl	$0x1, %ecx
+1407b9216 movl	$0x31, %edx
+1407b921b callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b9220 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b9225 leaq	0x22cb05a(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b922c leaq	0x22cba7d(%rip), %r8    # 0x142a84cb0
+1407b9233 movl	$0x28, %edx
+1407b9238 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b923d leaq	0x22cb042(%rip), %rcx   # 0x142a84286 ; internal error: entered unreachable code
+1407b9244 leaq	0x22cbcbd(%rip), %r8    # 0x142a84f08
+1407b924b movl	$0x28, %edx
+1407b9250 callq	0x1428d9430 <.text+0x28d8430> ; core::panicking::panic::hb210ae7b817a9f13 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\panicking.rs:133:0
+1407b9255 movq	0x808(%rbp), %rax
+1407b925c movq	%rax, 0x780(%rbp)
+1407b9263 leaq	0x22cc1c6(%rip), %rax   # 0x142a85430
+1407b926a movq	%rax, 0x20(%rsp)
+1407b926f leaq	0x22cacd2(%rip), %rcx   # 0x142a83f48 ; called `Result::unwrap()` on an `Err` value
+1407b9276 leaq	0x22cacab(%rip), %r9    # 0x142a83f28
+1407b927d leaq	0x780(%rbp), %r8
+1407b9284 movl	$0x2b, %edx
+1407b9289 callq	0x1428d9760 <.text+0x28d8760> ; core::result::unwrap_failed::h96d74ae09566f4b3 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\result.rs:1703:0
+1407b928e jmp	0x1407b93fe <.text+0x7b83fe>
+1407b9293 movq	(%rbp), %rax
+1407b9297 movq	%rax, 0x500(%rbp)
+1407b929e movups	-0x10(%rbp), %xmm0
+1407b92a2 movaps	%xmm0, 0x4f0(%rbp)
+1407b92a9 leaq	0x22cc2a0(%rip), %rax   # 0x142a85550
+1407b92b0 movq	%rax, 0x20(%rsp)
+1407b92b5 leaq	0x22cac8c(%rip), %rcx   # 0x142a83f48 ; called `Result::unwrap()` on an `Err` value
+1407b92bc leaq	0x22cacb5(%rip), %r9    # 0x142a83f78
+1407b92c3 leaq	0x4f0(%rbp), %r8
+1407b92ca movl	$0x2b, %edx
+1407b92cf callq	0x1428d9760 <.text+0x28d8760> ; core::result::unwrap_failed::h96d74ae09566f4b3 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\result.rs:1703:0
+1407b92d4 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b92d9 movb	$0x1, 0x8cb(%rbp)
+1407b92e0 leaq	0x22cad21(%rip), %r8    # 0x142a84008
+1407b92e7 movl	$0x1, %ecx
+1407b92ec movl	$0x7, %edx
+1407b92f1 callq	0x1428d8fe3 <.text+0x28d7fe3> ; alloc::raw_vec::handle_error::hb99beac7784c4464 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\alloc\src\raw_vec.rs:791:0
+1407b92f6 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b92fb movb	$0x1, 0x8cb(%rbp)
+1407b9302 leaq	0x22cc13f(%rip), %rax   # 0x142a85448
+1407b9309 movq	%rax, 0x20(%rsp)
+1407b930e movl	$0x7, %r9d
+1407b9314 movq	%rdi, %rcx
+1407b9317 xorl	%r8d, %r8d
+1407b931a callq	0x1428d9940 <.text+0x28d8940> ; core::str::slice_error_fail::h78e32f96bb5cc05d | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\str\mod.rs:67:0
+1407b931f jmp	0x1407b93fe <.text+0x7b83fe>
+1407b9324 movb	$0x1, 0x8cc(%rbp)
+1407b932b leaq	0x22cc1c6(%rip), %rcx   # 0x142a854f8
+1407b9332 callq	0x1428d9310 <.text+0x28d8310> ; core::option::unwrap_failed::h837cefa1ab459360 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\option.rs:2014:0
+1407b9337 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b933c movb	$0x1, 0x8cd(%rbp)
+1407b9343 leaq	0x22cc1ae(%rip), %rcx   # 0x142a854f8
+1407b934a callq	0x1428d9310 <.text+0x28d8310> ; core::option::unwrap_failed::h837cefa1ab459360 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\option.rs:2014:0
+1407b934f jmp	0x1407b93fe <.text+0x7b83fe>
+1407b9354 movb	$0x1, 0x8ce(%rbp)
+1407b935b leaq	0x22cc196(%rip), %rcx   # 0x142a854f8
+1407b9362 callq	0x1428d9310 <.text+0x28d8310> ; core::option::unwrap_failed::h837cefa1ab459360 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\option.rs:2014:0
+1407b9367 jmp	0x1407b93fe <.text+0x7b83fe>
+1407b936c movq	%rsi, 0x4f0(%rbp)
+1407b9373 movb	$0x1, 0x89f(%rbp)
+1407b937a leaq	-0x18(%rbp), %rcx
+1407b937e callq	0x140d56700 <.text+0xd55700> ; std::backtrace::Backtrace::capture::hb8420cd21c59e420 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\std\src\backtrace.rs:292:0
+1407b9383 movups	-0x18(%rbp), %xmm0
+1407b9387 movups	-0x8(%rbp), %xmm1
+1407b938b movups	0x8(%rbp), %xmm2
+1407b938f movaps	%xmm2, 0x2a0(%rbp)
+1407b9396 movaps	%xmm1, 0x290(%rbp)
+1407b939d movaps	%xmm0, 0x280(%rbp)
+1407b93a4 leaq	0x22cac8d(%rip), %rax   # 0x142a84038 ; Reading assets/meshes/decoratorscrates/systems/decorator/src/load_decorator
+1407b93ab movq	%rax, -0x18(%rbp)
+1407b93af movq	$0x20, -0x10(%rbp)
+1407b93b7 movq	%rsi, -0x8(%rbp)
+1407b93bb movb	$0x0, 0x89f(%rbp)
+1407b93c2 leaq	-0x18(%rbp), %rcx
+1407b93c6 leaq	0x280(%rbp), %rdx
+1407b93cd callq	0x1428f8140 <.text+0x28f7140> ; anyhow::error::_$LT$impl$u20$anyhow..Error$GT$::construct::hf4c9c9092b5c8731 (.llvm.6409737604219609296) | /home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anyhow-1.0.86/src/error.rs:237:0
+1407b93d2 movq	%rax, -0x18(%rbp)
+1407b93d6 leaq	0x22cacab(%rip), %rax   # 0x142a84088
+1407b93dd movq	%rax, 0x20(%rsp)
+1407b93e2 leaq	0x22cab5f(%rip), %rcx   # 0x142a83f48 ; called `Result::unwrap()` on an `Err` value
+1407b93e9 leaq	0x22cab38(%rip), %r9    # 0x142a83f28
+1407b93f0 leaq	-0x18(%rbp), %r8
+1407b93f4 movl	$0x2b, %edx
+1407b93f9 callq	0x1428d9760 <.text+0x28d8760> ; core::result::unwrap_failed::h96d74ae09566f4b3 | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb/library\core\src\result.rs:1703:0
+1407b93fe ud2
+1407b9400 movq	%rdx, 0x10(%rsp)
+1407b9405 pushq	%rbp
+1407b9406 pushq	%r15
+1407b9408 pushq	%r14
+1407b940a pushq	%r13
+1407b940c pushq	%r12
+1407b940e pushq	%rsi
+1407b940f pushq	%rdi
+1407b9410 pushq	%rbx
+1407b9411 subq	$0x48, %rsp
+1407b9415 leaq	0x80(%rdx), %rbp
+1407b941c movaps	%xmm6, 0x30(%rsp)
+1407b9421 cmpb	$0x0, 0x89f(%rbp)
+1407b9428 jne	0x1407b9440 <.text+0x7b8440>
+1407b942a movaps	0x30(%rsp), %xmm6
+1407b942f addq	$0x48, %rsp
+1407b9433 popq	%rbx
+1407b9434 popq	%rdi
+1407b9435 popq	%rsi
+1407b9436 popq	%r12
+1407b9438 popq	%r13
+1407b943a popq	%r14
+1407b943c popq	%r15
+1407b943e popq	%rbp
+1407b943f retq
+1407b9440 leaq	0x4f0(%rbp), %rcx
+1407b9447 callq	0x1405e7a00 <.text+0x5e6a00> ; core::ptr::drop_in_place$LT$core..result..Result$LT$$LP$$RP$$C$std..io..error..Error$GT$$GT$::hecc3394b7bcac553 (.llvm.16333340793684325211) | /rustc/05f9846f893b09a1be1fc8560e33fc3c815cfecb\library\core\src\ptr\mod.rs:523:0
+1407b944c jmp	0x1407b942a <.text+0x7b842a>
+1407b944e nop
+1407b9450 movq	%rdx, 0x10(%rsp)
+1407b9455 pushq	%rbp
+1407b9456 pushq	%r15
+1407b9458 pushq	%r14
+1407b945a pushq	%r13
+1407b945c pushq	%r12
+1407b945e pushq	%rsi
+1407b945f pushq	%rdi
+1407b9460 pushq	%rbx
+1407b9461 subq	$0x48, %rsp
+1407b9465 leaq	0x80(%rdx), %rbp
+1407b946c movaps	%xmm6, 0x30(%rsp)
+1407b9471 leaq	-0x18(%rbp), %rcx
+1407b9475 callq	0x140d4cc30 <.text+0xd4bc30> ; anyhow::error::_$LT$impl$u20$core..ops..drop..Drop$u20$for$u20$anyhow..Error$GT$::drop::h2a52e76aa8e9c217 | /home/h3/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/anyhow-1.0.86/src/error.rs:604:0
+1407b947a movaps	0x30(%rsp), %xmm6
+1407b947f addq	$0x48, %rsp
+1407b9483 popq	%rbx
+1407b9484 popq	%rdi
+1407b9485 popq	%rsi
+1407b9486 popq	%r12
+1407b9488 popq	%r13
+1407b948a popq	%r14
+1407b948c popq	%r15
+1407b948e popq	%rbp
+1407b948f retq
+1407b9490 movq	%rdx, 0x10(%rsp)
+1407b9495 pushq	%rbp
+1407b9496 pushq	%r15
+1407b9498 pushq	%r14
+1407b949a pushq	%r13
+1407b949c pushq	%r12
+1407b949e pushq	%rsi

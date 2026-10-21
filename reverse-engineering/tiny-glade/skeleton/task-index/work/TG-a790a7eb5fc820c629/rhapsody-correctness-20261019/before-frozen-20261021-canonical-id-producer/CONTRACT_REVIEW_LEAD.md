@@ -1,0 +1,9 @@
+# 唯一ID producer合同独立审查
+
+core_business_lead，2026-10-21：完整4576B producer与旧完整1893B singular/998B half已审合同可进入同源候选。恢复全wall→terrain→stair输入、同HashMap clear保容量、重复ID插入后诊断与panic、完整chimney19/20第二遍，不能退回此前只处理两窗族的简化路径。
+
+接受TG609从已冻结aa33480b之后另追加clear/insert返回旧Option最窄hunk，同一map不另造表。第2遍真实CachedDecoratorTransforms为required输入，任何self/excluded短路必须发生在原required读取之后；注册顺序单独报告root，不凭依赖名重排或造默认transform。既有legacy public helper与原native路径共用一个懒内核，不再写第二曲线/数值算法。
+
+诊断日志保真实ID/新旧Info/Addr/subtype和原error级别门；原fmt若尚未独立绑定，应明确现Rust Debug值展示是架构适配，勿宣称字节相同或擅恢复外部formatter。同样不能将B源checksum或包成功外推C运行等价。
+
+源码冻结后需独立review并交root实际类型/调度验证。worker不运行Cargo/rustc/GPU/原程序。

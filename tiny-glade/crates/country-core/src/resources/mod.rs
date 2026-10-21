@@ -96,3 +96,6 @@ pub mod shape_intersections {
     #[derive(Resource, Clone, Debug, Default)]
     pub struct ShapeIntersections(pub HashMap<[WallId; 2], Vec<Vec2>, RandomState>);
 }
+
+/// 窗灯共享状态与真实组件，供装饰生产者和玻璃渲染共同借用。
+pub mod window_lights;

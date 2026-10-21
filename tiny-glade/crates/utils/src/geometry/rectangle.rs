@@ -161,6 +161,27 @@ impl Rectangle2d {
             self.axis.x * local.y + self.axis.y * local.x,
         )
     }
+    /// B 140c9a210：返回该角点分别指向前一角、后一角的单位方向。
+    pub fn get_edge_dirs_from_corner_id(self, index: usize) -> [Vec2; 2] {
+        // 原版先检查面积，再检查角序；复用同一套世界坐标角点，保留大坐标消减。
+        let points = self.as_points2();
+        let (previous, next) = match index {
+            0 => (3, 1),
+            1 => (0, 2),
+            2 => (1, 3),
+            3 => (2, 0),
+            _ => unreachable!("原角序超出0..4"),
+        };
+        let normalize = |delta: Vec2| {
+            // 原指令顺序为 y²+x²；零长度按倒数平方根路径自然产生 NaN。
+            let reciprocal = 1.0 / (delta.y * delta.y + delta.x * delta.x).sqrt();
+            delta * reciprocal
+        };
+        [
+            normalize(points[previous] - points[index]),
+            normalize(points[next] - points[index]),
+        ]
+    }
     pub fn get_point(self, index: usize) -> Vec2 {
         assert!(index < 4);
         self.as_points2()[index]
@@ -652,6 +673,65 @@ impl Rectangle3d {
 
 #[cfg(test)]
 mod normal_regressions {
+
+    #[test]
+    fn original_corner_edge_directions_preserve_incoming_then_outgoing_order() {
+        let rectangle = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::new(4.0, 6.0));
+        let expected = [
+            [Vec2::X, Vec2::Y],
+            [-Vec2::Y, Vec2::X],
+            [-Vec2::X, -Vec2::Y],
+            [Vec2::Y, -Vec2::X],
+        ];
+        for (index, directions) in expected.into_iter().enumerate() {
+            assert_eq!(rectangle.get_edge_dirs_from_corner_id(index), directions);
+        }
+    }
+
+    #[test]
+    fn original_corner_edge_directions_use_actual_rotated_points() {
+        let rectangle = Rectangle2d::new(Vec2::new(2.0, 3.0), Vec2::new(4.0, 6.0), Vec2::Y);
+        let expected = [
+            [Vec2::Y, -Vec2::X],
+            [Vec2::X, Vec2::Y],
+            [-Vec2::Y, Vec2::X],
+            [-Vec2::X, -Vec2::Y],
+        ];
+        for (index, directions) in expected.into_iter().enumerate() {
+            assert_eq!(rectangle.get_edge_dirs_from_corner_id(index), directions);
+        }
+    }
+
+    #[test]
+    fn original_corner_edge_directions_keep_positive_area_with_two_negative_sizes() {
+        let rectangle = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::new(-4.0, -6.0));
+        assert_eq!(rectangle.get_edge_dirs_from_corner_id(0), [-Vec2::X, -Vec2::Y]);
+    }
+
+    #[test]
+    fn original_corner_edge_directions_preserve_collapsed_world_point_nan() {
+        // 原世界角点在此量级全部舍入到同一点；不能用轴查表掩盖零边。
+        let rectangle = Rectangle2d::new_axis_aligned(Vec2::splat(16_777_216.0), Vec2::ONE);
+        for index in 0..4 {
+            for direction in rectangle.get_edge_dirs_from_corner_id(index) {
+                assert!(direction.x.is_nan() && direction.y.is_nan());
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "原as_points正面积guard")]
+    fn original_corner_edge_directions_check_area_before_corner_index() {
+        Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::ZERO)
+            .get_edge_dirs_from_corner_id(4);
+    }
+
+    #[test]
+    #[should_panic(expected = "原角序超出0..4")]
+    fn original_corner_edge_directions_reject_out_of_range_corner() {
+        Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::ONE)
+            .get_edge_dirs_from_corner_id(4);
+    }
     #[test]
     fn original_perimeter_helpers_preserve_ties_and_closing_u() {
         let r = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(2.0));

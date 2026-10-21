@@ -1,0 +1,50 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs
+@@ -30,7 +30,7 @@
+ use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
+ use country_core::resources::walls::decorator::DecoratorInfo;
+ use country_core::resources::walls::decorator_storage::DecoratorStorage;
+-use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
++use country_core::resources::walls::decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources};
+ use country_core::resources::walls::public_walls::PublicWalls;
+ use glam::{Quat, Vec2};
+ 
+@@ -82,9 +82,11 @@
+     decorator_storage: Res<DecoratorStorage>,
+     cached_transforms: Res<CachedDecoratorTransforms>,
+     walls: Res<PublicWalls>,
+-    derived: Res<DerivedDecoratorSubtypes>,
++    derived: DerivedDecoratorInfoResources,
+     mut blueprints: ResMut<DecoratorBlueprints>,
+ ) {
++    let derived = derived.as_view();
++    let mesh_lib = derived.mesh_library();
+     for (wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+             // O：仅 premade 形状（is_premade_shape）。
+@@ -98,7 +100,9 @@
+                 continue;
+             }
+             let transform = cached_transforms.transform(id);
+-            let d = derived.get(id);
++            let subtype = derived
++                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
++                .0;
+             // O：洞记录（DormerHoleSsbo::gothic，尾参数 2.5/0.05）。
+             let _hole = DormerHoleSsbo::gothic(
+                 [0; 16],
+@@ -108,7 +112,13 @@
+             );
+             // O：蓝图（bbx_ls → collision/interaction mesh + outline）。
+             let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
+-            blueprint.set_colliders(vec![d.collision_mesh()]);
++            let key = DecoratorLibKey::new(subtype, info.rank());
++            blueprint.set_positioned_colliders(
++                std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
++                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
++                &transform.translation,
++                &transform.rotation,
++            );
+             blueprint.set_outline((ARROW_SLIT_ROT_SCALE.0, ARROW_SLIT_ROT_SCALE.1, 0.0));
+             blueprints.insert(id, blueprint);
+             // O：视觉实体（window glass + preview + color_id）。

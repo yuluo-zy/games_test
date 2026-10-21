@@ -1,0 +1,38 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_balcony_door.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_balcony_door.rs
+@@ -69,7 +69,7 @@
+ ) {
+     let derived = derived.as_view();
+     let mesh_lib = derived.mesh_library();
+-    for (_wall, decorators) in decorator_storage.iter_walls() {
++    for (wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+             // O：门子类型 = 9（0x1407f0900 行 347）。
+             if derived
+@@ -79,9 +79,13 @@
+             {
+                 continue;
+             }
++            // O：蓝图 + 视觉实体。
++            let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
+             let transform = cached.transform(id);
+-            // O：蓝图 + 视觉实体。
+-            let mut blueprint = DecoratorBlueprint::new();
+             let key = DecoratorLibKey::new(GOTHIC_DOOR_SUBTYPE, info.rank());
+             blueprint.set_positioned_colliders(
+                 std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
+@@ -95,9 +99,8 @@
+                 &paths,
+                 &transform,
+                 &mesh_lib.collision_record(key).bounds,
+-                &mut blueprint,
++                blueprint,
+             );
+-            blueprints.insert(id, blueprint);
+             let builder = WindowVisualEntityBuilder::new(transform.translation, Quat::IDENTITY, id);
+             let _ = &mut transient;
+             let _ = &builder;

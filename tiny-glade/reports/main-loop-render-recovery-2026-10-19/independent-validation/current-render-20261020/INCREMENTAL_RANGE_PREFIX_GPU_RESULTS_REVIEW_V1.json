@@ -1,0 +1,65 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "decision": "增量prefix取得实际差分CPU与原世界单帧真实consumer/内容/降耗证据；不是30帧长稳通过",
+  "candidate_review": "INCREMENTAL_RANGE_PREFIX_CANDIDATE_V1_REVIEW_V1.json / 85ccf3d1999a8e0320f26378e4d754717aa919e1d11581fd27be05d53a524331",
+  "cpu": "实际range_state15/15，包括6新增差分/96前缀；native_state_submission5/5，包括跨cell取消/重试；0ignored。较早range-tests只有原9项，不误当新差分结果。",
+  "actual_world_probe": {
+    "result": "1passed/0failed/0ignored，14.50秒，原world真实图导出内容测试",
+    "input_equal_counts": {
+      "commands": 1,
+      "uses": 4438,
+      "physical_cells": 635,
+      "state_patches": 3536,
+      "opaque_ranges": 0,
+      "private_upload_reads": 1478
+    },
+    "native_prepare_ns_before": 11188508625,
+    "native_prepare_ns_after": 121863083,
+    "prepare_ratio": 91.81212512898594,
+    "rg_submit_ns_before": 11307128667,
+    "rg_submit_ns_after": 231499875,
+    "rg_ratio": 48.84291478343131,
+    "driver_queue_submit_after_ns": 21437375,
+    "gpu_wait_after_ns": 1662125,
+    "pixels": "原trace与prefix_v2 PPM逐字节完全相等；388815B，480x270，SHAe0cf8fadbdfa55f03b615fcf2aa03ec79fb4465283461271f6321d749822a6df；mean154.4/41882色仅是该一致图的额外指标"
+  },
+  "completed_drain": {
+    "pending_before": 53,
+    "pending_after": 0,
+    "destroyed": 53,
+    "allocated_before": 926137256,
+    "allocated_after": 891489192,
+    "submitted_and_completed_queue0": 1426,
+    "idle_waits_before_after": [
+      2,
+      2
+    ],
+    "source_read": "原test显式env诊断在截图owner shutdown后调用try_collect_all_completed，未增加wait_idle；此采样证明这53项可按已完成点销毁，不能推出逐帧回收/全部内存问题已修"
+  },
+  "identity": {
+    "preserved_actual_binary": "/private/tmp/tg-preserved-run-binaries-20261021/original-gameplay-prefix-v1",
+    "preserved_binary_sha256": "de7fd3d9826edeb54db0272bde6705c6738b2535076682b380ebcfb7a7cf26fb",
+    "independent_rehash_matches": true,
+    "build_json": "实际compiler-artifact fresh=false，原target路径original_gameplay_chain-a9739bd31f688730，与执行者捕获路径一致；执行后唯一保留副本已独立重算",
+    "sources": "range/tracked/raw冻结candidate已静审并root整合；本次是prefix-only before shared-App-constants，不能将尚未验证的constants接线纳入此性能收益"
+  },
+  "artifacts": {
+    "/private/tmp/tg-incremental-range-v1-tests-20261021.log": "ae8bbd85f1af3d2c2f48aefc8d32115883c901693981474351218c1baa2a8586",
+    "/private/tmp/tg-incremental-native-guard-tests-20261021.log": "b1742efc55f20c7f154a24487100ae442e6de986f461a03737efb74c6e7a16c7",
+    "/private/tmp/tg-submit-trace-world-20261021.log": "d708c25d21d5b8b4c654787e0da7f8302c97164faf7ba59376f05c056b5613dd",
+    "/private/tmp/tg-prefix-world-v2-20261021.log": "5a823f116ff0c2bdd30d1b66fa6a6fc4ebc62257e77ba2857f409fe1d0fe25c9",
+    "/private/tmp/tg-prefix-world-build-20261021.jsonl": "40b8012f4f395bd3ffa8d8c91f3b685a282e743ef3d98c759e5703a2936facf5",
+    "/private/tmp/tg-prefix-world-build-20261021.log": "00a7e36f2226dd93b125c5420e97d5f89c3abe7fcf705fb1ebbbc1416efa0bd6",
+    "/private/tmp/tg-trace-world-content-20261021.ppm": "e0cf8fadbdfa55f03b615fcf2aa03ec79fb4465283461271f6321d749822a6df",
+    "/private/tmp/tg-prefix-world-v2-20261021.ppm": "e0cf8fadbdfa55f03b615fcf2aa03ec79fb4465283461271f6321d749822a6df"
+  },
+  "excluded_run": "/private/tmp/tg-prefix-world-20261021.log首次--ignored只0tests/3filtered，不作验证；只以v2实际1test结果判断",
+  "remaining": [
+    "真实30帧描述符live/peak/内存断言及TAA收敛仍此前失败或未达",
+    "同App constants后续另测；不能把91.81倍外推所有帧/无trace优化/最终目标fps",
+    "加载WSI独立3native成功已验，不含此headless gameplay图的窗口present/scanout",
+    "完整窗/角/validator/交互/保存/重启仍按业务硬门推进"
+  ],
+  "execution": "审者只读日志/源/buildJSON并重算文件字节和hash，未运行Cargo/GPU/生产写。"
+}

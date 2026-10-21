@@ -1,0 +1,5 @@
+# 必要编译迁移：structure_outline真实stairs curve consumer
+
+按已审canonical PlayermadeStairsAssemblyParams单一curve owner，将4处request.positions改为request.curve.points，保len截断、点序、颜色、分支、panic/side effects。复用duck TG280/.../before-frozen-20261021-complete-owner/ROOT_STRUCTURE_OUTLINE.patch，原before SHA da0baedb81fefce6ab536867f9c5c87ece5637e638bd0d1a2c3688813d75414d与当前冻结逐字一致。全部实际caller仅同source structure_outline楼梯事件分派401行和既有4种轮廓测试；rg扫全tiny-glade没有其它stair_outline_lines入口。完整测试fixture提供真实Curve2、heights/widths/tangents、辅助样本、插值None、两个Terrain anchors+rank、3个terrain bit、真实segment、SubSegment(count2)、dirtyfalse，不保平行positions或用Default吞字段。依赖duck同单owner完整stairs params afterhash；当前生产旧positions类型尚未切换，必须原子成组集成，不单文件编译。
+
+原owner/委派/当前before见同目录baseline.json和live-show.json。只有root生产写入/Cargo，worker只候选。

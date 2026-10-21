@@ -24,6 +24,9 @@ pub struct Retirement<T> {
     len: AtomicUsize,
     /// Rotates the first queue visited by bounded collection.
     cursor: AtomicUsize,
+    /// 仅测试注入指定队列下一次入列的存储扩容失败。
+    #[cfg(test)]
+    fail_next_insert_queue: AtomicUsize,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -54,6 +57,8 @@ impl<T> Retirement<T> {
             queues: std::array::from_fn(|_| Mutex::new(VecDeque::new())),
             len: AtomicUsize::new(0),
             cursor: AtomicUsize::new(0),
+            #[cfg(test)]
+            fail_next_insert_queue: AtomicUsize::new(usize::MAX),
         }
     }
 
@@ -87,6 +92,14 @@ impl<T> Retirement<T> {
 
     fn insert(&self, queue: usize, entry: Entry<T>) -> Result<(), Entry<T>> {
         let mut fifo = self.queues[queue].lock();
+        #[cfg(test)]
+        if self
+            .fail_next_insert_queue
+            .compare_exchange(queue, usize::MAX, Ordering::Relaxed, Ordering::Relaxed)
+            .is_ok()
+        {
+            return Err(entry);
+        }
         if fifo.try_reserve(1).is_err() {
             return Err(entry);
         }
@@ -136,10 +149,12 @@ impl<T> Retirement<T> {
                         ready(entry.item);
                     }
                     Some((next, value)) => {
+                        let previous_value = entry.value;
                         entry.value = value;
-                        if let Err(entry) = self.insert(next, entry) {
-                            // No room to move it: keep it reached at the head of
-                            // its FIFO and end this pass instead of spinning.
+                        if let Err(mut entry) = self.insert(next, entry) {
+                            // 下一队列入列失败时恢复原队列的已完成值，不能混用两条时间线。
+                            // 回到队头并结束本轮，保留原有重试与回收预算策略。
+                            entry.value = previous_value;
                             self.queues[queue].lock().push_front(entry);
                             return progress;
                         }
@@ -372,6 +387,66 @@ mod tests {
             assert!(retirement.is_empty(), "completed entries must not starve");
             assert!(released.into_iter().all(|item| item));
         }
+    }
+
+    #[test]
+    fn failed_queue_move_restores_source_value_and_retries_without_starvation() {
+        let retirement = Retirement::new();
+        let mut after = point(0, 5);
+        after.merge(&point(1, 100));
+        retirement.try_enqueue(after, "cross-queue").ok().unwrap();
+        retirement.try_enqueue(point(0, 5), "source-ready").ok().unwrap();
+        retirement.try_enqueue(point(0, 6), "source-pending").ok().unwrap();
+        retirement.try_enqueue(point(1, 200), "target-pending").ok().unwrap();
+        let mut done = CompletedValues::default();
+        done.raise(QueueId::new(0).unwrap(), 5);
+        retirement.fail_next_insert_queue.store(1, Ordering::Relaxed);
+        let mut ready = Vec::new();
+
+        let progress = retirement.collect_limited(&done, 8, 8, |item| ready.push(item));
+        assert_eq!(progress, CollectionProgress { scanned: 1, destroyed: 0 });
+        assert!(ready.is_empty(), "未完成的跨队列依赖不能提前销毁");
+        assert_eq!(retirement.len(), 4, "移动失败不能丢失或重复计数");
+        {
+            let source = retirement.queues[0].lock();
+            assert_eq!(source.front().unwrap().value, 5, "回原队列必须恢复原时间线值");
+            assert_eq!(source.front().unwrap().after, after);
+            assert_eq!(source.len(), 3);
+        }
+        assert_eq!(retirement.queues[1].lock().len(), 1);
+
+        let progress = retirement.collect_limited(&done, 8, 8, |item| ready.push(item));
+        assert_eq!(progress, CollectionProgress { scanned: 2, destroyed: 1 });
+        assert_eq!(ready, ["source-ready"], "失败恢复后，后继已完成对象不能饥饿");
+        assert_eq!(retirement.len(), 3);
+        {
+            let target = retirement.queues[1].lock();
+            assert_eq!(target.iter().map(|entry| entry.value).collect::<Vec<_>>(), [100, 200]);
+        }
+        done.raise(QueueId::new(1).unwrap(), 100);
+        assert_eq!(retirement.collect(&done, &mut ready), 1);
+        assert_eq!(ready, ["source-ready", "cross-queue"]);
+        done.raise(QueueId::new(0).unwrap(), 6);
+        done.raise(QueueId::new(1).unwrap(), 200);
+        assert_eq!(retirement.collect(&done, &mut ready), 2);
+        ready.sort_unstable();
+        assert_eq!(ready, ["cross-queue", "source-pending", "source-ready", "target-pending"]);
+        assert!(retirement.is_empty());
+    }
+
+    #[test]
+    fn injected_enqueue_storage_failure_returns_original_item_without_counting_it() {
+        let retirement = Retirement::new();
+        retirement.fail_next_insert_queue.store(1, Ordering::Relaxed);
+        assert_eq!(retirement.try_enqueue(point(1, 12), "owned"), Err("owned"));
+        assert!(retirement.is_empty());
+        assert!(retirement.queues[1].lock().is_empty());
+        retirement.try_enqueue(point(1, 12), "retry").ok().unwrap();
+        assert_eq!(retirement.len(), 1);
+        let mut ready = Vec::new();
+        assert_eq!(retirement.drain_all(&mut ready), 1);
+        assert_eq!(ready, ["retry"]);
+        assert!(retirement.is_empty());
     }
 
     #[test]

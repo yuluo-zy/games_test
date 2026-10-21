@@ -1,0 +1,329 @@
+--- a/tiny-glade/crates/country-core/src/resources/walls/decorator_storage.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/decorator_storage.rs
+@@ -216,13 +216,12 @@
+     /// 行 159（内联）+ 0x14155afe0（O）：插入并标记 modified。fresh 反编译：
+     /// 先 `RawTable::remove_entry<(DecoratorId,())>`（从 removed_ids 移除——
+     /// 重新放置即撤销 removed），再 `insert<DecoratorId,()>`（modified_ids 标记）
+-    /// + `insert<DecoratorId,DecoratorInfo>`（内嵌 map）；随后按状态字节写输出
+-    /// +0x47（2=live）或 d2s update。
++    /// + `insert<DecoratorId,DecoratorInfo>`（内嵌 map）。返回的是旧Option；
++    /// 原+0x47的2是返回None niche，不是新输入记录的业务状态。
+     pub fn insert(&mut self, id: DecoratorId, info: DecoratorInfo) -> Option<DecoratorInfo> {
+         self.removed_ids.remove(&id.0);
+-        let old = self.decorators.insert(id.0, info);
+         self.modified_ids.insert(id.0);
+-        old
++        self.decorators.insert(id.0, info)
+     }
+ 
+     /// 行 181（内联）：查询。
+@@ -255,12 +254,12 @@
+     /// fresh 三循环（2026-10-17）：
+     /// ① 迭代 source.removed_ids，目标内嵌 map 无此 id → 目标 modified_ids 传播；
+     /// ② 迭代目标内嵌 map → 逐 id d2s remove（miss==3 panic）+ d2s insert(addr)；
+-    /// ③ 迭代 source 内嵌 map（状态字节==2 → break）→ d2s remove + 目标 removed_ids
+-    ///    remove + modified insert + **DecoratorInfo 重插** + d2s update(addr)。
++    /// ③ 消费 source owned map；for匹配真实next Option，不复制niche业务门。
++    ///    d2s remove→removed撤销→modified→map重插，再按旧Option注册/更新d2s。
+     /// Rust 此前为纯 map 合并（冲突→removed_ids），**不含 d2s 重索引与 removed_ids 迁移**。
+     pub fn merge_with(
+         &mut self,
+-        source: &Decorators,
++        source: Decorators,
+         d2s: &mut DecoratorToStorageMap,
+         addr: DecoratorStorageAddr,
+     ) {
+@@ -274,16 +273,15 @@
+                 .expect("assertion failed: d2s remove in merge_with: no such decorator");
+             d2s.insert(DecoratorId(*id), addr);
+         }
+-        for (id, info) in &source.decorators {
+-            if info.state == 2 {
+-                break;
+-            }
+-            d2s.remove(DecoratorId(*id))
++        for (id, info) in source.decorators {
++            d2s.remove(DecoratorId(id))
+                 .expect("assertion failed: d2s remove in merge_with: no such decorator");
+-            self.removed_ids.remove(id);
+-            self.modified_ids.insert(*id);
+-            self.decorators.insert(*id, *info);
+-            d2s.update(DecoratorId(*id), addr);
++            let old = self.insert(DecoratorId(id), info);
++            if old.is_none() {
++                d2s.insert(DecoratorId(id), addr);
++            } else {
++                d2s.update(DecoratorId(id), addr);
++            }
+         }
+     }
+ 
+@@ -292,7 +290,7 @@
+     /// - **快路径**：目标三集合全空 → 逐集合 `clone_from`（源 removed_ids/modified_ids/
+     ///   内嵌 map），随后公共尾部逐源装饰 `d2s insert`。
+     /// - **慢路径**：清 modified_ids → 当前内嵌 map 逐 id 标 removed（`insert<tuple<>>`）
+-    ///   → **逐旧条目 `d2s remove`（state==2 break）** → 清内嵌 map → 源 removed_ids
++    ///   → drain旧条目并逐项 `d2s remove` → 源 removed_ids
+     ///   回填 → 源内嵌 map 重插（removed_ids remove + modified_ids insert）。
+     /// - 公共尾部：逐源装饰 `d2s insert`（冲突 panic，常量 0x142c21300/0x142c21318）。
+     /// Rust 此前仅 clone_from+clear+d2s.insert，**缺慢路径的 removed 标定与 d2s
+@@ -317,15 +315,11 @@
+             for id in self.decorators.keys() {
+                 self.removed_ids.insert(*id);
+             }
+-            // ③ 逐旧条目 d2s remove（state==2 break），随后清内嵌 map。
+-            for (id, info) in &self.decorators {
+-                if info.state == 2 {
+-                    break;
+-                }
+-                d2s.remove(DecoratorId(*id))
++            // 原RawDrain保持分配；即使索引守卫panic，Drain析构仍清理剩余旧条目。
++            for (id, _) in self.decorators.drain() {
++                d2s.remove(DecoratorId(id))
+                     .expect("assertion failed: d2s remove in tracked_clone_from: no such decorator");
+             }
+-            self.decorators.clear();
+             // ④ 源 removed_ids 回填。
+             self.removed_ids.extend(source.removed_ids.iter().copied());
+             // ⑤ 源内嵌 map 重插（removed_ids remove + modified_ids insert）。
+@@ -750,15 +744,14 @@
+         let src_a = self.per_wall.remove(&a);
+         let src_b = self.per_wall.remove(&b);
+         let merged_addr = DecoratorStorageAddr::Wall(merged);
+-        let target = match (&src_a, &src_b) {
++        let target = match (src_a, src_b) {
+             (None, None) => return,
+             (Some(d), None) | (None, Some(d)) => {
+-                Self::reindex_to_storage(self, d, merged_addr);
+-                d.clone()
+-            }
+-            (Some(d_a), Some(d_b)) => {
+-                let mut target = d_a.clone();
+-                target.merge_with(d_b, &mut self.decorator_to_storage, merged_addr);
++                Self::reindex_to_storage(self, &d, merged_addr);
++                d
++            }
++            (Some(mut target), Some(source)) => {
++                target.merge_with(source, &mut self.decorator_to_storage, merged_addr);
+                 target
+             }
+         };
+@@ -794,7 +787,7 @@
+ 
+     /// 0x140a1f590（O，46KB）：墙分裂迁移。fresh（2026-10-17）+ 反汇编定案：
+     /// 参数 = (wall, children: &[(WallId, low, high)], curve: &Curve2)——子段含
+-    /// **u 区间 {low, high}**。逐装饰：状态字节==2 → 停止迁移；d2s remove（miss==3
++    /// **u 区间 {low, high}**。消费owned map的真实next Option；d2s remove（miss==3
+     /// panic）；侧判定 = **判别字节 DecoratorInfo+0x22**（= `dst_tag`，非 +0x47 state；
+     /// 公式 `(b-2)<=2 ? b-1 : 0`，[`side_from_state`]）。
+     /// - 侧 0：`Curve::get_approx_u_from_pos<Vec2>(point)` + clamp[0,1] +
+@@ -817,14 +810,10 @@
+                 .or_default()
+                 .extend(source.removed_ids.iter().copied());
+         }
+-        for (id, info) in &source.decorators {
+-            // 状态字节==2 → 停止迁移（fresh 0x140a1f590 循环 break）。
+-            if info.state == 2 {
+-                break;
+-            }
++        for (id, info) in source.decorators {
+             // d2s 移除（fresh remove_entry miss==3 → panic）。
+             self.decorator_to_storage
+-                .remove(DecoratorId(*id))
++                .remove(DecoratorId(id))
+                 .expect("assertion failed: self.decorator_to_storage.map.remove(&decorator_id).is_some()");
+             // 侧判定 = 判别字节 @+0x22（dst_tag；fresh 读 RBP+0x52）。
+             let side = side_from_state(info.dst_tag());
+@@ -847,15 +836,20 @@
+                         // 含内嵌 map + d2s 重注册）。
+                         let child_decorators =
+                             self.get_or_insert_default(DecoratorStorageAddr::Wall(*child));
+-                        child_decorators.insert(DecoratorId(*id), *info);
+-                        self.decorator_to_storage
+-                            .update(DecoratorId(*id), DecoratorStorageAddr::Wall(*child));
++                        let old = child_decorators.insert(DecoratorId(id), info);
++                        if old.is_none() {
++                            self.decorator_to_storage
++                                .insert(DecoratorId(id), DecoratorStorageAddr::Wall(*child));
++                        } else {
++                            self.decorator_to_storage
++                                .update(DecoratorId(id), DecoratorStorageAddr::Wall(*child));
++                        }
+                     } else {
+                         // 未命中 → 落 +0x30 注册表（原墙地址键）。
+                         self.removed
+                             .entry(DecoratorStorageAddr::Wall(wall))
+                             .or_default()
+-                            .insert(*id);
++                            .insert(id);
+                     }
+                 }
+                 1 => {
+@@ -863,7 +857,7 @@
+                     self.removed
+                         .entry(DecoratorStorageAddr::Wall(wall))
+                         .or_default()
+-                        .insert(*id);
++                        .insert(id);
+                 }
+                 _ => unreachable!("internal error: entered unreachable code"),
+             }
+@@ -999,13 +993,8 @@
+         }
+     }
+ 
+-    /// 0x140a20c70（O）：应用装饰放置。immutable 门控 → 目标桶
+-    /// （get_or_insert_default）→ `Decorators::insert<DecoMoveToStorage>`
+-    /// （0x14155afe0）——内嵌 map 写入 + modified_ids 标记 + **状态字节判别**
+-    /// （fresh 0x14155afe0 行 49 `cStack_31 == '\x02'`）：
+-    /// - **state==2（live）** → d2s **insert**（冲突 panic）+ 输出状态字节强制 2；
+-    /// - **state≠2** → d2s **update**（覆写）。
+-    /// 输出复刻放置的 DecoratorInfo（与 remove 对称）。
++    /// 原140a20c70丢弃inner旧Option；本现代兼容返回值保留新Info原字节。
++    /// 桶先removed撤销/modified/map写入，再按真实旧Option更新唯一d2s。
+     pub fn apply_decorator_place(
+         &mut self,
+         addr: DecoratorStorageAddr,
+@@ -1013,19 +1002,13 @@
+         info: &DecoratorInfo,
+     ) -> DecoratorInfo {
+         assert!(!self.immutable, "assertion failed: !self.immutable");
+-        let decorators = self.get_or_insert_default(addr);
+-        decorators.insert(decorator_id, *info);
+-        if info.state == 2 {
+-            // live：d2s insert（冲突 panic，与原生 insert 分支一致）。
++        let old = self.get_or_insert_default(addr).insert(decorator_id, *info);
++        if old.is_none() {
+             self.decorator_to_storage.insert(decorator_id, addr);
+-            let mut placed = *info;
+-            placed.state = 2;
+-            placed
+         } else {
+-            // 非 live：d2s update（覆写，不 panic）。
+             self.decorator_to_storage.update(decorator_id, addr);
+-            *info
+-        }
++        }
++        *info
+     }
+ 
+     /// B take_snapshot, inlined into capture_save_data 0x1417a0430. The actual
+@@ -1475,21 +1458,20 @@
+     }
+ 
+     #[test]
+-    fn on_wall_split_skips_state2_live_decorators() {
++    fn on_wall_split_transfers_all_legal_flags_without_repeating_the_iterator_niche() {
+         let mut storage = DecoratorStorage::default();
+         let curve = Curve2::try_new(vec![Vec2::ZERO, Vec2::new(10.0, 0.0)], false).unwrap();
+-        // 状态字节==2（+0x47）→ 原生循环 break：不迁移（d2s 原样保留）。
+-        let mut info = info(7);
+-        info.state = 2;
+-        storage.apply_decorator_place(DecoratorStorageAddr::Wall(WallId(1)), DecoratorId(7), &info);
+-        storage.on_wall_split(
+-            WallId(1),
+-            &curve,
+-            &[(WallId(11), 0.0, 0.5), (WallId(12), 0.5, 1.0)],
+-        );
++        for (id, flag) in [(7, 0), (8, 1), (9, 0), (10, 1)] {
++            let mut value = info(id); value.state = flag; value.u45 = 1 - flag;
++            storage.apply_decorator_place(DecoratorStorageAddr::Wall(WallId(1)), DecoratorId(id), &value);
++        }
++        storage.on_wall_split(WallId(1), &curve, &[(WallId(11), 0.0, 0.5), (WallId(12), 0.5, 1.0)]);
+         assert!(storage.get(DecoratorStorageAddr::Wall(WallId(1))).is_none());
+-        // break 先于 d2s.remove：该装饰 d2s 索引未动。
+-        assert_eq!(storage.lookup_storage(DecoratorId(7)), Some(DecoratorStorageAddr::Wall(WallId(1))));
++        for (id, flag) in [(7, 0), (8, 1), (9, 0), (10, 1)] {
++            assert_eq!(storage.lookup_storage(DecoratorId(id)), Some(DecoratorStorageAddr::Wall(WallId(11))));
++            let value = storage.decorator_info(DecoratorId(id)).unwrap();
++            assert_eq!((value.state, value.u45), (flag, 1 - flag));
++        }
+         assert!(storage.removed.is_empty());
+     }
+ 
+@@ -1871,4 +1853,84 @@
+         // 不回退。
+         assert_eq!(id_gen.generate(), DecoratorId(9));
+     }
+-}
++
++    #[test]
++    fn place_uses_old_option_and_preserves_input_and_partial_mutation_on_index_conflict() {
++        use std::panic::{AssertUnwindSafe, catch_unwind};
++        for flag in [0, 1] {
++            let id = DecoratorId(70 + u32::from(flag));
++            let addr = DecoratorStorageAddr::Wall(WallId(7));
++            let mut value = info(id.0); value.state = flag; value.u45 = 1 - flag;
++            value.u30 = 0x1122_3344_5566_7788;
++            let mut storage = DecoratorStorage::default();
++            assert_eq!(storage.apply_decorator_place(addr, id, &value), value);
++            let mut replacement = value; replacement.state = 1 - flag; replacement.u28 = 0x7fc1_2345;
++            assert_eq!(storage.apply_decorator_place(addr, id, &replacement), replacement);
++            assert_eq!(*storage.decorator_info(id).unwrap(), replacement);
++            assert_eq!(storage.lookup_storage(id), Some(addr));
++
++            let mut conflict = DecoratorStorage::default();
++            conflict.decorator_to_storage.insert(id, DecoratorStorageAddr::Terrain);
++            conflict.get_or_insert_default(addr).removed_ids.insert(id.0);
++            assert!(catch_unwind(AssertUnwindSafe(|| conflict.apply_decorator_place(addr, id, &value))).is_err());
++            // 原桶mutation先于d2s冲突；不能回滚或按新flag吞原失败。
++            let bucket = conflict.get(addr).unwrap();
++            assert_eq!(bucket.get(id), Some(&value));
++            assert!(bucket.modified_ids.contains(&id.0));
++            assert!(!bucket.removed_ids.contains(&id.0));
++        }
++    }
++
++    #[test]
++    fn owned_merge_keeps_target_allocation_and_reindexes_every_source_flag() {
++        let mut storage = DecoratorStorage::default();
++        let a = DecoratorStorageAddr::Wall(WallId(1));
++        let b = DecoratorStorageAddr::Wall(WallId(2));
++        let merged = DecoratorStorageAddr::Wall(WallId(3));
++        storage.get_or_insert_default(a).decorators.reserve(32);
++        for (id, flag, addr) in [(1, 0, a), (2, 1, a), (3, 0, b), (4, 1, b)] {
++            let mut value = info(id); value.state = flag;
++            storage.apply_decorator_place(addr, DecoratorId(id), &value);
++        }
++        let original_allocation = storage.get(a).unwrap().get(DecoratorId(1)).unwrap() as *const _;
++        storage.on_walls_merged(WallId(1), WallId(2), WallId(3));
++        let bucket = storage.get(merged).unwrap();
++        assert_eq!(bucket.decorators.len(), 4);
++        assert_eq!(bucket.get(DecoratorId(1)).unwrap() as *const _, original_allocation);
++        for (id, flag) in [(1, 0), (2, 1), (3, 0), (4, 1)] {
++            assert_eq!(storage.lookup_storage(DecoratorId(id)), Some(merged));
++            assert_eq!(bucket.get(DecoratorId(id)).unwrap().state, flag);
++        }
++    }
++
++    #[test]
++    fn tracked_clone_uses_real_drain_on_success_and_on_required_index_failure() {
++        use std::panic::{AssertUnwindSafe, catch_unwind};
++        let addr = DecoratorStorageAddr::Terrain;
++        let mut source = Decorators::default();
++        for (id, flag) in [(20, 0), (21, 1)] {
++            let mut value = info(id); value.state = flag; source.insert(DecoratorId(id), value);
++        }
++        let mut target = Decorators::default(); target.decorators.reserve(32);
++        let mut d2s = DecoratorToStorageMap::default();
++        for id in [1, 2] { target.insert(DecoratorId(id), info(id)); d2s.insert(DecoratorId(id), addr); }
++        let capacity = target.decorators.capacity();
++        target.tracked_clone_from(&source, &mut d2s, addr);
++        assert_eq!(target.decorators, source.decorators);
++        assert!(target.removed_ids.contains(&1) && target.removed_ids.contains(&2));
++        assert!(d2s.get(DecoratorId(1)).is_none() && d2s.get(DecoratorId(2)).is_none());
++        assert_eq!(target.decorators.capacity(), capacity);
++        for id in [20, 21] { assert_eq!(d2s.get(DecoratorId(id)), Some(addr)); }
++
++        let mut broken = Decorators::default(); broken.decorators.reserve(32);
++        for id in [7, 8, 9] { broken.insert(DecoratorId(id), info(id)); }
++        let capacity = broken.decorators.capacity();
++        assert!(catch_unwind(AssertUnwindSafe(|| broken.tracked_clone_from(&source, &mut DecoratorToStorageMap::default(), addr))).is_err());
++        assert!(broken.decorators.is_empty());
++        assert_eq!(broken.decorators.capacity(), capacity);
++        assert!(broken.modified_ids.is_empty());
++        assert!(broken.removed_ids.is_superset(&HashSet::from([7, 8, 9])));
++        assert_eq!(source.decorators.len(), 2);
++    }
++
++}

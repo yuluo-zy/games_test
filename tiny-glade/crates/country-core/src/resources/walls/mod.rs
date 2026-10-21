@@ -6,6 +6,7 @@ pub mod decorator_archivist;
 pub mod decorator_collision;
 pub mod decorator_storage;
 pub mod decorator_subtype;
+pub mod decorator_outline;
 pub mod cached_decorator_transforms;
 pub mod arches;
 pub mod curved_halftimber;

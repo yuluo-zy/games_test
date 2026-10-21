@@ -1,0 +1,77 @@
+{
+  "note": "本地公开hashbrown0.15.2仅解释已由原PDB逐行绑定的依赖next；不声称整个vendor源码身份/游戏业务已验证。",
+  "files": [
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashbrown-0.15.2/src/map.rs",
+      "sha256": "f7f86560e5c584268f59c50744aec74de9734a83167fbf873135f94efaaf37ee",
+      "ranges": [
+        {
+          "first": 3271,
+          "last": 3278,
+          "lines": [
+            "impl<K, V, A: Allocator> Iterator for IntoIter<K, V, A> {",
+            "    type Item = (K, V);",
+            "",
+            "    #[cfg_attr(feature = \"inline-more\", inline)]",
+            "    fn next(&mut self) -> Option<(K, V)> {",
+            "        self.inner.next()",
+            "    }",
+            "    #[cfg_attr(feature = \"inline-more\", inline)]"
+          ]
+        },
+        {
+          "first": 3433,
+          "last": 3440,
+          "lines": [
+            "impl<K, V, A: Allocator> Iterator for Drain<'_, K, V, A> {",
+            "    type Item = (K, V);",
+            "",
+            "    #[cfg_attr(feature = \"inline-more\", inline)]",
+            "    fn next(&mut self) -> Option<(K, V)> {",
+            "        self.inner.next()",
+            "    }",
+            "    #[cfg_attr(feature = \"inline-more\", inline)]"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/Users/yuluo/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashbrown-0.15.2/src/raw/mod.rs",
+      "sha256": "f23b52c26abd9df5da85a4631e422b3d1bbfa93798717bf65a72a8d8659f24ea",
+      "ranges": [
+        {
+          "first": 3883,
+          "last": 3890,
+          "lines": [
+            "impl<T, A: Allocator> Iterator for RawIntoIter<T, A> {",
+            "    type Item = T;",
+            "",
+            "    #[cfg_attr(feature = \"inline-more\", inline)]",
+            "    fn next(&mut self) -> Option<T> {",
+            "        unsafe { Some(self.iter.next()?.read()) }",
+            "    }",
+            ""
+          ]
+        },
+        {
+          "first": 3953,
+          "last": 3964,
+          "lines": [
+            "",
+            "impl<T, A: Allocator> Iterator for RawDrain<'_, T, A> {",
+            "    type Item = T;",
+            "",
+            "    #[cfg_attr(feature = \"inline-more\", inline)]",
+            "    fn next(&mut self) -> Option<T> {",
+            "        unsafe {",
+            "            let item = self.iter.next()?;",
+            "            Some(item.read())",
+            "        }",
+            "    }",
+            ""
+          ]
+        }
+      ]
+    }
+  ]
+}

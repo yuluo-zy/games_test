@@ -309,6 +309,7 @@ pub(crate) struct SwapchainInner {
     next_slot: usize,
     stale: bool,
     any_presented: bool,
+    native_present_successes: u64,
     active_acquisitions: usize,
     closing: bool,
     unproven_external_acquire: bool,
@@ -372,6 +373,10 @@ impl SwapchainInner {
             self.fullscreen.lost();
         }
         progress.record_result(&result, has_fence);
+        // 可恢复的过期结果仍保留原入队/重建语义，不能算作实际呈现成功。
+        if result.is_ok() {
+            self.native_present_successes = self.native_present_successes.saturating_add(1);
+        }
         match present_result(result) {
             Ok((suboptimal, out_of_date)) => {
                 self.any_presented = true;
@@ -406,6 +411,7 @@ impl SwapchainInner {
             next_slot: 0,
             stale: true,
             any_presented: false,
+            native_present_successes: 0,
             active_acquisitions: 0,
             closing: false,
             unproven_external_acquire: false,
@@ -601,6 +607,10 @@ impl Swapchain {
     }
     pub fn any_present_successful(&self) -> bool {
         self.inner.read().any_presented
+    }
+    /// 当前交换链代中 native present 返回 SUCCESS/SUBOPTIMAL 的次数；不代表扫描输出完成。
+    pub fn native_present_success_count(&self) -> u64 {
+        self.inner.read().native_present_successes
     }
     /// # Safety
     /// 设备必须启用 VK_KHR_swapchain，surface 必须属于设备实例。
@@ -2796,6 +2806,7 @@ mod tests {
             let mut inner = created_state();
             let mut progress = PresentProgress::default();
             let result = inner.finish_present(&mut progress, true, Err(error));
+            assert_eq!(inner.native_present_successes, 0);
             assert!(inner.stale);
             assert_eq!(progress.issued, u64::from(enqueued));
             // Rejected presents enqueue their wait, but their fence is not
@@ -2812,6 +2823,26 @@ mod tests {
                 assert_eq!(result.unwrap_err().kind(), Error::from(error).kind());
             }
         }
+    }
+
+    #[test]
+    fn native_present_success_count_excludes_recoverable_errors_and_retains_successes() {
+        let mut inner = created_state();
+        let mut progress = PresentProgress::default();
+        for error in [
+            vk::Result::ERROR_OUT_OF_DATE_KHR,
+            vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT,
+        ] {
+            assert!(!inner.finish_present(&mut progress, false, Err(error)).unwrap());
+            assert!(inner.any_presented, "保留原可恢复结果的记账");
+            assert_eq!(inner.native_present_successes, 0);
+        }
+        assert!(!inner.finish_present(&mut progress, false, Ok(false)).unwrap());
+        assert_eq!(inner.native_present_successes, 1);
+        assert!(inner.finish_present(&mut progress, false, Ok(true)).unwrap());
+        assert_eq!(inner.native_present_successes, 2);
+        assert!(inner.finish_present(&mut progress, false, Err(vk::Result::ERROR_DEVICE_LOST)).is_err());
+        assert_eq!(inner.native_present_successes, 2);
     }
 
     struct TestTimelineApi;

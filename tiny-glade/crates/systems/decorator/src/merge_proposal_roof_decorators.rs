@@ -130,15 +130,12 @@ pub fn find_best_roof_decorator_merge_position(
         // O：既有记录碰撞宽度（+0x30）。subtype 来自 DerivedDecoratorSubtypes。
         let derived = derived_subtypes.get(target_id);
         let key = country_core::resources::walls::decorator_subtype::DecoratorLibKey::new(
-            derived.subtype().0,
+            derived.0,
             existing.rank,
         );
-        let Some(existing_collision) = mesh_lib.collision.get(&key) else {
-            // O：原 `panic_fmt`（mesh 缺项）。
-            panic!("The decorator mesh library doesn't contain {}", key.subtype);
-        };
-        let (existing_min, existing_max) = existing_collision.bbx_ls();
-        let existing_along = existing_max.x - existing_min.x;
+        let existing_collision = mesh_lib.collision_record(key);
+        // 原记录+0x30是逻辑宽度，不是旋转后AABB的X投影。
+        let existing_along = existing_collision.bounds.footprint.size.x;
         let mut delta = (new_along_width - existing_along) * 0.5;
         // O：非角 / 角归一。
         let edge_id = if shape.corner_attached {

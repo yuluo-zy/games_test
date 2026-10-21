@@ -1,0 +1,24 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept bounded test-only candidate; execution pending root",
+  "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4b6d939d045d508224/clutter-startup-20261020/delegated-real-b-assets-tests-20261021/SOURCE_CANDIDATE_MANIFEST_V1.json",
+  "manifest_sha256": "e14a61bf405ee9a0919feb477a782cb24ed266f4bcbfa37adbd469b70c2265fd",
+  "before_sha256": "7eacff3ac5c9839abaa99017bb504eee6011be3e0accb406477633ea19b302d8",
+  "after_sha256": "0ce266091523d78301480c8e3a373d8282672c1dae93e4396d4ae7f78563766a",
+  "patch_sha256": "1b65422fa99f49d23d0e4fbb12c6fb106be0b179766a31918fda5f45bd86024e",
+  "independent_checks": [
+    "清单全部文件 SHA 匹配。除 tests 模块末尾闭括号外，旧源是新源逐字前缀；原 loader 与已有测试未改。",
+    "真实生产 load_decorators 入口，不生成 JSON、不预填四表、不替换 AssetMeshLibrary。TG_INSTALL_ROOT 缺失或路径/资产不完整会失败，不 silent SKIP。",
+    "full 52/demo 34 键集合覆盖实际四表；原 EXPECTED 表复用而非新计数替代业务。",
+    "actual 文件来源 canonical 路径、非空有限位置；indexed 真 Trimesh/原顶点索引法线UV、convex 真 shape、bbox 12 三角/尺寸/局部中心；same mesh Arc 与独立 triangles Vec 身份。",
+    "outline 保留真实点序列仅追加首点；Sphere/Empty 是既有原分支，不是缺资产默认值。"
+  ],
+  "root_execution_gate": "显式 TG_INSTALL_ROOT 原 B 完整安装树并 --ignored original_b_asset_tree_；必须真实 2 passed，不接受 0 tests。",
+  "limits": [
+    "本 reviewer 未运行 Cargo/rustc/GPU。",
+    "该包只增加真实资产回归，不证明完整 decorator App 注册、validator、编辑闭环或场景可达。",
+    "目录标记不能独自证明安装树版本；root 应继续绑定本机既有 B 安装树身份。"
+  ]
+}

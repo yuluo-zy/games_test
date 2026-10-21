@@ -63,13 +63,17 @@ impl ComparativeSpace for WallSpace {
         }
     }
     fn subtract(&self, a: f32, b: f32) -> f32 {
-        if self.is_loop {
-            CircularComparativeSpace {
-                period: self.length,
-            }
-            .subtract(a, b)
+        let difference = a - b;
+        if !self.is_loop {
+            return difference;
+        }
+        // 原66B只做一次f32修正；两个有序<的else包含unordered，不能改成>=。
+        if difference < -0.5 * self.length {
+            difference + self.length
+        } else if difference < 0.5 * self.length {
+            difference
         } else {
-            a - b
+            difference - self.length
         }
     }
 }
@@ -287,5 +291,84 @@ mod world_position_original_tests {
         assert_eq!(position.x, 1.5);
         assert!(position.y.is_nan());
         assert_eq!(position.z, 2.0);
+    }
+}
+
+#[cfg(test)]
+mod native_wall_space_subtract_tests {
+    use super::*;
+
+    #[test]
+    fn original_half_period_rounding_controls_real_alignment_direction_without_changing_general_space()
+     {
+        let space = WallSpace {
+            is_loop: true,
+            length: 10.0,
+        };
+        let from = f32::from_bits(0x32800000); // 2^-26，合法已投影坐标。
+        assert_eq!(space.subtract(5.0, from), -5.0);
+        assert_eq!(
+            CircularComparativeSpace { period: 10.0 }.subtract(5.0, from),
+            5.0
+        );
+        assert_eq!(space.subtract(5.0, 0.0), -5.0);
+        assert_eq!(space.subtract(0.0, 5.0), -5.0);
+        let below = f32::from_bits(5.0f32.to_bits() - 1);
+        let above = f32::from_bits(5.0f32.to_bits() + 1);
+        assert_eq!(space.subtract(below, 0.0), below);
+        assert_eq!(space.subtract(above, 0.0), -below);
+    }
+
+    #[test]
+    fn original_single_wrap_and_signed_zero_are_not_modulo_or_wide_recomputations() {
+        let space = WallSpace {
+            is_loop: true,
+            length: 10.0,
+        };
+        assert_eq!(space.subtract(26.0, 1.0), 15.0);
+        assert_eq!(space.subtract(-26.0, 1.0), -17.0);
+        assert_eq!(space.subtract(-0.0, 0.0).to_bits(), (-0.0f32).to_bits());
+        let line = WallSpace {
+            is_loop: false,
+            length: 10.0,
+        };
+        assert_eq!(line.subtract(26.0, 1.0), 25.0);
+        assert_eq!(line.subtract(-0.0, 0.0).to_bits(), (-0.0f32).to_bits());
+    }
+
+    #[test]
+    fn original_unordered_upper_comparison_takes_subtraction_and_nonloop_ignores_length() {
+        assert!(
+            WallSpace {
+                is_loop: true,
+                length: f32::NAN
+            }
+            .subtract(1.0, 0.0)
+            .is_nan()
+        );
+        assert_eq!(
+            WallSpace {
+                is_loop: false,
+                length: f32::NAN
+            }
+            .subtract(1.0, 0.0),
+            1.0
+        );
+        assert!(
+            WallSpace {
+                is_loop: true,
+                length: 10.0
+            }
+            .subtract(f32::NAN, 0.0)
+            .is_nan()
+        );
+        assert_eq!(
+            WallSpace {
+                is_loop: true,
+                length: f32::INFINITY
+            }
+            .subtract(1.0, 0.0),
+            1.0
+        );
     }
 }

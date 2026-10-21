@@ -1,0 +1,7 @@
+# 26-loader真实启动调用独立审查
+
+通过最窄source/接口/注册合同复核。原DecoratorPlugin140342c10→140344de6→140170fb0完整typed PreStartup wrapper证明三资源身份与phase，复用已审1407b66e0完整producer。实际run_game/bridge先装同一AssetMeshLibrary；MeshWatch按live_link创建。直接GPU App入口没走DecoratorPlugin，幂等init两个真实canonical空owner保持既有值；不清库，不造geometry。root/demo捕获已有配置；错误继续panic，不加ready标记、visualhost或无原证调度边。
+
+两个hunk位于root/path移交前，config仅Copy bool读取后结束借用；同一owner实际Asset库直接消费。先canonical+loader五参、最后此2hunk，避免旧签名错配。root只按方法hunk合并，全文before变化时保留root音频修复并重新核hunk。独立F0重放after272bffb28cf9f683fc640fb999164c5918f713c6ed915a787c043ba8f2b226e4。
+
+未实际Cargo或原资产运行；注册不等于加载成功。full52/demo34 keys/同Arc/triangles/bounds/outline以及缺资产真实失败待root执行。

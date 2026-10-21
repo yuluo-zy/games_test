@@ -1,0 +1,9 @@
+# 插值与采样历史完整合同独审
+
+通过，允许同stairs_assemble.rs唯一writer基已审7eb00583增量实现真实6资源系统；保原完整8622B，不再沿旧slice→bool假签名。独核原cf7dd/7e2/7ea factor实际读面；d0756..08f3同数clone旧Vec/异数move当前Vec→真实XYZ CurveTry及旧Option释放。必须区分比较旧Curve3XZ与最终Curve3，不由ICF getcoord alias混metric。新必要XZ ctor policy已单writer合同中，禁止本地曲线替身。
+
+旧表memtake/remove一次消费、缺Info/非Stair元数据零、rawbits比较/removed支持、先actual desired-old平方阈值再lerp、tangent反号后归一fallbackX、有序widthNaN false、laziness原1/visual存在/forcefalse门、reuse保第四opaque/dirty、fresh第四空且CurveErr仍history+dirty等已列全。optional try_as_stair必须先disc<=1门，未知disc应None不先extra解析panic。原三表owner/subsegments.extend不清旧值、unused sampled最后Drop恢复删除，不能以新cache/default entry代替。
+
+源码验收：保actualbounds读取次序与四次optional元数据读；metadata转换只用rawbits不发明浮点业务；不把第四opaque u32改成Params辅助Vec<f32>。全branch同World真实owners测试需包括NaN-Y旧XZ可reuse但outputXYZ None、第四Vec保留、same-count用old几何/unequal用插值、NaNwidth与旧dirty保持、fresh失败副作用与消失identity删除。全局laziness测试须避免并发store污染其它用例（测试独有共享锁/RAII恢复或等价隔离），不改生产全局身份。
+
+factor叶8011和10源owner/lazy/math/requests是配套，root统一整合。canonical XZ原failurepolicy尚待独审冻结，原host specialization/cache/62KBmesh未因此闭合，不mount。B原证只证明该范围，C无独立运行验收。

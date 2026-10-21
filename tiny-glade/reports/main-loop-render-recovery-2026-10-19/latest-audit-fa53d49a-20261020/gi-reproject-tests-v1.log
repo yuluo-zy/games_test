@@ -1,0 +1,750 @@
+   Compiling shader-pipeline v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/crates/shader-pipeline)
+   Compiling utils v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/utils)
+warning: unused import: `glam::*`
+ --> third_party/obvhs-a3f3b3bf/src/cwbvh/simd.rs:1:5
+  |
+1 | use glam::*;
+  |     ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `EPSILON`, `extract_byte64`, and `ray::Ray`
+  --> third_party/obvhs-a3f3b3bf/src/cwbvh/simd.rs:9:16
+   |
+ 9 |         node::{extract_byte64, EPSILON},
+   |                ^^^^^^^^^^^^^^  ^^^^^^^
+...
+12 |     ray::Ray,
+   |     ^^^^^^^^
+
+warning: value assigned to `state` is never read
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/traverse_macro.rs:114:21
+    |
+114 |                       $state.current_group.y = 0;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: third_party/obvhs-a3f3b3bf/src/cwbvh/mod.rs:214:9
+    |
+214 | /         crate::traverse!(
+215 | |             self,
+216 | |             node,
+217 | |             state,
+...   |
+227 | |         );
+    | |_________- in this macro invocation
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+    = note: this warning originates in the macro `crate::traverse` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: value assigned to `current_group` is never read
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/mod.rs:455:21
+    |
+455 |                     current_group.y = 0;
+    |                     ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unnecessary transmute
+   --> third_party/obvhs-a3f3b3bf/src/cwbvh/node.rs:216:30
+    |
+216 |         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
+    = note: `#[warn(unnecessary_transmutes)]` on by default
+help: replace this with
+    |
+216 -         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+216 +         let meta8 = unsafe { u64::from_ne_bytes(self.child_meta) };
+    |
+
+warning: `obvhs` (lib) generated 5 warnings (run `cargo fix --lib -p obvhs` to apply 3 suggestions)
+   Compiling tg-text v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/tg-text)
+   Compiling tg-terrain v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/systems/terrain)
+   Compiling motomoto v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/motomoto)
+   Compiling shader-compiler v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody/crates/shader-compiler)
+   Compiling rhapsody v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/rhapsody)
+   Compiling country-core v0.1.0 (/Users/yuluo/Desktop/game/games_test/tiny-glade/crates/country-core)
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates/country-core/src/resources/history/color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `de::Error`
+  --> crates/country-core/src/resources/history/serialized.rs:13:63
+   |
+13 | use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+   |                                                               ^^^^^^^^^
+
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates/country-core/src/resources/stairs/invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ssbo_carrier`
+   --> crates/country-core/src/systems/render_loop/compute_passes/pass_kit.rs:404:16
+    |
+404 | pub(crate) use ssbo_carrier;
+    |                ^^^^^^^^^^^^
+
+warning: unused import: `Quat`
+ --> crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs:7:12
+  |
+7 | use glam::{Quat, Vec3};
+  |            ^^^^
+
+warning: unused import: `all_nonzero`
+  --> crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_b.rs:84:24
+   |
+84 |     WaterPlanesInputs, all_nonzero, water_planes_draw,
+   |                        ^^^^^^^^^^^
+
+warning: unused import: `prelude::*`
+   --> crates/country-core/src/systems/history/recording.rs:290:9
+    |
+290 |         prelude::*,
+    |         ^^^^^^^^^^
+
+warning: unused import: `DecoratorHistoryEdit`
+  --> crates/country-core/src/systems/history/replay_decorator.rs:81:53
+   |
+81 |     use crate::resources::history::decorator_edit::{DecoratorHistoryEdit, DecoratorV5Edit};
+   |                                                     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::Roof`
+ --> crates/country-core/src/systems/history/tests.rs:5:5
+  |
+5 | use crate::resources::roofs::Roof;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::commands::*`
+ --> crates/country-core/src/systems/history/tests.rs:6:5
+  |
+6 | use crate::resources::roofs::commands::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::customization::FlatRoofRimRequest`
+ --> crates/country-core/src/systems/history/tests.rs:7:5
+  |
+7 | use crate::resources::roofs::customization::FlatRoofRimRequest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::time::GameTime`
+ --> crates/country-core/src/systems/history/tests.rs:8:5
+  |
+8 | use crate::resources::time::GameTime;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::WallId`
+ --> crates/country-core/src/systems/history/tests.rs:9:5
+  |
+9 | use crate::resources::walls::WallId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::public_walls::PublicWalls`
+  --> crates/country-core/src/systems/history/tests.rs:10:5
+   |
+10 | use crate::resources::walls::public_walls::PublicWalls;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::publication_fields::WallId as ObservedWallId`
+  --> crates/country-core/src/systems/history/tests.rs:11:5
+   |
+11 | use crate::resources::walls::publication_fields::WallId as ObservedWallId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::systems::mode_manager::ClutterMeshTy`
+  --> crates/country-core/src/systems/ui_clutter/rmb_autoclutter.rs:31:5
+   |
+31 | use crate::systems::mode_manager::ClutterMeshTy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `EvRightClickedAutoClutter`
+   --> crates/country-core/src/systems/ui_clutter/tests.rs:179:9
+    |
+179 |         EvRightClickedAutoClutter, RmbAutoClutterDirect, RmbAutoClutterHit,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ClutterMeshTy`
+   --> crates/country-core/src/systems/ui_clutter/tests.rs:242:49
+    |
+242 |     use crate::systems::mode_manager::{AppMode, ClutterMeshTy, EraserLayer};
+    |                                                 ^^^^^^^^^^^^^
+
+warning: unused import: `Decorators`
+   --> crates/country-core/src/systems/ui_edit_focus.rs:328:72
+    |
+328 |     use crate::resources::walls::decorator_storage::{DecoratorStorage, Decorators};
+    |                                                                        ^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::decorator::DecoratorId`
+    --> crates/country-core/src/systems/save/snapshot.rs:2683:9
+     |
+2683 |     use crate::resources::walls::decorator::DecoratorId;
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates/country-core/src/systems/wall/snapping/snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused import: `super::*`
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:119:9
+    |
+119 |     use super::*;
+    |         ^^^^^^^^
+
+warning: unused import: `Deserialize`
+  --> crates/country-core/src/resources/history/decorator_edit.rs:21:13
+   |
+21 | use serde::{Deserialize, Deserializer, Serializer};
+   |             ^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/resources/history/color_edit.rs:370:39
+    |
+370 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates/country-core/src/resources/history/replay_cmd_buffer.rs:217:9
+    |
+217 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs:358:13
+    |
+358 |         let mut library = AssetSsboLibrary::new();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/render_loop/compute_passes/read_bush_positions_for_cpu.rs:132:13
+    |
+132 |         let mut library = AssetSsboLibrary::default();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/adjust_wall_height/signifier_animation.rs:216:13
+    |
+216 |         let mut meshes = AssetMeshLibrary::new();
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:125:17
+    |
+125 |             let mut lo = (2.0 * e - 1.0).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/country-core/src/systems/wall/snapping/telegraph_walls_are_merged.rs:126:17
+    |
+126 |             let mut hi = (2.0 * e).clamp(0.0, 1.0);
+    |                 ----^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: field `0` is never read
+  --> crates/country-core/src/asset_libraries/color_library.rs:62:12
+   |
+62 | pub struct ColorLibrarySsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `check` is never used
+  --> crates/country-core/src/asset_libraries/color_library.rs:59:1
+   |
+59 | /// 37 个 RGBA 槽，布局与 GPU 调色板保持一致。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/asset_libraries/ssbo_library.rs:434:12
+    |
+434 |     struct Alpha(u32);
+    |            ^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/asset_libraries/ssbo_library.rs:432:5
+    |
+432 |     #[repr(transparent)]
+    |     ^
+
+warning: field `0` is never read
+   --> crates/country-core/src/asset_libraries/ssbo_library.rs:450:12
+    |
+450 |     struct Beta(u32);
+    |            ^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/asset_libraries/ssbo_library.rs:448:5
+    |
+448 |     #[repr(transparent)]
+    |     ^
+
+warning: field `0` is never read
+   --> crates/country-core/src/asset_libraries/ssbo_library.rs:468:12
+    |
+468 |     struct AlphaImpostor(u32);
+    |            ^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/asset_libraries/ssbo_library.rs:465:5
+    |
+465 |     /// 与 `Alpha` 同短名、不同类型：触发 “same `NAME`” 分支。
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/geometry/instanced_wall.rs:236:12
+    |
+236 | pub struct BrickTransformSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/geometry/instanced_wall.rs:233:1
+    |
+233 | /// CPU 生产者和 GPU 缓冲共用的砖实例格式。字段按 shader 合同固定，不能随意重排。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+   --> crates/country-core/src/geometry/instanced_wall.rs:322:9
+    |
+322 |         #[repr(transparent)]
+    |         ^
+...
+356 | brick_render_ssbo!(BrickDrawListSsbo, 0xe00000, false);
+    | ------------------------------------------------------ in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+   --> crates/country-core/src/geometry/instanced_wall.rs:322:9
+    |
+322 |         #[repr(transparent)]
+    |         ^
+...
+359 | brick_render_ssbo!(BrickPrevVisibilityBitmaskSsbo, 0x10000, true);
+    | ----------------------------------------------------------------- in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+   --> crates/country-core/src/geometry/instanced_wall.rs:322:9
+    |
+322 |         #[repr(transparent)]
+    |         ^
+...
+360 | brick_render_ssbo!(BrickNextVisibilityBitmaskSsbo, 0x10000, true);
+    | ----------------------------------------------------------------- in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+ --> crates/country-core/src/render/normals_debug.rs:7:1
+  |
+7 | #[repr(transparent)]
+  | ^
+
+warning: method `buffer_host` is never used
+  --> crates/country-core/src/rhapsody_contract.rs:35:19
+   |
+20 | impl GraphicsDevice {
+   | ------------------- method in this implementation
+...
+35 |     pub(crate) fn buffer_host(
+   |                   ^^^^^^^^^^^
+
+warning: function `check` is never used
+ --> crates/country-core/src/resources/compute_mouse_depth_value.rs:9:1
+  |
+9 | #[repr(transparent)]
+  | ^
+
+warning: field `0` is never read
+  --> crates/country-core/src/resources/roof_tile_ssbo.rs:95:12
+   |
+95 | pub struct RoofSpireSsbo {
+   |            ^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/resources/roof_tile_ssbo.rs:91:1
+   |
+91 | /// Native typed ctor141616860:1000 records×32B, independent InstanceBuffer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates/country-core/src/resources/walls/dormers.rs:11:1
+   |
+11 | /// B typed constructor 0x14161a760: 48-byte rows, capacity11250.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates/country-core/src/resources/walls/dormers.rs:16:1
+   |
+16 | /// B typed constructor 0x1416159e0: one u32 per cell, capacity225.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/resources/placement_data.rs:10:12
+   |
+10 | pub struct PlacementDataSsbo {
+   |            ^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+ --> crates/country-core/src/resources/placement_data.rs:8:1
+  |
+8 | #[repr(C)]
+  | ^
+
+warning: function `check` is never used
+  --> crates/country-core/src/resources/render_ssbo.rs:25:1
+   |
+25 | /// 灯笼（O：`resources::render::lantern::LanternSsbo`，着色器侧 `LanternPacked { float3 position; uint intensity__color_id; }`，
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/resources/render_ssbo.rs:36:12
+   |
+36 | pub struct LanternSsbo {
+   |            ^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: field `0` is never read
+   --> crates/country-core/src/resources/rt.rs:367:12
+    |
+367 | pub struct RtTrianglesSsbo {
+    |            ^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/resources/rt.rs:363:1
+    |
+363 | /// `RtTriangleSsbo`（O：0x18 B/元素；`upload_rt_world` 的 `RtTrianglesSsbo` 上传面，
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/resources/rt.rs:406:12
+    |
+406 | pub struct RtTriangleMetaSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/resources/rt.rs:403:1
+    |
+403 | /// Per-triangle packed color/metadata, reordered by original primitive index.
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/resources/rt.rs:428:12
+    |
+428 | pub struct RtBvhSsbo {
+    |            ^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/resources/rt.rs:425:1
+    |
+425 | /// `RtBvhSsbo`（O：0x50 B/元素 = [`RtBvhRecord`]；类型名断言长度 0x26）。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/resources/water.rs:30:12
+   |
+30 | pub struct RippleSourceSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/resources/water.rs:20:1
+   |
+20 | /// 波纹源 SSBO（O：`resources::water::RippleSourceSsbo`）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `name` is never read
+  --> crates/country-core/src/systems/audio/music/load_glade_audio.rs:37:9
+   |
+36 |     struct Event {
+   |            ----- field in this struct
+37 |         name: String,
+   |         ^^^^
+   |
+   = note: `Event` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/audio/terrain_stairs_audio.rs:34:1
+   |
+34 | /// Original B14161ddb0 mapped counter: one u32, explicit zero upload for None.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/ivy/ivy_send_to_gpu_leaf.rs:33:12
+   |
+33 | pub struct IvyLeafSsbo {
+   |            ^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/ivy/ivy_send_to_gpu_leaf.rs:28:1
+   |
+28 | /// GPU leaf element, 48 B (O: `count * 0x30`; shader `instanced_ivy_leaf`).
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/ivy/ivy_send_to_gpu_leaf.rs:65:12
+   |
+65 | pub struct IvyFlowerSsbo {
+   |            ^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/ivy/ivy_send_to_gpu_leaf.rs:60:1
+   |
+60 | /// GPU flower element (same 48 B layout, separate buffer). The flower
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/ivy/ivy_send_to_gpu_segments.rs:25:12
+   |
+25 | pub struct IvySegmentSsbo {
+   |            ^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/ivy/ivy_send_to_gpu_segments.rs:20:1
+   |
+20 | /// GPU segment element, 48 B (O: `count * 0x30`; shader `instanced_ivy_branch`).
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates/country-core/src/systems/render_loop/compute_passes/bin_lights.rs:209:12
+    |
+209 |     struct L(u32);
+    |            ^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates/country-core/src/systems/render_loop/compute_passes/bin_lights.rs:206:5
+    |
+206 |     /// 灯笼缓冲替身：`InstanceBuffer<T>` 存储（实例数 = 注册时的数据长度）。
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs:50:12
+   |
+50 | pub struct DofAutofocusSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/dof_autofocus.rs:39:1
+   |
+39 | /// 每相机自动对焦参数（O：`resources` 里 `DofAutofocusSsbo`，着色器侧 `DofFocus`，`inc/coc.hlsl:12`，64 B）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/compute_passes/grass.rs:76:12
+   |
+76 | pub struct GrassBladeDataSsbo {
+   |            ^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/grass.rs:71:1
+   |
+71 | /// B ctor@141611980: 32-byte GPU-produced record, 0x90000 elements.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs:30:12
+   |
+30 | pub struct LeafParticleSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs:26:1
+   |
+26 | /// B ctor@141614110:32-byte record. The raw words retain exact default
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs:89:12
+   |
+89 | pub struct ParticleEmitterSsbo {
+   |            ^^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/leaf_particles.rs:86:1
+   |
+86 | /// B ctor@141610600: 16-byte record,1100 slots, no None upload.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/rasterize_buildings.rs:72:1
+   |
+72 | /// GPU 端建筑元素（O：32 B；字段 U，以 u32 位模式保存）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/compute_passes/rasterize_buildings.rs:75:12
+   |
+75 | pub struct GroundedBuildingsSsbo(pub [u32; 8]);
+   |            ^^^^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/read_bush_positions_for_cpu.rs:32:1
+   |
+32 | /// 原 `[u32; 2]` 行。第 0 行是头，其余行按原始 f32 bits 解释为 XZ。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/compute_passes/spawn_boats.rs:28:12
+   |
+28 | pub struct BoatSsbo(pub [u32; 16]);
+   |            ^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/compute_passes/spawn_boats.rs:23:1
+   |
+23 | /// Original constructor elements are64B even though the compute shader
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates/country-core/src/systems/render_loop/draw_passes/custom_cursor_pass.rs:24:12
+   |
+24 | pub struct CustomCursorSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates/country-core/src/systems/render_loop/draw_passes/custom_cursor_pass.rs:20:1
+   |
+20 | /// B original shader CustomCursor: pos@0, enabled@8, size_px@12. The
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `A` is never used
+   --> crates/country-core/src/systems/time_of_day.rs:169:15
+    |
+169 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: constant `FLAT_ROOF_HEIGHT_01` is never used
+  --> crates/country-core/src/systems/wall/adjust_wall_height/signifier_animation.rs:48:7
+   |
+48 | const FLAT_ROOF_HEIGHT_01: f32 = f32::from_bits(0x3dcc_cccd);
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: structure field `Wall` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:2219:9
+     |
+2219 |         Wall: u64,
+     |         ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+     |
+     = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:2225:9
+     |
+2225 |         Stair: u64,
+     |         ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Clutter` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:2378:15
+     |
+2378 |     Clutter { Clutter: DecoratorClutterJson },
+     |               ^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `clutter`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:2390:12
+     |
+2390 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Roof` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:2391:12
+     |
+2391 |     Roof { Roof: DecoratorRoofDstJson },
+     |            ^^^^ help: convert the identifier to snake case: `roof`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:2392:15
+     |
+2392 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: structure field `Stair` should have a snake case name
+    --> crates/country-core/src/systems/save/snapshot.rs:2393:13
+     |
+2393 |     Stair { Stair: DecoratorStairDstJson },
+     |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: `country-core` (lib test) generated 196 warnings (100 duplicates) (run `cargo fix --lib -p country-core --tests` to apply 29 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 47.05s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/lib.rs (target/debug/deps/country_core-f4be33bf4363280e)
+
+running 7 tests
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::all_three_passes_dispatch_half_extent_in_order ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::allow_non_determinism_is_state_equals_zero ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::history_valid_follows_radiance_pair_flag ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::names_match_exe_immediates ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::radiance_is_three_times_wider_than_half_res ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::reproject_preserves_the_eval_output_it_updates_in_place ... ok
+test systems::render_loop::compute_passes::eval_gi_screen_radiance::tests::write_access_codes_match_the_exe ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 2785 filtered out; finished in 0.01s
+

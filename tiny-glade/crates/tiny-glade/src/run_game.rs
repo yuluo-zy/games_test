@@ -302,6 +302,8 @@ pub fn run_game_thread(
     // init_clearing later publishes the actual uploaded emitter prefix count.
     app.insert_resource(country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount(0));
     country_core::systems::save::add_save_load_events_and_resources(app.world_mut());
+    #[cfg(not(any(windows, feature = "native-audio")))]
+    crate::gameplay_startup::install_disabled_audio(&mut app);
     // B add_save_load_systems1409443b0: set43, exact ActiveSession presence
     // condition only. Runs each frame to publish real history/section changes.
     app.add_systems(bevy_app::Update,
@@ -326,7 +328,7 @@ pub fn run_game_thread(
         (
             country_core::startup::clearing::begin_glade_unload,
             (
-                country_core::startup::clearing::uninit_clearing::<country_core::resources::native_audio::NativeStudio>,
+                country_core::startup::clearing::uninit_clearing::<crate::gameplay_startup::GameplayAudioStudio>,
                 country_core::startup::clearing::despawn_glade_entities,
             ),
         ).chain(),
@@ -890,6 +892,17 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         system_decorator::decorator_visual::deco_differential_state::ChimneyAssemblyParams>>();
     app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
         system_decorator::decorator_visual::deco_differential_state::DoorStairsAssemblyParams>>();
+    // B DecoratorPlugin 的八成员组第六项属于原 set0x24（36），不推导组内顺序。
+    // 窗灯控制与组件由装饰物生产者、逐帧系统和 Nani 玻璃共同使用。
+    app.init_resource::<country_core::resources::window_lights::GlobalWindowLightsControl>();
+    app.add_event::<country_core::resources::events::LightWindowCmd>();
+    app.add_systems(bevy_app::Update,
+        system_decorator::window_lights::window_lights.in_set(GameSystemSet(36)));
+    // 仅安装原卸载函数中窗灯资源的重建片段，不代替其余 owner 的完整清理。
+    app.add_systems(
+        bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
+        system_decorator::window_lights::window_lights_on_glade_unload,
+    );
     // Original native assembly uses this canonical event; it is not PlayClutterSoundCmd.
     app.add_event::<country_core::systems::audio::PlayDecoratorSoundCmd>();
     app.init_resource::<LiveDecoratorArchivist>();

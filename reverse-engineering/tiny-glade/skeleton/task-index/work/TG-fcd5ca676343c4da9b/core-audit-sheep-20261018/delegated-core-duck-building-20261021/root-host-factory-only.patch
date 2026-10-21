@@ -1,0 +1,30 @@
+--- a/tiny-glade/crates/tiny-glade/src/audio_host.rs
++++ b/tiny-glade/crates/tiny-glade/src/audio_host.rs
+@@ -34,6 +34,11 @@
+             std::thread::Builder::new().name("FMOD bank samples".into()).spawn(loader)?;
+         }
+     }
++    // 鸭子的构造工厂持有同一 FMOD 引擎；不再丢弃原 Pitch/Flap 音频链。
++    let critter_audio = system_critters::audio::CritterAudioCore::from_audio_core(
++        share_core(app.world().resource::<AudioCore<NativeStudio>>()),
++    );
++    app.insert_resource(critter_audio);
+     let music = NativeMusicBackend(app.world().resource::<AudioCore<NativeStudio>>().studio.clone());
+     app.insert_resource(music);
+     app.add_systems(PreStartup, receive_samples);
+--- a/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
++++ b/tiny-glade/crates/tiny-glade/src/gameplay_startup.rs
+@@ -35,6 +35,13 @@
+         studio: None,
+         banks: Default::default(),
+     });
++    // 仍执行完整原构造；禁用状态来自此宿主真实的 None Studio。
++    let core = app.world().resource::<AudioCore<GameplayAudioStudio>>();
++    let shared = AudioCore::<GameplayAudioStudio> {
++        studio: None,
++        banks: core.banks.clone(),
++    };
++    app.insert_resource(system_critters::audio::CritterAudioCore::from_audio_core(shared));
+     app.insert_resource(GameLoadingAudioState::<DisabledEvent>::empty_after_samples());
+     app.add_systems(
+         bevy_app::Startup,

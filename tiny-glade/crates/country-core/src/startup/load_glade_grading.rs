@@ -106,8 +106,9 @@ mod tests {
 
     #[test]
     fn glade_defaults_and_saved_image_have_distinct_slots() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../ljxsj_92385/Tiny Glade/assets/glade/summer");
+        let root = (std::env::var_os("TG_INSTALL_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade"))).join("assets/glade/summer");
         let mut configs = ImageFormationConfigs::default();
         configs.kind = 2;
         let saved = ImageFormationConfig {

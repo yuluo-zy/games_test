@@ -1,5 +1,8 @@
 # 核心链路续推：实际接线、验证与剩余消费者
 
+> 最新执行状态见 [2026-10-21 实际整合与阻点](/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/CURRENT-INTEGRATION.md)：单帧原资源世界内容与 loading native present 已实跑，30 帧执行完成但稳定性未通过。基线审核为 [fa53d49a6 源码审核](/Users/yuluo/Desktop/game/games_test/tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/AUDIT.md)。下文保留历史批次，旧缺源、未编译和进度结论不直接代表当前状态。
+
+
 本轮开始于 2026-10-19，续推至 2026-10-20。基线提交为 `bd8f74a5cfb3c9cc279efb1abd27695bb1bfb8bf`。用户已确认另一机器的新模块待补交，并要求跳过这些继续核心链路。本轮没有应用缺源占位桩、删除模块声明或重造另一套 rhapsody；所有修改沿现有 App、country-core、rhapsody 接口推进。
 
 此文依据实际源码、原版有界证据和本轮执行结果。文件数与测试数量不用于推算游戏完成百分比。原版取证主要覆盖 B；任务索引存在 C 不等于本轮完成 C 验收。

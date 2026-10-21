@@ -7,6 +7,88 @@ use std::sync::{
     atomic::{AtomicU64, AtomicUsize, Ordering},
 };
 
+/// 仅在 RHAPSODY_SUBMIT_TRACE=1 时启用的提交分段观测，开关每进程读取一次。
+/// 禁用时不取时间、不分配；启用时所有样本也放在固定栈数组中。
+pub(crate) struct SubmitTrace {
+    active: Option<SubmitTraceActive>,
+}
+struct SubmitTraceActive {
+    scope: &'static str,
+    start: std::time::Instant,
+    last: std::time::Instant,
+    phases: [(&'static str, u64); 12],
+    phase_count: usize,
+    counts: [(&'static str, usize); 6],
+    count_count: usize,
+}
+impl SubmitTrace {
+    pub(crate) fn new(scope: &'static str) -> Self {
+        static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        let enabled = *ENABLED.get_or_init(|| {
+            std::env::var_os("RHAPSODY_SUBMIT_TRACE").is_some_and(|value| value == "1")
+        });
+        Self {
+            active: enabled.then(|| {
+                let now = std::time::Instant::now();
+                SubmitTraceActive {
+                    scope,
+                    start: now,
+                    last: now,
+                    phases: [("", 0); 12],
+                    phase_count: 0,
+                    counts: [("", 0); 6],
+                    count_count: 0,
+                }
+            }),
+        }
+    }
+    pub(crate) fn enabled(&self) -> bool {
+        self.active.is_some()
+    }
+    pub(crate) fn mark(&mut self, phase: &'static str) {
+        let Some(active) = &mut self.active else {
+            return;
+        };
+        let now = std::time::Instant::now();
+        if let Some(slot) = active.phases.get_mut(active.phase_count) {
+            *slot = (
+                phase,
+                now.duration_since(active.last)
+                    .as_nanos()
+                    .min(u64::MAX as u128) as u64,
+            );
+            active.phase_count += 1;
+        }
+        active.last = now;
+    }
+    pub(crate) fn count(&mut self, name: &'static str, value: usize) {
+        let Some(active) = &mut self.active else {
+            return;
+        };
+        if let Some(slot) = active.counts.get_mut(active.count_count) {
+            *slot = (name, value);
+            active.count_count += 1;
+        }
+    }
+}
+impl Drop for SubmitTrace {
+    fn drop(&mut self) {
+        let Some(active) = &self.active else {
+            return;
+        };
+        use std::io::Write as _;
+        // 诊断输出失败不得覆盖 Vulkan 错误，也不能使原清理路径 panic。
+        let _ = writeln!(
+            std::io::stderr().lock(),
+            "RHAPSODY_SUBMIT_TRACE scope={} total_ns={} phases_ns={:?} counts={:?}",
+            active.scope,
+            active.start.elapsed().as_nanos(),
+            &active.phases[..active.phase_count],
+            &active.counts[..active.count_count]
+        );
+    }
+}
+
 /// 实际命令池与命令缓冲持有关系；默认采用可单独重置的主命令缓冲。
 pub struct VulkanCommandPool {
     // Rust drops fields in declaration order. Destroy the raw pool before the
@@ -506,6 +588,32 @@ pub(crate) unsafe fn prepare_submission_states(
     stats: &Arc<super::allocator::AllocatorStats>,
 ) -> crate::Result<PreparedResourceStates> {
     use crate::resource::range_state::{PatchAction, StatePatch};
+    let mut trace = SubmitTrace::new("native_state_prepare");
+    trace.count("commands", commands.len());
+    trace.count("uses", uses.len());
+    if trace.enabled() {
+        trace.count(
+            "state_patches",
+            commands
+                .iter()
+                .map(|command| command.state_patches.as_slice().len())
+                .sum(),
+        );
+        trace.count(
+            "opaque_ranges",
+            commands
+                .iter()
+                .map(|command| command.range_uses.as_slice().len())
+                .sum(),
+        );
+        trace.count(
+            "private_upload_reads",
+            commands
+                .iter()
+                .map(|command| command.upload_reads.as_slice().len())
+                .sum(),
+        );
+    }
     let physical = uses.iter().filter(|cell| cell.ownership_range().is_some());
     let cells = super::submit::SubmitScratch::try_collect(
         physical.clone().count(),
@@ -567,12 +675,18 @@ pub(crate) unsafe fn prepare_submission_states(
             }
             if fallback {patches.add(StatePatch {range:domain,expected_revision:u64::MAX,action:PatchAction::Unknown {queue,family}})?;}
             let declared=patches.as_slice().len();
+            let mut prepared_prefix = None;
             for read in commands.iter().flat_map(|command|command.upload_reads.as_slice()).filter(|read|Arc::ptr_eq(&read.buffer.last_use,&cell)) {
                 let range=crate::resource::OwnershipRange::Buffer {offset:read.offset,size:read.size};
                 if patches.as_slice()[..declared].iter().any(|patch|crate::resource::range_state::intersection(patch.range,range).is_some()) {
                     return Err(crate::Error::unsupported("private upload read overlaps a declared or opaque native access"));
                 }
-                cell.prepare_range_state(patches.as_slice(),queue,family,stats)?;
+                // 先检查当前 read 重叠，再准备前一 read 的新增补丁，保持首错误顺序。
+                match prepared_prefix {
+                    Some(end) => cell.append_prepared_range_state(&patches.as_slice()[end..], queue, family)?,
+                    None => cell.prepare_range_state(patches.as_slice(), queue, family, stats)?,
+                }
+                prepared_prefix = Some(patches.as_slice().len());
                 cell.with_prepared_range_state(|table| {
                     for current in table.prepared_cells() {
                         let Some(range)=crate::resource::range_state::intersection(current.range,range) else {continue;};
@@ -584,9 +698,17 @@ pub(crate) unsafe fn prepare_submission_states(
                     Ok(())
                 })?;
             }
-            prepared.prepare_cell(index,patches.as_slice(),family,stats)
+            if let Some(end) = prepared_prefix {
+                cell.append_prepared_range_state(&patches.as_slice()[end..], queue, family)?;
+                prepared.dependencies.merge(&cell.prepared_range_staged_dependencies());
+                Ok(())
+            } else {
+                prepared.prepare_cell(index,patches.as_slice(),family,stats)
+            }
         })?;
     }
+    trace.mark("prepare_all_cells");
+    trace.count("physical_cells", prepared.cells.len());
     Ok(prepared)
 }
 
@@ -1620,5 +1742,68 @@ mod native_state_submission_tests {
             .unwrap();
             assert!(cell.snapshot().is_empty());
         }
+    }
+    #[test]
+    fn incremental_append_failure_cancels_all_cells_and_retry_publishes_once() {
+        let stats = Arc::new(super::super::allocator::AllocatorStats::default());
+        let first = cell(&stats);
+        let second = cell(&stats);
+        let cells = [first.clone(), second.clone()];
+        {
+            let _a = first.lock_submission();
+            let _b = second.lock_submission();
+            let mut prepared = guard(&cells, &stats);
+            prepared.prepare_cell(0, &[], 2, &stats).unwrap();
+            first
+                .append_prepared_range_state(&[access(range(0, 32), 0, 2)], queue(), 2)
+                .unwrap();
+            prepared.prepare_cell(1, &[], 2, &stats).unwrap();
+            assert!(matches!(
+                second.append_prepared_range_state(&[access(range(0, 32), 9, 2)], queue(), 2),
+                Err(crate::Error::Timeout)
+            ));
+        }
+        for cell in &cells {
+            cell.with_range_state(NativeState::default(), &stats, |table| {
+                assert_eq!(table.cells()[0].state.revision, 0);
+                assert_eq!(table.prepared_cells().count(), 0);
+                Ok(())
+            })
+            .unwrap();
+            assert!(cell.snapshot().is_empty());
+        }
+        {
+            let _gate = first.lock_submission();
+            let mut prepared = guard(&[first.clone()], &stats);
+            prepared.prepare_cell(0, &[], 2, &stats).unwrap();
+            first
+                .append_prepared_range_state(&[access(range(0, 32), 0, 2)], queue(), 2)
+                .unwrap();
+            first
+                .append_prepared_range_state(&[access(range(0, 32), 1, 2)], queue(), 2)
+                .unwrap();
+            prepared
+                .dependencies
+                .merge(&first.prepared_range_staged_dependencies());
+            let point = SyncPoint {
+                queue: queue(),
+                value: 12,
+            };
+            prepared.publish(point);
+            record_command_uses(&[first.clone()], point);
+        }
+        first
+            .with_range_state(NativeState::default(), &stats, |table| {
+                let changed = table
+                    .cells()
+                    .iter()
+                    .find(|cell| cell.range == range(0, 32))
+                    .unwrap();
+                assert_eq!(changed.state.revision, 2);
+                assert_eq!(changed.state.writer.points.get(queue()), 12);
+                assert_eq!(table.prepared_cells().count(), 0);
+                Ok(())
+            })
+            .unwrap();
     }
 }

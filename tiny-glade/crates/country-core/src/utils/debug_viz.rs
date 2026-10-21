@@ -1,29 +1,17 @@
 //! 调试图元请求与折线实体工厂。使用类型化网格和现有资产库，不再打包裸指针。
 
 use crate::{
-    asset_libraries::{
-        mesh_library::{AssetMeshLibrary, MeshAsset},
-        shader_library::AssetShaderLibrary,
-        transient_mesh::TransientMesh,
+    asset_libraries::{mesh_library::AssetMeshLibrary, shader_library::AssetShaderLibrary},
+    components::DashedLineLength,
+    render::pass_builder::draw_list::DrawTopology,
+    systems::ui::signifiers::{
+        signifier_create::UiSignifierStream,
+        signifier_factory::{SignifierEntityBuilder, SignifierFactory, SignifierMesh},
     },
-    components::{DashedLineLength, drawable::DrawableMeshBundle},
-    render::{mesh::ATTR_COLOR, pass_builder::draw_list::DrawTopology},
-    systems::{
-        render_loop::draw_passes::draw_lists::{DontCastShadow, UiPass},
-        ui::signifiers::{
-            animation::SignifierAnimation,
-            signifier_create::{SignifierId, UiSignifierStream},
-            signifier_factory::SignifierFactory,
-        },
-    },
-    utils::{components::transform::Transform, geo::mesh_from_pts},
 };
 use bevy_ecs::prelude::Commands;
 use glam::Vec3;
-use std::{
-    hash::{Hash, Hasher},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 /// 调试图元的颜色。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -78,13 +66,28 @@ impl DebugColor {
 }
 
 /// 球体请求参数。
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct DebugSphere {
     pub color: DebugColor,
     pub radius: f32,
     pub center: Vec3,
+    /// 原字段 `line_width`；保留现有 Rust 调用面的字段名。
     pub alpha: f32,
+    /// 原字段 `filled_in`；为假时把 `alpha` 作为线宽传给 DrawTopology。
     pub solid: bool,
+}
+
+impl std::fmt::Debug for DebugSphere {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // 140b05b60 的原字段名参与工厂身份，不能用重构后的别名替代。
+        f.debug_struct("DebugSphere")
+            .field("color", &self.color)
+            .field("radius", &self.radius)
+            .field("position", &self.center)
+            .field("line_width", &self.alpha)
+            .field("filled_in", &self.solid)
+            .finish()
+    }
 }
 
 impl DebugSphere {
@@ -150,71 +153,35 @@ impl DebugRectangle3d {
 }
 
 impl DebugSphere {
-    /// 原版 `DebugSphere::show`（0x140b02520）向 `UiSignifierStream` 推一个带名字的工厂槽
-    /// （名字由 `{:?}` 格式化整个球体参数得到，闭包 0x140b027d0 用 `sphere_mesh_name` 对应的
-    /// 网格 + `vertex_color_shader` 生成指示符实体）。这里与 `DebugLine` 一致：名字改为完整参数哈希，
-    /// 闭包直接生成带网格/着色器/变换的指示符实体。`alpha`/`solid` 在原闭包经
-    /// `SignifierEntityBuilder::build` 消费，具体着色器 uniform 绑定尚未逐项取证（未闭合），
-    /// 目前只参与去重名字。
+    /// 原 140b02520/140b027d0：提交具名工厂，按真实共享构建器生成球体。
     pub fn show(&self, stream: &mut UiSignifierStream) {
-        let name = format!("debug_sphere:{:016x}", self.identity_hash());
+        let name = format!("{self:?}");
         let mesh_name = self.color.sphere_mesh_name();
         let center = self.center;
         let radius = self.radius;
+        let line_width = self.alpha;
+        let filled_in = self.solid;
         let factory = SignifierFactory::from_closure(
             &name,
             Arc::new(
                 move |meshes: &AssetMeshLibrary,
                       shaders: &AssetShaderLibrary,
                       commands: &mut Commands| {
-                    let Some(mesh) = meshes.try_get_handle_by_name(mesh_name) else {
-                        log::warn!("调试球体网格未注册：{mesh_name}");
-                        return Vec::new();
-                    };
-                    let Some(shader) = shaders.get_raster_handle_by_name("vertex_color_shader")
-                    else {
-                        log::warn!("调试球体着色器未注册：vertex_color_shader");
-                        return Vec::new();
-                    };
-                    let entity = commands
-                        .spawn((
-                            DrawableMeshBundle {
-                                mesh,
-                                shader,
-                                transform: Transform::from_translation_scale(
-                                    center,
-                                    Vec3::splat(radius),
-                                ),
-                            },
-                            DontCastShadow,
-                            UiPass,
-                            SignifierId(0),
-                            SignifierAnimation {
-                                flag_8: 1,
-                                duration: 0.0,
-                                value: 1.0,
-                                t: 1.0,
-                                eased: 1.0,
-                                ..Default::default()
-                            },
-                        ))
-                        .id();
+                    let entity = SignifierEntityBuilder::from_mesh_name(mesh_name)
+                        .position(center)
+                        .scale(radius)
+                        .animation_duration(0.0)
+                        .build(meshes, shaders, commands);
+                    if !filled_in {
+                        commands
+                            .entity(entity)
+                            .insert(DrawTopology::Alt(line_width));
+                    }
                     vec![entity]
                 },
             ),
         );
         stream.write_factory(&factory);
-    }
-
-    fn identity_hash(&self) -> u64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        self.color.tag().hash(&mut hasher);
-        self.color.as_array().map(f32::to_bits).hash(&mut hasher);
-        self.radius.to_bits().hash(&mut hasher);
-        self.center.to_array().map(f32::to_bits).hash(&mut hasher);
-        self.alpha.to_bits().hash(&mut hasher);
-        self.solid.hash(&mut hasher);
-        hasher.finish()
     }
 }
 
@@ -281,14 +248,61 @@ impl DebugLine {
         self
     }
 
-    /// 无效调试输入只记录告警，不中断主编辑流程。
+    /// 原 140b04f70：不滤除空点列或非有限值；资源与几何前置条件在唤醒时检查。
     pub fn show(&self, stream: &mut UiSignifierStream) {
-        if let Err(error) = self.try_show(stream) {
-            log::warn!("调试折线未提交：{error}");
-        }
+        // 原四个格式参数之间没有文字片段；绘制通道和虚线标志不参与名字。
+        let name = format!(
+            "{:?}{}{:?}{:?}",
+            self.points,
+            self.colors.is_some(),
+            self.color,
+            self.line_width
+        );
+        let points = self.points.clone();
+        let colors = self
+            .colors
+            .clone()
+            .unwrap_or_else(|| vec![self.color.rgb(); points.len()]);
+        let length = original_line_length(&points);
+        let line_width = self.line_width;
+        let ui_pass = self.ui_pass;
+        let dashed = self.dashed;
+        let factory = SignifierFactory::from_closure(
+            &name,
+            Arc::new(
+                move |meshes: &AssetMeshLibrary,
+                      shaders: &AssetShaderLibrary,
+                      commands: &mut Commands| {
+                    let shader_name = if dashed {
+                        "dashed_line"
+                    } else {
+                        "vertex_color_shader"
+                    };
+                    let entity = SignifierEntityBuilder::new(SignifierMesh::PointsWithColors {
+                        points: points.clone(),
+                        colors: colors.clone(),
+                    })
+                    .animation_duration(0.0)
+                    .set_ui_pass(u8::from(ui_pass))
+                    .custom_shader(shader_name)
+                    .build(meshes, shaders, commands);
+                    // 原虚线参数先写入，线宽后写入；不将部分写入失败回滚为默认成功。
+                    if dashed {
+                        commands
+                            .entity(entity)
+                            .insert(DashedLineLength(length * 4.0));
+                    }
+                    commands
+                        .entity(entity)
+                        .insert(DrawTopology::Alt(line_width));
+                    vec![entity]
+                },
+            ),
+        );
+        stream.write_factory(&factory);
     }
 
-    /// 校验成功才提交工厂。名字包含实际颜色、绘制通道和虚线模式，避免错误去重。
+    /// 现有显式校验扩展；原业务的 show 不经过这个额外输入过滤器。
     pub fn try_show(&self, stream: &mut UiSignifierStream) -> anyhow::Result<()> {
         anyhow::ensure!(self.points.len() >= 2, "调试折线至少需要两个点");
         anyhow::ensure!(
@@ -306,103 +320,35 @@ impl DebugLine {
                 "逐点颜色数量必须匹配位置且全部有限"
             );
         }
-        let length: f32 = self
-            .points
-            .windows(2)
-            .map(|segment| segment[0].distance(segment[1]))
-            .sum();
-        anyhow::ensure!((length * 4.0).is_finite(), "调试折线长度过大");
-        let name = format!("debug_line:{:016x}", self.identity_hash());
-        let points = self.points.clone();
-        let colors = self
-            .colors
-            .clone()
-            .unwrap_or_else(|| vec![self.color.rgb(); points.len()]);
-        let line_width = self.line_width;
-        let ui_pass = self.ui_pass;
-        let dashed = self.dashed;
-        let factory = SignifierFactory::from_closure(
-            &name,
-            Arc::new(
-                move |meshes: &AssetMeshLibrary,
-                      shaders: &AssetShaderLibrary,
-                      commands: &mut Commands| {
-                    let shader_name = if dashed {
-                        "dashed_line"
-                    } else {
-                        "vertex_color_shader"
-                    };
-                    let Some(shader) = shaders.get_raster_handle_by_name(shader_name) else {
-                        log::warn!("调试折线着色器未注册：{shader_name}");
-                        return Vec::new();
-                    };
-                    let mut mesh = mesh_from_pts("debug_line", &points);
-                    mesh.set_attribute(ATTR_COLOR, colors.clone());
-                    let mesh = meshes.add(MeshAsset::new(mesh, None));
-                    let entity = commands
-                        .spawn((
-                            DrawableMeshBundle {
-                                mesh,
-                                shader,
-                                transform: Transform::identity(),
-                            },
-                            TransientMesh::new_with_registry(mesh, meshes.transient_meshes()),
-                            DrawTopology::Alt(line_width),
-                            DontCastShadow,
-                            SignifierId(0),
-                            // 点已经位于世界空间；不让通用指示符动画把线缩放到零。
-                            SignifierAnimation {
-                                flag_8: 1,
-                                duration: 0.0,
-                                value: 1.0,
-                                t: 1.0,
-                                eased: 1.0,
-                                ..Default::default()
-                            },
-                        ))
-                        .id();
-                    if ui_pass {
-                        commands.entity(entity).insert(UiPass);
-                    }
-                    if dashed {
-                        commands
-                            .entity(entity)
-                            .insert(DashedLineLength(length * 4.0));
-                    }
-                    vec![entity]
-                },
-            ),
+        anyhow::ensure!(
+            (original_line_length(&self.points) * 4.0).is_finite(),
+            "调试折线长度过大"
         );
-        stream.write_factory(&factory);
+        self.show(stream);
         Ok(())
     }
+}
 
-    /// 哈希浮点位模式，不创建整条点列的格式化字符串；分隔长度防止不同点列拼接混淆。
-    fn identity_hash(&self) -> u64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        self.points.len().hash(&mut hasher);
-        for point in &self.points {
-            point.to_array().map(f32::to_bits).hash(&mut hasher);
-        }
-        self.colors.is_some().hash(&mut hasher);
-        if let Some(colors) = &self.colors {
-            colors.len().hash(&mut hasher);
-            for color in colors {
-                color.to_array().map(f32::to_bits).hash(&mut hasher);
-            }
-        } else {
-            self.color.as_array().map(f32::to_bits).hash(&mut hasher);
-        }
-        self.line_width.to_bits().hash(&mut hasher);
-        self.ui_pass.hash(&mut hasher);
-        self.dashed.hash(&mut hasher);
-        hasher.finish()
+/// 原 SSE 顺序为先 dy²+dx²，再 dz² 加此前和，按相邻线段顺序累加。
+fn original_line_length(points: &[Vec3]) -> f32 {
+    let mut length = 0.0;
+    for segment in points.windows(2) {
+        let delta = segment[0] - segment[1];
+        let xy = delta.y * delta.y + delta.x * delta.x;
+        let segment_length = (delta.z * delta.z + xy).sqrt();
+        length = segment_length + length;
     }
+    length
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        asset_libraries::transient_mesh::TransientMesh,
+        systems::render_loop::draw_passes::draw_lists::UiPass,
+        utils::components::transform::Transform,
+    };
 
     #[test]
     fn colour_tags_follow_the_original_table_order() {
@@ -475,8 +421,12 @@ mod tests {
         use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
 
         let mut stream = UiSignifierStream::default();
-        DebugSphere::new(Vec3::ONE).color(DebugColor::Red).show(&mut stream);
-        DebugSphere::new(Vec3::ONE).color(DebugColor::Blue).show(&mut stream);
+        DebugSphere::new(Vec3::ONE)
+            .color(DebugColor::Red)
+            .show(&mut stream);
+        DebugSphere::new(Vec3::ONE)
+            .color(DebugColor::Blue)
+            .show(&mut stream);
         DebugRectangle2d {
             color: DebugColor::Green,
             line_width: 2.0,
@@ -497,8 +447,8 @@ mod tests {
             })
             .collect();
         assert_ne!(names[0], names[1], "colour participates in the identity");
-        assert!(names[0].starts_with("debug_sphere:"));
-        assert!(names[2].starts_with("debug_line:"));
+        assert!(names[0].starts_with("DebugSphere { color: Red,"));
+        assert!(names[2].ends_with("falseGreen2.0"));
     }
 
     #[test]
@@ -527,8 +477,10 @@ mod tests {
         };
         assert!(factory.has_closure());
         let name = factory.name().expect("factory name is utf-8");
-        // 工厂使用紧凑哈希名，完整绘制参数参与去重。
-        assert!(name.starts_with("debug_line:"));
+        assert_eq!(
+            name,
+            "[Vec3(0.0, 0.0, 0.0), Vec3(3.0, 4.0, 0.0)]falseRed2.5"
+        );
 
         // 唤醒：等价于 signifier_create 的 vtable 调用槽。
         let mut world = World::new();
@@ -573,7 +525,13 @@ mod tests {
         )>();
         let (entity, mesh_handle, shader_handle, transform, transient) =
             drawables.single(&world).unwrap();
-        assert_eq!(transform.scale, Vec3::ONE);
+        assert_eq!(transform.scale, Vec3::ZERO);
+        let animation = world
+            .get::<crate::systems::ui::signifiers::animation::SignifierAnimation>(entity)
+            .unwrap();
+        assert_eq!(animation.duration.to_bits(), 0.0_f32.to_bits());
+        assert_eq!(animation.flag_8, 0);
+        assert_eq!(animation.value, 1.0);
         assert_eq!(transient.mesh_handle(), *mesh_handle);
         assert_eq!(
             world
@@ -637,19 +595,199 @@ mod tests {
     }
 
     #[test]
-    fn invalid_colors_are_not_committed_and_render_modes_have_distinct_ids() {
+    fn explicit_validation_is_separate_from_original_factory_identity() {
+        fn name(line: &DebugLine) -> String {
+            let mut stream = UiSignifierStream::default();
+            line.show(&mut stream);
+            let crate::systems::ui::signifiers::signifier_create::UiSignifierEntry::Factory(
+                factory,
+            ) = stream.take_entries().pop().unwrap()
+            else {
+                panic!("factory expected")
+            };
+            factory.name().unwrap().to_owned()
+        }
         let mut line = DebugLine::new(vec![Vec3::ZERO, Vec3::X]);
         line.colors = Some(vec![Vec3::ONE]);
         let mut stream = UiSignifierStream::default();
         assert!(line.try_show(&mut stream).is_err());
         assert_eq!(stream.committed_len(), 0);
+        // 原 show 接收原点列及原颜色；不会通过额外的校验扩展。
+        line.show(&mut stream);
+        assert_eq!(stream.committed_len(), 1);
         line.colors = None;
-        let identity = line.identity_hash();
-        assert_ne!(identity, line.clone().dashed().identity_hash());
-        assert_ne!(identity, line.clone().set_ui_pass(false).identity_hash());
+        let identity = name(&line);
+        assert_eq!(identity, name(&line.clone().dashed()));
+        assert_eq!(identity, name(&line.clone().set_ui_pass(false)));
         line.colors = Some(vec![Vec3::X; 2]);
-        let red = line.identity_hash();
+        let red = name(&line);
         line.colors = Some(vec![Vec3::Y; 2]);
-        assert_ne!(red, line.identity_hash());
+        assert_eq!(red, name(&line), "原名只记录颜色表是否存在");
+        assert_ne!(identity, red);
+    }
+
+    fn shaders_for_debug() -> AssetShaderLibrary {
+        let shaders = AssetShaderLibrary::new();
+        for name in ["vertex_color_shader", "dashed_line"] {
+            shaders.add_raster(
+                crate::render::shader::RasterShaderProgram::new_draw(
+                    name,
+                    Default::default(),
+                    &crate::render::test_device::TestDevice(1),
+                ),
+                false,
+            );
+        }
+        shaders
+    }
+
+    fn wake_one(
+        stream: &mut UiSignifierStream,
+        meshes: &AssetMeshLibrary,
+        shaders: &AssetShaderLibrary,
+        world: &mut bevy_ecs::world::World,
+    ) -> bevy_ecs::entity::Entity {
+        use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+        let UiSignifierEntry::Factory(factory) = stream.take_entries().pop().unwrap() else {
+            panic!("factory expected")
+        };
+        let mut queue = bevy_ecs::world::CommandQueue::default();
+        let entities = factory.wake(meshes, shaders, &mut Commands::new(&mut queue, world));
+        queue.apply(world);
+        assert_eq!(entities.len(), 1);
+        entities[0]
+    }
+
+    #[test]
+    fn original_show_keeps_empty_and_nonfinite_payloads_until_factory_wake() {
+        let mut stream = UiSignifierStream::default();
+        DebugLine::new(Vec::new()).show(&mut stream);
+        assert_eq!(stream.committed_len(), 1);
+        let mut world = bevy_ecs::world::World::new();
+        let meshes = AssetMeshLibrary::new();
+        let shaders = shaders_for_debug();
+        // 原空点列先进入工厂，再在共享 mesh_from_pts 的真实前置条件处失败。
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                wake_one(&mut stream, &meshes, &shaders, &mut world)
+            }))
+            .is_err()
+        );
+        let mut line = DebugLine::new(vec![Vec3::new(f32::NAN, f32::INFINITY, -0.0)]);
+        line.line_width = f32::NAN;
+        line.dashed = true;
+        line.show(&mut stream);
+        let entity = wake_one(&mut stream, &meshes, &shaders, &mut world);
+        let mesh = meshes
+            .get(
+                *world
+                    .get::<crate::asset_libraries::Handle<crate::render::mesh::Mesh>>(entity)
+                    .unwrap(),
+            )
+            .unwrap();
+        assert!(mesh.positions_without_indices()[0].x.is_nan());
+        assert_eq!(mesh.positions_without_indices()[0].y, f32::INFINITY);
+        assert_eq!(
+            mesh.positions_without_indices()[0].z.to_bits(),
+            (-0.0_f32).to_bits()
+        );
+        assert_eq!(world.get::<DashedLineLength>(entity).unwrap().0, 0.0);
+        let DrawTopology::Alt(width) = world.get::<DrawTopology>(entity).unwrap() else {
+            panic!("line topology expected")
+        };
+        assert!(width.is_nan());
+    }
+
+    #[test]
+    fn spheres_keep_native_identity_wire_width_and_named_mesh_ownership() {
+        use crate::asset_libraries::mesh_library::MeshAsset;
+        use crate::render::mesh::Mesh;
+        use crate::systems::ui::signifiers::animation::SignifierAnimation;
+        let meshes = AssetMeshLibrary::new();
+        let handle = meshes.add(MeshAsset::new(
+            Mesh::new("sphere"),
+            Some("debug_sphere_red".into()),
+        ));
+        let shaders = shaders_for_debug();
+        let mut world = bevy_ecs::world::World::new();
+        let sphere = DebugSphere {
+            color: DebugColor::Red,
+            radius: 2.0,
+            center: Vec3::new(1.0, 2.0, 3.0),
+            alpha: 3.5,
+            solid: false,
+        };
+        assert_eq!(
+            format!("{sphere:?}"),
+            "DebugSphere { color: Red, radius: 2.0, position: Vec3(1.0, 2.0, 3.0), line_width: 3.5, filled_in: false }"
+        );
+        let mut stream = UiSignifierStream::default();
+        sphere.show(&mut stream);
+        let wire = wake_one(&mut stream, &meshes, &shaders, &mut world);
+        assert_eq!(
+            *world
+                .get::<crate::asset_libraries::Handle<Mesh>>(wire)
+                .unwrap(),
+            handle
+        );
+        assert_eq!(
+            *world.get::<DrawTopology>(wire).unwrap(),
+            DrawTopology::Alt(3.5)
+        );
+        assert!(world.get::<TransientMesh>(wire).is_none());
+        assert!(world.get::<UiPass>(wire).is_some());
+        assert_eq!(
+            world.get::<Transform>(wire).unwrap().translation,
+            sphere.center
+        );
+        assert_eq!(world.get::<Transform>(wire).unwrap().scale, Vec3::ZERO);
+        let animation = world.get::<SignifierAnimation>(wire).unwrap();
+        assert_eq!(
+            (animation.value, animation.duration, animation.flag_8),
+            (2.0, 0.0, 0)
+        );
+        DebugSphere {
+            solid: true,
+            ..sphere
+        }
+        .show(&mut stream);
+        let filled = wake_one(&mut stream, &meshes, &shaders, &mut world);
+        assert!(world.get::<DrawTopology>(filled).is_none());
+        assert!(world.get::<TransientMesh>(filled).is_none());
+    }
+
+    #[test]
+    fn missing_named_mesh_and_shader_fail_instead_of_returning_an_empty_factory_result() {
+        let mut stream = UiSignifierStream::default();
+        let mut world = bevy_ecs::world::World::new();
+        let meshes = AssetMeshLibrary::new();
+        let shaders = AssetShaderLibrary::new();
+        DebugSphere::new(Vec3::ZERO).show(&mut stream);
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                wake_one(&mut stream, &meshes, &shaders, &mut world)
+            }))
+            .is_err()
+        );
+        DebugLine::new(vec![Vec3::ZERO, Vec3::X]).show(&mut stream);
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                wake_one(&mut stream, &meshes, &shaders, &mut world)
+            }))
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn adjacent_line_lengths_keep_native_f32_order_and_nonfinite_results() {
+        assert_eq!(original_line_length(&[]).to_bits(), 0.0_f32.to_bits());
+        let points = [
+            Vec3::ZERO,
+            Vec3::new(3.0, 4.0, 0.0),
+            Vec3::new(3.0, 4.0, 12.0),
+        ];
+        assert_eq!(original_line_length(&points), 17.0);
+        assert!(original_line_length(&[Vec3::ZERO, Vec3::splat(f32::MAX)]).is_infinite());
+        assert!(original_line_length(&[Vec3::ZERO, Vec3::splat(f32::NAN)]).is_nan());
     }
 }

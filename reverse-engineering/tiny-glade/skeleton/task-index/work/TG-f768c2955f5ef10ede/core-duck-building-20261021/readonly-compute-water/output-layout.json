@@ -1,0 +1,74 @@
+[
+  {
+    "offset": "0x0",
+    "size": "0x38",
+    "type": "Curve2",
+    "meaning": "owned完整curve: points Vec, normalized points_u Vec, length;不能只Vec2"
+  },
+  {
+    "offset": "0x38",
+    "size": "0x18",
+    "type": "height Vec<f32>",
+    "meaning": "来源override19或真实terrain/线性高度callback"
+  },
+  {
+    "offset": "0x50",
+    "size": "0x18",
+    "type": "width Vec<f32>",
+    "meaning": "来源override18或按原curve.points_u线性端点width"
+  },
+  {
+    "offset": "0x68",
+    "size": "0x18",
+    "type": "tangent Vec<Vec2>",
+    "meaning": "来源override17或选段raw normalize，后覆端点"
+  },
+  {
+    "offset": "0x80",
+    "size": "0x18",
+    "type": "empty Vec<4B trivial element>",
+    "meaning": "compute只写0/ptr4/0;具体f32/u32业务语义未证"
+  },
+  {
+    "offset": "0x98",
+    "size": "0x38",
+    "type": "Option<Curve3>",
+    "meaning": "compute写None nicheMIN；drop确认points stride12+coords stride4"
+  },
+  {
+    "offset": "0xd0",
+    "size": "0x20",
+    "type": "endpoint 0",
+    "meaning": "输入64B前32:anchor24+degree byte24;完整复制"
+  },
+  {
+    "offset": "0xf0",
+    "size": "0x20",
+    "type": "endpoint 1",
+    "meaning": "输入64B后32；完整复制"
+  },
+  {
+    "offset": "0x110",
+    "size": "0x18",
+    "type": "BitVec<usize,Lsb0>",
+    "meaning": "真实ground proximity比较bool；非Vec"
+  },
+  {
+    "offset": "0x128",
+    "size": "0x8",
+    "type": "sorted identity",
+    "meaning": "nativeinput+10/+28 node IDs unsignedmin/max"
+  },
+  {
+    "offset": "0x130",
+    "size": "0x18",
+    "type": "SmallVec<[StairSubSegment;1]>",
+    "meaning": "元素kindu8/flagbyte/countu16"
+  },
+  {
+    "offset": "0x148",
+    "size": "0x1",
+    "type": "dirty bool",
+    "meaning": "old dirty set.contains(sorted identity)；不是默认true"
+  }
+]

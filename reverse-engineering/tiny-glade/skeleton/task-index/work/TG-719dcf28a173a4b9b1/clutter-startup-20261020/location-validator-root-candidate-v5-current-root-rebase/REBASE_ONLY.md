@@ -1,0 +1,1 @@
+V5仅重基before：当前root已整合两个REMOVE literal的独立DecoratorId(id)。移除此两行后的现生产逐字等于V4原before。候选after与已独审V4逐字相同，保d9bab992，业务/测试不变，不重开算法审查。现patch只含尚未整合的完整location恢复。原V3正式原证审+V4两ID增补审继续精确覆盖此after。未运行Cargo/rustc/GPU，不挂载旧cull归档消费者。

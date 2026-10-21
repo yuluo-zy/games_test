@@ -1,0 +1,148 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "status": "frozen_source_review_accepted_targeted_gpu_passed_world_blocked",
+  "scope": "六个现有生产源+既有测试文件的完整组分页工程适配；无新平行renderer，无原B分页算法一一对应主张。",
+  "inputs": {
+    "manifest": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/paging-integration-v1-20261021/MANIFEST.json",
+      "sha256": "9accc593aa5fead871865cf18a80ff6267c105a43ebd6db56bae4741536c7b3a"
+    },
+    "patch": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/paging-integration-v1-20261021/paging-integration-v1.patch",
+      "sha256": "28918fa723d74e4afe646e42c1f39eb61d3ffb5e7e42dc630122469dbc2a1ca5"
+    },
+    "writer_audit": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/paging-integration-v1-20261021/HOST_WRITER_AUDIT.md",
+      "sha256": "49e1441b891a821095c1bfa38daaaf1f1b8045c353ada12244126dcbb9dc5a03"
+    },
+    "files": [
+      {
+        "source": "tiny-glade/crates/rhapsody/src/bindless.rs",
+        "baseline_sha256": "4e65bf0b9607ce202aed09fbdb0a5df783e896875b8713234e4ae16845debffb",
+        "candidate_sha256": "2b1870821028a3a4a9fae16187e61023473476dcef1556a3f29e3dfc8b65f375",
+        "ownership": "existing refactored rhapsody engineering adapter",
+        "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/bindless_parameters.rs",
+        "baseline_sha256": "8041feb68d419e866ec856c66cdf919bd3d0720366ae5d3c9523dbf1c2c28a13",
+        "candidate_sha256": "f6799ac7615329869cd8c571895525dda9aee6cc283e4919c0b3089be1edf024",
+        "ownership": "existing refactored rhapsody engineering adapter",
+        "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/src/rg/indirect_count.rs",
+        "baseline_sha256": "75336616213c00c1ff55dab878f3c9024682a04fae3d76275b4adec223fc9181",
+        "candidate_sha256": "d910be84aa37e3edcdf715f2115831ed60fde1a6263995f21582c559cff15f77",
+        "ownership": "existing refactored rhapsody engineering adapter",
+        "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+      },
+      {
+        "source": "tiny-glade/crates/tiny-glade/src/render_host.rs",
+        "baseline_sha256": "b40a50e357ddefc2ef5c0832d0e4319243ba6d35711cab40af5c3bd6f0322aba",
+        "candidate_sha256": "cd300c0597770a7d63653a88d925cc683f2937e2153b9b7bda779b2117914637",
+        "ownership": "root-owned production host engineering adapter",
+        "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+      },
+      {
+        "source": "tiny-glade/crates/tiny-glade/src/frame_setup.rs",
+        "baseline_sha256": "19e87b04543868ef46b02b58aec83a37a881f66b95ab4b7894fb26a4a840437a",
+        "candidate_sha256": "1acb144c80237932ccc344ccf8b0ecd3d74f6099ae591981e430675994a38a2f",
+        "ownership": "root-owned production host engineering adapter",
+        "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+      },
+      {
+        "source": "tiny-glade/crates/tiny-glade/src/raster_host.rs",
+        "baseline_sha256": "11d1469b4dc1002e8ec4d6fa932510777f33d4ab38ef14e4234a0f52652d2ea9",
+        "candidate_sha256": "5a675f5bbbd11aadb47447590db1720bf185cfe228270dc06c7569c4ffb622fb",
+        "ownership": "root-owned production host engineering adapter",
+        "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+      },
+      {
+        "source": "tiny-glade/crates/rhapsody/tests/bindless_shader_abi.rs",
+        "baseline_sha256": "e385e98ae12558a95456516c2405d22b7550cab15412e633b79c2e61fcff7865",
+        "candidate_sha256": "5656b3463516bed8a52d294c652477bf57ccb33e306005801a6694e278c78933",
+        "ownership": "existing refactored rhapsody engineering adapter",
+        "delegation": "root explicit cross-file candidate authorization; original claims unchanged"
+      }
+    ]
+  },
+  "hash_checks": "冻结时7个baseline与实际生产全部一致，7个candidate全部一致；root整合后再次核全部7个实际生产与candidate SHA完全一致。未将先前in_progress阅读当冻结审查。",
+  "findings": [],
+  "source_acceptance": [
+    {
+      "source": "rhapsody/src/bindless.rs:988..1184",
+      "conclusion": "PagePool保每页独立Heap与同一真实layout。manager只选/clone owner即释放；cursor覆盖同一callback，per-page mutex跨预检/所有writers/finish。collect不持Slots锁调用poll。仅内部InsufficientSlots换页，普通Error原样退出；fresh组超容量显式Unsupported。没有wait_idle、裁数组或跳draw。"
+    },
+    {
+      "source": "rhapsody/src/bindless_parameters.rs:293..318",
+      "conclusion": "需求复用write的实际ResourceKey及dynamic uniform upload角色；去重只算普通write，write_lease与参数由调用者另计。Prepared.belongs_to严格Arc heap身份，同页with_push才复制物理索引。"
+    },
+    {
+      "source": "tiny-glade/src/render_host.rs:1013..1108",
+      "conclusion": "compute首次snapshot冻结ABI、sampler实际Arc、FrameGlobals Arc与最终local资源；同页push只需参数StorageBuffer1，迁页重放原snapshot/owner/range/role。完整组缺失cache+local需求+参数先准入，finish后缓存才发布；实际new错误不会被无差别视作容量。"
+    },
+    {
+      "source": "tiny-glade/src/frame_setup.rs:32..236",
+      "conclusion": "缓存以持ArcHeap的页slot身份区分，无裸地址ABA。b0/b1共用declared storage lease，sampled实际索引/长度保留。cache阶段只预留元数据/命中快照；fallible lease分配或finish失败不发布新cache，unused leases按现Drop归还；允许常量ring空洞。PageRecord/Heap不反持FrameGlobals，没有新强环。"
+    },
+    {
+      "source": "tiny-glade/src/render_host.rs:851..1003",
+      "conclusion": "sampler按name+实际Arc元数据在页内复用；先reserve再materialize，finish后commit；旧lease在cache锁外drop。invalidate仅移除缓存，不会使已克隆的准备/命令lease数值失效。"
+    },
+    {
+      "source": "tiny-glade/src/raster_host.rs:1592..1635与2010..2142",
+      "conclusion": "同callback持cursor/冻结globals；最终upsert覆盖后的实际资源/range交同一Snapshot.prepare。原pipeline、access声明、draw/instance/indirect参数保持；没有省略绘制。"
+    },
+    {
+      "source": "rhapsody/src/rg/indirect_count.rs:100..142与270..347",
+      "conclusion": "ShaderHost唯一生产constructor改new_paged；实际record callback才取source/count/scratch，按原key计完整组≤3storage+1parameter，统一guard。pipeline继续同template layout，原ceil(maximum_draws/64) dispatch与graph范围保留。单heap new兼容API不再由此生产host调用。"
+    },
+    {
+      "source": "tiny-glade/src/render_host.rs:2653..2724",
+      "conclusion": "大布局仍先实际query，支持则保完整大页；拒绝后仅协商物理页，始终保已证supported下界并实际new。M3会以default三类固定计数及storage二分收敛；不把maxPerSetDescriptors当可无条件等号使用。全场景容量由多页保全，单组运行时单独核需求。"
+    }
+  ],
+  "performance_and_lifetime_limits": [
+    "同页快路径无manager扫描；换页扫描pool并缓存实际高水位。V1不回收空闲物理页，不能声称trim已实现。",
+    "采样/全局cache保留实际owner；部分submit及在途寿命沿现command retained leases/actual SyncPoint，不清空每帧cache或伪造完成值。",
+    "stats peak为各页历史峰之和，不是同时发生的全局峰；旧steady断言若失败需结合页数/actual live-retiring-free/timeline解释，不直接放宽阈值。",
+    "单组过大仍显式失败。保留404catalog静态界局限，新生成或未匹配shader以实际runtime要求判断。"
+  ],
+  "root_runtime_observed": {
+    "check": {
+      "path": "/private/tmp/tg-paging-v1-check-20261021.log",
+      "sha256": "cbba95e088a4ce6e5b7f2848b5261486ffc9aa07ac2fdd0a11afe3806fdd3153",
+      "result": "实际tiny-glade cargo check完成21.76秒；有warnings但无error。"
+    },
+    "abi_gpu": {
+      "path": "/private/tmp/tg-paging-abi-gpu-20261021.log",
+      "sha256": "a75f95b1cb2f36e26d1e68030d93a140b95730dfd0f93ee1b374b9414d953411",
+      "result": "running4，4 passed/0failed/0ignored；含5-buffer小页强制3资源+参数、同页push、迁页重放、真正dispatch+copy读取[42,43,44]、单pipeline。"
+    },
+    "raster_gpu": {
+      "path": "/private/tmp/tg-paging-raster-gpu-20261021.log",
+      "sha256": "25fcf18f1e2eb8938a6c1271215e4e33837dfd2c8f9c6cab9d3fd1b75de0cab3",
+      "result": "actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels 1实跑通过。只证明该光栅闭包，未覆盖完整世界/adapter/所有globals cache分支。"
+    },
+    "world_failure": {
+      "path": "/private/tmp/tg-paging-world-thirty-20261021.log",
+      "sha256": "68b58db4c72f4c6a50c6ddfe9a64b7200fd027d6b8e8ecfd2b24b15099786b14",
+      "result": "shipped_session_steady_state_multi_frame失败，Startup后Update的timberframe_beam_count_change_audio缺EventWriter<PlayTimberframeSound>事件注册；未因旧24896 layout报错，不能记世界30帧通过。"
+    },
+    "environment_boundary": "root明确严格RHAPSODY_REQUIRE_VULKAN=1、M3、Khronos layer执行；日志无SKIP/Validation Error。该环境由执行owner提供，我只审源/原日志，未重复GPU。"
+  },
+  "required_remaining": [
+    "修复并原证核默认host的真实事件注册后重跑同一世界30帧；不得删除消费者或加伪条件躲过。",
+    "真实多帧需检查页数/三类cache与参数活跃、退休/完成、CPU/native预算高水位；ABI小测试不证明长稳。",
+    "真实IndexedCount fallback、FrameGlobals跨帧/跨页、sampler/cache失败与parallel recording的完整游戏路径仍待实际场景覆盖。",
+    "OS WSI present、交互/保存/重启恢复仍独立门槛。"
+  ],
+  "reviewer_execution": {
+    "cargo": false,
+    "gpu": false,
+    "production_mutation": false,
+    "new_native_game_oracle": false
+  }
+}

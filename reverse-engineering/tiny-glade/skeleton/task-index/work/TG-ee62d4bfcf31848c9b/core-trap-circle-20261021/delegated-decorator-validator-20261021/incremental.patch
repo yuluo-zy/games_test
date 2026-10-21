@@ -1,0 +1,53 @@
+--- a/tiny-glade/crates/utils/src/geometry/circle.rs
++++ b/tiny-glade/crates/utils/src/geometry/circle.rs
+@@ -89,9 +89,12 @@
+         let d = p - self.center;
+         d.y * d.y + d.x * d.x < self.radius * self.radius
+     }
++    /// B140c97b40/84B：保留先归一化、再乘半径的运算顺序。
++    /// 零、极小和非有限输入按原浮点结果传播，不替换为默认方向。
+     pub fn closest_point_on_perimeter(self, p: Vec2) -> Vec2 {
+         let d = p - self.center;
+-        d.normalize_or(Vec2::X) * self.radius + self.center
++        let reciprocal = 1.0 / (d.y * d.y + d.x * d.x).sqrt();
++        (d * reciprocal) * self.radius + self.center
+     }
+     pub fn with_expanded_diameter(self, delta: f32) -> Self {
+         Self {
+@@ -328,3 +331,36 @@
+         );
+     }
+ }
++
++#[cfg(test)]
++mod native_closest_perimeter_tests {
++    use super::*;
++
++    #[test]
++    fn finite_radius_five_preserves_original_scaled_direction() {
++        let circle = Circle2d::new(Vec2::new(1.0, 2.0), 5.0);
++        assert_eq!(circle.closest_point_on_perimeter(Vec2::new(4.0, 6.0)), Vec2::new(4.0, 6.0));
++    }
++
++    #[test]
++    fn center_and_zero_radius_keep_original_unordered_result() {
++        for radius in [0.0, 1.0] {
++            let circle = Circle2d::new(Vec2::new(3.0, 4.0), radius);
++            assert!(circle.closest_point_on_perimeter(circle.center).is_nan());
++        }
++    }
++
++    #[test]
++    fn overflowing_length_returns_original_center_instead_of_robust_direction() {
++        let circle = Circle2d::new(Vec2::new(2.0, 3.0), 4.0);
++        assert_eq!(circle.closest_point_on_perimeter(Vec2::splat(1.0e30)), circle.center);
++    }
++
++    #[test]
++    fn underflow_and_nan_are_not_replaced_with_x_axis() {
++        let circle = Circle2d::new(Vec2::ZERO, 1.0);
++        let underflow = circle.closest_point_on_perimeter(Vec2::new(1.0e-30, 0.0));
++        assert!(underflow.x.is_infinite() && underflow.y.is_nan());
++        assert!(circle.closest_point_on_perimeter(Vec2::new(f32::NAN, 1.0)).is_nan());
++    }
++}

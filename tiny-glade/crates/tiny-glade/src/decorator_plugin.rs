@@ -57,6 +57,8 @@ pub fn build_startup_resources(app: &mut bevy_app::App) {
     system_decorator::ui_systems::register_ui_resources(app);
     app.init_resource::<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>();
     app.add_event::<system_decorator::handle_external_decorator_cmds::ExternalDecoratorCmd>();
+    // 与验证writer和两个独立音频reader共享单位事件及真实App保留周期。
+    app.add_event::<system_decorator::audio::op_preview_audio::MutePreviewDecoratorOpSounds>();
     app.init_resource::<system_decorator::blueprint::PrevDecoratorBlueprints>();
     app.init_resource::<country_core::systems::collision::WindowAutoClutterCandidates>();
 }

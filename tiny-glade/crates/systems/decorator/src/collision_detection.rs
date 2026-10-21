@@ -26,8 +26,8 @@
 //!
 //! 记号：O = 机器码直接观察；I = 由调用面/reconstruction 模型映射；U = 未闭合。
 //!
-//! core 缺口（登记，不改 core）：`DerivedDecoratorSubtypes` 只有 panic 的
-//! `get`，无 `try_get`；本模块因此由调用方传入 `Option<&DerivedDecoratorInfo>`。
+//! 真实碰撞度量借用唯一subtype表与四表owner；旧region辅助接口仍显式接收
+//! legacy元数据，不用于伪造canonical碰撞网格。
 
 use country_core::resources::walls::decorator::DecoratorInfo;
 use country_core::resources::walls::decorator_storage::Decorators;
@@ -38,12 +38,12 @@ use glam::{Vec2, Vec3};
 use utils::curve::Curve2 as SamplingCurve2;
 use utils::wall_space::{WallSpaceCoord, WallSpaceRegion};
 
-/// 既有装饰的碰撞度量（I：映射自 DerivedDecoratorInfo 的 bbx）。
+/// 原碰撞记录的沿墙逻辑宽度与垂直跨度。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DecoratorCollisionMetrics {
-    /// 沿墙宽度（原记录 +0x30；本模型取 bbx X 跨度）。
+    /// 沿墙宽度（原记录+0x30，即bounds.footprint.size.x）。
     pub along_width: f32,
-    /// 垂直跨度（原记录 +0x3c - +0x38；本模型取 bbx Y 跨度）。
+    /// 垂直跨度（原记录+0x3c-+0x38，即bounds.top-bottom）。
     pub vertical_extent: f32,
 }
 
@@ -136,13 +136,13 @@ pub fn existing_collision_metrics(
     mesh_lib: &DecoratorMeshLibrary,
 ) -> DecoratorCollisionMetrics {
     let derived = subtypes.get(id);
-    let key = DecoratorLibKey::new(derived.subtype().0, info.rank);
-    let collision = mesh_lib
-        .collision
-        .get(&key)
-        .unwrap_or_else(|| panic!("The decorator mesh library doesn't contain {}", key.subtype));
-    let (bbx_min, bbx_max) = collision.bbx_ls();
-    DecoratorCollisionMetrics::from_bbx(bbx_min, bbx_max)
+    let key = DecoratorLibKey::new(derived.0, info.rank);
+    let collision = mesh_lib.collision_record(key);
+    // 原+0x30与+0x3c/+0x38：读取同一真实记录的逻辑宽度和垂直界。
+    DecoratorCollisionMetrics {
+        along_width: collision.bounds.footprint.size.x,
+        vertical_extent: collision.bounds.top - collision.bounds.bottom,
+    }
 }
 
 /// 组合谓词：候选 vs 一个既有装饰（供 merge proposal / interaction 使用）。
@@ -340,5 +340,50 @@ mod tests {
             projected.as_coord(),
             WallSpaceCoord::new_unchecked(1.0, 2.0)
         );
+    }
+}
+
+#[cfg(test)]
+mod canonical_metrics_regressions {
+    use super::*;
+    use std::sync::Arc;
+    use country_core::resources::walls::decorator_subtype::{
+        DecoratorCollision, DecoratorCollisionOutline, DecoratorOutline, DecoratorSubtype,
+    };
+    use country_core::systems::collision::world::RaycastMeshData;
+    use country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume;
+    use country_core::utils::components::transform::Transform;
+    use utils::geometry::Rectangle3d;
+
+    #[test]
+    fn actual_metrics_borrow_exact_rank_logical_width_and_vertical_bounds() {
+        let mut subtypes = DerivedDecoratorSubtypes::default();
+        subtypes.insert(41, DecoratorSubtype(7));
+        let mut library = DecoratorMeshLibrary::default();
+        let key = DecoratorLibKey::new(7, 2);
+        let size = Vec3::new(2.0, 4.0, 7.0);
+        let center = Vec3::new(5.0, 13.0, -2.0);
+        let transform = Transform { translation: center, ..Transform::identity() };
+        let mesh = Arc::new(RaycastMeshData::new_cuboid_at(size, center));
+        let probe = Arc::clone(&mesh);
+        library.insert_collision_and_interaction_as_same(key, DecoratorCollision {
+            triangles: box_trigger_volume(size.x, size.y, size.z, &transform),
+            mesh,
+            // 旋转footprint使AABB的X跨度与原逻辑width不同，底高也不为零。
+            bounds: Rectangle3d::new(center, size, Vec2::Y),
+        }, DecoratorOutline::None, DecoratorCollisionOutline::None);
+        let mut info = DecoratorInfo::default(); info.rank = 2;
+        let count = Arc::strong_count(&probe);
+        assert_eq!(existing_collision_metrics(41, &info, &subtypes, &library),
+            DecoratorCollisionMetrics { along_width: 2.0, vertical_extent: 4.0 });
+        assert_eq!(Arc::strong_count(&probe), count);
+        info.rank = 1;
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            existing_collision_metrics(41, &info, &subtypes, &library)
+        })).is_err());
+        info.rank = 2;
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            existing_collision_metrics(42, &info, &subtypes, &library)
+        })).is_err());
     }
 }

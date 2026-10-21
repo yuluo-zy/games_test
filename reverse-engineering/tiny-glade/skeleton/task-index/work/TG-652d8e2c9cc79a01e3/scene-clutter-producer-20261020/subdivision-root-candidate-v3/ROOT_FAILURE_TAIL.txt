@@ -1,0 +1,30 @@
+170 | const LOG_TARGET: &str = "system_decorator::restore_archived_decorators";
+    |       ^^^^^^^^^^
+
+warning: field `local` is never read
+  --> crates/systems/decorator/src/ui_systems/native_rotation_goldens.rs:14:82
+   |
+14 | struct Native {dst:u8,raw:u8,ty:u8,small:bool,op:&'static str,audio:&'static str,local:&'static str,event:&'static str}
+   |        ------ field in this struct                                               ^^^^^
+
+warning: `system-decorator` (lib test) generated 14 warnings (run `cargo fix --lib -p system-decorator --tests` to apply 3 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.84s
+warning: the following packages contain code that will be rejected by a future version of Rust: block v0.1.6
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running unittests src/lib.rs (target/debug/deps/system_decorator-9c664478602b2875)
+
+running 1 test
+test utils::subdivision_native_tests::real_bent_curve_uses_each_adjacent_pose_instead_of_endpoint_lerp ... 
+thread 'utils::subdivision_native_tests::real_bent_curve_uses_each_adjacent_pose_instead_of_endpoint_lerp' (26226524) panicked at crates/systems/decorator/src/utils/mod.rs:224:13:
+旋转分量不一致：actual=0.70710677 (0x3f3504f3), expected=-0.70710677 (0xbf3504f3)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    utils::subdivision_native_tests::real_bent_curve_uses_each_adjacent_pose_instead_of_endpoint_lerp
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 227 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p system-decorator --lib`

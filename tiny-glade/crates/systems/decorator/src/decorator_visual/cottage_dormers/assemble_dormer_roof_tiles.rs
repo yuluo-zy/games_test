@@ -87,7 +87,7 @@ pub fn generate_dormer_roofs(
 ) {
     for (_wall, decorators) in decorator_storage.iter_walls() {
         for (id, info) in decorators.iter_modified() {
-            let subtype = derived.get(id).subtype().0;
+            let subtype = derived.get(id).0;
             // O：子类型掩码 / 0x17 特殊分支。
             let Some(family) = dormer_roof_family(subtype) else {
                 continue;

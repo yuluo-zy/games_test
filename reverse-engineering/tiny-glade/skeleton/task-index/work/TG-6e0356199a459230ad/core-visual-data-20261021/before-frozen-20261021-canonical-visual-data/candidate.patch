@@ -1,0 +1,170 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs
+@@ -24,7 +24,7 @@
+ use bevy_ecs::prelude::*;
+ use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
+ use country_core::resources::walls::decorator_storage::DecoratorStorage;
+-use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
++use country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoResources;
+ use country_core::resources::walls::public_walls::PublicWalls;
+ 
+ use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+@@ -54,8 +54,8 @@
+     RoofChimney {
+         cuboid: [
+             CHIMNEY_CUBOID_SIZE,
++            extra_height + CHIMNEY_HEIGHT_EXTRA,
+             CHIMNEY_CUBOID_SIZE,
+-            extra_height + CHIMNEY_HEIGHT_EXTRA,
+         ],
+         height: extra_height + CHIMNEY_HEIGHT_EXTRA,
+         smoke,
+@@ -67,31 +67,45 @@
+     decorator_storage: Res<DecoratorStorage>,
+     cached_transforms: Res<CachedDecoratorTransforms>,
+     _walls: Res<PublicWalls>,
+-    derived: Res<DerivedDecoratorSubtypes>,
++    derived: DerivedDecoratorInfoResources,
+     mut blueprints: ResMut<DecoratorBlueprints>,
+ ) {
++    let derived = derived.as_view();
+     for (_wall, decorators) in decorator_storage.iter() {
+         for (id, info) in decorators.iter_modified() {
+             // O 判别：refusing 非屋顶目的地 / 非 0x15 子类型。
+             if info.dst_tag() != 2 {
+                 continue;
+             }
+-            if derived.get(id).subtype().0 != ROOF_CHIMNEY_SUBTYPE {
++            if derived
++                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
++                .0
++                != ROOF_CHIMNEY_SUBTYPE
++            {
+                 continue;
+             }
+             let extra = info.extra().as_chimney();
+             let chimney = roof_chimney_geometry(extra.f, extra.smoke);
+-            let _transform = cached_transforms.transform(id);
+-            let _subtype = derived.get(id).subtype();
+-            // O：立方体碰撞（RaycastMeshData::new_cuboid，尺寸 0.85/0.85/h）。
+-            let _collider = crate::utils::new_cuboid_collider(
+-                chimney.cuboid[0],
+-                chimney.cuboid[1],
+-                chimney.cuboid[2],
++            let transform = cached_transforms.transform(id);
++            // 原局部cuboid中心为零，世界中心沿Y抬高半个实际烟囱高度。
++            let collider = std::sync::Arc::new(
++                country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
++                    glam::Vec3::from_array(chimney.cuboid),
++                    glam::Vec3::ZERO,
++                ),
+             );
+-            // O：蓝图（set_colliders + add_chimney + insert）。
++            let position = glam::Vec3::new(
++                transform.translation.x,
++                transform.translation.y + chimney.height * 0.5,
++                transform.translation.z,
++            );
+             let mut blueprint = DecoratorBlueprint::new();
+-            blueprint.set_colliders(vec![derived.get(id).collision_mesh()]);
++            blueprint.set_positioned_colliders(
++                std::sync::Arc::clone(&collider),
++                collider,
++                &position,
++                &transform.rotation,
++            );
+             blueprint.add_chimney(chimney.height);
+             blueprints.insert(id, blueprint);
+         }
+@@ -111,7 +125,7 @@
+     fn geometry_matches_machine_constants() {
+         let c = roof_chimney_geometry(1.4, 3);
+         assert!((c.height - 1.5).abs() < 1e-6);
+-        assert_eq!(c.cuboid, [0.85, 0.85, 1.5]);
++        assert_eq!(c.cuboid, [0.85, 1.5, 0.85]);
+         assert_eq!(c.smoke, 3);
+     }
+ 
+@@ -122,3 +136,82 @@
+         assert!(!is_roof_chimney(0, 0x15));
+     }
+ }
++
++
++#[cfg(test)]
++mod canonical_roof_collider_regressions {
++    use super::*;
++    use crate::blueprint::BlueprintMeshSlot;
++    use bevy_ecs::system::RunSystemOnce;
++    use country_core::resources::walls::{
++        WallId,
++        cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
++        decorator::{ChimneyExtra, DecoratorExtraInfo, DecoratorId, DecoratorInfo},
++        decorator_storage::{DecoratorStorage, Decorators},
++        decorator_subtype::{DecoratorMeshLibrary, DecoratorSubtype, DerivedDecoratorSubtypes},
++    };
++    use glam::{Quat, Vec3};
++    use std::sync::Arc;
++
++    #[test]
++    fn roof_chimney_uses_native_y_height_zero_local_center_and_shared_arc() {
++        let mut world = World::new();
++        let mut info = DecoratorInfo {
++            decorator_id: 9,
++            u20: 2 << 16,
++            rank: 1,
++            ..Default::default()
++        };
++        info.set_extra(DecoratorExtraInfo::Chimney(ChimneyExtra {
++            f: 1.4,
++            smoke: 3,
++        }));
++        let mut bucket = Decorators::default();
++        bucket.insert(DecoratorId(9), info);
++        let mut storage = DecoratorStorage::default();
++        storage.per_wall.insert(WallId(2), bucket);
++        world.insert_resource(storage);
++        let transform = CachedDecoratorTransform {
++            rotation: Quat::from_rotation_y(0.4),
++            translation: Vec3::new(4., 7., -3.),
++            scale: Vec3::ONE,
++        };
++        let mut cached = CachedDecoratorTransforms::default();
++        cached.insert(9, transform);
++        world.insert_resource(cached);
++        let mut subtypes = DerivedDecoratorSubtypes::default();
++        subtypes.insert(9, DecoratorSubtype(21));
++        world.insert_resource(subtypes);
++        // 动态烟囱不读取loader的球体记录，空库仍必须生成真实cuboid。
++        world.insert_resource(DecoratorMeshLibrary::default());
++        world.insert_resource(PublicWalls::default());
++        world.insert_resource(DecoratorBlueprints::default());
++        world.run_system_once(generate_roof_chimneys).unwrap();
++        let blueprints = world.resource::<DecoratorBlueprints>();
++        let blueprint = &blueprints.map[&9];
++        let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
++            panic!("实际烟囱collision")
++        };
++        let BlueprintMeshSlot::Mesh(interaction) = &blueprint.interaction_mesh else {
++            panic!("实际烟囱interaction")
++        };
++        assert!(Arc::ptr_eq(&collision.mesh, &interaction.mesh));
++        assert_eq!(
++            collision
++                .mesh
++                .shape_ref()
++                .unwrap()
++                .as_cuboid()
++                .unwrap()
++                .half_extents
++                .as_slice(),
++            &[0.425, 0.75, 0.425]
++        );
++        assert_eq!(collision.mesh.local_transform().translation, Vec3::ZERO);
++        assert_eq!(collision.position, Vec3::new(4., 7.75, -3.));
++        assert_eq!(collision.rotation, transform.rotation);
++        assert_eq!(interaction.position, collision.position);
++        assert_eq!(interaction.rotation, collision.rotation);
++        assert!(blueprint.colliders.is_empty());
++    }
++}

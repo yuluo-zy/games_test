@@ -1,0 +1,808 @@
+
+running 151 tests
+test angle_range::native_oracle::original_b_instructions ... ok
+test camera::native_taa_tests::original_range_is_inclusive_one_through_128 ... ok
+test camera::tests::original_projection ... ok
+test camera::tests::original_xz_rotation ... ok
+test circular_f32::native_oracle::original_b_instructions ... ok
+test cloth_shared_utils_tests::allocating_splits_rejects_zero_and_one_before_rng_draws ... 
+thread 'cloth_shared_utils_tests::allocating_splits_rejects_zero_and_one_before_rng_draws' (26800883) panicked at crates/utils/src/lib.rs:98:17:
+assertion failed: splits >= 2
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'cloth_shared_utils_tests::allocating_splits_rejects_zero_and_one_before_rng_draws' (26800883) panicked at crates/utils/src/lib.rs:98:17:
+assertion failed: splits >= 2
+ok
+test cloth_shared_utils_tests::into_capacity_overflow_happens_before_internal_rng_draws ... 
+thread 'cloth_shared_utils_tests::into_capacity_overflow_happens_before_internal_rng_draws' (26800884) panicked at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/alloc/src/raw_vec/mod.rs:28:5:
+capacity overflow
+ok
+test cloth_shared_utils_tests::into_small_counts_append_to_existing_values_without_rng_draws ... ok
+test cloth_shared_utils_tests::nan_and_positive_infinite_jitter_select_the_original_cap ... ok
+test cloth_shared_utils_tests::splits_keep_endpoints_and_exact_internal_draw_count ... ok
+test cloth_shared_utils_tests::xz_invalid_length_falls_back_to_positive_x_not_identity ... ok
+test cloth_shared_utils_tests::xz_rotation_faces_real_cardinal_and_noncardinal_directions ... ok
+test comparative_space::completion_tests::original_static_region_and_lerp_policy ... ok
+test continuous_lerp_tests::actual_delta_exponential_preserves_current_value_and_zero_step ... ok
+test continuous_lerp_tests::invalid_scalar_inputs_are_not_silently_replaced ... ok
+test continuous_lerp_tests::subdivision_and_target_direction_use_the_same_current_state ... ok
+test curve::borrowed_nearest_original_tests::actual_vec3_family_projects_xz_and_retains_its_cached_u ... ok
+test curve::borrowed_nearest_original_tests::coordinate_defaults_and_u_failures_preserve_distinct_boundaries ... 
+thread 'curve::borrowed_nearest_original_tests::coordinate_defaults_and_u_failures_preserve_distinct_boundaries' (26800895) panicked at crates/utils/src/curve/mod.rs:627:5:
+assertion failed: points.len() > 1
+
+thread 'curve::borrowed_nearest_original_tests::coordinate_defaults_and_u_failures_preserve_distinct_boundaries' (26800895) panicked at crates/utils/src/curve/mod.rs:627:5:
+assertion failed: points.len() > 1
+
+thread 'curve::borrowed_nearest_original_tests::coordinate_defaults_and_u_failures_preserve_distinct_boundaries' (26800895) panicked at crates/utils/src/curve/mod.rs:630:17:
+index out of bounds: the len is 0 but the index is 0
+
+thread 'curve::borrowed_nearest_original_tests::coordinate_defaults_and_u_failures_preserve_distinct_boundaries' (26800895) panicked at crates/utils/src/curve/mod.rs:631:15:
+index out of bounds: the len is 1 but the index is 1
+
+thread 'curve::borrowed_nearest_original_tests::coordinate_defaults_and_u_failures_preserve_distinct_boundaries' (26800895) panicked at crates/utils/src/curve/mod.rs:633:5:
+assertion failed: u.is_finite()
+
+thread 'curve::borrowed_nearest_original_tests::coordinate_defaults_and_u_failures_preserve_distinct_boundaries' (26800895) panicked at crates/utils/src/curve/mod.rs:633:5:
+assertion failed: u.is_finite()
+ok
+test curve::borrowed_nearest_original_tests::ordinary_endpoints_interior_and_first_tie_use_actual_cached_u ... ok
+test curve::borrowed_nearest_original_tests::original_overflow_skips_nan_segments_in_borrowed_and_owned_queries ... ok
+test curve::completion_oracle::original_completion_sampling ... ok
+test curve::completion_query_oracle::original_completion_queries ... ok
+test curve::curve_slice::borrowed_point_constructor_tests::borrowed_constructor_retains_coordinate_and_short_input_failures ... 
+thread 'curve::curve_slice::borrowed_point_constructor_tests::borrowed_constructor_retains_coordinate_and_short_input_failures' (26800903) panicked at crates/utils/src/curve/curve_slice.rs:120:13:
+segment outside point set
+
+thread 'curve::curve_slice::borrowed_point_constructor_tests::borrowed_constructor_retains_coordinate_and_short_input_failures' (26800903) panicked at crates/utils/src/curve/curve_slice.rs:124:13:
+invalid segment parameter
+
+thread 'curve::curve_slice::borrowed_point_constructor_tests::borrowed_constructor_retains_coordinate_and_short_input_failures' (26800903) panicked at crates/utils/src/curve/curve_slice.rs:124:13:
+invalid segment parameter
+
+thread 'curve::curve_slice::borrowed_point_constructor_tests::borrowed_constructor_retains_coordinate_and_short_input_failures' (26800903) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::borrowed_point_constructor_tests::borrowed_constructor_retains_coordinate_and_short_input_failures' (26800903) panicked at crates/utils/src/curve/curve_slice.rs:120:13:
+segment outside point set
+
+thread 'curve::curve_slice::borrowed_point_constructor_tests::borrowed_constructor_retains_coordinate_and_short_input_failures' (26800903) panicked at crates/utils/src/curve/curve_slice.rs:120:13:
+segment outside point set
+ok
+test curve::curve_slice::borrowed_point_constructor_tests::borrowed_late_mapper_failure_preserves_completed_native_endpoint ... 
+thread 'curve::curve_slice::borrowed_point_constructor_tests::borrowed_late_mapper_failure_preserves_completed_native_endpoint' (26800904) panicked at crates/utils/src/curve/curve_slice.rs:467:17:
+assertion `left != right` failed: later genuine mapper failure
+  left: 2
+ right: 2
+ok
+test curve::curve_slice::borrowed_point_constructor_tests::borrowed_xyz_is_lazy_and_uses_actual_xz_distance ... ok
+test curve::curve_slice::original_right_f32_regressions::later_remap_failure_preserves_the_completed_endpoint ... 
+thread 'curve::curve_slice::original_right_f32_regressions::later_remap_failure_preserves_the_completed_endpoint' (26800906) panicked at crates/utils/src/curve/curve_slice.rs:401:13:
+assertion `left != right` failed: late remap failure
+  left: 2
+ right: 2
+ok
+test curve::curve_slice::original_right_f32_regressions::right_extension_uses_the_remapped_metric ... ok
+test curve::curve_slice::original_right_f32_regressions::stopping_vertex_is_included_without_sampling_the_next_vertex ... ok
+test curve::curve_slice::original_right_f32_regressions::zero_distance_keeps_original_f32_cancellation ... ok
+test curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges ... 
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:124:13:
+invalid segment parameter
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:124:13:
+invalid segment parameter
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:124:13:
+invalid segment parameter
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:126:9:
+reversed or unordered curve slice
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_coord_ranges' (26800910) panicked at crates/utils/src/curve/curve_slice.rs:124:13:
+invalid segment parameter
+ok
+test curve::curve_slice::stateful_native_tests::original_b_slice_extend_left ... 
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_left' (26800911) panicked at crates/utils/src/curve/curve_slice.rs:235:9:
+invalid extension distance
+ok
+test curve::curve_slice::stateful_native_tests::original_b_slice_extend_right ... 
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_extend_right' (26800913) panicked at crates/utils/src/curve/curve_slice.rs:196:9:
+invalid extension distance
+ok
+test curve::curve_slice::stateful_native_tests::original_b_slice_point_centers ... 
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_point_centers' (26800914) panicked at crates/utils/src/curve/curve_slice.rs:81:9:
+start point outside point set
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_point_centers' (26800914) panicked at crates/utils/src/curve/curve_slice.rs:81:9:
+start point outside point set
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_point_centers' (26800914) panicked at crates/utils/src/curve/curve_slice.rs:81:9:
+start point outside point set
+
+thread 'curve::curve_slice::stateful_native_tests::original_b_slice_point_centers' (26800914) panicked at crates/utils/src/curve/curve_slice.rs:81:9:
+start point outside point set
+ok
+test curve::curve_u_circular::native_tests::original_b_circular_add ... 
+thread 'curve::curve_u_circular::native_tests::original_b_circular_add' (26800915) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_add' (26800915) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_add' (26800915) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+ok
+test curve::curve_u_circular::native_tests::original_b_circular_contains ... ok
+test curve::curve_u_circular::native_tests::original_b_circular_distance ... ok
+test curve::curve_u_circular::native_tests::original_b_circular_eq ... ok
+test curve::curve_u_circular::native_tests::original_b_circular_from ... 
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_from' (26800919) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+ok
+test curve::curve_u_circular::native_tests::original_b_circular_lerp ... 
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_lerp' (26800920) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+ok
+test curve::curve_u_circular::native_tests::original_b_circular_new ... 
+thread 'curve::curve_u_circular::native_tests::original_b_circular_new' (26800921) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_new' (26800921) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_new' (26800921) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+ok
+test curve::curve_u_circular::native_tests::original_b_circular_subtract ... 
+thread 'curve::curve_u_circular::native_tests::original_b_circular_subtract' (26800922) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_subtract' (26800922) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+
+thread 'curve::curve_u_circular::native_tests::original_b_circular_subtract' (26800922) panicked at crates/utils/src/curve/curve_u_circular.rs:26:9:
+nonfinite circular curve parameter
+ok
+test curve::curve_u_circular::native_tests::original_b_circular_wrap ... ok
+test curve::native_constructor_tests::engineering_metrics_and_unverified_constructor_semantics_keep_their_original_host_domain ... ok
+test curve::native_constructor_tests::original_crashy_false_and_existing_boolean_compatibility_share_the_same_constructor ... 
+thread 'curve::native_constructor_tests::original_crashy_false_and_existing_boolean_compatibility_share_the_same_constructor' (26800925) panicked at crates/utils/src/curve/mod.rs:822:45:
+called `Result::unwrap()` on an `Err` value: DuplicateSegment(0)
+
+thread 'curve::native_constructor_tests::original_crashy_false_and_existing_boolean_compatibility_share_the_same_constructor' (26800925) panicked at crates/utils/src/curve/mod.rs:824:41:
+called `Result::unwrap()` on an `Err` value: NonFiniteLength
+ok
+test curve::native_constructor_tests::original_f32_lengths_keep_point_order_and_the_underflow_overflow_domain ... ok
+test curve::native_constructor_tests::original_normalization_errors_precede_optional_duplicate_rejection ... ok
+test curve::native_oracle::original_b_curve2_rules ... ok
+test curve::native_oracle::original_b_curve3_arc_length ... ok
+test curve::native_oracle::original_b_curve_errors ... ok
+test curve::native_oracle::original_b_transform_look_at ... ok
+test easing_functions::native_oracle::original_b_instructions ... ok
+test file::tests::backup_names_preserve_extensions_and_support_pre_epoch_dates ... ok
+test file::tests::backup_path_keeps_non_unicode_filename_bytes ... ok
+test file::tests::backups_do_not_follow_destination_symlinks ... ok
+test file::tests::repeated_and_concurrent_backups_never_replace_previous_contents ... ok
+test float_grid::native_oracle::original_byte_grid_both_modes_and_numeric_boundaries ... ok
+test geometry::boundary_oracle::original_b_circle_boundary ... ok
+test geometry::boundary_oracle::original_b_rectangle_boundary ... ok
+test geometry::circle::native_circle_intersection_tests::original_point_order_and_both_tangency_boundaries_are_preserved ... ok
+test geometry::circle::native_circle_intersection_tests::original_tag_distinguishes_trap_roof_border_intersection_from_no_intersection ... ok
+test geometry::circle::native_circle_intersection_tests::original_unordered_and_zero_distance_paths_keep_some_nan_payload ... ok
+test geometry::completion::corrected_mouse_ray_reprojects_original_inputs ... ok
+test geometry::completion::original_completion_aabb_folds ... ok
+test geometry::completion::original_completion_aabb_segment2 ... ok
+test geometry::completion::original_completion_circle_curves ... ok
+test geometry::completion::original_completion_circle_lerp ... ok
+test geometry::completion::original_completion_rectangle_deformation ... ok
+test geometry::completion::original_completion_rectangle_distance_normals ... ok
+test geometry::completion::original_completion_rectangle_intersections ... ok
+test geometry::completion::original_completion_rectangle_segment_receiver ... ok
+test geometry::completion::original_completion_rectangle_slices ... ok
+test geometry::completion::original_completion_transform ... ok
+test geometry::completion::original_completion_world_size_projection ... ok
+test geometry::edge_oracle::original_b_threshold_crossings ... ok
+test geometry::edge_oracle::original_b_transform_abs_diff_eq ... ok
+test geometry::linear_oracle::original_b_aabb3_ray_segment ... ok
+test geometry::linear_oracle::original_b_barycentric ... ok
+test geometry::linear_oracle::original_b_line_relation ... ok
+test geometry::linear_oracle::original_b_plane_ray ... ok
+test geometry::native_oracle::original_b_curve_circular_slice ... ok
+test geometry::native_oracle::original_b_curve_slice ... ok
+test geometry::native_oracle::original_b_mesh_uv ... ok
+test geometry::native_oracle::original_b_ray_sphere ... ok
+test geometry::native_oracle::original_b_ray_triangle ... ok
+test geometry::native_oracle::original_b_rectangle3d ... ok
+test geometry::rectangle::normal_regressions::edge_distance_is_symmetric_in_local_coordinates ... ok
+test geometry::rectangle::normal_regressions::original_3d_overlap_keeps_touching_separation_and_ordered_infinity ... ok
+test geometry::rectangle::normal_regressions::original_3d_overlap_rejects_each_unordered_vertical_bound ... ok
+test geometry::rectangle::normal_regressions::original_corner_edge_directions_check_area_before_corner_index - should panic ... 
+thread 'geometry::rectangle::normal_regressions::original_corner_edge_directions_check_area_before_corner_index' (26800975) panicked at crates/utils/src/geometry/rectangle.rs:102:9:
+原as_points正面积guard
+ok
+test geometry::rectangle::normal_regressions::original_corner_edge_directions_keep_positive_area_with_two_negative_sizes ... ok
+test geometry::rectangle::normal_regressions::original_corner_edge_directions_preserve_collapsed_world_point_nan ... ok
+test geometry::rectangle::normal_regressions::original_corner_edge_directions_preserve_incoming_then_outgoing_order ... ok
+test geometry::rectangle::normal_regressions::original_corner_edge_directions_reject_out_of_range_corner - should panic ... 
+thread 'geometry::rectangle::normal_regressions::original_corner_edge_directions_reject_out_of_range_corner' (26800979) panicked at crates/utils/src/geometry/rectangle.rs:173:18:
+internal error: entered unreachable code: 原角序超出0..4
+ok
+test geometry::rectangle::normal_regressions::original_corner_edge_directions_use_actual_rotated_points ... ok
+test geometry::rectangle::normal_regressions::original_edge_id_wrapper_keeps_finite_1000_distance_threshold ... ok
+test geometry::rectangle::normal_regressions::original_edge_id_wrapper_keeps_near_edge_and_first_ties ... ok
+test geometry::rectangle::normal_regressions::original_edge_id_wrapper_requires_actual_positive_area - should panic ... 
+thread 'geometry::rectangle::normal_regressions::original_edge_id_wrapper_requires_actual_positive_area' (26800983) panicked at crates/utils/src/geometry/rectangle.rs:102:9:
+原as_points正面积guard
+ok
+test geometry::rectangle::normal_regressions::original_nan_point_propagates_for_point_but_rejects_u ... 
+thread 'geometry::rectangle::normal_regressions::original_nan_point_propagates_for_point_but_rejects_u' (26800984) panicked at crates/utils/src/geometry/rectangle.rs:328:9:
+original perimeter U finite range guard
+
+thread 'geometry::rectangle::normal_regressions::original_nan_point_propagates_for_point_but_rejects_u' (26800984) panicked at crates/utils/src/geometry/rectangle.rs:102:9:
+原as_points正面积guard
+ok
+test geometry::rectangle::normal_regressions::original_pair_search_keeps_its_finite_initial_distance ... ok
+test geometry::rectangle::normal_regressions::original_perimeter_helpers_preserve_ties_and_closing_u ... ok
+test geometry::rectangle::normal_regressions::original_perimeter_helpers_use_actual_rotated_frame ... ok
+test geometry::rectangle::normal_regressions::rotated_normals_keep_world_orientation ... ok
+test geometry::rectangle::normal_regressions::size_normalized_normal_is_independent_of_nearest_segment ... ok
+test geometry::rotation_from_normal_tests::degenerate_vertical_normal ... ok
+test geometry::rotation_from_normal_tests::overflow_normal_uses_degenerate_fallback ... ok
+test geometry::rotation_from_normal_tests::z_axis_maps_to_normal ... ok
+test geometry::split_heightmap::completion_oracle::callbacks_keep_original_order ... ok
+test geometry::split_heightmap::completion_oracle::empty_heightmap_and_short_coordinate_view_reject ... 
+thread 'geometry::split_heightmap::completion_oracle::empty_heightmap_and_short_coordinate_view_reject' (26800994) panicked at crates/utils/src/geometry/split_heightmap.rs:14:5:
+original accesses first height
+
+thread 'geometry::split_heightmap::completion_oracle::empty_heightmap_and_short_coordinate_view_reject' (26800994) panicked at crates/utils/src/geometry/split_heightmap.rs:65:17:
+index out of bounds: the len is 0 but the index is 0
+ok
+test geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output ... 
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+
+thread 'geometry::split_heightmap::completion_oracle::full_original_b_region_and_callback_output' (26800995) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+ok
+test geometry::split_heightmap::completion_oracle::original_receiver_rejects_nan_crossings ... 
+thread 'geometry::split_heightmap::completion_oracle::original_receiver_rejects_nan_crossings' (26800996) panicked at crates/utils/src/geometry/split_heightmap.rs:54:9:
+original receiver rejects invalid crossing
+ok
+test geometry::triangle_oracle::original_b_triangle_triangle_business ... ok
+test geometry::triangle_triangle::review_tests::review_triangle_boundaries_against_independent_edge_oracle ... ok
+test index_condenser::interface_oracle::clear_invalidates_old_keys_and_preserves_capacity ... ok
+test index_condenser::interface_oracle::original_get_cache_policy ... ok
+test index_condenser::producer_oracle::original_complete_removal_returns_index_and_repairs_mapping ... ok
+test index_condenser::producer_oracle::original_insert_rejects_duplicate_and_appends_new_key ... ok
+test index_condenser::tests::stale_cached_index_is_repaired_before_swap_removal ... ok
+test local_time::tests::cached_utc_conversion_preserves_instants_and_subseconds ... ok
+test loop_range::loop_slice_oracle::original_b_loop_slice_state_transitions ... ok
+test loop_range::native_oracle::original_b_instructions ... ok
+test natural_cubic::native_domain_tests::dense_zero_negative_and_nan_spans_keep_two_samples_and_outgoing_tangents ... ok
+test natural_cubic::native_domain_tests::infinite_dense_count_reaches_real_vec_capacity_failure_before_sampling ... 
+thread 'natural_cubic::native_domain_tests::infinite_dense_count_reaches_real_vec_capacity_failure_before_sampling' (26801008) panicked at /rustc/48a229ceaefd4985c50990b14116b6d856af0985/library/alloc/src/raw_vec/mod.rs:28:5:
+capacity overflow
+ok
+test natural_cubic::native_domain_tests::native_entry_preserves_nonfinite_data_for_the_existing_consumer ... ok
+test natural_cubic::native_domain_tests::native_open_checks_original_minimum_before_point_data - should panic ... 
+thread 'natural_cubic::native_domain_tests::native_open_checks_original_minimum_before_point_data' (26801010) panicked at crates/utils/src/natural_cubic.rs:371:9:
+assertion failed: points.len() >= 2
+ok
+test natural_cubic::native_domain_tests::native_periodic_checks_original_minimum_before_point_data - should panic ... 
+thread 'natural_cubic::native_domain_tests::native_periodic_checks_original_minimum_before_point_data' (26801011) panicked at crates/utils/src/natural_cubic.rs:384:9:
+assertion failed: points.len() >= 3
+ok
+test natural_cubic::native_domain_tests::repeated_closing_point_reaches_periodic_solver_and_curve_consumer ... ok
+test natural_cubic::native_domain_tests::repeated_control_points_reach_the_real_curve_failure_boundary ... ok
+test natural_cubic::native_oracle::original_2d_coefficients ... spline2d_max_coefficient_error=0
+ok
+test natural_cubic::native_oracle::original_3d_coefficients ... spline3d_max_coefficient_error=0
+ok
+test natural_cubic::native_oracle::original_3d_point_tangent_outputs ... spline_max_position_error=0
+spline_max_tangent_error=0
+ok
+test natural_cubic::native_oracle::original_periodic_coefficients ... periodic_max_coefficient_error=0
+ok
+test rdp::completion_tests::original_b_stitch_prefix_and_index_rebase_all_cuts ... ok
+test rdp::completion_tests::original_b_vec2_inputs_obey_default_tolerance ... ok
+test rdp::completion_tests::original_static_stitch_keeps_prefix_and_rebases_indices ... ok
+test rdp::native_oracle::original_b_inputs_obey_segment_tolerance ... ok
+test rgb9e5::native_oracle::original_b_instructions ... ok
+test rng::native_oracle::original_b_instructions ... ok
+test selective_deserialize::review_tests::borrowed_key_selection_preserves_nested_partial_success ... ok
+test subtractive_1d_boolean::native_oracle::original_b_intervals_with_corrected_boundary_cases ... ok
+test subtractive_1d_boolean::tests::endpoint_flag_distinguishes_full_coverage ... ok
+test swizzlers::native_oracle::borrowed_transport_preserves_original_storage ... ok
+test swizzlers::native_oracle::original_coordinate_adapters ... ok
+test timer::native_oracle::original_b_filter_sequence ... ok
+test wall_space::completion_oracle::original_wall_projection_wrapper_policies ... ok
+test wall_space::completion_oracle::region_axes_use_strict_touching_and_wall_topology ... ok
+test wall_space::native_wall_space_subtract_tests::original_half_period_rounding_controls_real_alignment_direction_without_changing_general_space ... ok
+test wall_space::native_wall_space_subtract_tests::original_single_wrap_and_signed_zero_are_not_modulo_or_wide_recomputations ... ok
+test wall_space::native_wall_space_subtract_tests::original_unordered_upper_comparison_takes_subtraction_and_nonloop_ignores_length ... ok
+test wall_space::world_position_original_tests::in_range_input_y_nan_propagates_without_an_extra_guard ... ok
+test wall_space::world_position_original_tests::negative_distance_subtracts_actual_forward_endpoint_tangent ... ok
+test wall_space::world_position_original_tests::nonfinite_normalized_coordinate_is_an_observable_failure ... 
+thread 'wall_space::world_position_original_tests::nonfinite_normalized_coordinate_is_an_observable_failure' (26801037) panicked at crates/utils/src/curve/curve_u.rs:57:9:
+CurveU outside [0,1]
+
+thread 'wall_space::world_position_original_tests::nonfinite_normalized_coordinate_is_an_observable_failure' (26801037) panicked at crates/utils/src/curve/curve_u.rs:17:9:
+nonfinite curve coordinate
+
+thread 'wall_space::world_position_original_tests::nonfinite_normalized_coordinate_is_an_observable_failure' (26801037) panicked at crates/utils/src/curve/curve_u.rs:17:9:
+nonfinite curve coordinate
+ok
+
+test result: ok. 151 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+

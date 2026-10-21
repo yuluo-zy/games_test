@@ -1,0 +1,130 @@
+--- a/tiny-glade/crates/country-core/src/resources/stairs/stairs_assembly_params.rs
++++ b/tiny-glade/crates/country-core/src/resources/stairs/stairs_assembly_params.rs
+@@ -1,5 +1,4 @@
+-//! B stairs assembly geometry leaves. The full assembly-request owner and its
+-//! graph-to-geometry producer are separate; no missing request fields default.
++//! 楼梯请求的权威值、历史表与几何基础；完整 producer 位于现有 decorator 模块。
+ use glam::Vec2;
+ 
+ use crate::resources::walls::WallId;
+@@ -262,38 +261,94 @@
+     f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
+ }
+ 
+-/// One 0x150-byte element of `PlayermadeStairsAssemblyRequests` (native
+-/// `PlayermadeStairsAssemblyParams`, the type `length_ws` 0x140959ca0 belongs to).
+-///
+-/// Only the fields consumed by `structure_outline` (0x140959fc0, element walk
+-/// 0x14095a387 and `FUN_14095fca0`) are modelled; the remaining bytes of the
+-/// native record (`AlignKind`s, anchors, ...) belong to the assembly producer
+-/// (`playermade_stairs_assemble`) and are **not recovered here**:
+-///
+-/// | native offset | field |
+-/// |---|---|
+-/// | `+0x08/+0x10` | `positions` (`Vec<Vec2>`, xz of the sampled stair path) |
+-/// | `+0x40/+0x48` | `heights` (`Vec<f32>`, same sample count) |
+-/// | `+0x58/+0x60` | `widths` (`Vec<f32>`, outline adds 0.3 and uses half) |
+-/// | `+0x70/+0x78` | `tangents` (`Vec<Vec2>`, normalized and rotated to a left normal) |
+-/// | `+0x128/+0x12c` | `segment` (two u32 endpoints compared with `OutlineStairsCmd::segment`) |
+-///
+-/// Field names for the four vectors are inferred from their arithmetic use.
+-#[derive(Clone, Debug, PartialEq)]
++/// 原请求中实际发布的端点位置和出射方向；这是有向边的值。
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub struct AdjustedStairEdge {
++    pub position: Vec2,
++    pub outgoing_dir: Vec2,
++}
++
++/// 原采样历史的位级元数据；f32 风格字段按原 u32 比较，保留 NaN payload。
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct StairSamplesMetadata {
++    pub info_28: u32,
++    pub extra_08: u32,
++    pub extra_0c: u32,
++    pub removed_support: bool,
++    pub extra_10: u8,
++}
++
++/// 原历史 value 为 0x70；桶的 0x78 stride 还包含一个独立的八字节 key。
++#[derive(Clone, Debug)]
++pub struct SampledStairsPoints {
++    pub points: Vec<glam::Vec3>,
++    pub tangents: Vec<Vec2>,
++    pub widths: Vec<f32>,
++    /// 第四 Vec 目前只锁定四字节元素；原 interpolate 仅保留或释放，不猜其数值类型。
++    pub auxiliary_words: Vec<u32>,
++    pub metadata: StairSamplesMetadata,
++}
++
++/// 原完整装配器实际写入两种值；专名还未锁定，保留观测 variant。
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum StairArchWallSupportType {
++    Kind0,
++    Kind1,
++}
++
++/// 原 prev_requests 返回的真实子对象，统一拥有三个前帧表。
++#[derive(Clone, Debug, Default)]
++pub struct PreviousStairsAssemblyRequests {
++    pub sampled_points: hashbrown::HashMap<
++        StairGraphEdgeIdentity, SampledStairsPoints, std::hash::RandomState,
++    >,
++    pub arch_wall_supports: hashbrown::HashMap<
++        StairGraphEdgeIdentity, StairArchWallSupportType, std::hash::RandomState,
++    >,
++    pub sub_segments: StairSubSegmentMap,
++}
++
++/// 原 0x150 请求的完整值；曲线是唯一采样路径，不维护 positions 镜像。
++#[derive(Clone, Debug)]
+ pub struct PlayermadeStairsAssemblyParams {
+-    pub positions: Vec<Vec2>,
++    pub curve: utils::curve::Curve2,
+     pub heights: Vec<f32>,
+     pub widths: Vec<f32>,
+     pub tangents: Vec<Vec2>,
+-    pub segment: super::stairs_state::StairSegment,
+-}
+-
+-/// B `country_core::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests`
+-/// (a `Res<>` of `structure_outline`; element stride 0x150, vec ptr `+8`, len `+0x10`).
+-/// Its producer (`playermade_stairs_assemble`) is a separate, still-unrecovered owner.
+-#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default, PartialEq)]
++    /// 原装配器以 MOVSS/UCOMISS 消费；具体业务专名仍待完整装配器复原。
++    pub auxiliary_samples: Vec<f32>,
++    pub interpolated_curve: Option<utils::curve::Curve3>,
++    pub nodes: [(StairNodeAnchor, u8); 2],
++    pub terrain_contacts: bitvec::vec::BitVec<usize, bitvec::order::Lsb0>,
++    pub segment: StairSegment,
++    pub sub_segments: StairSubSegments,
++    pub dirty: bool,
++}
++
++impl PlayermadeStairsAssemblyParams {
++    pub fn length_ws(&self) -> f32 {
++        length_ws(&self.curve.points, &self.heights)
++    }
++}
++
++/// 请求、双向业务图和历史表的唯一 owner；两个图各自保留有向边语义。
++#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+ pub struct PlayermadeStairsAssemblyRequests {
+     pub requests: Vec<PlayermadeStairsAssemblyParams>,
++    pub alignments: petgraph::graphmap::DiGraphMap<
++        crate::resources::walls::decorator::DecoratorId, AlignKind, std::hash::RandomState,
++    >,
++    pub adjusted_edges: petgraph::graphmap::DiGraphMap<
++        crate::resources::walls::decorator::DecoratorId, AdjustedStairEdge, std::hash::RandomState,
++    >,
++    pub previous: PreviousStairsAssemblyRequests,
++}
++
++impl PlayermadeStairsAssemblyRequests {
++    /// 原 0x140274480 返回 +0x138 的历史子对象，不能返回 current Vec。
++    pub fn prev_requests(&self) -> &PreviousStairsAssemblyRequests {
++        &self.previous
++    }
+ }
+ 
+ #[cfg(test)]

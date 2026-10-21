@@ -1,0 +1,524 @@
+--- a/tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs
++++ b/tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs
+@@ -15,7 +15,10 @@
+ use super::decorator::DecoratorId;
+ use glam::Vec2;
+ use serde::{Deserialize, Serialize};
+-use utils::geometry::{Rectangle2d, Rectangle3d};
++use utils::geometry::{Rectangle3d, Triangle};
++use crate::systems::collision::world::RaycastMeshData;
++
++pub use super::decorator_outline::{DecoratorCollisionOutline, DecoratorOutline};
+ 
+ /// B DecoratorSubtype：装饰子类型（u8；空=0x1a）。
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+@@ -54,7 +57,7 @@
+     }
+ }
+ 
+-/// B DecoratorLibKey：{subtype, variant} 复合键。
++/// 装饰网格逻辑键：subtype与rank；保留现variant字段名称作为rank。
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+ pub struct DecoratorLibKey {
+     pub subtype: u8,
+@@ -63,48 +66,44 @@
+ 
+ impl DecoratorLibKey {
+     /// 0x140b25c90（O；PDB 名与 impl$1::get::closure$0 两参交换同址）：构造。
+-    pub fn new(subtype: u8, variant: u8) -> Self {
+-        Self { subtype, variant }
+-    }
+-}
+-
+-/// B DecoratorCollision：装饰碰撞体（Rectangle3d + parry3d cuboid + IsoTransform）。
+-/// native-physics 碰撞体在可选的 `native-physics` feature 域（库外），此处承载
+-/// 几何记录。
+-#[derive(Clone, Copy, Debug, PartialEq)]
++    pub fn new(subtype: u8, rank: u8) -> Self {
++        Self { subtype, variant: rank }
++    }
++}
++
++/// 原装饰碰撞记录：拥有三角形、共享真实物理网格，并保留原Rectangle3d。
++/// 三角形clone会复制缓冲，mesh只增加同一Arc的引用；此值不能Copy。
++#[derive(Clone)]
+ pub struct DecoratorCollision {
+-    /// 三维包围矩形（footprint + y 界）。
++    pub triangles: Vec<Triangle>,
++    pub mesh: Arc<RaycastMeshData>,
+     pub bounds: Rectangle3d,
+-    /// I：墙空间尺寸（dims_wall_space）。
+-    pub dims: Vec2,
++}
++
++impl std::fmt::Debug for DecoratorCollision {
++    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        formatter.debug_struct("DecoratorCollision")
++            .field("triangles", &self.triangles)
++            .field("mesh_hash", &self.mesh.hash)
++            .field("bounds", &self.bounds)
++            .finish()
++    }
+ }
+ 
+ impl DecoratorCollision {
+-    /// 0x140b25ca0（O）：空碰撞体（Rectangle3d + parry3d cuboid + IsoTransform
+-    /// 三连结构全零初始化 0x50+ 字节）。parry3d 部分为可选 feature 域。
++    /// 原140b25ca0构造真实零cuboid、空三角形和单位bounds；不是默认无shape记录。
++    #[cfg(feature = "native-physics")]
+     pub fn empty() -> Self {
+         Self {
+-            bounds: Rectangle3d {
+-                footprint: Rectangle2d::new(Vec2::ZERO, Vec2::ZERO, Vec2::X),
+-                bottom: 0.0,
+-                top: 0.0,
+-            },
+-            dims: Vec2::ZERO,
++            triangles: Vec::new(),
++            mesh: Arc::new(RaycastMeshData::new_cuboid_at(glam::Vec3::ZERO, glam::Vec3::ZERO)),
++            bounds: Rectangle3d::new(glam::Vec3::ZERO, glam::Vec3::ONE, Vec2::X),
+         }
+     }
+-
+-    /// 行 118（内联，I）：墙空间尺寸。
+-    pub fn dims_wall_space(&self) -> Vec2 {
+-        self.dims
+-    }
+-}
+-
+-/// Legacy host record retained for unmigrated bbox/catalog callers.
+-///
+-/// This is not native DerivedDecoratorInfo: the original is a borrowed view of
+-/// the subtype and mesh libraries. The unique backing map and four mesh tables
+-/// still need their actual producer/schema migration; do not treat this record
+-/// or an empty library as proof that those assets are loaded.
++}
++
++/// 尚待调用方迁移的旧bbox元数据；不在canonical四表或ID表中存储。
++/// 原DerivedDecoratorInfo是两个真实owner的借用视图，不能用本记录替代。
+ #[derive(Clone, Copy, Debug, PartialEq)]
+ pub struct LegacyDerivedDecoratorInfoRecord {
+     /// 子类型。
+@@ -137,7 +136,7 @@
+         self.subtype
+     }
+ 
+-    /// 行 285（内联，I）：墙空间尺寸（bbx 差值）。
++    /// 旧宿主bbox差值方言；不是尚未绑定完整signature的原dims_wall_space。
+     pub fn dims_wall_space(&self) -> Vec2 {
+         Vec2::new(
+             self.bbx_max.x - self.bbx_min.x,
+@@ -145,27 +144,12 @@
+         )
+     }
+ 
+-    /// 0x141fdc7b0（O，13KB）：bbx_ls（库空间包围盒）。
++    /// 旧宿主min/max元数据，不声称复现原13KB网格范围算法。
+     pub fn bbx_ls(&self) -> (glam::Vec3, glam::Vec3) {
+         (self.bbx_min, self.bbx_max)
+     }
+ 
+-    /// 行 298（内联，I，经 impl$6 尾跳转发）：碰撞网格。U：网格数据待取证。
+-    pub fn collision_mesh(&self) -> DecoratorCollision {
+-        DecoratorCollision {
+-            bounds: Rectangle3d::new(
+-                (self.bbx_min + self.bbx_max) * 0.5,
+-                self.bbx_max - self.bbx_min,
+-                Vec2::X,
+-            ),
+-            dims: self.dims_wall_space(),
+-        }
+-    }
+-
+-    /// 行 309（内联，I）：交互网格。U：网格数据待取证。
+-    pub fn interaction_mesh(&self) -> DecoratorCollision {
+-        self.collision_mesh()
+-    }
++    // 此legacy元数据没有真实mesh owner，不能从bbox伪造canonical碰撞值。
+ }
+ 
+ impl IntoDecoratorSubtype for LegacyDerivedDecoratorInfoRecord {
+@@ -175,101 +159,91 @@
+     }
+ }
+ 
+-/// Unique current subtype owner, still using legacy host record payloads.
+-/// Native ID→DecoratorSubtype representation migration remains with its producer.
++/// 原装饰ID到子类型的唯一权威表，payload直接是DecoratorSubtype。
+ #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+ pub struct DerivedDecoratorSubtypes {
+-    map: HashMap<u32, Arc<LegacyDerivedDecoratorInfoRecord>>,
++    map: HashMap<u32, DecoratorSubtype>,
+ }
+ 
+ impl DerivedDecoratorSubtypes {
+-    /// 0x140b25b60（O）：查询，未命中 panic。
+-    pub fn get(&self, id: u32) -> Arc<LegacyDerivedDecoratorInfoRecord> {
+-        self.map.get(&id).cloned().unwrap_or_else(|| {
++    /// 原140b25b60：不存在的实际ID必须失败，不能退回空子类型。
++    pub fn get(&self, id: u32) -> DecoratorSubtype {
++        self.map.get(&id).copied().unwrap_or_else(|| {
+             panic!("The decorator subtype library doesn't contain subtype {}", id)
+         })
+     }
+ 
+-    /// 插入（供网格库维护；原为消费方注册，0x140b25b60 对面）。
+-    pub fn insert(&mut self, id: u32, info: Arc<LegacyDerivedDecoratorInfoRecord>) {
+-        self.map.insert(id, info);
+-    }
+-}
+-
+-/// B DecoratorMeshLibrary：4 表（map1@+0x0 collision、map2@+0x30 interaction、
+-/// map3@+0x60 outline、map4@+0x90 collision_outline；insert 0x140b262a0 克隆后插
+-/// 4 表）。outline 表在 decorator_outline.rs 专项（本文件外）；此处以同一
+-/// LegacyDerivedDecoratorInfoRecord 记录承载并登记该边界。作为资源注册（SystemParam 消费）。
+-/// These legacy values are not genuine native collision/outline payloads.
++    pub fn insert(&mut self, id: u32, subtype: DecoratorSubtype) {
++        self.map.insert(id, subtype);
++    }
++}
++
++/// 原四张拥有真实值的网格表；默认空表不表示资产加载完成。
+ #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+ pub struct DecoratorMeshLibrary {
+-    /// map1@+0x0：碰撞表。
+-    pub collision: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
+-    /// map2@+0x30：交互表。
+-    pub interaction: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
+-    /// map3@+0x60：描边表（专项类型在 decorator_outline.rs）。
+-    pub outline: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
+-    /// map4@+0x90：碰撞描边表。
+-    pub collision_outline: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,
++    pub collision: HashMap<DecoratorLibKey, DecoratorCollision>,
++    pub interaction: HashMap<DecoratorLibKey, DecoratorCollision>,
++    pub outline: HashMap<DecoratorLibKey, DecoratorOutline>,
++    pub collision_outline: HashMap<DecoratorLibKey, DecoratorCollisionOutline>,
+ }
+ 
+ impl DecoratorMeshLibrary {
+-    /// 0x140b25ef0（O）：collision 与 interaction 插同一值。
++    /// 原140b25ef0：先复制三角形及共享Arc，再逐表插入并释放被替换的旧值。
+     pub fn insert_collision_and_interaction_as_same(
+         &mut self,
+         key: DecoratorLibKey,
+-        info: Arc<LegacyDerivedDecoratorInfoRecord>,
++        collision: DecoratorCollision,
++        outline: DecoratorOutline,
++        collision_outline: DecoratorCollisionOutline,
+     ) {
+-        self.collision.insert(key, info.clone());
+-        self.interaction.insert(key, info);
+-    }
+-
+-    /// 0x140b262a0（O）：Arc 克隆后插 4 表。
+-    pub fn insert(&mut self, key: u32, info: Arc<LegacyDerivedDecoratorInfoRecord>) {
+-        let lib_key = DecoratorLibKey::new(key as u8, 0);
+-        self.insert_collision_and_interaction_as_same(lib_key, info.clone());
+-        self.outline.insert(lib_key, info.clone());
+-        self.collision_outline.insert(lib_key, info);
+-    }
+-
+-    /// 0x140b26690（O）：map3@+0x60 描边查询。
+-    pub fn get_outline(&self, key: DecoratorLibKey) -> Option<Arc<LegacyDerivedDecoratorInfoRecord>> {
+-        self.outline.get(&key).cloned()
+-    }
+-
+-    /// 0x140b267f0（O）：map4@+0x90 碰撞描边查询。
+-    pub fn get_collision_outline(&self, key: DecoratorLibKey) -> Option<Arc<LegacyDerivedDecoratorInfoRecord>> {
+-        self.collision_outline.get(&key).cloned()
+-    }
+-
+-    /// 行 223（内联）：碰撞 bbx（库空间）。
+-    pub fn get_collision_bbx_ls(&self, key: DecoratorLibKey) -> Option<(glam::Vec3, glam::Vec3)> {
+-        self.collision.get(&key).map(|i| i.bbx_ls())
+-    }
+-
+-    /// 0x141fdc7b0（O）：dims_wall_space（bbx 差值）。未命中 fmt panic
+-    /// "The decorator mesh library doesn't contain "（0x142fcaa58，file
+-    /// decorator_subtype.rs 0x142fcaa68）。
+-    pub fn dims_wall_space(&self, key: DecoratorLibKey) -> Vec2 {
+-        self.collision
+-            .get(&key)
+-            .map(|i| i.dims_wall_space())
+-            .unwrap_or_else(|| {
+-                panic!(
+-                    "The decorator mesh library doesn't contain {}",
+-                    key.subtype
+-                )
+-            })
+-    }
+-
+-    /// 行 249（内联，I）：碰撞网格。
+-    pub fn collision_mesh(&self, key: DecoratorLibKey) -> Option<DecoratorCollision> {
+-        self.collision.get(&key).map(|i| i.collision_mesh())
+-    }
+-
+-    /// 行 258（内联，I）：交互网格。
+-    pub fn interaction_mesh(&self, key: DecoratorLibKey) -> Option<DecoratorCollision> {
+-        self.interaction.get(&key).map(|i| i.interaction_mesh())
++        let collision_copy = collision.clone();
++        drop(self.collision.insert(key, collision_copy));
++        drop(self.interaction.insert(key, collision));
++        drop(self.outline.insert(key, outline));
++        drop(self.collision_outline.insert(key, collision_outline));
++    }
++
++    /// 原140b262a0保留第一次collision复制与最终释放顺序，不合并成事务或move。
++    pub fn insert(
++        &mut self,
++        key: DecoratorLibKey,
++        collision: DecoratorCollision,
++        interaction: DecoratorCollision,
++        outline: DecoratorOutline,
++        collision_outline: DecoratorCollisionOutline,
++    ) {
++        let collision_copy = collision.clone();
++        drop(self.collision.insert(key, collision_copy));
++        drop(self.interaction.insert(key, interaction));
++        drop(self.outline.insert(key, outline));
++        drop(self.collision_outline.insert(key, collision_outline));
++        drop(collision);
++    }
++
++    /// 现安全host适配：借用同一碰撞表，不逐装饰物或逐帧复制Vec。
++    pub fn collision_record(&self, key: DecoratorLibKey) -> &DecoratorCollision {
++        self.collision.get(&key).unwrap_or_else(|| Self::missing_key(key))
++    }
++
++    pub fn interaction_record(&self, key: DecoratorLibKey) -> &DecoratorCollision {
++        self.interaction.get(&key).unwrap_or_else(|| Self::missing_key(key))
++    }
++
++    /// 原140b26690返回表内值地址；显式None载荷与缺键是不同情况。
++    pub fn get_outline(&self, key: DecoratorLibKey) -> &DecoratorOutline {
++        self.outline.get(&key).unwrap_or_else(|| Self::missing_key(key))
++    }
++
++    /// 原140b267f0同样保留required失败，不生成默认描边。
++    pub fn get_collision_outline(&self, key: DecoratorLibKey) -> &DecoratorCollisionOutline {
++        self.collision_outline.get(&key).unwrap_or_else(|| Self::missing_key(key))
++    }
++
++    fn missing_key(key: DecoratorLibKey) -> ! {
++        panic!(
++            "The decorator mesh library doesn't contain ({}, {})",
++            key.subtype, key.variant,
++        )
+     }
+ }
+ 
+@@ -283,8 +257,7 @@
+ /// Actual unique resource owners used by native DerivedDecoratorInfo.
+ ///
+ /// The SystemParam replaces the old registration-only DecoratorSubtypes shell.
+-/// The backing map still contains legacy host records during the explicit
+-/// producer migration; no second subtype table or mesh library is introduced.
++/// 同一张原subtype表与同一mesh library，不复制或缓存另一份registry。
+ #[derive(SystemParam)]
+ pub struct DerivedDecoratorInfoResources<'w> {
+     subtypes: Res<'w, DerivedDecoratorSubtypes>,
+@@ -304,8 +277,7 @@
+ /// Borrowed native DerivedDecoratorInfo owner pair (From140b26a70/8B).
+ ///
+ /// This lifetime-safe view shares the existing canonical resources. It does not
+-/// clone an Arc, cache a second subtype map, or claim the legacy collision and
+-/// outline table payloads are restored.
++/// clone an Arc or cache a second subtype map; queries borrow the actual owners.
+ #[derive(Clone, Copy, Debug)]
+ pub struct DerivedDecoratorInfoView<'a> {
+     subtypes: &'a DerivedDecoratorSubtypes,
+@@ -322,10 +294,9 @@
+ 
+     /// Native231B lookup returns None for a missing actual decorator ID.
+     ///
+-    /// Borrow directly from the unique stored entry during the explicit legacy
+-    /// map migration. Do not obtain a temporary cloned Arc through get(id).
++    /// 直接借用唯一ID表的真实值，不经临时Arc或影子记录。
+     pub fn try_get_subtype(&self, id: DecoratorId) -> Option<&'a DecoratorSubtype> {
+-        self.subtypes.map.get(&id.0).map(|entry| &entry.subtype)
++        self.subtypes.map.get(&id.0)
+     }
+ 
+     /// Native8B required lookup preserves the missing-ID failure.
+@@ -339,7 +310,7 @@
+         self.subtypes
+     }
+ 
+-    /// The real second owner; its current legacy payload migration is separate.
++    /// 借出同一四表资源，消费者按实际key读取真实mesh与bounds。
+     pub fn mesh_library(&self) -> &'a DecoratorMeshLibrary {
+         self.mesh_lib
+     }
+@@ -363,23 +334,19 @@
+         assert_eq!(DecoratorSubtype::first(), DecoratorSubtype(0));
+     }
+ 
++    #[cfg(feature = "native-physics")]
+     #[test]
+     fn mesh_library_insert_and_query_4_tables() {
+         let mut lib = DecoratorMeshLibrary::default();
+-        let info = Arc::new(LegacyDerivedDecoratorInfoRecord::new(
+-            DecoratorSubtype(1),
+-            glam::Vec3::new(0.0, 0.0, 0.0),
+-            glam::Vec3::new(1.0, 2.0, 3.0),
+-        ));
+-        let key = DecoratorLibKey::new(1, 0);
+-        lib.insert(1, info);
+-
+-        assert!(lib.get_outline(key).is_some());
+-        assert!(lib.get_collision_outline(key).is_some());
+-        assert_eq!(lib.get_collision_bbx_ls(key).unwrap().1.z, 3.0);
+-        assert_eq!(lib.dims_wall_space(key), Vec2::new(1.0, 3.0));
+-        assert!(lib.collision_mesh(key).is_some());
+-        assert!(lib.interaction_mesh(key).is_some());
++        let key = DecoratorLibKey::new(1, 4);
++        lib.insert_collision_and_interaction_as_same(
++            key, DecoratorCollision::empty(),
++            DecoratorOutline::None, DecoratorCollisionOutline::None,
++        );
++        assert!(matches!(lib.get_outline(key), DecoratorOutline::None));
++        assert!(matches!(lib.get_collision_outline(key), DecoratorCollisionOutline::None));
++        assert!(Arc::ptr_eq(&lib.collision_record(key).mesh, &lib.interaction_record(key).mesh));
++        assert_eq!(lib.collision_record(key).bounds.footprint.size, Vec2::ONE);
+     }
+ 
+     #[test]
+@@ -401,17 +368,12 @@
+     fn derived_view_borrows_existing_entry_without_cloning_arc() {
+         let mut subtypes = DerivedDecoratorSubtypes::default();
+         let mesh_lib = DecoratorMeshLibrary::default();
+-        let entry = Arc::new(LegacyDerivedDecoratorInfoRecord::new(
+-            DecoratorSubtype(20), glam::Vec3::ZERO, glam::Vec3::ONE,
+-        ));
+-        subtypes.insert(7, entry.clone());
+-        let owners = Arc::strong_count(&entry);
++        subtypes.insert(7, DecoratorSubtype(20));
+         let view = DerivedDecoratorInfoView::new(&subtypes, &mesh_lib);
+         assert!(core::ptr::eq(view.subtype_library(), &subtypes));
+         assert!(core::ptr::eq(view.mesh_library(), &mesh_lib));
+-        assert!(core::ptr::eq(view.try_get_subtype(DecoratorId(7)).unwrap(), &entry.subtype));
++        assert!(core::ptr::eq(view.try_get_subtype(DecoratorId(7)).unwrap(), subtypes.map.get(&7).unwrap()));
+         assert_eq!(view.subtype(DecoratorId(7)), DecoratorSubtype(20));
+-        assert_eq!(Arc::strong_count(&entry), owners);
+         assert_eq!(view.try_get_subtype(DecoratorId(8)), None);
+     }
+ 
+@@ -439,9 +401,7 @@
+             assert!(core::ptr::eq(view.mesh_library(), world.resource::<DecoratorMeshLibrary>()));
+             assert_eq!(view.try_get_subtype(DecoratorId(7)), None);
+         }
+-        world.resource_mut::<DerivedDecoratorSubtypes>().insert(7, Arc::new(
+-            LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(5), glam::Vec3::ZERO, glam::Vec3::ONE),
+-        ));
++        world.resource_mut::<DerivedDecoratorSubtypes>().insert(7, DecoratorSubtype(5));
+         let resources = state.get(&world);
+         assert_eq!(resources.as_view().subtype(DecoratorId(7)), DecoratorSubtype(5));
+     }
+@@ -449,3 +409,107 @@
+ }
+ 
+ pub mod placement;
++
++
++#[cfg(all(test, feature = "native-physics"))]
++mod canonical_collision_regressions {
++    use super::*;
++    use glam::Vec3;
++
++    fn collision(size: Vec3) -> DecoratorCollision {
++        DecoratorCollision {
++            triangles: vec![Triangle::new(Vec3::ZERO, Vec3::X, Vec3::Y)],
++            mesh: Arc::new(RaycastMeshData::new_cuboid_at(size, Vec3::ZERO)),
++            bounds: Rectangle3d::new(Vec3::ZERO, size, Vec2::X),
++        }
++    }
++
++    #[test]
++    fn collision_clone_copies_triangles_and_shares_the_actual_mesh() {
++        let original = collision(Vec3::new(2.0, 3.0, 4.0));
++        let cloned = original.clone();
++        assert_eq!(original.triangles, cloned.triangles);
++        assert_ne!(original.triangles.as_ptr(), cloned.triangles.as_ptr());
++        assert!(Arc::ptr_eq(&original.mesh, &cloned.mesh));
++        assert_eq!(original.bounds, cloned.bounds);
++        assert!(original.mesh.shape_ref().unwrap().as_cuboid().is_some());
++    }
++
++    #[test]
++    fn shared_insertion_keeps_distinct_vecs_and_releases_all_replaced_owners() {
++        let mut lib = DecoratorMeshLibrary::default();
++        let key = DecoratorLibKey::new(3, 2);
++        let first = collision(Vec3::ONE);
++        let previous_mesh = Arc::downgrade(&first.mesh);
++        lib.insert_collision_and_interaction_as_same(
++            key, first, DecoratorOutline::Lines(vec![Vec3::ZERO, Vec3::X]),
++            DecoratorCollisionOutline::Sphere(2.0),
++        );
++        let c = lib.collision_record(key);
++        let i = lib.interaction_record(key);
++        assert_ne!(c.triangles.as_ptr(), i.triangles.as_ptr());
++        assert!(Arc::ptr_eq(&c.mesh, &i.mesh));
++        assert_eq!(Arc::strong_count(&c.mesh), 2);
++        let replacement = collision(Vec3::splat(2.0));
++        lib.insert_collision_and_interaction_as_same(
++            key, replacement, DecoratorOutline::None, DecoratorCollisionOutline::None,
++        );
++        assert!(previous_mesh.upgrade().is_none());
++        assert!(matches!(lib.get_outline(key), DecoratorOutline::None));
++        assert!(matches!(lib.get_collision_outline(key), DecoratorCollisionOutline::None));
++    }
++
++    #[test]
++    fn four_table_insert_preserves_different_collision_and_interaction() {
++        let mut lib = DecoratorMeshLibrary::default();
++        let key = DecoratorLibKey::new(7, 5);
++        let collision_value = collision(Vec3::new(2.0, 3.0, 4.0));
++        let collision_probe = collision_value.mesh.clone();
++        let interaction = collision(Vec3::new(5.0, 6.0, 7.0));
++        let interaction_probe = interaction.mesh.clone();
++        let moved_triangle_address = interaction.triangles.as_ptr();
++        lib.insert(key, collision_value, interaction, DecoratorOutline::Mesh("decorators/window".into()),
++            DecoratorCollisionOutline::Lines(vec![Vec3::ZERO, Vec3::Y]));
++        let c = lib.collision_record(key);
++        let i = lib.interaction_record(key);
++        assert!(Arc::ptr_eq(&c.mesh, &collision_probe));
++        assert!(Arc::ptr_eq(&i.mesh, &interaction_probe));
++        assert!(!Arc::ptr_eq(&c.mesh, &i.mesh));
++        assert_eq!(Arc::strong_count(&collision_probe), 2);
++        assert_eq!(Arc::strong_count(&interaction_probe), 2);
++        assert_eq!(i.triangles.as_ptr(), moved_triangle_address);
++        assert_eq!(c.bounds.footprint.size.x, 2.0);
++        assert_eq!(c.bounds.top - c.bounds.bottom, 3.0);
++        assert_eq!(i.bounds.footprint.size.x, 5.0);
++        assert_eq!(i.bounds.top - i.bounds.bottom, 6.0);
++    }
++
++    #[test]
++    fn exact_rank_missing_is_failure_while_stored_none_is_valid() {
++        use std::panic::{catch_unwind, AssertUnwindSafe};
++        let mut lib = DecoratorMeshLibrary::default();
++        let key = DecoratorLibKey::new(4, 1);
++        lib.insert_collision_and_interaction_as_same(
++            key, collision(Vec3::ONE), DecoratorOutline::None, DecoratorCollisionOutline::None,
++        );
++        assert!(core::ptr::eq(lib.get_outline(key), lib.outline.get(&key).unwrap()));
++        assert!(core::ptr::eq(lib.get_collision_outline(key), lib.collision_outline.get(&key).unwrap()));
++        let wrong_rank = DecoratorLibKey::new(4, 0);
++        assert!(catch_unwind(AssertUnwindSafe(|| lib.get_outline(wrong_rank))).is_err());
++        assert!(catch_unwind(AssertUnwindSafe(|| lib.get_collision_outline(wrong_rank))).is_err());
++        assert!(catch_unwind(AssertUnwindSafe(|| lib.collision_record(wrong_rank))).is_err());
++        assert!(catch_unwind(AssertUnwindSafe(|| lib.interaction_record(wrong_rank))).is_err());
++    }
++
++    #[test]
++    fn empty_is_a_real_zero_cuboid_with_unit_bounds() {
++        let empty = DecoratorCollision::empty();
++        assert!(empty.triangles.is_empty());
++        let cuboid = empty.mesh.shape_ref().unwrap().as_cuboid().unwrap();
++        assert_eq!(cuboid.half_extents.x, 0.0);
++        assert_eq!(cuboid.half_extents.y, 0.0);
++        assert_eq!(cuboid.half_extents.z, 0.0);
++        assert_eq!(empty.bounds, Rectangle3d::new(Vec3::ZERO, Vec3::ONE, Vec2::X));
++        assert_eq!(empty.mesh.local_transform().translation, Vec3::ZERO);
++    }
++}

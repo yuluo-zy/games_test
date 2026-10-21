@@ -1,0 +1,7 @@
+# 必要canonical消费者合同复核
+
+通过本source最窄合同，允许同旧claim合法delegated候选。typed读取/测试夹具仅适配唯一canonical图，不造fallback、镜像表或geometry，不改变旧未恢复算法完成状态。outline使用真正curve.points并配同owner完整Params，保原截断/点序/fixture显式字段；不把geometry私有mirror重新加回。
+
+全局static项已核独立slot/target PE bytes与实际interpolate load/compare：唯一AtomicBool初true是现代安全表达，原写方/排序尚未证不伪造UI；保唯一canonicalstatic、无平行Resource、无测试并发store污染。前三source无新Mirror tests，global须被真实interpolate使用后才称消费闭合。
+
+只批准合同对应必要hunk，不运行Cargo/生产；source后另独审，before/owner由baseline.json/live show绑定。后两Curve/WallSpace另等完整原f32/失败控制流设计合同，不根据本审查授权宽改通用数学。

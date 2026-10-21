@@ -340,3 +340,140 @@ fn dropped_uncompiled_graph_cancels_imports_and_leaves_the_session_reusable() {
     bridge.cancel_built(retry).unwrap();
     assert!(buffers.release(&target));
 }
+
+#[test]
+fn compute_entry_points_share_app_constants_keep_cancelled_chunks_and_isolate_other_apps() {
+    use country_core::render::rg_helpers::rg_boundary::{RenderGraph as _, StagingAlloc};
+    use rhapsody::resource::DynamicConstantsChunk;
+    fn chunk(staging: &StagingAlloc) -> &DynamicConstantsChunk {
+        staging.lease.as_ref().unwrap().downcast_ref().unwrap()
+    }
+    let Some(mut bridge) = bridge() else { return };
+    let raster = bridge.raster_resources().clone();
+    let before = raster.dynamic_constants().lock().stats();
+    let ((first, second), built) = bridge
+        .build_frame(|frame| {
+            let first = frame.with_compute(|compute| compute.allocate_dynamic(64))?;
+            let second = frame.with_compute(|compute| compute.allocate_dynamic(64))?;
+            Ok((first, second))
+        })
+        .unwrap();
+    let after = raster.dynamic_constants().lock().stats();
+    assert_eq!(
+        after.allocations - before.allocations,
+        2,
+        "both actual with_compute entries must allocate from this App owner"
+    );
+    assert_eq!(after.page_creations - before.page_creations, 1);
+    assert!(Arc::ptr_eq(&chunk(&first).buffer, &chunk(&second).buffer));
+    assert!(chunk(&first).offset + chunk(&first).size <= chunk(&second).offset);
+    chunk(&first).write_bytes(&[0x35; 64]).unwrap();
+    chunk(&second).write_bytes(&[0xa7; 64]).unwrap();
+    bridge.cancel_built(built).unwrap();
+    // 取消只释放图 owner，仍被 CPU 租约保留的内容不能被下一入口覆盖。
+    let (third, built) = bridge
+        .build_frame(|frame| frame.with_compute(|compute| compute.allocate_dynamic(64)))
+        .unwrap();
+    assert!(Arc::ptr_eq(&chunk(&first).buffer, &chunk(&third).buffer));
+    assert!(chunk(&second).offset + chunk(&second).size <= chunk(&third).offset);
+    chunk(&third).write_bytes(&[0x59; 64]).unwrap();
+    bridge.cancel_built(built).unwrap();
+    for (staging, expected) in [(&first, 0x35), (&second, 0xa7), (&third, 0x59)] {
+        let chunk = chunk(staging);
+        let mut actual = [0; 64];
+        chunk.buffer.read_bytes(chunk.offset, &mut actual).unwrap();
+        assert_eq!(actual, [expected; 64]);
+    }
+    let device = bridge.hosts().buffers.graphics_device().clone();
+    let mut other =
+        CoreRenderBridge::new(device, ".", Arc::new(AssetShaderLibrary::new())).unwrap();
+    let (other_chunk, built) = other
+        .build_frame(|frame| frame.with_compute(|compute| compute.allocate_dynamic(64)))
+        .unwrap();
+    assert!(
+        !Arc::ptr_eq(&chunk(&first).buffer, &chunk(&other_chunk).buffer),
+        "different Apps on one Device must retain distinct constants owners"
+    );
+    assert_eq!(
+        raster.dynamic_constants().lock().stats().allocations - before.allocations,
+        3
+    );
+    assert_eq!(
+        other
+            .raster_resources()
+            .dynamic_constants()
+            .lock()
+            .stats()
+            .allocations,
+        1
+    );
+    other.cancel_built(built).unwrap();
+}
+
+#[test]
+fn completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks() {
+    let Some(mut bridge) = bridge() else { return };
+    let buffers = bridge.hosts().buffers.clone();
+    let device = bridge.with_session(|session| session.backend.device().clone());
+    let mut world = bevy_ecs::world::World::new();
+    bridge.install_asset_libraries(&mut world).unwrap();
+    let canonical = world.resource::<country_core::render::device::GraphicsDeviceResource>();
+    let target = GraphicsDevice::create_buffer(
+        canonical.device(), &BufferDesc::new(8, 0x22, 2), "compiled maintenance target", None,
+    ).unwrap();
+    let first_retired = Rc::new(Cell::new(false));
+    let first_flag = first_retired.clone();
+    let (_, first) = bridge.render_frame(|frame| {
+        let id = frame.import_buffer(&target, 0)?;
+        frame.with_compute(|compute| {
+            rg_buffer_copy_from_slice_u32(compute, id.raw(), 8, &[11, 12], UploadContentVersion::Unknown)
+        })?;
+        frame.with_graph(|graph| {
+            graph.export(id, 0x26)?;
+            graph.on_retire(move || first_flag.set(true));
+            Ok(())
+        })
+    }).unwrap();
+    // 仅测试先确认全部真实回执完成，故意不走会 finish 旧帧的 session wait。
+    let mut completion = rhapsody::sync::SyncSet::EMPTY;
+    for point in &first.receipts {
+        completion.insert(*point);
+    }
+    assert!(!completion.is_empty());
+    device.wait(&completion, 10_000_000_000).unwrap();
+    assert!(completion.is_reached(&device.poll().unwrap()));
+    assert!(!first_retired.get());
+    assert_eq!(bridge.with_session(|session| session.pending_frame_count()), 1);
+
+    let second_retired = Rc::new(Cell::new(false));
+    let second_flag = second_retired.clone();
+    let (_, built) = bridge.build_frame(|frame| {
+        let id = frame.import_buffer(&target, 0)?;
+        frame.with_compute(|compute| {
+            rg_buffer_copy_from_slice_u32(compute, id.raw(), 8, &[21, 22], UploadContentVersion::Unknown)
+        })?;
+        frame.with_graph(|graph| {
+            graph.export(id, 0x26)?;
+            graph.on_retire(move || second_flag.set(true));
+            Ok(())
+        })
+    }).unwrap();
+    let compiled = bridge.compile_built(built).unwrap();
+    assert!(!first_retired.get(), "compile 不代替旧帧 finish");
+    assert!(!second_retired.get());
+    let imports_before = bridge.with_session(|session| session.frame_import_count());
+    assert!(imports_before > 0);
+    assert_eq!(bridge.collect_completed_frames().unwrap(), 1);
+    assert!(first_retired.get());
+    assert!(!second_retired.get(), "未提交 compiled 的 retire 回调不能被旧帧维护触发");
+    let imports_after = bridge.with_session(|session| session.frame_import_count());
+    assert!(imports_after > 0 && imports_after < imports_before,
+        "只清旧 graph marker，新 compiled 的导入必须保留");
+    let second = bridge.execute_compiled(compiled).unwrap();
+    assert!(!second.receipts.is_empty());
+    bridge.wait_submits_done(10_000_000_000).unwrap();
+    assert!(second_retired.get());
+    let expected: Vec<u8> = [21_u32, 22].into_iter().flat_map(u32::to_ne_bytes).collect();
+    assert_eq!(&buffers.mapped_slice_mut(&target).unwrap()[..8], expected);
+    GraphicsDevice::release_buffer(canonical.device(), &target);
+}

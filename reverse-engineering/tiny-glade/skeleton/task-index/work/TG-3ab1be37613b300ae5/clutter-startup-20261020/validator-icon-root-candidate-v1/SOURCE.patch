@@ -1,0 +1,194 @@
+--- a/tiny-glade/crates/systems/decorator/src/ui_systems/ui_place_decorator.rs
++++ b/tiny-glade/crates/systems/decorator/src/ui_systems/ui_place_decorator.rs
+@@ -23,7 +23,6 @@
+ use country_core::systems::mode_manager::RequestAppModeChange;
+ use country_core::systems::ui::resources::ui_state::UiState;
+ use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
+-use country_core::systems::ui::signifiers::UiAppendSignifier;
+ 
+ /// 初始化放置交互状态事件（lib.rs 符号；O：读+写对）。
+ #[derive(Event, Clone, Copy, Debug, Default)]
+@@ -79,35 +78,152 @@
+     let _ = &mut stream;
+ }
+ 
+-/// B 0x1407adb20（O 结构）：放置图标指示符。
+-/// 记录 {1, 1, pos, icon_byte, mesh 名经 SignifierFactory} → stream write。
+-pub fn show_decorator_icon(
++/// 原 1407adb20：以屏幕位置命名的真实图标工厂，不携带装饰 ID。
++pub fn show_decorator_icon(icon: u8, pos: glam::Vec2, stream: &mut UiSignifierStream) {
++    use country_core::systems::ui::signifiers::signifier_factory::SignifierFactory;
++    let name = format!("decorator_{pos:?}");
++    let factory = SignifierFactory::from_closure(
++        &name,
++        std::sync::Arc::new(move |meshes, shaders, commands| {
++            vec![decorator_cursor_icon(pos, icon, meshes, shaders, commands)]
++        }),
++    );
++    stream.write_factory(&factory);
++}
++
++/// 原 1407adcb0/492B：解析原类型图标表，交给现有二维 UI 组件与绘制消费方。
++pub fn decorator_cursor_icon(
++    pos: glam::Vec2,
+     icon: u8,
+-    pos: glam::Vec2,
+-    id: DecoratorId,
+-    stream: &mut UiSignifierStream,
+-) {
+-    let encoded = (u64::from(id.0)).rotate_right(32);
+-    stream.write(UiAppendSignifier {
+-        tag: 1,
+-        kind: 1,
+-        position: glam::Vec3::new(pos.x, pos.y, 0.0),
+-        scale: f32::from(icon),
+-        name: encoded,
+-    });
+-}
+-
+-/// B 0x1407adcb0（O 结构）：取色光标图标（SignifierEntityBuilder 族
+-/// 0x14089d9b0/0x14089dc90/0x14089dd50 + "link" 名 0x6b6e696c；宿主接线）。
+-pub fn decorator_cursor_icon(
+-    _ui: Res<UiState>,
+-    mut stream: ResMut<UiSignifierStream>,
+-) {
+-    stream.write(UiAppendSignifier {
+-        tag: 1,
+-        kind: 0,
+-        position: Default::default(),
+-        scale: 1.0,
+-        name: 0x6b6e696c, // 'link'（O：0x14079b860 名称常量）
+-    });
+-}
++    meshes: &country_core::asset_libraries::mesh_library::AssetMeshLibrary,
++    shaders: &country_core::asset_libraries::shader_library::AssetShaderLibrary,
++    commands: &mut Commands,
++) -> Entity {
++    use country_core::components::{Ui2DFollowMouse, Ui2dExtent, Ui2dImage, UiInactive};
++    use country_core::systems::ui::signifiers::signifier_factory::{
++        SignifierEntityBuilder, SignifierMesh,
++    };
++    let entity = SignifierEntityBuilder::new(SignifierMesh::Empty)
++        .animation_duration(0.0)
++        .build(meshes, shaders, commands);
++    commands.entity(entity).insert((
++        Ui2dExtent {
++            pos,
++            size: glam::Vec2::new(34.5, 58.0),
++        },
++        Ui2dImage::new(decorator_icon_name(icon)),
++        UiInactive,
++    ));
++    commands.entity(entity).insert(Ui2DFollowMouse);
++    entity
++}
++
++fn decorator_icon_name(icon: u8) -> &'static str {
++    match icon.wrapping_sub(0x38) {
++        0..=2 => "decorator_cursor_icon/window",
++        3 => "decorator_cursor_icon/chimney",
++        4 => "decorator_cursor_icon/lantern",
++        5 => "decorator_cursor_icon/flag",
++        // 原范围外类型也落 slot6；原 slot6/7 的两名字均为 clutter。
++        _ => "decorator_cursor_icon/clutter",
++    }
++}
++
++#[cfg(test)]
++mod icon_factory_tests {
++    use super::*;
++    use bevy_ecs::world::{CommandQueue, World};
++    use country_core::{
++        asset_libraries::{
++            mesh_library::AssetMeshLibrary, shader_library::AssetShaderLibrary,
++            transient_mesh::TransientMesh,
++        },
++        components::{Ui2DFollowMouse, Ui2dExtent, Ui2dImage, UiInactive},
++        systems::ui::signifiers::{
++            animation::SignifierAnimation, signifier_create::UiSignifierEntry,
++        },
++    };
++
++    #[test]
++    fn original_type_table_keeps_every_byte_tag_and_duplicate_clutter_names() {
++        for ty in 0..=u8::MAX {
++            let expected = match ty {
++                0x38..=0x3a => "decorator_cursor_icon/window",
++                0x3b => "decorator_cursor_icon/chimney",
++                0x3c => "decorator_cursor_icon/lantern",
++                0x3d => "decorator_cursor_icon/flag",
++                _ => "decorator_cursor_icon/clutter",
++            };
++            assert_eq!(decorator_icon_name(ty), expected);
++        }
++    }
++
++    #[test]
++    fn real_factory_has_position_identity_and_wakes_one_actual_ui_entity() {
++        let mut stream = UiSignifierStream::default();
++        let pos = glam::Vec2::new(-4.5, 12.0);
++        show_decorator_icon(0x3c, pos, &mut stream);
++        let UiSignifierEntry::Factory(factory) = stream.take_entries().pop().unwrap() else {
++            panic!("factory expected")
++        };
++        assert_eq!(factory.name(), Some("decorator_Vec2(-4.5, 12.0)"));
++        let meshes = AssetMeshLibrary::new();
++        let shaders = AssetShaderLibrary::new();
++        shaders.add_raster(
++            country_core::render::shader::RasterShaderProgram::new_draw(
++                "vertex_color_shader",
++                Default::default(),
++                &country_core::render::test_device::TestDevice(1),
++            ),
++            false,
++        );
++        let mut world = World::new();
++        let mut queue = CommandQueue::default();
++        let entities = factory.wake(&meshes, &shaders, &mut Commands::new(&mut queue, &world));
++        queue.apply(&mut world);
++        assert_eq!(entities.len(), 1);
++        let id = entities[0];
++        assert_eq!(world.get::<Ui2dExtent>(id).unwrap().pos, pos);
++        assert_eq!(
++            world.get::<Ui2dExtent>(id).unwrap().size,
++            glam::Vec2::new(34.5, 58.0)
++        );
++        assert_eq!(
++            world.get::<Ui2dImage>(id).unwrap().name,
++            "decorator_cursor_icon/lantern"
++        );
++        assert_eq!(world.get::<Ui2dImage>(id).unwrap().layer, 0);
++        assert!(world.get::<UiInactive>(id).is_some());
++        assert!(world.get::<Ui2DFollowMouse>(id).is_some());
++        assert!(world.get::<TransientMesh>(id).is_some());
++        assert_eq!(world.get::<SignifierAnimation>(id).unwrap().duration, 0.0);
++        assert_eq!(world.get::<SignifierAnimation>(id).unwrap().flag_8, 0);
++        let handle = *world
++            .get::<country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>>(id)
++            .unwrap();
++        assert!(
++            meshes
++                .get(handle)
++                .unwrap()
++                .positions_without_indices()
++                .is_empty()
++        );
++        let registry = std::sync::Arc::clone(meshes.transient_meshes());
++        world.despawn(id);
++        assert_eq!(*registry.lock().unwrap(), vec![handle]);
++    }
++
++    #[test]
++    fn original_identity_omits_icon_type_and_retains_nonfinite_position() {
++        fn name(icon: u8, pos: glam::Vec2) -> String {
++            let mut stream = UiSignifierStream::default();
++            show_decorator_icon(icon, pos, &mut stream);
++            let UiSignifierEntry::Factory(factory) = stream.take_entries().pop().unwrap() else {
++                panic!("factory expected")
++            };
++            factory.name().unwrap().to_owned()
++        }
++        assert_eq!(name(0x38, glam::Vec2::ZERO), name(0x3d, glam::Vec2::ZERO));
++        assert!(name(0x38, glam::Vec2::new(f32::NAN, f32::INFINITY)).contains("NaN"));
++    }
++}

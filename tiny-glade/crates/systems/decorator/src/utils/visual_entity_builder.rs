@@ -177,11 +177,8 @@ pub mod pending_core {
     );
     // One canonical12-byte value, also read by the actual Nani ECS query.
     pub use country_core::components::drawable::ClothlineCloth;
-    raw_component!(
-        /// B `components::WindowLight`（u64 + u32(id)，12 B，U）。
-        WindowLight,
-        12
-    );
+    // 与窗灯系统和 Nani 玻璃查询共享同一个键值组件。
+    pub use country_core::resources::window_lights::WindowLight;
     // Same six-value component read by the actual auto-clutter balcony gate.
     pub use country_core::components::drawable::BalconyDoor;
     raw_component!(
@@ -609,10 +606,10 @@ impl WindowVisualEntityBuilder {
         }
         // 6 WindowLight（u64 @+0x18 + id）
         if let Some(a) = self.window_light {
-            let mut payload = [0u8; 12];
-            payload[0..8].copy_from_slice(&a.to_le_bytes());
-            payload[8..12].copy_from_slice(&id.to_le_bytes());
-            commands.entity(entity).insert(WindowLight(payload));
+            commands.entity(entity).insert(WindowLight {
+                key: usize::try_from(a).expect("native window light key requires a64-bit host"),
+                decorator_id: id,
+            });
         }
         // 7 BalconyDoor: preserve all actual values and the original +0x14f gate.
         if self.balcony_door {
@@ -1115,5 +1112,48 @@ mod tests {
                 0,
             )
         }
+    }
+}
+
+#[cfg(test)]
+mod canonical_window_light_tests {
+    use super::*;
+    use bevy_ecs::{prelude::*, world::CommandQueue};
+    use country_core::resources::{events::LightWindowCmd,
+        session::{ActiveSession, SessionId, SessionMeta}, time::GameTime,
+        time_of_day::TimeOfDay,
+        window_lights::{GlobalWindowLightsControl, WindowLight as CanonicalWindowLight}};
+
+    #[test]
+    fn actual_builder_emits_the_component_consumed_by_the_real_light_system() {
+        assert_eq!(core::any::TypeId::of::<pending_core::WindowLight>(),
+            core::any::TypeId::of::<CanonicalWindowLight>());
+        let mut world = World::new(); let mut queue = CommandQueue::default();
+        let mut state = DecoratorTransientVisualState::default();
+        let mut builder = WindowVisualEntityBuilder::new(Vec3::new(2.0, 3.0, 4.0),
+            Quat::from_rotation_y(0.37), 71);
+        builder.mesh_name = "actual glass component CPU fixture";
+        builder.nani_name = "nani_solid_vertex_color_window_glass";
+        builder.window_light = Some(0x1_0000_0061);
+        let entity = builder.build(&mut Commands::new(&mut queue, &world), 71,
+            &AssetMeshLibrary::new(), &AssetShaderLibrary::new(), &mut state);
+        queue.apply(&mut world);
+        assert_eq!(*world.get::<CanonicalWindowLight>(entity).unwrap(),
+            CanonicalWindowLight { key: 0x1_0000_0061, decorator_id: 71 });
+        assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind,
+            GpuWorldSubsetKind::SolidVertexColorWindowGlass);
+        assert!(world.get::<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>(entity).is_some());
+        world.init_resource::<GlobalWindowLightsControl>();
+        world.init_resource::<Events<LightWindowCmd>>();
+        world.insert_resource(TimeOfDay { time_of_day: 0.6, ..Default::default() });
+        world.insert_resource(GameTime { delta: 0.25, ..Default::default() });
+        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+        let mut schedule = Schedule::default(); schedule.add_systems(crate::window_lights::window_lights);
+        schedule.run(&mut world);
+        let light = world.resource::<GlobalWindowLightsControl>().lights[&0x1_0000_0061];
+        assert_eq!((light.actual_on, light.target_on), (1, 1));
+        assert!(light.brightness > 0.0 && light.brightness < 1.0);
+        world.despawn(entity); schedule.run(&mut world);
+        assert!(world.resource::<GlobalWindowLightsControl>().lights.is_empty());
     }
 }

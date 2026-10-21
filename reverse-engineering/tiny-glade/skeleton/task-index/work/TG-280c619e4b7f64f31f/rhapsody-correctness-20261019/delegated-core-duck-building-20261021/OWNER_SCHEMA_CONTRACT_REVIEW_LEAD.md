@@ -1,0 +1,9 @@
+# 唯一楼梯请求owner类型合同独立复核
+
+core_business_lead，2026-10-21。接受同原source候选恢复实际owner/子对象，不等两30KB代码；仅类型/已证字段投影，不把未恢复producer算完成。按旧size20/math候选之后独立冻结，保before与from-original patch。
+
+0x150 Params必须真实Curve2(points/points_u/length)、三并行采样Vec、Option完整Curve3、实际两节点与degree、BitVec、无向segment、SmallVec(kind/flag/count)和真实dirty来源，禁止positions mirror/额外默认权威表。两个DiGraphMap分别AlignKind与16B AdjustedStairEdge，previous子对象是真+138起三原表，不是当前Vec的别名。sample packedu64 identity与dirty set逐u32边key不混用；sample value70B而bucket78B含key8。
+
+**本批准按最新consumer证据修正旧合同+80未知word**：retained true62374B原140009c8d读Params+90len、cc1读+88ptr，9d09 MOVSS随后UCOMISS zero且stride4，独立已核这些实际指令与Params来源。因此auxiliary_samples应Vec<f32>，业务含义仍unknown，不继续旧Vec<u32>猜测；sampled_points内对应第四Vec也以真实数据流一致复核，不能凭容器同size机械改。请落独立addendum绑定旧合同hash后实施。原compute empty是明确producer行为可保，不能以此给其它字段Default。
+
+metadata原bit比较保u32观测域，不用f32 PartialEq吞NaN payload差别。StairArchWallSupportType仅已证0/1 variants保观测名，不猜业务名称/默认值。移除无消费者的整体PartialEq比复制Curve镜像更合适。foreign structure_outline最窄迁移与root共享Curve/subtract/lazy全局/visualflag仍须配对，当前类型扩展候选不是atomic可运行完整主链。未Cargo/native/GPU。

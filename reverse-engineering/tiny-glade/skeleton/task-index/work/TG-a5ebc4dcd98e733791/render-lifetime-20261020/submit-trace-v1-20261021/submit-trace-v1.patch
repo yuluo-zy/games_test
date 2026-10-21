@@ -1,0 +1,276 @@
+--- a/tiny-glade/crates/rhapsody/src/raw/command_buffer.rs
++++ b/tiny-glade/crates/rhapsody/src/raw/command_buffer.rs
+@@ -6,6 +6,88 @@
+     Arc,
+     atomic::{AtomicU64, AtomicUsize, Ordering},
+ };
++
++/// 仅在 RHAPSODY_SUBMIT_TRACE=1 时启用的提交分段观测，开关每进程读取一次。
++/// 禁用时不取时间、不分配；启用时所有样本也放在固定栈数组中。
++pub(crate) struct SubmitTrace {
++    active: Option<SubmitTraceActive>,
++}
++struct SubmitTraceActive {
++    scope: &'static str,
++    start: std::time::Instant,
++    last: std::time::Instant,
++    phases: [(&'static str, u64); 12],
++    phase_count: usize,
++    counts: [(&'static str, usize); 6],
++    count_count: usize,
++}
++impl SubmitTrace {
++    pub(crate) fn new(scope: &'static str) -> Self {
++        static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
++        let enabled = *ENABLED.get_or_init(|| {
++            std::env::var_os("RHAPSODY_SUBMIT_TRACE").is_some_and(|value| value == "1")
++        });
++        Self {
++            active: enabled.then(|| {
++                let now = std::time::Instant::now();
++                SubmitTraceActive {
++                    scope,
++                    start: now,
++                    last: now,
++                    phases: [("", 0); 12],
++                    phase_count: 0,
++                    counts: [("", 0); 6],
++                    count_count: 0,
++                }
++            }),
++        }
++    }
++    pub(crate) fn enabled(&self) -> bool {
++        self.active.is_some()
++    }
++    pub(crate) fn mark(&mut self, phase: &'static str) {
++        let Some(active) = &mut self.active else {
++            return;
++        };
++        let now = std::time::Instant::now();
++        if let Some(slot) = active.phases.get_mut(active.phase_count) {
++            *slot = (
++                phase,
++                now.duration_since(active.last)
++                    .as_nanos()
++                    .min(u64::MAX as u128) as u64,
++            );
++            active.phase_count += 1;
++        }
++        active.last = now;
++    }
++    pub(crate) fn count(&mut self, name: &'static str, value: usize) {
++        let Some(active) = &mut self.active else {
++            return;
++        };
++        if let Some(slot) = active.counts.get_mut(active.count_count) {
++            *slot = (name, value);
++            active.count_count += 1;
++        }
++    }
++}
++impl Drop for SubmitTrace {
++    fn drop(&mut self) {
++        let Some(active) = &self.active else {
++            return;
++        };
++        use std::io::Write as _;
++        // 诊断输出失败不得覆盖 Vulkan 错误，也不能使原清理路径 panic。
++        let _ = writeln!(
++            std::io::stderr().lock(),
++            "RHAPSODY_SUBMIT_TRACE scope={} total_ns={} phases_ns={:?} counts={:?}",
++            active.scope,
++            active.start.elapsed().as_nanos(),
++            &active.phases[..active.phase_count],
++            &active.counts[..active.count_count]
++        );
++    }
++}
+ 
+ /// 实际命令池与命令缓冲持有关系；默认采用可单独重置的主命令缓冲。
+ pub struct VulkanCommandPool {
+@@ -506,6 +588,32 @@
+     stats: &Arc<super::allocator::AllocatorStats>,
+ ) -> crate::Result<PreparedResourceStates> {
+     use crate::resource::range_state::{PatchAction, StatePatch};
++    let mut trace = SubmitTrace::new("native_state_prepare");
++    trace.count("commands", commands.len());
++    trace.count("uses", uses.len());
++    if trace.enabled() {
++        trace.count(
++            "state_patches",
++            commands
++                .iter()
++                .map(|command| command.state_patches.as_slice().len())
++                .sum(),
++        );
++        trace.count(
++            "opaque_ranges",
++            commands
++                .iter()
++                .map(|command| command.range_uses.as_slice().len())
++                .sum(),
++        );
++        trace.count(
++            "private_upload_reads",
++            commands
++                .iter()
++                .map(|command| command.upload_reads.as_slice().len())
++                .sum(),
++        );
++    }
+     let physical = uses.iter().filter(|cell| cell.ownership_range().is_some());
+     let cells = super::submit::SubmitScratch::try_collect(
+         physical.clone().count(),
+@@ -587,6 +695,8 @@
+             prepared.prepare_cell(index,patches.as_slice(),family,stats)
+         })?;
+     }
++    trace.mark("prepare_all_cells");
++    trace.count("physical_cells", prepared.cells.len());
+     Ok(prepared)
+ }
+ 
+--- a/tiny-glade/crates/rhapsody/src/rg/vulkan.rs
++++ b/tiny-glade/crates/rhapsody/src/rg/vulkan.rs
+@@ -1836,6 +1836,8 @@
+         if self.device.is_device_lost() {
+             return Err(crate::Error::DeviceLost);
+         }
++        let mut trace = crate::raw::command_buffer::SubmitTrace::new("rg_submit");
++        trace.count("batches", prepared.len());
+         let mut capture = GpuSubmissionCapture::try_new(
+             queue,
+             prepared,
+@@ -1868,7 +1870,9 @@
+                     })
+                 }),
+         )?;
++        trace.mark("capture_and_command_refs");
+         crate::raw::command_buffer::validate_submission_commands(&command_refs)?;
++        trace.mark("validate1");
+         let semaphore_refs = self
+             .graph_waits
+             .iter()
+@@ -1891,6 +1895,7 @@
+             &self.device.memory.stats,
+             semaphore_refs.map(|semaphore| Ok(semaphore.clone())),
+         )?;
++        trace.mark("semaphore_refs");
+         let use_sources =
+             submit::SubmitScratch::<[&[Arc<crate::resource::SyncCell>]; 8]>::try_collect(
+                 command_refs.len(),
+@@ -1902,9 +1907,14 @@
+             &self.device.memory.stats,
+         )?;
+         drop(use_sources);
++        trace.mark("uses_merge");
++        trace.count("commands", command_refs.len());
++        trace.count("unique_uses", uses.len());
+         let _reservations =
+             crate::resource::tracked::lock_submission_uses_in(&uses, &self.device.memory.stats)?;
++        trace.mark("state_locks");
+         crate::raw::command_buffer::validate_submission_commands(&command_refs)?;
++        trace.mark("validate2");
+         let family = self.recording_family;
+         let prepared_states = unsafe {
+             crate::raw::command_buffer::prepare_submission_states(
+@@ -1915,6 +1925,7 @@
+                 &self.device.memory.stats,
+             )?
+         };
++        trace.mark("prepare_states");
+         drop(command_refs);
+         // Declared (planner-bound) accesses carry their first-use stages;
+         // opaque uses inside the commands keep ALL_COMMANDS.
+@@ -1922,7 +1933,9 @@
+         dependencies.merge(&self.queue_submission_dependencies()?);
+         self.device
+             .add_staged_timeline_waits(queue, &mut capture.batches, &dependencies)?;
++        trace.mark("dependencies");
+         let result = self.device.submit_prepared(queue, &capture.batches, fence);
++        trace.mark("device_submit_prepared");
+         if let Ok(point) = result {
+             // Infallible after the irreversible queue call: the owner only
+             // records the receipt it must now protect.
+--- a/tiny-glade/crates/rhapsody/src/device/submission.rs
++++ b/tiny-glade/crates/rhapsody/src/device/submission.rs
+@@ -231,11 +231,15 @@
+         if self.is_device_lost() {
+             return Err(Error::DeviceLost);
+         }
++        let mut trace = crate::raw::command_buffer::SubmitTrace::new("device_submit_prepared");
++        trace.count("batches", batches.len());
+         let id = self.queue_id(queue)?;
+         for batch in batches {
+             batch.validate(&self.queues.timelines)?;
+         }
++        trace.mark("validate_batches");
+         self.flush_deferred_host_writes()?;
++        trace.mark("flush_host_writes");
+         if self
+             .caps()
+             .is_enabled(crate::device::Feature::Synchronization2)
+@@ -325,16 +329,19 @@
+         )?;
+         native_count(infos.len())?;
+         let (point, ()) = self.queues.timelines.submit(id, |signal| {
++            let mut driver_trace = crate::raw::command_buffer::SubmitTrace::new("vkQueueSubmit");
++            driver_trace.count("submit_infos", infos.len());
+             // SAFETY: validated batches, fixed-capacity arrays and their Vulkan
+             // views above remain alive and unmoved throughout this queue call.
+             // Write through the same raw exclusive pointers used by the views;
+             // no competing Rust reference or driver read exists at this point.
+-            unsafe {
++            let result = unsafe {
+                 signals_ptr.add(signal_count - 1).write(signal.semaphore);
+                 values_ptr.add(signal_count - 1).write(signal.value);
+                 self.core.device.queue_submit(queue, &infos, fence)
+-            }
+-            .map_err(Into::into)
++            };
++            driver_trace.mark("driver");
++            result.map_err(Into::into)
+         })?;
+         Ok(point)
+     }
+@@ -438,9 +445,11 @@
+         native_count(infos.len())?;
+         let extension = self.core.synchronization2.as_ref();
+         let (point, ()) = self.queues.timelines.submit(id, |signal| {
++            let mut driver_trace = crate::raw::command_buffer::SubmitTrace::new("vkQueueSubmit2");
++            driver_trace.count("submit_infos", infos.len());
+             // SAFETY: all arrays are owned by this call, all counts are checked,
+             // and no backing can grow or move while the driver reads the views.
+-            unsafe {
++            let result = unsafe {
+                 let last = signals_ptr.add(counts.2 - 1);
+                 std::ptr::addr_of_mut!((*last).semaphore).write(signal.semaphore);
+                 std::ptr::addr_of_mut!((*last).value).write(signal.value);
+@@ -449,8 +458,9 @@
+                 } else {
+                     self.core.device.queue_submit2(queue, &infos, fence)
+                 }
+-            }
+-            .map_err(Into::into)
++            };
++            driver_trace.mark("driver");
++            result.map_err(Into::into)
+         })?;
+         Ok(point)
+     }
+--- a/tiny-glade/crates/rhapsody/src/sync/timeline.rs
++++ b/tiny-glade/crates/rhapsody/src/sync/timeline.rs
+@@ -37,7 +37,11 @@
+         let info = vk::SemaphoreWaitInfo::default()
+             .semaphores(semaphores)
+             .values(values);
+-        match unsafe { self.wait_semaphores(&info, timeout_ns) } {
++        let mut trace = crate::raw::command_buffer::SubmitTrace::new("vkWaitSemaphores");
++        trace.count("semaphores", semaphores.len());
++        let result = unsafe { self.wait_semaphores(&info, timeout_ns) };
++        trace.mark("driver");
++        match result {
+             Ok(()) => Ok(true),
+             Err(vk::Result::TIMEOUT) => Ok(false),
+             Err(error) => Err(error.into()),

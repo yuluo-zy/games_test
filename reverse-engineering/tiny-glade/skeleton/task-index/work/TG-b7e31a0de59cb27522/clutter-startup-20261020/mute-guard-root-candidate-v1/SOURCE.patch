@@ -1,0 +1,39 @@
+--- a/tiny-glade/crates/systems/decorator/src/audio/op_stairs_audio.rs
++++ b/tiny-glade/crates/systems/decorator/src/audio/op_stairs_audio.rs
+@@ -36,15 +36,14 @@
+ //! 3. `closure$9` 的返回值门控字节在反编译中是 `extraout_AL`，精确条件
+ //!    U；[`stairs_pillar_gate`] 以“stair extra 存在且记录 `+0x10 == 0`”承载。
+ 
++use super::op_preview_audio::MutePreviewDecoratorOpSounds;
+ use crate::audio::{AudioEventKey, DecoratorOpEventView};
+ 
+ use bevy_ecs::prelude::*;
+ use country_core::resources::stairs::stairs_state::StairsState;
+ use country_core::resources::terrain_height::TerrainHeightsData;
+ use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
+-use country_core::resources::walls::decorator::{
+-    DecoratorId, DecoratorOpEventKind, StairExtra,
+-};
++use country_core::resources::walls::decorator::{DecoratorId, DecoratorOpEventKind, StairExtra};
+ use country_core::resources::walls::decorator_storage::DecoratorStorage;
+ use country_core::systems::audio::PlayStairsAudioCmd;
+ use glam::Vec3;
+@@ -106,6 +105,7 @@
+ /// 一个纯状态写回资源（`in_RCX`，+0x1c tick 面），其类型 U，本实现不引入。
+ #[allow(clippy::too_many_arguments)]
+ pub fn op_stairs_audio(
++    mut mute_events: EventReader<MutePreviewDecoratorOpSounds>,
+     storage: Res<DecoratorStorage>,
+     mut op_events: EventReader<DecoratorOpEventKind>,
+     transforms: Res<CachedDecoratorTransforms>,
+@@ -113,6 +113,10 @@
+     stairs: Res<StairsState>,
+     mut sounds: EventWriter<PlayStairsAudioCmd>,
+ ) {
++    // 原入口仅推进本静音 reader；普通 op reader 和音频状态均留给下一次实际消费。
++    if mute_events.read().count() != 0 {
++        return;
++    }
+     let mut seen: std::collections::HashMap<AudioEventKey, ()> = std::collections::HashMap::new();
+ 
+     for event in op_events.read() {

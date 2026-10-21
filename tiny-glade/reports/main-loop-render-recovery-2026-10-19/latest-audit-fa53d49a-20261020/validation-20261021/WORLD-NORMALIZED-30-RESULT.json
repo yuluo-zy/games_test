@@ -1,0 +1,64 @@
+{
+  "result": "failed",
+  "returncode": 101,
+  "runtime_seconds": 433.8,
+  "rendered_rows": 30,
+  "assertion": "shader bindless live drifts:6026..6059",
+  "not_completed": [
+    "descriptor steady state",
+    "later memory assertions",
+    "later pixel assertions",
+    "TAA pixel convergence"
+  ],
+  "observed_not_excused": [
+    "device allocated1029.0MiB(frame12)→1053.4MiB(frame28)",
+    "queue submit ~12.6–13.2s/frame under this strict validation run",
+    "75 UINT blend warnings during prewarm"
+  ],
+  "binary": "/Users/yuluo/Desktop/game/games_test/tiny-glade/target/debug/deps/original_gameplay_chain-a9739bd31f688730",
+  "binary_sha256": "0385c559dbbf6f50478b0983b746cb4f1ec93b5377e5dc3509885563fe244e1d",
+  "sources_before_artifact_diagnostic_change": [
+    {
+      "path": "tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs",
+      "sha256": "2344ff2c55fa960b96b896890250be1102edb9b751c06d5b4b3c7ace2a85b1f9"
+    },
+    {
+      "path": "tiny-glade/crates/rhapsody/crates/shader-compiler/src/bindless.rs",
+      "sha256": "9893094f71298cdb24ad378bfd1a37d88ecd0b52c508f1b49d55c39ef3e82062"
+    },
+    {
+      "path": "tiny-glade/crates/tiny-glade/src/render_host.rs",
+      "sha256": "703706cf7687849e60c1ced68e62386ddf85f6ade8e765b3b11516255d73dfe0"
+    },
+    {
+      "path": "tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "sha256": "7699e1839dba45eff1a1703405e367c0b860f7ff3339f8a6001444e7aacfc294"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/validation-20261021/tg-world-normalized-thirty-20261021.log",
+      "sha256": "1108706c11cde1259008dd543cb75188419b446bd4bbe52257b923e7de75f75a"
+    },
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/validation-20261021/tg-world-physical-normalized-build-20261021.jsonl",
+      "sha256": "b5b6e8bb1618316253a8c94695d0a925f779f7c1cf44178ec80fa51be6d92fc7"
+    },
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/validation-20261021/tg-world-physical-normalized-build-20261021.log",
+      "sha256": "750edc0a290c80b5c58c87ef14c8f7a4c3b12013ae69140eebfc69e69777a3ef"
+    },
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/validation-20261021/allocations-frame05.txt",
+      "sha256": "e5028a8c5c5637d5dad2be6b31bdabf90e999a905016c9b4631a1c9da06818d0"
+    },
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/validation-20261021/pass-record-last-frame.txt",
+      "sha256": "1ae4bba056d620b7a09d0418f1d24a25d9bb4e6c0062e139b43ea89d8d67d3f1"
+    },
+    {
+      "path": "tiny-glade/reports/main-loop-render-recovery-2026-10-19/latest-audit-fa53d49a-20261020/validation-20261021/allocations-frame29.txt",
+      "sha256": "1a1ea4d72948b99091806b6864cadd90cc56be63e6c34424a8fcf56164bdbd79"
+    }
+  ]
+}

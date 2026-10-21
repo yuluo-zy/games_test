@@ -24,7 +24,7 @@ use country_core::resources::walls::decorator_storage::{
     DecoratorStorage, DecoratorStorageAddr,
 };
 use country_core::resources::walls::decorator::{
-    DecoratorInfo,
+    DecoratorId, DecoratorInfo,
 };
 use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
 
@@ -62,6 +62,7 @@ pub fn handle_external_decorator_cmds<C: Send + Sync + 'static>(
 ) {
     for cmd in cmds.read() {
         let op = DecoratorOp {
+            decorator_id: DecoratorId(cmd.decorator_id),
             kind: if cmd.stream == 0 {
                 DecoratorOp::KIND_REMOVE
             } else {

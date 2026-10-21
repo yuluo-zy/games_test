@@ -1,0 +1,16 @@
+{
+  "status": "frozen_for_review",
+  "source": "tiny-glade/crates/tiny-glade/src/render_host.rs",
+  "baseline_sha256": "cd300c0597770a7d63653a88d925cc683f2937e2153b9b7bda779b2117914637",
+  "candidate_sha256": "bf97abc48051fabcaad43cb6eef2894b8d902ebc8a0945170389f80ee31d88e0",
+  "patch_sha256": "ebb9891147ba43fd195efca6827d9368da9d5d6dad0db080273a4adba1b4ed0d",
+  "scope": "startup failure observability only; no shader or queue algorithm change",
+  "preserves": [
+    "original wait ordering",
+    "deadline",
+    "Vk error/category",
+    "root paged integration"
+  ],
+  "validation": "candidate rustfmt parse passed; root only Cargo/GPU",
+  "observable": "log::error plus stderr only when target Error log disabled, including no installed logger"
+}

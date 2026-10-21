@@ -1,0 +1,7 @@
+# canonical必要依赖最终源码独审（lead）
+
+本scope源码通过，完整读最窄patch/meaningful tests、合同与既有原证；隔离真实before patch-F0重放退出0且逐字节等于冻结candidate。未Cargo/目标/GPU、不改生产；实际编译/运行由root，完整模块/游戏不因此验收。
+
+只改canonical subtract66B，先f32差、loopfalse直接返、两有序<分支后else减L，包括NaN length与正/负半周期tie。只修正一次不全模归一化，通用CircularComparativeSpace仍wide。三组真实边界测试验证合法2^-26舍入方向、两侧/tie/signed0、多圈只一改、unordered与nonloop忽略L。没有替换geometry或全局数学policy。
+
+before `c144df9480f2b15ba5a76bfe71208c3475166f8afe1968a32cbe4f231b4a4e1b`；after `c510f0f3128f6f83aa1edfbe0dbc2fc77c101ee849f5b33d169567ff5f9ce804`；patch `b9c4729150e636f7f335d68178f097930d5a52033dd73bd9dac641832afcdb12`。

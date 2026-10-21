@@ -89,12 +89,21 @@ impl MagicSupports {
 /// 一次。其余 0x110+ 字节缓存/实体表字段仍 U。
 #[derive(Debug, Default)]
 pub struct StairsEdgeVisual {
+    /// 原value+0x100：强制重建请求；与全局dirty和实例分配分别拥有状态。
+    force_rebuild_requested: bool,
     /// 第一写面分配槽（fresh 0x140aa8a60 `pauVar33[-3]` 槽）。
     first: Option<MeshAtlasAllocation>,
     /// 第二写面分配槽（`pauVar33[-2]` 槽）。
     second: Option<MeshAtlasAllocation>,
     /// 占位——其余实际字段（RtMesh 句柄等，U）。
     pub(crate) _opaque: (),
+}
+
+impl StairsEdgeVisual {
+    /// 原interpolate读取value+0x100；true时不能复用旧sample/curve。
+    pub fn force_rebuild_requested(&self) -> bool {
+        self.force_rebuild_requested
+    }
 }
 
 /// `StairsVisualState`（边 → 视觉状态 + 脏字节）。
@@ -114,7 +123,7 @@ impl StairsVisualState {
         self.dirty = true;
     }
 
-    /// `StairsVisualState::reset_edge`（0x140aa8a60，2,099 B）：边视觉重建。
+    /// `StairsVisualState::reset_edge`（0x140aa8a60，PDB完整2,322 B）：边视觉重建。
     ///
     /// fresh 反编译主体 = **render/rt 写面**：
     /// 1. `hash_one<StairGraphEdge>` 探 edges 表（bucket stride **0x110**）；
@@ -165,16 +174,20 @@ impl StairsVisualState {
             let mut writer = second.writer_for(slot.allocation());
             writer.clear();
         }
+        // 原140aa8e26/140aa9067清value+0x100；未知的相邻byte不另造业务字段。
+        state.force_rebuild_requested = false;
         // 步骤 5（实体 despawn + 缓存重建）属 render host；返回值的 dirty 置位为 U。
         self.dirty = true;
     }
 
-    /// `force_rebuild`（内联，行 132）：标记边重建（= reset_edge 存储语义）。
+    /// 原force_rebuild内联Line134：只标记已存在边，缺失不创建，也不清理实例。
     pub fn force_rebuild(&mut self, edge: StairGraphEdge) {
-        self.reset_edge(edge);
+        if let Some(state) = self.edges.get_mut(&edge) {
+            state.force_rebuild_requested = true;
+        }
     }
 
-    /// `force_rebuild` 的内联主体（同 [`Self::reset_edge_with`]）。
+    /// 兼容现宿主形参；原force只写请求byte，不接触这三个渲染owner。
     pub fn force_rebuild_with<T: SparseSsbo>(
         &mut self,
         edge: StairGraphEdge,
@@ -182,7 +195,8 @@ impl StairsVisualState {
         second: &mut SparseInstanceBuffer<T>,
         magic: &mut MagicSupports,
     ) {
-        self.reset_edge_with(edge, first, second, magic);
+        let _ = (first, second, magic);
+        self.force_rebuild(edge);
     }
 
     pub fn get(&self, edge: &StairGraphEdge) -> Option<&StairsEdgeVisual> {
@@ -255,10 +269,7 @@ mod tests {
         }
     }
 
-    fn buffers() -> (
-        SparseInstanceBuffer<Elem>,
-        SparseInstanceBuffer<Elem>,
-    ) {
+    fn buffers() -> (SparseInstanceBuffer<Elem>, SparseInstanceBuffer<Elem>) {
         let dev = Dev;
         (
             SparseInstanceBuffer::new_storage_buffer(&dev, None),
@@ -353,5 +364,139 @@ mod tests {
         assert!(second.byte_map[..64].iter().all(|&x| x == 0));
         assert_eq!(first.free_chunks.read().len(), 64);
         assert_eq!(second.free_chunks.read().len(), 64);
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct BufferSnapshot {
+        data: Vec<Elem>,
+        byte_map: Vec<u8>,
+        active: Vec<usize>,
+        dirty: Vec<usize>,
+        free: Vec<u32>,
+        waste_len: usize,
+    }
+
+    fn snapshot(buffer: &SparseInstanceBuffer<Elem>) -> BufferSnapshot {
+        use core::sync::atomic::Ordering;
+        BufferSnapshot {
+            data: buffer.data.to_vec(),
+            byte_map: buffer.byte_map.to_vec(),
+            active: buffer
+                .active_bitset
+                .iter()
+                .map(|v| v.load(Ordering::Relaxed))
+                .collect(),
+            dirty: buffer
+                .dirty_bitset
+                .iter()
+                .map(|v| v.load(Ordering::Relaxed))
+                .collect(),
+            free: buffer.free_chunks.read().clone(),
+            waste_len: buffer.waste.lock().len(),
+        }
+    }
+
+    #[test]
+    fn force_rebuild_preserves_actual_allocations_and_written_shadow_for_both_dirty_states() {
+        for initial_dirty in [false, true] {
+            let (mut first, mut second) = buffers();
+            let mut magic = MagicSupports::default();
+            let mut state = StairsVisualState::default();
+            let edge = StairGraphEdge::new(7, 11);
+            state.reset_edge_with(edge, &mut first, &mut second, &mut magic);
+            let item = state.get(&edge).unwrap();
+            assert!(!item.force_rebuild_requested());
+            let first_ptr = item.first.as_ref().unwrap().allocation() as *const _;
+            let second_ptr = item.second.as_ref().unwrap().allocation() as *const _;
+            first
+                .writer_for(item.first.as_ref().unwrap().allocation())
+                .push(&Elem(71))
+                .unwrap();
+            second
+                .writer_for(item.second.as_ref().unwrap().allocation())
+                .push(&Elem(72))
+                .unwrap();
+            let first_before = snapshot(&first);
+            let second_before = snapshot(&second);
+            let magic_first = magic.first.as_ref().unwrap().allocation() as *const _;
+            let magic_second = magic.second.as_ref().unwrap().allocation() as *const _;
+            magic.count = 17;
+            magic.count32 = 23;
+            magic.flag = 9;
+            state.dirty = initial_dirty;
+
+            state.force_rebuild(edge);
+            state.force_rebuild_with(edge, &mut first, &mut second, &mut magic);
+            let item = state.get(&edge).unwrap();
+            assert!(item.force_rebuild_requested());
+            assert_eq!(
+                item.first.as_ref().unwrap().allocation() as *const _,
+                first_ptr
+            );
+            assert_eq!(
+                item.second.as_ref().unwrap().allocation() as *const _,
+                second_ptr
+            );
+            assert_eq!(snapshot(&first), first_before);
+            assert_eq!(snapshot(&second), second_before);
+            assert_eq!(
+                magic.first.as_ref().unwrap().allocation() as *const _,
+                magic_first
+            );
+            assert_eq!(
+                magic.second.as_ref().unwrap().allocation() as *const _,
+                magic_second
+            );
+            assert_eq!((magic.count, magic.count32, magic.flag), (17, 23, 9));
+            assert_eq!(state.is_dirty(), initial_dirty);
+
+            // 真reset清实例，并在同一owner清掉强制重建请求。
+            state.reset_edge_with(edge, &mut first, &mut second, &mut magic);
+            let item = state.get(&edge).unwrap();
+            assert!(!item.force_rebuild_requested());
+            assert_eq!(
+                item.first.as_ref().unwrap().allocation() as *const _,
+                first_ptr
+            );
+            assert!(first.byte_map[..64].iter().all(|&value| value == 0));
+            assert!(second.byte_map[..64].iter().all(|&value| value == 0));
+            assert_eq!(first.free_chunks.read().len(), 64);
+            assert_eq!(second.free_chunks.read().len(), 64);
+            state.force_rebuild(edge);
+            state.remove_edge(edge);
+            assert!(!state.contains(&edge));
+        }
+    }
+
+    #[test]
+    fn missing_force_request_is_noop_without_lazy_allocations_or_global_dirty_changes() {
+        let (mut first, mut second) = buffers();
+        let first_before = snapshot(&first);
+        let second_before = snapshot(&second);
+        let mut magic = MagicSupports::default();
+        let mut state = StairsVisualState::default();
+        let edge = StairGraphEdge::new(19, 23);
+        for initial_dirty in [false, true] {
+            state.dirty = initial_dirty;
+            state.force_rebuild(edge);
+            state.force_rebuild_with(edge, &mut first, &mut second, &mut magic);
+            assert!(!state.contains(&edge));
+            assert_eq!(state.is_dirty(), initial_dirty);
+            assert!(magic.first.is_none());
+            assert!(magic.second.is_none());
+            assert_eq!(snapshot(&first), first_before);
+            assert_eq!(snapshot(&second), second_before);
+        }
+    }
+
+    #[test]
+    fn storage_reset_replaces_the_requested_flag_with_default_zero() {
+        let mut state = StairsVisualState::default();
+        let edge = StairGraphEdge::new(29, 7);
+        state.reset_edge(edge);
+        state.force_rebuild(edge);
+        assert!(state.get(&edge).unwrap().force_rebuild_requested());
+        state.reset_edge(edge);
+        assert!(!state.get(&edge).unwrap().force_rebuild_requested());
     }
 }

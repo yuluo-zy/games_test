@@ -1,0 +1,10 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "date": "2026-10-21",
+  "type": "不可变解释澄清，原GPU失败/单帧内容结果不改",
+  "source": "https://github.com/KhronosGroup/MoltenVK/blob/v1.4.2/MoltenVK/MoltenVK/GPUObjects/MVKPipeline.mm#L1794-L1837",
+  "independent_primary_read": "独立web读取官方v1.4.2文件1794..1837；1821支持分支才赋blendingEnabled=pCA->blendEnable，1835警告分支只检查mtlPixFmt存在且不支持blend，没有查blendEnable",
+  "interpretation": "原world log75条R32G32_UINT警告真实存在，但不能仅凭该文字证明应用对UINT实际开启混合。因此不得直接当已证渲染状态业务bug，也不得为消警擅改UINT或原blend状态。需区分实际VkPipelineColorBlendAttachmentState采样与驱动诊断。",
+  "identity_limit": "该官方版本代码不是安装dylib精确build commit证明，已知实库SHA05df2d...身份与上游commit绑定仍有限；完整图像语义/原版对照仍未完成，但不应把这些警告本身冒作已证缺陷",
+  "supersedes_only": "PHYSICAL_LOAD_WORLD_GPU_RESULTS_REVIEW_V1.json中observed_not_excused.UINT_blend的因果解读，不撤回日志数量或单帧pass/30帧稳态fail。"
+}

@@ -1,0 +1,14 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs
+@@ -73,10 +73,7 @@
+     let derived = derived.as_view();
+     for (wall, decorators) in decorator_storage.iter() {
+         for (id, info) in decorators.iter_modified() {
+-            // O 判别：refusing 非屋顶目的地 / 非 0x15 子类型。
+-            if info.dst_tag() != 2 {
+-                continue;
+-            }
++            // 原112a先required读子类型；完整原body没有额外目的地tag前门。
+             if derived
+                 .subtype(country_core::resources::walls::decorator::DecoratorId(id))
+                 .0

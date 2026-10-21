@@ -30,7 +30,7 @@ use bevy_ecs::prelude::*;
 use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
 use country_core::resources::walls::decorator::DecoratorInfo;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
+use country_core::resources::walls::decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources};
 use country_core::resources::walls::public_walls::PublicWalls;
 use glam::{Quat, Vec2};
 
@@ -82,23 +82,31 @@ pub fn generate_arrow_slits(
     decorator_storage: Res<DecoratorStorage>,
     cached_transforms: Res<CachedDecoratorTransforms>,
     walls: Res<PublicWalls>,
-    derived: Res<DerivedDecoratorSubtypes>,
+    derived: DerivedDecoratorInfoResources,
     mut blueprints: ResMut<DecoratorBlueprints>,
 ) {
+    let derived = derived.as_view();
+    let mesh_lib = derived.mesh_library();
     for (wall, decorators) in decorator_storage.iter_walls() {
         for (id, info) in decorators.iter_modified() {
-            // O：仅 premade 形状（is_premade_shape）。
-            let Some(wall_state) = walls.get(wall) else {
-                continue;
-            };
-            if !wall_state.is_premade_shape() {
-                continue;
-            }
             if !is_arrow_slit(info) {
                 continue;
             }
+            let subtype = derived
+                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
+                .0;
+            // 原bc528排除loader故意不注册的23/rank1，先于墙/网格/cache读取。
+            if subtype == 23 && info.rank() == 1 {
+                continue;
+            }
+            let _wall_state = walls
+                .get(wall)
+                .expect("arrow slit requires its public wall");
+            let key = DecoratorLibKey::new(subtype, info.rank());
+            let collision = mesh_lib.collision_record(key);
+            info.dst_as_wall();
+            // 原bc703的完整bones/面板桥仍未恢复；保现真实缓存适配，不能提前吞required失败。
             let transform = cached_transforms.transform(id);
-            let d = derived.get(id);
             // O：洞记录（DormerHoleSsbo::gothic，尾参数 2.5/0.05）。
             let _hole = DormerHoleSsbo::gothic(
                 [0; 16],
@@ -107,10 +115,18 @@ pub fn generate_arrow_slits(
                 [ARROW_SLIT_HOLE.0, ARROW_SLIT_HOLE.1, 0.0, 0.0],
             );
             // O：蓝图（bbx_ls → collision/interaction mesh + outline）。
-            let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
-            blueprint.set_colliders(vec![d.collision_mesh()]);
+            let blueprint = blueprints.insert_for(
+                id,
+                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
+                info.state(),
+            );
+            blueprint.set_positioned_colliders(
+                std::sync::Arc::clone(&collision.mesh),
+                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
+                &transform.translation,
+                &transform.rotation,
+            );
             blueprint.set_outline((ARROW_SLIT_ROT_SCALE.0, ARROW_SLIT_ROT_SCALE.1, 0.0));
-            blueprints.insert(id, blueprint);
             // O：视觉实体（window glass + preview + color_id）。
             let pos = transform.translation;
             let mut builder = WindowVisualEntityBuilder::new(pos, Quat::IDENTITY, id);

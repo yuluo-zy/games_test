@@ -4,7 +4,7 @@
 //! 语义（O，`_scratch/uwag_full.txt` 反汇编逐条）：每音频栅格单元维护 **64 帧滚动活动
 //! 位集**——每帧把当前帧位 `1 << (frame_bit & 0x3f)` 置/清：
 //! - 相机→采样点距离² ≥ 6400.0（0x142eed900 = 80²）→ 清位；
-//! - 栅格水位双线性采样（`bilinear_sample_at_world_xz`，extent 130.0 / 窗 260.0）≤ 0.5
+//! - 栅格水位双线性采样（`bilinear_sample_at_world_xz`，两个世界跨度均为130.0）≤ 0.5
 //!   （0x142925870）→ 清位；
 //! - 相机→格点遮挡射线（`intersects_any`，mask=0x32a3）命中 → 清位；否则置位并累加
 //!   抖动增量对。
@@ -13,10 +13,9 @@
 //! PADDW -7）= `{((2*fb)&0xe)-7, ((fb>>2)&0xe)-7}`；位置抖动 = `d * 0.0625 * 13.0`
 //! （0x142eed8e0 / 0x142eed8f0）。
 //!
-//! 契约差（登记 RESTORE.md）：原版 24 B 栅格单元 = {f32 x, f32 z, u64 窗口位 @+8,
-//! u16×2 计数器 @+0x10}，`update_water_audio_grid` 只写窗口位/计数器；core 当前
-//! `WaterAudioGrid` 为语义模型（`water_level`/`position`），本 crate 把滚动窗口/计数器
-//! 移入 [`WaterAudioGridUpdateState`]（Local）并按语义模型投影写入 core 资源。
+//! core 的唯一 `WaterAudioGrid` 持有100个格子的基址、窗口位和两路 i16 抖动和；
+//! 本系统仅在 Local 中保留帧号，并借用游戏实际安装的 `RaycastWorld`，不持有第二个
+//! 碰撞世界。原遮挡查询从采样点指向相机，最大参数为1，不能延伸到相机之后。
 
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
@@ -25,11 +24,11 @@ use country_core::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsD
 use country_core::resources::world_raster_defs::WaterRaster;
 use country_core::systems::audio::water_ambience_audio::WaterAudioGrid;
 use country_core::systems::camera_rig::main_camera::MainCamera;
-use country_core::systems::collision::world::Raycasting;
+use country_core::systems::collision::world::RaycastWorld;
 
 use crate::water_systems_enabled;
 
-/// 栅格维数（O：掩码 0x0e → 每轴 8 格；core `WATER_GRID_EXTENT` = 8 一致）。
+/// 栅格维数（O：初始化1409ebf20构造10×10个基址；抖动掩码不表示格数）。
 pub const WATER_GRID_EXTENT: usize = 10;
 /// 格坐标 → 世界 / 抖动幅度（O：`x * 0x0625(0x142eed8e0) * 13.0(0x142eed8f0)` = x*0.8125）。
 pub const GRID_CELL_SPACING: f32 = 0.0625 * 13.0;
@@ -39,7 +38,7 @@ pub const MAX_CAMERA_DIST_SQ: f32 = 6400.0;
 pub const WATER_LEVEL_THRESHOLD: f32 = 0.5;
 /// 遮挡射线掩码（O：0x32a3；含地形 0x20 位）。
 pub const OCCLUSION_RAY_MASK: u32 = 0x32a3;
-/// 采样 extent / 窗（O：0x142a7b658 = 130.0 / 0x43020000 = 260.0）。
+/// 两轴采样跨度（O：0x142a7b658及第五参数0x43020000均为130.0）。
 pub const SAMPLE_EXTENT: f32 = 130.0;
 pub const SAMPLE_WINDOW: f32 = 130.0;
 
@@ -47,22 +46,18 @@ pub const SAMPLE_WINDOW: f32 = 130.0;
 /// 11 与 64 互质 → 全窗口轮转）。
 #[derive(Default)]
 pub struct WaterAudioGridUpdateState {
-    /// Only this frame counter is Local in native141baefe0; rolling state is
-    /// owned by WaterAudioGrid and reset on level unload.
+    /// 原141baefe0仅将帧号放在Local；活动位与抖动和由网格持有，并在卸载时清空。
     pub frame: u64,
 }
 
 /// `update_water_audio_grid` @0x141baefe0（O，fresh 重建）。
 ///
-/// 参数面（O，BASELINE）：`(Local<WaterAudioGridUpdateState>, Res<WaterRaster>,
-/// Raycasting, Res<MainCamera>, ResMut<WaterAudioGrid>)`。core 侧 `Raycasting` 原为
-/// 普通结构（SystemParam 待接线）+ 地形数据资源分离（`intersects_any` 显式传
-/// `TerrainHeightsData`），本 crate 以 `Res<Raycasting>` + `Res<TerrainHeightsData>` 落地
-/// （差登记 RESTORE.md）。
+/// 原参数中的借用 `Raycasting` 在当前工程拆为实际 `RaycastWorld` 和地形资源。
+/// 二者与相机共用游戏已有owner，保留原先“地形先判、再判碰撞体”的有限线段查询。
 pub fn update_water_audio_grid(
     mut state: Local<WaterAudioGridUpdateState>,
     water: Res<WaterRaster>,
-    raycasting: Res<Raycasting>,
+    raycasting: Res<RaycastWorld>,
     terrain: Res<TerrainHeightsData<TerrainHeightSsbo>>,
     camera: Res<MainCamera>,
     mut grid: ResMut<WaterAudioGrid>,
@@ -110,7 +105,11 @@ pub fn update_water_audio_grid(
             if !(level > WATER_LEVEL_THRESHOLD) {
                 false
             } else {
-                !raycasting.intersects_any(&terrain, point, delta, OCCLUSION_RAY_MASK)
+                // 原141baf49c向1408cc320传入1.0：方向为eye-point，
+                // 所以这里只检查采样点到相机之间，不能把相机后方算作遮挡。
+                !raycasting.intersects_any_w_terrain(
+                    &terrain, point, delta, 1.0, OCCLUSION_RAY_MASK,
+                )
             }
         };
 
@@ -120,5 +119,121 @@ pub fn update_water_audio_grid(
     }
 }
 
-/// Retained CPU projection; its unit-counter limitation is documented in the module.
+/// 早期CPU投影仅用于历史对照；生产更新直接写canonical网格，不调用该近似。
 pub mod bit_projection;
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use country_core::resources::world_raster::DirtyTilePublisher;
+    use country_core::systems::collision::world::{
+        ColliderUpsert, RaycastGeoSource, RaycastMeshData, upsert_collider,
+    };
+    use glam::{Mat4, Quat};
+    use std::{collections::HashMap, sync::Arc};
+
+    const CENTER_CELL: usize = 55;
+
+    fn world_with_water(collision: RaycastWorld, eye: Vec3, level: u8) -> World {
+        let mut world = World::new();
+        let mut water = WaterRaster::new(DirtyTilePublisher::unique());
+        water.composite_mut().fill(level);
+        water.scratch_mut().fill(level);
+        let mut camera = MainCamera::default();
+        camera.set_camera_matrices(Mat4::from_translation(eye));
+        world.insert_resource(water);
+        // 明确令整个地形低于水面，避免fixture把Y=0采样起点算作地形内部。
+        let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        terrain.set_height_range(-2.5, -2.5);
+        world.insert_resource(terrain);
+        world.insert_resource(collision);
+        world.insert_resource(camera);
+        world.insert_resource(WaterAudioGrid::new());
+        world
+    }
+
+    fn first_center_sample() -> Vec3 {
+        let base = WaterAudioGrid::new().cells[CENTER_CELL].position;
+        Vec3::new(base[0] - 0.8125, 0.0, base[1] - 4.0625)
+    }
+
+    fn update_schedule() -> Schedule {
+        let mut schedule = Schedule::default();
+        schedule.add_systems(update_water_audio_grid);
+        schedule
+    }
+
+    #[test]
+    fn canonical_grid_accumulates_rolls_clears_and_continues() {
+        let mut world = world_with_water(RaycastWorld::new(), Vec3::Y * 10.0, 255);
+        let mut schedule = update_schedule();
+        schedule.run(&mut world);
+        let grid = world.resource::<WaterAudioGrid>();
+        assert_eq!(grid.cells.len(), 100);
+        assert_eq!(grid.cells[CENTER_CELL].bits, 1 << 11);
+        assert_eq!(grid.cells[CENTER_CELL].sums, [-1, -5]);
+        for _ in 1..64 { schedule.run(&mut world); }
+        let center = world.resource::<WaterAudioGrid>().cells[CENTER_CELL];
+        assert_eq!(center.bits, u64::MAX);
+        assert_eq!(center.sums, [0, 0]);
+
+        world.resource_mut::<WaterRaster>().clear_all();
+        for _ in 0..64 { schedule.run(&mut world); }
+        assert!(world.resource::<WaterAudioGrid>().cells.iter()
+            .all(|cell| cell.bits == 0 && cell.sums == [0, 0]));
+        let bases = world.resource::<WaterAudioGrid>().cells.iter()
+            .map(|cell| cell.position).collect::<Vec<_>>();
+        world.resource_mut::<WaterAudioGrid>().clear_activity();
+        {
+            let mut water = world.resource_mut::<WaterRaster>();
+            water.composite_mut().fill(255);
+            water.scratch_mut().fill(255);
+        }
+        schedule.run(&mut world);
+        let grid = world.resource::<WaterAudioGrid>();
+        assert_eq!(grid.cells.iter().map(|cell| cell.position).collect::<Vec<_>>(), bases);
+        assert_eq!(grid.cells[CENTER_CELL].bits, 1 << 11);
+        assert_eq!(grid.cells[CENTER_CELL].sums, [-1, -5]);
+    }
+
+    #[test]
+    fn occluders_after_the_camera_do_not_silence_water() {
+        let point = first_center_sample();
+        let eye = Vec3::Y * 10.0;
+        let delta = eye - point;
+        for (factor, visible) in [(0.5, false), (1.5, true)] {
+            let mut collision = RaycastWorld::new();
+            let mut instances = HashMap::new();
+            assert!(matches!(upsert_collider(
+                &mut collision, &mut instances, 1u32, RaycastGeoSource::Slot0,
+                Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
+                point + delta * factor, Quat::IDENTITY,
+            ), ColliderUpsert::Inserted { .. }));
+            collision.flush_colliders();
+            // 两个场景的无限射线都会命中；业务只应采纳有限线段内的碰撞体。
+            assert!(collision.intersects_any(point, delta, OCCLUSION_RAY_MASK));
+            let mut world = world_with_water(collision, eye, 255);
+            update_schedule().run(&mut world);
+            let cell = world.resource::<WaterAudioGrid>().cells[CENTER_CELL];
+            assert_eq!(cell.bits != 0, visible, "遮挡参数={factor}");
+            assert_eq!(cell.sums, if visible { [-1, -5] } else { [0, 0] });
+        }
+    }
+
+    #[test]
+    fn raster_threshold_distance_boundary_and_nan_keep_original_rejection() {
+        let point = first_center_sample();
+        for (level, eye, visible) in [
+            (127, point + Vec3::Y * 10.0, false),
+            (128, point + Vec3::Y * 10.0, true),
+            (255, point + Vec3::Y * 80.0, false),
+            (255, point + Vec3::Y * f32::from_bits(80.0f32.to_bits() - 1), true),
+            (255, Vec3::new(f32::NAN, 10.0, 0.0), false),
+        ] {
+            let mut world = world_with_water(RaycastWorld::new(), eye, level);
+            update_schedule().run(&mut world);
+            assert_eq!(world.resource::<WaterAudioGrid>().cells[CENTER_CELL].bits != 0, visible);
+        }
+    }
+}

@@ -95,6 +95,33 @@ impl WaterAudioGrid {
     pub fn load_index_unchecked(&self, index: usize) -> f32 {
         self.cells[index].bits.count_ones() as f32 * WATER_VOLUME_BIT_WEIGHT
     }
+
+    /// 原14261f0c0的10×10可见性密度采样，供鸭子等消费者借用同一权威网格。
+    /// 居中/legacy策略沿用现进程开关；不在这里钳制原legacy边界外推的结果。
+    pub fn bilinear_sample_at_world_xz(
+        &self,
+        x: f32,
+        z: f32,
+        extent_x: f32,
+        extent_z: f32,
+    ) -> f32 {
+        ::utils::float_grid::FloatGridSampler::bilinear_sample_at_world_xz(
+            self,
+            glam::Vec2::new(x, z),
+            glam::Vec2::new(extent_x, extent_z),
+            ::utils::float_grid::CENTERED_PATH.load(std::sync::atomic::Ordering::Relaxed),
+        )
+    }
+}
+
+impl ::utils::float_grid::FloatGrid for WaterAudioGrid {
+    fn dimensions(&self) -> [usize; 2] {
+        [WATER_GRID_EXTENT; 2]
+    }
+
+    fn load_index_unchecked(&self, index: usize) -> f32 {
+        WaterAudioGrid::load_index_unchecked(self, index)
+    }
 }
 
 /// WaterAmbienceAudio: the per-cell Amb loop players (O: init-built).
@@ -122,7 +149,12 @@ impl<E: EventInstance> WaterAmbienceAudio<E> {
 pub fn water_ambience_audio_init_system<S: Studio + Send + Sync + 'static>(
     core: Res<AudioCore<S>>,
     mut commands: Commands,
+    demo: Option<Res<DemoModeEnabled>>,
 ) {
+    // 原1409ebf74在分配与资源插入前读取_DEV_OVERRIDE_IS_DEMO_MODE；演示模式直接返回。
+    if demo.is_some_and(|demo| demo.0) {
+        return;
+    }
     let cells = WATER_GRID_EXTENT * WATER_GRID_EXTENT;
     let ambience = WaterAmbienceAudio::<S::Event>::new(&core, cells);
     let grid = WaterAudioGrid::new();
@@ -234,5 +266,138 @@ mod lifecycle_native_tests {
     fn native_attenuation_constant_and_normalized_volume_are_retained() {
         assert_eq!(WATER_VOLUME_ATTENUATION.to_bits(),0x42290000);
         assert_eq!(water_ambience_volume(64.0,42.25).to_bits(),0.5f32.sqrt().to_bits());
+    }
+}
+
+
+#[cfg(test)]
+mod water_grid_sampling_regressions {
+    use super::*;
+    use ::utils::float_grid::{FloatGrid, FloatGridSampler};
+    use glam::Vec2;
+
+    fn density_ramp() -> WaterAudioGrid {
+        let mut grid = WaterAudioGrid::new();
+        for (index, cell) in grid.cells.iter_mut().enumerate() {
+            let count = (index % 10 + 6 * (index / 10)) as u32;
+            cell.bits = (1u64 << count) - 1;
+        }
+        grid
+    }
+
+    fn sample(grid: &WaterAudioGrid, x: f32, z: f32, centered: bool) -> f32 {
+        FloatGridSampler::bilinear_sample_at_world_xz(
+            grid, Vec2::new(x, z), Vec2::splat(130.0), centered,
+        )
+    }
+
+    #[test]
+    fn ten_by_ten_density_preserves_axis_order_and_both_edge_policies() {
+        let grid = density_ramp();
+        assert_eq!(FloatGrid::dimensions(&grid), [10, 10]);
+        assert_eq!(sample(&grid, 0.0, 0.0, false).to_bits(), (35.0f32 / 64.0).to_bits());
+        assert_eq!(sample(&grid, 0.0, 0.0, true).to_bits(), (31.5f32 / 64.0).to_bits());
+        // 原legacy保留fraction=2的正边界外推；不能在桥里钳成[0,1]。
+        assert_eq!(sample(&grid, 65.0, 65.0, false).to_bits(), (70.0f32 / 64.0).to_bits());
+        assert_eq!(sample(&grid, 65.0, 65.0, true).to_bits(), (63.0f32 / 64.0).to_bits());
+        assert_eq!(sample(&grid, -65.0, -65.0, false), 0.0);
+        assert_eq!(sample(&grid, -65.0, -65.0, true), 0.0);
+        assert_eq!(sample(&grid, f32::NAN, f32::NAN, false), 0.0);
+        assert_eq!(sample(&grid, f32::NAN, f32::NAN, true).to_bits(), (63.0f32 / 64.0).to_bits());
+    }
+
+    #[test]
+    fn shared_policy_api_reads_only_density_and_preserves_the_grid() {
+        let mut grid = WaterAudioGrid::new();
+        for cell in &mut grid.cells {
+            cell.bits = u32::MAX as u64;
+            cell.position = [10000.0, -10000.0];
+            cell.sums = [i16::MIN, i16::MAX];
+        }
+        let before = grid.cells.clone();
+        // 常量密度在两种现策略下都相同，测试无需改写全局开关。
+        for (x, z) in [(0.0, 0.0), (65.0, 65.0), (-65.0, -65.0),
+            (1e30, -1e30), (f32::NAN, f32::NAN)] {
+            assert_eq!(grid.bilinear_sample_at_world_xz(x, z, 130.0, 130.0), 0.5);
+        }
+        assert_eq!(grid.cells, before);
+    }
+
+    #[test]
+    fn missing_canonical_cells_keep_the_original_required_failure() {
+        let grid = WaterAudioGrid::default();
+        assert!(std::panic::catch_unwind(||
+            grid.bilinear_sample_at_world_xz(0.0, 0.0, 130.0, 130.0)
+        ).is_err());
+    }
+}
+
+
+#[cfg(test)]
+mod water_ambience_init_demo_regressions {
+    use super::*;
+    use crate::resources::audio_resources::{DisabledEvent, DisabledStudio};
+    use bevy_ecs::schedule::Schedule;
+
+    fn world(demo: Option<bool>) -> World {
+        let mut world = World::new();
+        world.insert_resource(AudioCore::<DisabledStudio> {
+            studio: None,
+            banks: Default::default(),
+        });
+        if let Some(enabled) = demo {
+            world.insert_resource(DemoModeEnabled(enabled));
+        }
+        world
+    }
+
+    fn run_init(world: &mut World) {
+        let mut schedule = Schedule::default();
+        schedule.add_systems(water_ambience_audio_init_system::<DisabledStudio>);
+        schedule.run(world);
+    }
+
+    #[test]
+    fn demo_startup_inserts_neither_audio_grid_nor_loop_owner() {
+        let mut world = world(Some(true));
+        run_init(&mut world);
+        assert!(!world.contains_resource::<WaterAudioGrid>());
+        assert!(!world.contains_resource::<WaterAmbienceAudio<DisabledEvent>>());
+    }
+
+    #[test]
+    fn full_startup_keeps_the_canonical_hundred_cells_and_loops() {
+        // 兼容未显式注入开关的现宿主，同时验证显式false分支。
+        for demo in [None, Some(false)] {
+            let mut world = world(demo);
+            run_init(&mut world);
+            let grid = world.resource::<WaterAudioGrid>();
+            let ambience = world.resource::<WaterAmbienceAudio<DisabledEvent>>();
+            assert_eq!(grid.cells.len(), 100);
+            assert_eq!(ambience.loops.len(), grid.cells.len());
+            assert_eq!(grid.cells[0].position, [-58.5, -58.5]);
+            assert_eq!(grid.cells[99].position, [58.5, 58.5]);
+        }
+    }
+
+    #[test]
+    fn demo_gate_does_not_replace_existing_grid_or_audio_owner() {
+        let mut world = world(Some(false));
+        run_init(&mut world);
+        let (grid_address, loops_address) = {
+            let mut grid = world.resource_mut::<WaterAudioGrid>();
+            grid.cells[7].bits = 1 << 11;
+            grid.cells[7].sums = [-3, 5];
+            let address = grid.cells.as_ptr();
+            drop(grid);
+            (address, world.resource::<WaterAmbienceAudio<DisabledEvent>>().loops.as_ptr())
+        };
+        world.resource_mut::<DemoModeEnabled>().0 = true;
+        run_init(&mut world);
+        let grid = world.resource::<WaterAudioGrid>();
+        assert_eq!(grid.cells.as_ptr(), grid_address);
+        assert_eq!(grid.cells[7].bits, 1 << 11);
+        assert_eq!(grid.cells[7].sums, [-3, 5]);
+        assert_eq!(world.resource::<WaterAmbienceAudio<DisabledEvent>>().loops.as_ptr(), loops_address);
     }
 }

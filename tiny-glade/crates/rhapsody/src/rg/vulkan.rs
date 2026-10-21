@@ -1836,6 +1836,8 @@ impl ExecutionBackend for VulkanGraphBackend {
         if self.device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
+        let mut trace = crate::raw::command_buffer::SubmitTrace::new("rg_submit");
+        trace.count("batches", prepared.len());
         let mut capture = GpuSubmissionCapture::try_new(
             queue,
             prepared,
@@ -1868,7 +1870,9 @@ impl ExecutionBackend for VulkanGraphBackend {
                     })
                 }),
         )?;
+        trace.mark("capture_and_command_refs");
         crate::raw::command_buffer::validate_submission_commands(&command_refs)?;
+        trace.mark("validate1");
         let semaphore_refs = self
             .graph_waits
             .iter()
@@ -1891,6 +1895,7 @@ impl ExecutionBackend for VulkanGraphBackend {
             &self.device.memory.stats,
             semaphore_refs.map(|semaphore| Ok(semaphore.clone())),
         )?;
+        trace.mark("semaphore_refs");
         let use_sources =
             submit::SubmitScratch::<[&[Arc<crate::resource::SyncCell>]; 8]>::try_collect(
                 command_refs.len(),
@@ -1902,9 +1907,14 @@ impl ExecutionBackend for VulkanGraphBackend {
             &self.device.memory.stats,
         )?;
         drop(use_sources);
+        trace.mark("uses_merge");
+        trace.count("commands", command_refs.len());
+        trace.count("unique_uses", uses.len());
         let _reservations =
             crate::resource::tracked::lock_submission_uses_in(&uses, &self.device.memory.stats)?;
+        trace.mark("state_locks");
         crate::raw::command_buffer::validate_submission_commands(&command_refs)?;
+        trace.mark("validate2");
         let family = self.recording_family;
         let prepared_states = unsafe {
             crate::raw::command_buffer::prepare_submission_states(
@@ -1915,6 +1925,7 @@ impl ExecutionBackend for VulkanGraphBackend {
                 &self.device.memory.stats,
             )?
         };
+        trace.mark("prepare_states");
         drop(command_refs);
         // Declared (planner-bound) accesses carry their first-use stages;
         // opaque uses inside the commands keep ALL_COMMANDS.
@@ -1922,7 +1933,9 @@ impl ExecutionBackend for VulkanGraphBackend {
         dependencies.merge(&self.queue_submission_dependencies()?);
         self.device
             .add_staged_timeline_waits(queue, &mut capture.batches, &dependencies)?;
+        trace.mark("dependencies");
         let result = self.device.submit_prepared(queue, &capture.batches, fence);
+        trace.mark("device_submit_prepared");
         if let Ok(point) = result {
             // Infallible after the irreversible queue call: the owner only
             // records the receipt it must now protect.

@@ -1,0 +1,240 @@
+--- a/tiny-glade/crates/country-core/src/render/nani/systems.rs
++++ b/tiny-glade/crates/country-core/src/render/nani/systems.rs
+@@ -646,7 +646,8 @@
+         drawable::{AlbedoMap, ClothlineCloth, PrevTransform, NaniSolidTexture}},
+     render::{device::GraphicsDeviceResource, nani::gpu_world::{InstanceDataMarker, OwnedGpuWorldSubset}},
+     resources::{color_id::ColorId, roofs::{Roof, RoofAnimation},
+-        terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster},
++        terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster,
++        window_lights::{GlobalWindowLightsControl, WindowLight}},
+     systems::paths::PathRastersResources,
+ };
+ 
+@@ -662,15 +663,16 @@
+     Has<InstanceDataMarker<SolidAlbedoMapEmissiveInstanceData>>,
+     Has<InstanceDataMarker<StoneFloorInstanceData>>,
+     Has<InstanceDataMarker<ClothInstanceData>>,
++    Has<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>,
+ );
+ 
+-type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
++type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
+ type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>,
+-    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>);
++    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>, Has<WindowLight>);
+ fn require_mapped_nani_payload(
+     kind: GpuWorldSubsetKind,
+-    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal):
+-        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool),
++    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal, has_light):
++        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool, bool),
+ ) {
+     let mapped = match kind {
+         GpuWorldSubsetKind::SolidVertexColor => markers.0,
+@@ -686,10 +688,11 @@
+         // remain unsupported; do not publish a key without a real Roof.
+         GpuWorldSubsetKind::RoofFloor => markers.9 && has_roof,
+         GpuWorldSubsetKind::Cloth => markers.10 && has_cloth && has_normal,
++        GpuWorldSubsetKind::SolidVertexColorWindowGlass => markers.11 && has_color && has_light,
+         _ => false,
+     };
+     let marker_count = [markers.0, markers.1, markers.2, markers.3,
+-        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10]
++        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10, markers.11]
+         .into_iter().filter(|present| *present).count();
+     assert!(mapped && has_transform && marker_count == 1,
+         "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
+@@ -899,6 +902,30 @@
+     }
+ }
+ 
++/// B142075070：借用真实窗灯状态与可选磁盘贴图。
++/// 未找到灯键时原版亮度为零；指定了不存在的贴图则保留原失败边界。
++pub fn nani_update_solid_vertex_color_window_glass_ecs(
++    mut rows: Query<(&mut InstanceKey, &Transform, &WindowLight, &ColorId,
++        Option<&SemiTransparent>, Option<&AlbedoMap>),
++        With<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>>,
++    control: Res<GlobalWindowLightsControl>, textures: Res<AssetTextureLibrary>,
++    gpu: Res<GpuWorld>,
++) {
++    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindowGlass);
++    for (mut key, transform, light, color, semi, albedo) in &mut rows {
++        let brightness = control.lights.get(&light.key).map_or(0.0, |value| value.brightness);
++        let albedo_index = albedo.map(|albedo| {
++            let asset = textures.get_handle_and_texture_by_name(NameHash(albedo.0))
++                .expect("called `Option::unwrap()` on a `None` value").0;
++            textures.handle_to_bindless_index(asset).0
++        });
++        let (p, r, s) = trs(transform);
++        write_mapped_update(&mut subset, key.bypass_change_detection(),
++            build_window_glass(p, r, s, color.0, semi.is_some(), brightness, albedo_index),
++            |raw| SolidVertexColorWindowGlassInstanceData { raw });
++    }
++}
++
+ pub fn nani_update_uber_ecs(
+     mut rows: Query<(&mut InstanceKey, &Transform, Option<&SemiTransparent>, Option<&AlbedoMap>),
+         With<InstanceDataMarker<UberInstanceData>>>,
+@@ -940,10 +967,8 @@
+ 
+ /// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
+ /// unordered20-update tuple -> flush, outer chain_ignore_deferred.
+-/// The previously integrated nine mappings, canonical Cloth binding and
+-/// restricted Roof-bearing kind9 branch are installed. Floor-only and other
+-/// unavailable contracts fail explicitly. A binding does not establish the
+-/// separate garment producer or whole-scene reachability.
++/// 当前保留九类既有映射、Cloth 与限定 Roof-bearing kind9 分支，新增共享窗灯玻璃。
++/// Floor-only 及其他未闭合输入继续明确失败；绑定不代表独立场景生产者已可达。
+ pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
+     schedule.add_systems((
+         nani_maintain_instances_ecs,
+@@ -957,6 +982,7 @@
+          nani_update_solid_albedo_map_emissive_ecs,
+          nani_update_balcony_door_ecs,
+          nani_update_cloth_ecs,
++         nani_update_solid_vertex_color_window_glass_ecs,
+          nani_update_uber_ecs,
+          nani_update_velocity_only_ecs),
+         nani_flush_instance_updates_ecs,
+@@ -971,6 +997,141 @@
+     use crate::render::ssbo::tests::MockDevice;
+     use bevy_ecs::world::World;
+     use glam::Vec3;
++
++    fn glass_world(dev: &MockDevice) -> World {
++        use crate::render::test_device::TestDevice;
++        use crate::rhapsody_types::Texture;
++        let mut gpu = GpuWorld::new(dev);
++        gpu.assign_subset(GpuWorldSubsetKind::SolidVertexColorWindowGlass, GpuWorldSubset::Owned(
++            OwnedGpuWorldSubset::new::<SolidVertexColorWindowGlassInstanceData>(
++                dev, GpuWorldSubsetKind::SolidVertexColorWindowGlass)));
++        let mut atlas = MeshAtlasLibrary::default();
++        let mut mesh = Mesh::new("窗玻璃 CPU 集成测试三角形");
++        mesh.set_attribute(crate::render::mesh::ATTR_POSITION,
++            vec![Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 2.0, 0.0), Vec3::new(0.0, 0.0, 3.0)]);
++        mesh.set_indices(vec![0, 1, 2]);
++        atlas.add(GpuWorldSubsetKind::SolidVertexColorWindowGlass, "window_glass_cpu", &mesh);
++        let mut textures = AssetTextureLibrary::new(&TestDevice(91));
++        let tex = |id| Texture { id, width: 4, height: 4, format: 0x25 };
++        let first = textures.add(Some("glass_cpu_first".into()), tex(91));
++        textures.add(Some("glass_cpu_unused".into()), tex(92));
++        let actual = textures.add(Some("glass_cpu_albedo".into()), tex(93));
++        assert_eq!(textures.handle_to_bindless_index(first).0, 0);
++        // 真实资产句柄为2；它的描述符索引为1，两者不能混用。
++        assert_eq!(actual.0, 2);
++        let mut world = World::new();
++        world.insert_resource(gpu); world.insert_resource(atlas); world.insert_resource(textures);
++        world.init_resource::<GlobalWindowLightsControl>();
++        world
++    }
++
++    fn spawn_cpu_glass(world: &mut World) -> Entity {
++        world.spawn((crate::components::drawable::NaniBundle::<SolidVertexColorWindowGlassInstanceData> {
++            desc: NaniInstanceDesc { mesh: NaniMeshSelector::Named(NameHash::compute("window_glass_cpu")),
++                subset_kind: GpuWorldSubsetKind::SolidVertexColorWindowGlass },
++            transform: Transform { rotation: Quat::from_rotation_y(0.37),
++                translation: Vec3::new(2.0, 3.0, 4.0), scale: Vec3::new(1.2, 0.8, 2.5) },
++            marker: InstanceDataMarker::default(),
++        }, WindowLight { key: 0x1_0000_0061, decorator_id: 71 }, ColorId(3))).id()
++    }
++
++    fn actual_glass_payload(world: &World, entity: Entity) -> [u32; 16] {
++        let key = world.get::<InstanceKey>(entity).unwrap();
++        world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindowGlass)
++            .data().as_any().downcast_ref::<
++                crate::render::nani::gpu_world::InstanceDataBuffer<SolidVertexColorWindowGlassInstanceData>>()
++            .unwrap().shadow.data[key.index as usize].raw
++    }
++
++    #[test]
++    fn glass_uses_shared_light_actual_albedo_barrier_upload_and_removal() {
++        let dev = MockDevice::default();
++        let mut world = glass_world(&dev); let entity = spawn_cpu_glass(&mut world);
++        world.entity_mut(entity).insert((SemiTransparent,
++            AlbedoMap(NameHash::compute("glass_cpu_albedo").0)));
++        world.resource_mut::<GlobalWindowLightsControl>().lights.insert(0x1_0000_0061,
++            crate::resources::window_lights::LightInfo { brightness: 0.625, ..Default::default() });
++        let mut schedule = Schedule::default();
++        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
++            nani_update_solid_vertex_color_window_glass_ecs).chain_ignore_deferred());
++        schedule.run(&mut world);
++        let key = *world.get::<InstanceKey>(entity).unwrap();
++        assert_eq!(key.kind, GpuWorldSubsetKind::SolidVertexColorWindowGlass);
++        assert_eq!(&actual_glass_payload(&world, entity)[12..],
++            &[0x8000_0003, 0.625f32.to_bits(), 1, 1]);
++        let textures = world.resource::<AssetTextureLibrary>();
++        let asset = textures.get_handle_and_texture_by_name(NameHash::compute("glass_cpu_albedo")).unwrap().0;
++        assert_eq!(asset.0, 2); assert_eq!(textures.handle_to_bindless_index(asset).0, 1);
++        assert_eq!(textures.pending_bindless().len(), 2);
++        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
++        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
++            ranges == &[0..64] && *offset == 0 && *bytes == 64));
++        assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), 1);
++        world.clear_trackers();
++        world.resource_mut::<GlobalWindowLightsControl>().lights.get_mut(&0x1_0000_0061)
++            .unwrap().brightness = -0.0;
++        schedule.run(&mut world);
++        assert_eq!(actual_glass_payload(&world, entity)[13], 0x8000_0000);
++        assert_eq!(world.get::<InstanceKey>(entity).unwrap().id, key.id);
++        world.clear_trackers();
++        world.resource_mut::<GlobalWindowLightsControl>().lights.clear();
++        world.entity_mut(entity).remove::<SemiTransparent>();
++        world.entity_mut(entity).remove::<AlbedoMap>();
++        schedule.run(&mut world);
++        assert_eq!(&actual_glass_payload(&world, entity)[12..], &[3, 0, 0, 0]);
++        world.clear_trackers(); world.despawn(entity); schedule.run(&mut world);
++        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(
++            GpuWorldSubsetKind::SolidVertexColorWindowGlass).instance_count(), 0);
++    }
++
++    #[test]
++    fn glass_missing_shared_inputs_fail_before_instance_publication() {
++        for missing in ["light", "color", "transform", "marker", "ambiguous"] {
++            let dev = MockDevice::default();
++            let mut world = glass_world(&dev); let entity = spawn_cpu_glass(&mut world);
++            match missing {
++                "light" => { world.entity_mut(entity).remove::<WindowLight>(); }
++                "color" => { world.entity_mut(entity).remove::<ColorId>(); }
++                "transform" => { world.entity_mut(entity).remove::<Transform>(); }
++                "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>(); }
++                _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); }
++            }
++            let mut schedule = Schedule::default(); schedule.add_systems(nani_maintain_instances_ecs);
++            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
++                schedule.run(&mut world))).is_err(), "缺少{missing}却发布了实例");
++            assert!(world.get::<InstanceKey>(entity).is_none());
++            let gpu = world.resource::<GpuWorld>(); assert_eq!(gpu.total_instance_count, 0);
++            assert_eq!(gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorWindowGlass).instance_count(), 0);
++        }
++    }
++
++    #[test]
++    fn glass_present_unknown_albedo_fails_in_actual_update() {
++        let dev = MockDevice::default();
++        let mut world = glass_world(&dev); let entity = spawn_cpu_glass(&mut world);
++        world.entity_mut(entity).insert(AlbedoMap(NameHash::compute("missing_glass_albedo").0));
++        let mut allocation = Schedule::default();
++        allocation.add_systems((nani_maintain_instances_ecs, ApplyDeferred).chain_ignore_deferred());
++        allocation.run(&mut world);
++        let before_writes = dev.writes.borrow().len();
++        let mut update = Schedule::default(); update.add_systems(nani_update_solid_vertex_color_window_glass_ecs);
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update.run(&mut world))).is_err());
++        assert_eq!(dev.writes.borrow().len(), before_writes);
++        assert_eq!(world.resource::<AssetTextureLibrary>().pending_bindless().len(), 1);
++    }
++
++    #[test]
++    fn empty_glass_query_still_requires_its_actual_owned_subset() {
++        let dev = MockDevice::default(); let mut world = glass_world(&dev);
++        let before_writes = dev.writes.borrow().len();
++        let mut update = Schedule::default(); update.add_systems(nani_update_solid_vertex_color_window_glass_ecs);
++        update.run(&mut world);
++        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(
++            GpuWorldSubsetKind::SolidVertexColorWindowGlass).instance_count(), 0);
++        assert_eq!(dev.writes.borrow().len(), before_writes);
++        world.insert_resource(GpuWorld::new(&dev));
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update.run(&mut world))).is_err());
++    }
+ 
+     fn cloth_world(dev: &MockDevice) -> World {
+         use crate::render::test_device::TestDevice;

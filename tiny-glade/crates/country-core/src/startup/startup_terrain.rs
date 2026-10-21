@@ -440,7 +440,9 @@ mod tests {
             },
         };
         use bevy_ecs::world::{CommandQueue, World};
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade");
+        let root = std::env::var_os("TG_INSTALL_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade"));
         for demo in [false, true] {
             let device = TestDevice::default();
             let meshes = AssetMeshLibrary::new();

@@ -1,0 +1,13 @@
+# 农舍老虎窗实际动态凸体源码独审
+
+core_business_lead，2026-10-21。结论：有界helper源码通过，可与原parent canonical入口/真实Roof/Local cache同组交root实际编译/物理验证，implemented_unverified。原before0ae81ce7248f0dfe1c83c7fe99503c6e33a6679c0bff3a8804181ab403660905，最终after720bdfb6b3520bc11ac965c50c353a98b868d969e9116388163d99e7c30d00df；real-collision-geo.patch SHAfdde5df6d583d53f0803c75df1be6acd3466fd4fc5b4a13b1fed5cfb349d4afb。
+
+已读完整合同、实际最终源码/4测试、当前RoofSection/CurveUCircular/ShapeParameters/glam/parry接口；独立定点核原a35f roofheight先于a368 rank门，a675..6aa圆曲率16B inverse/MAXSS/MINSS，a6eb..754量化round及unsigned饱和，bb17实际new_convex及bb1c失败检查。无原程序执行/机器码差分或Cargo验证结论。
+
+唯一cache恢复为原三u32+rank→Arc<RaycastMeshData>，原顺序先实际roof两截面/closest surface/量化查询，命中只克隆原Arc而不进入inverse/点构造；key不擅加width/pose/scale。旧递归/两子网格/i32XZ误判已删除，原rfind profiler路径不当业务callee。
+
+miss复用原pin glam0.29.3完整Affine3A.inverse、实际ShapeParameters圆/矩形扩张/周长和canonical circular interpolation；按原两height环和rank2/3点，保24/42有序凸体输入及全部面/重复点/零乘非有限传播，底部未expand周长为共同分母。局部offset在逆变换点之后执行，不偷换成固定bbox/截面近似或归一旋转。convex失败expect原convex hull文案且不入cache，成功同Arc插入/返回。
+
+4项源码测试使用实际circle/rectangle Roof与真实convex，验证各rank、同Arc缓存/奇异scale命中懒性、失败不发布、ordered闭面及非单位scale；没有通过默认shape或只有buffer计数冒充真实geometry。数值业务和缓存生命周期均源码落地，测试未Cargo/未physics runtime。
+
+原utils inverse_lerp140c904a0/16B当前无共享导出，按此前独审在业务表达式内联原(value-a)/(b-a)三指令，显式映射，不另写平行geometryAPI；root若恢复共享导出再统一调用。parent由tree恢复真实尺寸/同Arc两槽/insert_for副作用与actual source，单本helper不能被称整个dormer visual或GPU闭环完成。

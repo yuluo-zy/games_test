@@ -1,0 +1,33 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept bounded test-side cross-ISA arithmetic NaN sign contract; root execution pending",
+  "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-b932ed2202ad995058/decorator-chain-root-20261021/offset-golden-nan-contract-candidate-v1/SOURCE_CANDIDATE_MANIFEST_V1.json",
+  "manifest_sha256": "7e94e036b9e9891a85e8c8d247f5e0161e2c5de555ddc7b8edde6d5af382125a",
+  "after_sha256": "af8d8969672a68c38569dc983b424d82d38949a228ef647007bffb20dafb0dbc",
+  "patch_sha256": "bcdffe191cdd85baf82cc718d922102b4bc395f2557ff14859a1557d64aed644",
+  "native_fact": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "range": "0x141278050 +499B",
+    "range_sha256": "93edb35144df9ea39baa082b85f62c305d55d4da71a7115410e35f763f7c3f25",
+    "independent_pe_read": true,
+    "arithmetic": "0x1412781a1..1bd 原零减 origin.y → 除 direction.y → direction.xy 乘 t → 加 origin.xy。两输入 Y 为 +0 时是 0*(-Inf) 的算术 quiet NaN，不是复制/bitcast 已有 NaN。"
+  },
+  "independent_checks": [
+    "清单全部文件 SHA 匹配；只有原24用例测试函数改变，前后全部常量/其他测试逐字不变。",
+    "原 asm/golden JSON/生产算法/本地官方 f32 文档 SHA 全部匹配 EVIDENCE。",
+    "仅非 x86_64、type56/63、physical=false、terrain=false、dy bits=+0、Y轴这两项允许 sign 位不同，计数必须恰好2。",
+    "expected 仍必须为原 0xffc00000；actual 必须 NaN 且 quiet/payload 31 位完全一致。其余所有结果及 x86_64 仍32位精确，normal/mask/tag/query次数未放宽。"
+  ],
+  "engineering_contract": {
+    "kind": "test-only portability adjustment; no production algorithm normalization",
+    "official_rust_doc": "https://doc.rust-lang.org/std/primitive.f32.html#nan-bit-patterns",
+    "local_doc_sha256": "764af364851e2384ac35b01841a6af306a398b15bb358b5e3eafc62806430a4b",
+    "interpretation": "Rust 对算术 NaN 的符号不作跨执行/目标保证。这里收紧到已确认两处 arithmetic NaN 一位差异；不能泛化至任意 NaN 或省略载荷检查。"
+  },
+  "limits": [
+    "reviewer 未运行 Cargo/GPU；root 须跑实际24case与全包。",
+    "原 x86_64 逐位 oracle 保留；该适配不证明任意 LLVM/其他ISA 任意 NaN 载荷等价。"
+  ]
+}

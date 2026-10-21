@@ -503,8 +503,11 @@ fn slice_lengths_and_extensions_handle_tiny_and_extreme_segments() {
             CurveInternalCoord { segment: 0, t: 0.5 },
         );
         assert!((measured.measure_length() / length - 0.5).abs() < 1e-6);
-        let curve = Curve2::try_new(points.to_vec(), false).unwrap();
-        assert_eq!(curve.length, length);
+        // 原构造器的f32平方在此下溢/上溢；现稳健slice测长断言继续独立保留。
+        assert!(matches!(
+            Curve2::try_new(points.to_vec(), false),
+            Err(utils::curve::CurveError::NonFiniteLength)
+        ));
         let mut slice =
             CurveSlice::<Vec2, _, CurveCoordSemantic2D>::from_point_range(points.as_slice(), 1..=1);
         slice.extend_left(length * 0.5);

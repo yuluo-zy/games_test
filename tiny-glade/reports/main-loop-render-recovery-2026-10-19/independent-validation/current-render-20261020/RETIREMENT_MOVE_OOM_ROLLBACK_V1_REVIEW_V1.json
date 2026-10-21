@@ -1,0 +1,23 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept bounded engineering error rollback candidate; root actual tests pending",
+  "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/retirement-move-rollback-v1-20261021/MANIFEST.json",
+  "manifest_sha256": "542cc1fa4049023b101dd5867f7855cce3c577f6f0497d5eeff6bba7402d6cf3",
+  "before_sha256": "b3d163ef0f9c7f0d0d2d3a6c10e60431a1033b61b3b66e2d8ff42767175cfbb7",
+  "after_sha256": "6d4012022c5e757fc233d19eb117981e5bea44664b5153442b4ab8b89955a797",
+  "patch_sha256": "2021c8a6e3eca7aa9f71ecd1f6c050309ec0fcb99c47c6b0e79828733b09a1b9",
+  "independent_checks": [
+    "清单、源before/after/patch/合同SHA一致；生产当前仍exact baseline。",
+    "队列 value 归属当前 FIFO queue 时间线。旧版先改为next value，insert失败退回source时未恢复，导致source head错误比较异队列值。",
+    "最小反例 q0=5/q1=100，completed0=5，next插入OOM后旧source head=100，后续q0已到5的对象被阻；新实现只在Err恢复previous_value=5，保存真实SyncSet/所有权。",
+    "成功路径只多保存一个u64；原预算、队列序、collection限额、len、回收时机均未改。",
+    "test-only每实例注入位于原insert reserve错误分支之前，返回相同Entry，生产不增加字段/分支；两个新增测试覆盖保留4对象/不重复计数、同完成值重试解除后继饥饿、目标sorted100/200、全部依赖到达后各销毁一次、try_enqueue失败归还item。"
+  ],
+  "limits": [
+    "reviewer未执行Cargo/GPU；root须实际既有7+新增2。",
+    "同一进程某些并发/全局OOM策略不在此窄改范围。",
+    "当前实际30帧completed drain0，不能据这个潜在OOM反例归因为本轮内存增长。"
+  ]
+}

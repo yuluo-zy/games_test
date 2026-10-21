@@ -1,0 +1,31 @@
+{
+  "status": "all30_rendered_test_failed",
+  "duration_seconds": 54.64,
+  "failure": "shader bindless live drifts: 3042..6022",
+  "threshold_unchanged": 16,
+  "whole_pool_simultaneous_peak_live": 6022,
+  "final_drain": {
+    "pending_before": 0,
+    "pending_after": 0,
+    "destroyed": 0,
+    "allocated_bytes_before_after": 1000880744,
+    "submitted_and_completed": 1696,
+    "idle_waits_before_after": [
+      2,
+      2
+    ]
+  },
+  "binary": {
+    "path": "/private/tmp/tg-preserved-run-binaries-20261021/original-gameplay-highwater-v1",
+    "sha256": "c88e2eaaed1b9185b29ed72a7e4c4a909ea1153cb114f6e160c641fce9bdaece"
+  },
+  "code_epoch": "business17 plus pool simultaneous high-water, before frame-start headless maintenance and retire OOM rollback; test source same original thresholds",
+  "unproven_hypothesis": "headless helper misses production drain_finished_frames at frame start; CPU command owners from earlier submission may remain while newer frame records; candidate still requires actual verification",
+  "formal_unreached": [
+    "peak assertion",
+    "texture live",
+    "constant reuse",
+    "memory",
+    "pixels"
+  ]
+}

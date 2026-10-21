@@ -689,7 +689,8 @@ pub struct ShaderHost {
     disk_cache: Option<PersistentPipelineCache>,
     samplers: BTreeMap<String, Arc<Sampler>>,
     heap: Arc<BindlessHeap>,
-    sampler_leases: Mutex<BTreeMap<String, Arc<BindlessLease>>>,
+    pages: Arc<rhapsody::bindless::BindlessPagePool>,
+    sampler_leases: Arc<SamplerPages>,
     compute: Mutex<Vec<Arc<ComputeEntry>>>,
     raster: Mutex<Vec<Arc<RasterEntry>>>,
     passes: Arc<RenderPassHost>,
@@ -846,10 +847,276 @@ pub struct ComputeEntry {
     pub uniform_binding: Option<u32>,
 }
 
+struct SamplerBinding {
+    location: BindingLocation,
+    element: u32,
+    name: Arc<str>,
+    sampler: Arc<Sampler>,
+}
+struct CachedSampler {
+    name: Arc<str>,
+    sampler: Arc<Sampler>,
+    lease: Arc<BindlessLease>,
+}
+struct SamplerPage {
+    heap: Arc<BindlessHeap>,
+    leases: Mutex<Vec<CachedSampler>>,
+}
+#[derive(Default)]
+struct SamplerPages {
+    pages: Mutex<Vec<Arc<SamplerPage>>>,
+}
+struct PendingSampler {
+    name: Arc<str>,
+    sampler: Arc<Sampler>,
+    lease: Option<Arc<BindlessLease>>,
+    changed: bool,
+}
+struct SamplerPreparation {
+    page: Arc<SamplerPage>,
+    values: Vec<PendingSampler>,
+}
+impl SamplerPages {
+    fn prepare(
+        &self,
+        heap: &Arc<BindlessHeap>,
+        bindings: &[SamplerBinding],
+    ) -> rhapsody::Result<SamplerPreparation> {
+        let page = {
+            let mut pages = self.pages.lock();
+            if let Some(page) = pages.iter().find(|page| Arc::ptr_eq(&page.heap, heap)) {
+                page.clone()
+            } else {
+                pages
+                    .try_reserve(1)
+                    .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+                let page = Arc::new(SamplerPage {
+                    heap: heap.clone(),
+                    leases: Mutex::new(Vec::new()),
+                });
+                pages.push(page.clone());
+                page
+            }
+        };
+        let mut values: Vec<PendingSampler> = Vec::new();
+        values
+            .try_reserve(bindings.len())
+            .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+        {
+            let mut cached = page.leases.lock();
+            for binding in bindings {
+                if values.iter().any(|value| {
+                    value.name == binding.name && Arc::ptr_eq(&value.sampler, &binding.sampler)
+                }) {
+                    continue;
+                }
+                let lease = cached
+                    .iter()
+                    .find(|value| {
+                        value.name == binding.name && Arc::ptr_eq(&value.sampler, &binding.sampler)
+                    })
+                    .map(|value| value.lease.clone());
+                values.push(PendingSampler {
+                    name: binding.name.clone(),
+                    sampler: binding.sampler.clone(),
+                    changed: lease.is_none(),
+                    lease,
+                });
+            }
+            let missing = values.iter().filter(|value| value.changed).count();
+            // 同页 group guard 保护后续 commit；只预留元数据，不提前发布租约。
+            cached
+                .try_reserve(missing)
+                .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+        }
+        Ok(SamplerPreparation { page, values })
+    }
+    fn invalidate(&self, name: &str) {
+        let pages: Vec<_> = self.pages.lock().iter().cloned().collect();
+        for page in pages {
+            let old = {
+                let mut leases = page.leases.lock();
+                leases
+                    .iter()
+                    .position(|value| value.name.as_ref() == name)
+                    .map(|index| leases.swap_remove(index))
+            };
+            drop(old);
+        }
+    }
+}
+impl SamplerPreparation {
+    fn missing(&self) -> usize {
+        self.values.iter().filter(|value| value.changed).count()
+    }
+    fn write(
+        &mut self,
+        bindings: &[SamplerBinding],
+        parameters: &mut BindlessParameters,
+    ) -> rhapsody::Result<()> {
+        for value in &mut self.values {
+            if value.lease.is_none() {
+                value.lease = Some(self.page.heap.sampler(value.sampler.clone())?);
+            }
+        }
+        for binding in bindings {
+            let value = self
+                .values
+                .iter()
+                .find(|value| {
+                    value.name == binding.name && Arc::ptr_eq(&value.sampler, &binding.sampler)
+                })
+                .expect("prepared sampler metadata");
+            parameters.write_lease(
+                binding.location,
+                binding.element,
+                value.lease.as_ref().expect("materialized sampler").clone(),
+            )?;
+        }
+        Ok(())
+    }
+    fn commit(self) {
+        for value in self.values.into_iter().filter(|value| value.changed) {
+            let new = CachedSampler {
+                name: value.name,
+                sampler: value.sampler,
+                lease: value.lease.expect("complete sampler group"),
+            };
+            let old = {
+                let mut cached = self.page.leases.lock();
+                if let Some(index) = cached.iter().position(|old| old.name == new.name) {
+                    Some(std::mem::replace(&mut cached[index], new))
+                } else {
+                    cached.push(new);
+                    None
+                }
+            };
+            drop(old);
+        }
+    }
+}
+/// 覆盖规则已在实际资源收集端执行；declared 保留 UniformBytes 的正式图访问角色。
+pub struct ShaderResourceBinding {
+    pub location: BindingLocation,
+    pub element: u32,
+    pub resource: BindlessResource,
+    pub declared: bool,
+}
+pub struct ShaderBindingSnapshot {
+    name: Arc<str>,
+    abi: Arc<BindlessAbi>,
+    samplers: Arc<Vec<SamplerBinding>>,
+    sampler_pages: Arc<SamplerPages>,
+    globals: Option<Arc<crate::frame_setup::FrameGlobals>>,
+}
+impl ShaderBindingSnapshot {
+    pub fn prepare<'a>(
+        &self,
+        cursor: &mut rhapsody::bindless::BindlessPageCursor,
+        push: &[u8],
+        resources: impl Iterator<Item = (BindingLocation, u32, &'a BindlessResource, bool)> + Clone,
+        previous: Option<&rhapsody::bindless::PreparedBindlessParameters>,
+        constants: &Mutex<rhapsody::resource::DynamicConstants>,
+    ) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
+        if push.len() != self.abi.original_push_bytes as usize {
+            return Err(rhapsody::Error::invalid_usage(
+                "shader push parameter size does not match its ABI",
+            ));
+        }
+        let mut local = BindlessParameters::resource_requirements(
+            &self.abi,
+            resources
+                .clone()
+                .filter(|(_, _, _, declared)| !*declared)
+                .map(|(location, element, resource, _)| (location, element, resource)),
+        )?;
+        local[2] += 1 + resources
+            .clone()
+            .filter(|(_, _, _, declared)| *declared)
+            .count();
+        cursor
+            .prepare(|group| {
+                if let Some(previous) =
+                    previous.filter(|previous| previous.belongs_to(group.heap()))
+                {
+                    group.require_slots([0, 0, 1, 0])?;
+                    return previous
+                        .with_push(push, &mut constants.lock())
+                        .map_err(Into::into);
+                }
+                let globals = self
+                    .globals
+                    .as_ref()
+                    .map(|globals| globals.prepare_page(&self.abi, group.heap()))
+                    .transpose()?;
+                let mut samplers = self.sampler_pages.prepare(group.heap(), &self.samplers)?;
+                let mut required = local;
+                required[3] += samplers.missing();
+                if let Some(globals) = &globals {
+                    for (need, extra) in required.iter_mut().zip(globals.requirements()) {
+                        *need += extra;
+                    }
+                }
+                group.require_slots(required)?;
+                let mut parameters =
+                    BindlessParameters::new(group.heap().clone(), self.abi.clone(), push)?;
+                samplers.write(&self.samplers, &mut parameters)?;
+                let publication = globals
+                    .as_ref()
+                    .zip(self.globals.as_ref())
+                    .map(|(pending, globals)| pending.write_to(globals, &mut parameters))
+                    .transpose()?;
+                for (location, element, resource, declared) in resources.clone() {
+                    if declared {
+                        let BindlessResource::Buffer {
+                            buffer,
+                            offset,
+                            size,
+                        } = resource
+                        else {
+                            return Err(rhapsody::Error::invalid_usage(
+                                "declared uniform descriptor is not its actual buffer",
+                            )
+                            .into());
+                        };
+                        let lease = group
+                            .heap()
+                            .storage_buffer(buffer.clone(), *offset, *size)?;
+                        parameters.write_lease(location, element, lease)?;
+                    } else {
+                        parameters.write(location, element, resource.clone())?;
+                    }
+                }
+                let prepared = parameters.finish(&mut constants.lock())?;
+                // 所有 fallible 操作已完成，两个缓存槽均预先存在；不发布半个绑定组。
+                if let Some(publication) = publication {
+                    publication.commit();
+                }
+                samplers.commit();
+                Ok(prepared)
+            })
+            .map_err(|error| {
+                if error.kind() == rhapsody::ErrorKind::Unsupported {
+                    rhapsody::Error::unsupported(format!(
+                        "shader {} ABI {} bytes/{} bindings: {error}",
+                        self.name,
+                        self.abi.parameter_bytes,
+                        self.abi.bindings.len()
+                    ))
+                } else {
+                    error
+                }
+            })
+    }
+}
+
 pub struct ShaderBindings {
+    name: Arc<str>,
     pub heap: Arc<BindlessHeap>,
     pub abi: Arc<BindlessAbi>,
-    samplers: Vec<(BindingLocation, u32, Arc<BindlessLease>)>,
+    pages: Arc<rhapsody::bindless::BindlessPagePool>,
+    samplers: Arc<Vec<SamplerBinding>>,
+    sampler_pages: Arc<SamplerPages>,
     frame_globals: Arc<Mutex<Option<Arc<crate::frame_setup::FrameGlobals>>>>,
 }
 impl ShaderBindings {
@@ -881,15 +1148,20 @@ impl ShaderBindings {
             })
             .unwrap_or_default()
     }
-    pub fn parameters(&self, push: &[u8]) -> rhapsody::Result<BindlessParameters> {
-        let mut parameters = BindlessParameters::new(self.heap.clone(), self.abi.clone(), push)?;
-        for (location, element, lease) in &self.samplers {
-            parameters.write_lease(*location, *element, lease.clone())?;
+    pub fn snapshot(&self) -> ShaderBindingSnapshot {
+        self.snapshot_with_globals(self.frame_globals.lock().clone())
+    }
+    pub fn snapshot_with_globals(
+        &self,
+        globals: Option<Arc<crate::frame_setup::FrameGlobals>>,
+    ) -> ShaderBindingSnapshot {
+        ShaderBindingSnapshot {
+            name: self.name.clone(),
+            abi: self.abi.clone(),
+            samplers: self.samplers.clone(),
+            sampler_pages: self.sampler_pages.clone(),
+            globals,
         }
-        if let Some(globals) = &*self.frame_globals.lock() {
-            globals.write_to(&mut parameters, &self.abi, &self.heap)?;
-        }
-        Ok(parameters)
     }
     pub fn image(
         &self,
@@ -1002,10 +1274,8 @@ impl ShaderHost {
         // the actual fill-unsorted-indirection pass. This is an explicit host
         // budget, not an original game constant or a change to shader ABI;
         // it adapts to the enabled device's descriptor-indexing limits.
-        let heap = BindlessHeap::new(
-            device.clone(),
-            adaptive_bindless_config(&device),
-        )?;
+        let heap = negotiated_shader_heap(&device)?;
+        let pages = rhapsody::bindless::BindlessPagePool::new(heap.clone())?;
         Ok(Self {
             device,
             root: root.into(),
@@ -1013,7 +1283,8 @@ impl ShaderHost {
             disk_cache,
             samplers: BTreeMap::new(),
             heap,
-            sampler_leases: Mutex::new(BTreeMap::new()),
+            pages,
+            sampler_leases: Arc::new(SamplerPages::default()),
             compute: Mutex::new(Vec::new()),
             raster: Mutex::new(Vec::new()),
             passes: Arc::new(RenderPassHost::default()),
@@ -1030,9 +1301,9 @@ impl ShaderHost {
         if let Some(adapter) = cached.as_ref() {
             return Ok(adapter.clone());
         }
-        let adapter = rhapsody::rg::IndexedCountAdapter::new(
+        let adapter = rhapsody::rg::IndexedCountAdapter::new_paged(
             self.device.clone(),
-            self.heap.clone(),
+            self.pages.clone(),
             &self.compiler,
         )?;
         *cached = Some(adapter.clone());
@@ -1046,26 +1317,71 @@ impl ShaderHost {
         let deadline = Instant::now()
             .checked_add(timeout)
             .ok_or(rhapsody::Error::Timeout)?;
-        let mut tickets = self
+        // 保持原等待次序和错误类别；只在失败时补充实际请求身份。
+        enum Target {
+            Compute(Arc<ComputeEntry>),
+            Raster(Arc<RasterEntry>),
+            IndexedCount(PipelineTicket),
+        }
+        let mut targets = self
             .compute
             .lock()
             .iter()
-            .map(|entry| entry.pipeline.clone())
+            .cloned()
+            .map(Target::Compute)
             .collect::<Vec<_>>();
-        tickets.extend(
-            self.raster
-                .lock()
-                .iter()
-                .map(|entry| entry.pipeline.clone()),
-        );
+        targets.extend(self.raster.lock().iter().cloned().map(Target::Raster));
         if let Some(adapter) = self.indexed_count_adapter.lock().as_ref() {
-            tickets.push(adapter.ticket());
+            targets.push(Target::IndexedCount(adapter.ticket()));
         }
-        for ticket in tickets {
+        let total = targets.len();
+        for (index, target) in targets.into_iter().enumerate() {
             let remaining = deadline
                 .checked_duration_since(Instant::now())
                 .ok_or(rhapsody::Error::Timeout)?;
-            ticket.wait(remaining).map_err(rhapsody::Error::from)?;
+            let ticket = match &target {
+                Target::Compute(entry) => &entry.pipeline,
+                Target::Raster(entry) => &entry.pipeline,
+                Target::IndexedCount(ticket) => ticket,
+            };
+            if let Err(error) = ticket.wait(remaining) {
+                let identity = match &target {
+                    Target::Compute(entry) => format!(
+                        "compute shader={} local_size={:?} ABI={}bytes/{}bindings",
+                        entry.bindings.name,
+                        entry.local_size,
+                        entry.bindings.abi.parameter_bytes,
+                        entry.bindings.abi.bindings.len(),
+                    ),
+                    Target::Raster(entry) => format!(
+                        "raster shader={} samples={:?} colors={:?} depth={:?} stencil={:?} view_mask={} ABI={}bytes/{}bindings",
+                        entry.bindings.name,
+                        entry.pass.samples,
+                        entry.pass.formats.colors,
+                        entry.pass.formats.depth,
+                        entry.pass.formats.stencil,
+                        entry.pass.formats.view_mask,
+                        entry.bindings.abi.parameter_bytes,
+                        entry.bindings.abi.bindings.len(),
+                    ),
+                    Target::IndexedCount(_) => "indexed-count platform adapter".to_owned(),
+                };
+                let message = format!(
+                    "pipeline prewarm failed [{}/{}] {}: {} ({:?}); compiler={:?}",
+                    index + 1,
+                    total,
+                    identity,
+                    error,
+                    error.kind(),
+                    self.compiler.stats(),
+                );
+                log::error!(target: "tiny_glade::pipeline", "{message}");
+                // 集成测试可能未安装 logger；失败诊断仍需在实际运行日志可见。
+                if !log::log_enabled!(target: "tiny_glade::pipeline", log::Level::Error) {
+                    eprintln!("{message}");
+                }
+                return Err(error.into());
+            }
         }
         Ok(())
     }
@@ -1091,7 +1407,7 @@ impl ShaderHost {
 
     pub fn with_sampler(mut self, name: &str, sampler: Arc<Sampler>) -> Self {
         self.samplers.insert(name.to_owned(), sampler);
-        self.sampler_leases.get_mut().remove(name);
+        self.sampler_leases.invalidate(name);
         self
     }
 
@@ -1113,7 +1429,13 @@ impl ShaderHost {
     }
 
     pub fn bindless_stats(&self) -> rhapsody::bindless::BindlessStats {
-        self.heap.stats()
+        self.pages.stats()
+    }
+    pub fn page_cursor(&self) -> rhapsody::bindless::BindlessPageCursor {
+        self.pages.cursor()
+    }
+    pub fn frame_globals_snapshot(&self) -> Option<Arc<crate::frame_setup::FrameGlobals>> {
+        self.frame_globals.lock().clone()
     }
     fn bindings(
         &self,
@@ -1121,7 +1443,6 @@ impl ShaderHost {
         abi: Arc<BindlessAbi>,
     ) -> rhapsody::Result<ShaderBindings> {
         let mut samplers = Vec::new();
-        let mut cached = self.sampler_leases.lock();
         for slot in &abi.bindings {
             if slot.kind != BindingKind::Sampler {
                 continue;
@@ -1141,28 +1462,37 @@ impl ShaderHost {
                         "sampler location absent from original reflection",
                     )
                 })?;
-            let lease = if let Some(lease) = cached.get(name) {
-                lease.clone()
-            } else {
-                let sampler = match self.samplers.get(name) {
-                    Some(sampler) => sampler.clone(),
-                    None => self.device.get_built_in_sampler_by_name(name)?,
-                };
-                let lease = self.heap.sampler(sampler)?;
-                cached.insert(name.to_owned(), lease.clone());
-                lease
+            let sampler = match self.samplers.get(name) {
+                Some(sampler) => sampler.clone(),
+                None => self.device.get_built_in_sampler_by_name(name)?,
             };
             samplers
                 .try_reserve(slot.parameter_count as usize)
                 .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+            let name: Arc<str> = Arc::from(name);
             for element in 0..slot.parameter_count {
-                samplers.push((slot.location, element, lease.clone()));
+                samplers.push(SamplerBinding {
+                    location: slot.location,
+                    element,
+                    name: name.clone(),
+                    sampler: sampler.clone(),
+                });
             }
         }
         Ok(ShaderBindings {
+            name: Arc::from(
+                original
+                    .source_dependencies
+                    .iter()
+                    .find(|path| path.ends_with(".raster.hlsl") || path.ends_with(".cs.hlsl"))
+                    .or_else(|| original.source_dependencies.first())
+                    .map_or("<generated>", String::as_str),
+            ),
             heap: self.heap.clone(),
+            pages: self.pages.clone(),
             abi,
-            samplers,
+            samplers: Arc::new(samplers),
+            sampler_pages: self.sampler_leases.clone(),
             frame_globals: self.frame_globals.clone(),
         })
     }
@@ -1585,15 +1915,36 @@ pub struct HostTables {
 
 impl<'session> GraphPasses<'session> {
     pub fn new(graph: Rc<RefCell<RhGraph>>, device: Arc<Device>) -> Result<Self, rhapsody::Error> {
-        let dynamic = DynamicConstants::new(device.clone())?;
-        Ok(Self {
+        let dynamic = Arc::new(Mutex::new(DynamicConstants::new(device.clone())?));
+        Ok(Self::from_parts(graph, device, dynamic))
+    }
+
+    /// 生产计算入口沿用本 App 的常量 owner；独立消费者仍可使用 new。
+    pub(crate) fn new_with_app_constants(
+        graph: Rc<RefCell<RhGraph>>,
+        device: Arc<Device>,
+        raster: &crate::raster_host::RasterShared,
+    ) -> rhapsody::Result<Self> {
+        if device.is_device_lost() {
+            return Err(rhapsody::Error::DeviceLost);
+        }
+        let dynamic = raster.dynamic_constants_owner(&device)?;
+        Ok(Self::from_parts(graph, device, dynamic))
+    }
+
+    fn from_parts(
+        graph: Rc<RefCell<RhGraph>>,
+        device: Arc<Device>,
+        dynamic: Arc<Mutex<DynamicConstants>>,
+    ) -> Self {
+        Self {
             graph,
             device,
-            dynamic: Arc::new(Mutex::new(dynamic)),
+            dynamic,
             tables: None,
             cache_session: None,
             uniform_uploads: Vec::new(),
-        })
+        }
     }
 
     pub fn with_tables(mut self, tables: HostTables) -> Self {
@@ -2369,6 +2720,77 @@ fn adaptive_bindless_config(device: &rhapsody::device::Device) -> BindlessConfig
     }
 }
 
+/// 大布局受原生拒绝时只协商物理页大小，完整场景需求仍由多页保全。
+fn negotiated_shader_heap(
+    device: &Arc<rhapsody::device::Device>,
+) -> rhapsody::Result<Arc<BindlessHeap>> {
+    let requested = adaptive_bindless_config(device);
+    let supported = |config: BindlessConfig| {
+        let counts = [
+            config.sampled_images,
+            config.storage_images,
+            config.storage_buffers,
+            config.samplers,
+        ];
+        let types = [
+            vk::DescriptorType::SAMPLED_IMAGE,
+            vk::DescriptorType::STORAGE_IMAGE,
+            vk::DescriptorType::STORAGE_BUFFER,
+            vk::DescriptorType::SAMPLER,
+        ];
+        let bindings: Vec<_> = counts
+            .iter()
+            .enumerate()
+            .map(|(index, count)| {
+                vk::DescriptorSetLayoutBinding::default()
+                    .binding(index as u32)
+                    .descriptor_type(types[index])
+                    .descriptor_count(*count)
+                    .stage_flags(vk::ShaderStageFlags::ALL)
+            })
+            .collect();
+        let flags = [vk::DescriptorBindingFlags::UPDATE_AFTER_BIND
+            | vk::DescriptorBindingFlags::PARTIALLY_BOUND
+            | vk::DescriptorBindingFlags::UPDATE_UNUSED_WHILE_PENDING; 4];
+        let mut flags_info =
+            vk::DescriptorSetLayoutBindingFlagsCreateInfo::default().binding_flags(&flags);
+        let info = vk::DescriptorSetLayoutCreateInfo::default()
+            .flags(vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL)
+            .bindings(&bindings)
+            .push_next(&mut flags_info);
+        let mut support = vk::DescriptorSetLayoutSupport::default();
+        unsafe {
+            device
+                .raw_device()
+                .get_descriptor_set_layout_support(&info, &mut support)
+        };
+        support.supported != vk::FALSE
+    };
+    if supported(requested) {
+        return BindlessHeap::new(device.clone(), requested);
+    }
+    let mut page = BindlessConfig::default();
+    if !supported(page) {
+        return Err(rhapsody::Error::unsupported(
+            "device rejects the minimum shader page layout; original binding groups are retained",
+        ));
+    }
+    // 始终保存确证 Supported 的下界；驱动打包不单调至多影响页利用率，不会绕过拒绝。
+    let mut low = page.storage_buffers;
+    let mut high = requested.storage_buffers.max(low);
+    while low < high {
+        let middle = low + (high - low).div_ceil(2);
+        page.storage_buffers = middle;
+        if supported(page) {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    page.storage_buffers = low;
+    BindlessHeap::new(device.clone(), page)
+}
+
 /// 宿主偏差(DEVIATION)：原版整缓冲绑定（range = 缓冲全长），原机 maxStorageBufferRange
 /// 足够大(Apple M3 为 4 GiB)。设备上限更小时(lavapipe 固定 128 MiB)整缓冲绑定会被
 /// 描述符校验拒绝，此处把绑定范围钳到设备上限；设备上限足够时返回原值，行为与原版一致。
@@ -2940,9 +3362,15 @@ impl GraphPasses<'_> {
                 rhapsody::Error::invalid_usage("compute callback without managed resources")
             })?;
             let diagnose = |stage: &str, error: &rhapsody::Error| {
-                log::error!("compute {name}: {stage}: {error:?}; heap {:?}", entry.bindings.heap.stats());
+                log::error!(
+                    "compute {name}: {stage}: {error:?}; heap {:?}",
+                    entry.bindings.heap.stats()
+                );
             };
-            let pipeline = entry.pipeline.try_get().inspect_err(|error| diagnose("pipeline.try_get", error))?;
+            let pipeline = entry
+                .pipeline
+                .try_get()
+                .inspect_err(|error| diagnose("pipeline.try_get", error))?;
             let command = <vk::CommandBuffer as ash::vk::Handle>::from_raw(ctx.command.handle());
             let mut resources = Vec::new();
             let mut image_arrays: Vec<(u32, Vec<BindlessResource>)> = Vec::new();
@@ -2959,39 +3387,69 @@ impl GraphPasses<'_> {
                             size: clamp_storage_binding_range(&device, buffer.size),
                         }
                     }
-                    CorePassBinding::ImageView { resource, view, write } => {
+                    CorePassBinding::ImageView {
+                        resource,
+                        view,
+                        write,
+                    } => {
                         let texture = managed.texture_for(resource).map_err(|error| {
                             rhapsody::Error::invalid_usage_with("compute image binding", error)
                         })?;
                         // Same single-operand storage view the graph declaration above
                         // narrowed: the lease must be covered by the declared range.
-                        let view = if write && view.level_count.is_none() && !view.bind_individual_mips {
-                            view.level_count(Some(1))
-                        } else {
-                            view
-                        };
+                        let view =
+                            if write && view.level_count.is_none() && !view.bind_individual_mips {
+                                view.level_count(Some(1))
+                            } else {
+                                view
+                            };
                         let desc = rh_view_desc(&texture, &view)?;
                         if view.bind_individual_mips {
-                            let location = BindingLocation { set: 0, binding: range.resource_index };
-                            let count = entry.bindings.abi.slot(location)
-                                .ok_or_else(|| rhapsody::Error::invalid_usage("individual mip binding is absent from the shader ABI"))?
+                            let location = BindingLocation {
+                                set: 0,
+                                binding: range.resource_index,
+                            };
+                            let count = entry
+                                .bindings
+                                .abi
+                                .slot(location)
+                                .ok_or_else(|| {
+                                    rhapsody::Error::invalid_usage(
+                                        "individual mip binding is absent from the shader ABI",
+                                    )
+                                })?
                                 .parameter_count;
-                            if image_arrays.iter().any(|(binding, _)| *binding == range.resource_index)
-                                || resources.iter().any(|(binding, _)| *binding == range.resource_index) {
-                                return Err(rhapsody::Error::invalid_usage("individual mip binding has conflicting values"));
+                            if image_arrays
+                                .iter()
+                                .any(|(binding, _)| *binding == range.resource_index)
+                                || resources
+                                    .iter()
+                                    .any(|(binding, _)| *binding == range.resource_index)
+                            {
+                                return Err(rhapsody::Error::invalid_usage(
+                                    "individual mip binding has conflicting values",
+                                ));
                             }
                             let mut elements = Vec::new();
                             for selected in individual_mip_views(desc, count)? {
                                 let selected = texture.image_view(&selected)?;
-                                elements.push(entry.bindings.image_for_pass(&ctx, resource, range.resource_index, selected.view.clone())?);
+                                elements.push(entry.bindings.image_for_pass(
+                                    &ctx,
+                                    resource,
+                                    range.resource_index,
+                                    selected.view.clone(),
+                                )?);
                             }
                             image_arrays.push((range.resource_index, elements));
                             continue;
                         }
                         let view = texture.image_view(&desc)?;
-                        entry
-                            .bindings
-                            .image_for_pass(&ctx, resource, range.resource_index, view.view.clone())?
+                        entry.bindings.image_for_pass(
+                            &ctx,
+                            resource,
+                            range.resource_index,
+                            view.view.clone(),
+                        )?
                     }
                 };
                 upsert_shader_resource(&mut resources, range.resource_index, resource)?;
@@ -3019,60 +3477,66 @@ impl GraphPasses<'_> {
                     pipeline.raw_handle(),
                 );
             }
+            let snapshot = entry.bindings.snapshot();
+            let mut cursor = entry.bindings.pages.cursor();
+            let mut group_resources = Vec::new();
+            group_resources
+                .try_reserve(
+                    resources.len()
+                        + image_arrays
+                            .iter()
+                            .map(|(_, values)| values.len())
+                            .sum::<usize>(),
+                )
+                .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+            for (binding, resource) in &resources {
+                group_resources.push(ShaderResourceBinding {
+                    location: BindingLocation {
+                        set: 0,
+                        binding: *binding,
+                    },
+                    element: 0,
+                    resource: resource.clone(),
+                    declared: declared_uniform_bindings.contains(binding),
+                });
+            }
+            for (binding, elements) in &image_arrays {
+                if resources.iter().any(|(scalar, _)| scalar == binding) {
+                    return Err(rhapsody::Error::invalid_usage(
+                        "individual mip binding conflicts with a scalar descriptor",
+                    ));
+                }
+                for (element, resource) in elements.iter().enumerate() {
+                    group_resources.push(ShaderResourceBinding {
+                        location: BindingLocation {
+                            set: 0,
+                            binding: *binding,
+                        },
+                        element: element as u32,
+                        resource: resource.clone(),
+                        declared: false,
+                    });
+                }
+            }
             let mut parameters: Option<rhapsody::bindless::PreparedBindlessParameters> = None;
             let mut bind_parameters = |push: &[u8]| -> rhapsody::Result<()> {
-                let next = if let Some(previous) = &parameters {
-                    previous.with_push(push, &mut dynamic.lock())
-                        .inspect_err(|error| diagnose("parameters.with_push", error))?
-                } else {
-                    let mut first = entry.bindings.parameters(push)
-                        .inspect_err(|error| diagnose("parameters.new/globals", error))?;
-                    for (binding, resource) in &resources {
-                        let location = BindingLocation { set: 0, binding: *binding };
-                        let result = if declared_uniform_bindings.contains(binding) {
-                            let BindlessResource::Buffer { buffer, offset, size } = resource else {
-                                return Err(rhapsody::Error::invalid_usage(
-                                    "declared uniform descriptor is not its actual buffer"));
-                            };
-                            let lease = entry.bindings.heap.storage_buffer(buffer.clone(), *offset, *size)?;
-                            first.write_lease(location, 0, lease)
-                        } else {
-                            first.write(location, 0, resource.clone())
-                        };
-                        result.map_err(|error| {
-                            diagnose("parameters.write", &error);
-                            if error.kind() != rhapsody::ErrorKind::InvalidUsage {
-                                return error;
-                            }
-                            let detail = match resource {
-                                BindlessResource::Buffer { buffer, offset, size } => format!(
-                                    ": buffer {:?}, usage {:#x}, allocation {}, offset {}, range {}",
-                                    buffer.raw_handle(), buffer.desc.usage.as_raw(), buffer.desc.size,
-                                    offset, size,
-                                ),
-                                _ => String::new(),
-                            };
-                            rhapsody::Error::invalid_usage_with(
-                                format!("compute {name}, set 0 binding {binding}{detail}"),
-                                error,
+                let next = snapshot
+                    .prepare(
+                        &mut cursor,
+                        push,
+                        group_resources.iter().map(|value| {
+                            (
+                                value.location,
+                                value.element,
+                                &value.resource,
+                                value.declared,
                             )
-                        })?;
-                    }
-                    for (binding, elements) in &image_arrays {
-                        if resources.iter().any(|(scalar, _)| scalar == binding) {
-                            return Err(rhapsody::Error::invalid_usage("individual mip binding conflicts with a scalar descriptor"));
-                        }
-                        let location = BindingLocation { set: 0, binding: *binding };
-                        for (element, resource) in elements.iter().enumerate() {
-                            first.write(location, element as u32, resource.clone())
-                                .inspect_err(|error| diagnose("parameters.write_individual_mips", error))?;
-                        }
-                    }
-                    first.finish(&mut dynamic.lock())
-                        .inspect_err(|error| diagnose("parameters.finish", error))?
-                };
-                // SAFETY: all resources came from this pass's declared binding
-                // contract; later payloads retain those exact resource leases.
+                        }),
+                        parameters.as_ref(),
+                        &dynamic,
+                    )
+                    .inspect_err(|error| diagnose("parameters.complete_group", error))?;
+                // 原访问范围与上传角色已在同一组内保留；迁页后不使用旧数值下标。
                 unsafe { next.bind_pass(&ctx, pipeline.clone())? };
                 parameters = Some(next);
                 Ok(())

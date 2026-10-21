@@ -1,0 +1,41 @@
+
+/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+1409ebe80: 48 83 ec 28                 	subq	$0x28, %rsp
+1409ebe84: 48 8b 41 10                 	movq	0x10(%rcx), %rax
+1409ebe88: 48 39 d0                    	cmpq	%rdx, %rax
+1409ebe8b: 76 77                       	jbe	0x1409ebf04 <.text+0x9eaf04>
+1409ebe8d: 48 8b 41 08                 	movq	0x8(%rcx), %rax
+1409ebe91: 48 8d 0c 52                 	leaq	(%rdx,%rdx,2), %rcx
+1409ebe95: 48 8b 44 c8 08              	movq	0x8(%rax,%rcx,8), %rax
+1409ebe9a: 48 89 c1                    	movq	%rax, %rcx
+1409ebe9d: 48 d1 e9                    	shrq	%rcx
+1409ebea0: 48 ba 55 55 55 55 55 55 55 55       	movabsq	$0x5555555555555555, %rdx # imm = 0x5555555555555555
+1409ebeaa: 48 21 ca                    	andq	%rcx, %rdx
+1409ebead: 48 29 d0                    	subq	%rdx, %rax
+1409ebeb0: 48 b9 33 33 33 33 33 33 33 33       	movabsq	$0x3333333333333333, %rcx # imm = 0x3333333333333333
+1409ebeba: 48 89 c2                    	movq	%rax, %rdx
+1409ebebd: 48 21 ca                    	andq	%rcx, %rdx
+1409ebec0: 48 c1 e8 02                 	shrq	$0x2, %rax
+1409ebec4: 48 21 c8                    	andq	%rcx, %rax
+1409ebec7: 48 01 d0                    	addq	%rdx, %rax
+1409ebeca: 48 89 c1                    	movq	%rax, %rcx
+1409ebecd: 48 c1 e9 04                 	shrq	$0x4, %rcx
+1409ebed1: 48 01 c1                    	addq	%rax, %rcx
+1409ebed4: 48 b8 0f 0f 0f 0f 0f 0f 0f 0f       	movabsq	$0xf0f0f0f0f0f0f0f, %rax # imm = 0xF0F0F0F0F0F0F0F
+1409ebede: 48 21 c8                    	andq	%rcx, %rax
+1409ebee1: 48 b9 01 01 01 01 01 01 01 01       	movabsq	$0x101010101010101, %rcx # imm = 0x101010101010101
+1409ebeeb: 48 0f af c8                 	imulq	%rax, %rcx
+1409ebeef: 48 c1 e9 38                 	shrq	$0x38, %rcx
+1409ebef3: f3 0f 2a c1                 	cvtsi2ss	%ecx, %xmm0
+1409ebef7: f3 0f 59 05 01 8e 0d 02     	mulss	0x20d8e01(%rip), %xmm0  # 0x142ac4d00
+1409ebeff: 48 83 c4 28                 	addq	$0x28, %rsp
+1409ebf03: c3                          	retq
+1409ebf04: 4c 8d 05 15 93 0d 02        	leaq	0x20d9315(%rip), %r8    # 0x142ac5220
+1409ebf0b: 48 89 d1                    	movq	%rdx, %rcx
+1409ebf0e: 48 89 c2                    	movq	%rax, %rdx
+1409ebf11: e8 02 d6 ee 01              	callq	0x1428d9518 <.text+0x28d8518>
+1409ebf16: cc                          	int3

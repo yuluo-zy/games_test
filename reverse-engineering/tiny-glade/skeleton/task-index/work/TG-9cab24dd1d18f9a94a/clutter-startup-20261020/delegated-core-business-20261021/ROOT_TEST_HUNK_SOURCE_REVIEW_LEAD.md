@@ -1,0 +1,7 @@
+# canonical必要依赖最终源码独审（lead）
+
+本scope源码通过，完整读最窄patch/meaningful tests、合同与既有原证；隔离真实before patch-F0重放退出0且逐字节等于冻结candidate。未Cargo/目标/GPU、不改生产；实际编译/运行由root，完整模块/游戏不因此验收。
+
+旧extreme constructor成功断言与原puref32 under/overflow拒绝冲突，最窄改为明确NonFiniteLength。保全部measure_length和slice扩展既有断言，未删除测试或用假cached curve绕过构造器；原imports不需变更，完整限定CurveError路径已核。
+
+before `4905cd01487afd8d57be78f8bb182658c86f9336de137aba0c728579dd4fe330`；after `ec8e90d0f1c1bed8221495e71b29d9e195a62fc75624d0798d53a2a1162da870`；patch `79d5406b28dd5b9a29541b15248ace51da76b441c8a83ec742c75318d7b287a7`。

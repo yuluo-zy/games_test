@@ -1,0 +1,67 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_balcony_door.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_balcony_door.rs
+@@ -10,7 +10,7 @@
+     walls::{
+         cached_decorator_transforms::CachedDecoratorTransform,
+         decorator_storage::DecoratorStorage,
+-        decorator_subtype::{DecoratorMeshLibrary, DerivedDecoratorSubtypes},
++        decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources},
+     },
+ };
+ use glam::Quat;
+@@ -58,38 +58,47 @@
+ /// 0x1407f0900（O 结构）：生成哥特阳台门装饰视觉。
+ pub fn generate_gothic_balcony_doors(
+     decorator_storage: Res<DecoratorStorage>,
+-    derived: Res<DerivedDecoratorSubtypes>,
++    derived: DerivedDecoratorInfoResources,
+     cached: Res<
+         country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
+     >,
+     mut blueprints: ResMut<DecoratorBlueprints>,
+     mut transient: ResMut<DecoratorTransientVisualState>,
+-    _mesh_lib: Res<DecoratorMeshLibrary>,
+     terrain: Res<TerrainHeightsData>,
+     paths: Res<WorldRaster<512>>,
+ ) {
++    let derived = derived.as_view();
++    let mesh_lib = derived.mesh_library();
+     for (_wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+             // O：门子类型 = 9（0x1407f0900 行 347）。
+-            if derived.get(id).subtype().0 != GOTHIC_DOOR_SUBTYPE {
++            if derived
++                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
++                .0
++                != GOTHIC_DOOR_SUBTYPE
++            {
+                 continue;
+             }
+-            let d = derived.get(id);
+             let transform = cached.transform(id);
+             // O：蓝图 + 视觉实体。
+             let mut blueprint = DecoratorBlueprint::new();
+-            blueprint.set_colliders(vec![d.collision_mesh()]);
++            let key = DecoratorLibKey::new(GOTHIC_DOOR_SUBTYPE, info.rank());
++            blueprint.set_positioned_colliders(
++                std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
++                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
++                &transform.translation,
++                &transform.rotation,
++            );
+             blueprint.set_outline((0.0, 0.0, 0.0));
+             check_for_door_stairs(
+                 &terrain,
+                 &paths,
+                 &transform,
+-                &d.collision_mesh().bounds,
++                &mesh_lib.collision_record(key).bounds,
+                 &mut blueprint,
+             );
+             blueprints.insert(id, blueprint);
+-            let builder =
+-                WindowVisualEntityBuilder::new(transform.translation, Quat::IDENTITY, id);
++            let builder = WindowVisualEntityBuilder::new(transform.translation, Quat::IDENTITY, id);
+             let _ = &mut transient;
+             let _ = &builder;
+         }

@@ -1,0 +1,5 @@
+# 验证器必要Circle叶
+
+root授权validator直接必要callee；corelead/tree确认此原owner合法work交本作者后续唯一候选写入，claim保持core-trap-circle-20261021。before是已独审intersect候选2a14ff82，绝不从旧生产整文件覆盖它。只追加原84B closest_point_on_perimeter及四项测试。原8143/1203链使用同一Circle API，无第二几何实现。
+
+原证：TG719/clutter-startup-20261020/location-validator-root-contract-v1/circle-closest-native-pack完整84B与NATIVE_BYTE_PROOF_V1.json，22条指令逐字节核发行RNE。测试未Cargo/rustc/GPU；只允许root整合实际跑。incremental.patch相对2a14；from-original.patch包含已有intersect修复，供root唯一整合，不能两者重复应用。

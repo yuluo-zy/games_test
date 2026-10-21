@@ -1,0 +1,179 @@
+--- a/tiny-glade/crates/rhapsody/src/bindless.rs
++++ b/tiny-glade/crates/rhapsody/src/bindless.rs
+@@ -104,6 +104,10 @@
+     exhausted: usize,
+     peak_live: usize,
+     peak_retiring: usize,
++    table_live: [usize; 4],
++    table_exhausted: [usize; 4],
++    table_peak_live: [usize; 4],
++    table_peak_retiring: [usize; 4],
+     entries: [Vec<Slot>; 4],
+     free: [VecDeque<u32>; 4],
+     retiring: [VecDeque<(u32, SyncSet)>; 4],
+@@ -136,6 +140,10 @@
+             exhausted: 0,
+             peak_live: 0,
+             peak_retiring: 0,
++            table_live: [0; 4],
++            table_exhausted: [0; 4],
++            table_peak_live: [0; 4],
++            table_peak_retiring: [0; 4],
+             entries,
+             free,
+             retiring,
+@@ -169,12 +177,15 @@
+             let Some(generation) = slot.generation.checked_add(1) else {
+                 slot.state = SlotState::Exhausted;
+                 self.exhausted += 1;
++                self.table_exhausted[table] += 1;
+                 continue;
+             };
+             slot.generation = generation;
+             slot.state = SlotState::Live;
+             self.live += 1;
+             self.peak_live = self.peak_live.max(self.live);
++            self.table_live[table] += 1;
++            self.table_peak_live[table] = self.table_peak_live[table].max(self.table_live[table]);
+             return Ok(BindlessIndex {
+                 kind,
+                 index,
+@@ -182,10 +193,14 @@
+             });
+         }
+         Err(Error::exhausted(format!(
+-            "bindless {kind:?} descriptor table is full (live={} retiring={} capacity={})",
++            "bindless {kind:?} descriptor table is full (live={} retiring={} free={} exhausted={} capacity={}; heap_live={} heap_retiring={})",
++            self.table_live[table],
++            self.retiring[table].len(),
++            self.free[table].len(),
++            self.table_exhausted[table],
++            self.entries[table].len(),
+             self.live,
+             self.retiring_count,
+-            self.entries[table].len()
+         )))
+     }
+     fn valid(&self, index: BindlessIndex) -> bool {
+@@ -199,6 +214,7 @@
+         debug_assert!(self.valid(index));
+         let table = index.kind as usize;
+         self.live -= 1;
++        self.table_live[table] -= 1;
+         self.entries[table][index.index as usize].state = SlotState::Retiring;
+         if after.is_empty() {
+             // Never used by the GPU: immediately reusable.
+@@ -210,6 +226,8 @@
+         self.peak_retiring = self.peak_retiring.max(self.retiring_count);
+         // Capacity equals the table size, so this never reallocates.
+         self.retiring[table].push_back((index.index, after));
++        self.table_peak_retiring[table] =
++            self.table_peak_retiring[table].max(self.retiring[table].len());
+     }
+     /// Move every retiring slot whose completion set is reached to the free
+     /// list. Cost is proportional to the retiring slots only.
+@@ -234,6 +252,18 @@
+         self.retiring_count -= count;
+         count
+     }
++    fn table_stats(&self, kind: DescriptorKind) -> BindlessTableStats {
++        let table = kind as usize;
++        BindlessTableStats {
++            capacity: self.entries[table].len(),
++            live: self.table_live[table],
++            retiring: self.retiring[table].len(),
++            free: self.free[table].len(),
++            exhausted: self.table_exhausted[table],
++            peak_live: self.table_peak_live[table],
++            peak_retiring: self.table_peak_retiring[table],
++        }
++    }
+     fn has_retiring(&self) -> bool {
+         self.retiring_count != 0
+     }
+@@ -303,6 +333,18 @@
+         self.set.visit_uses(visit)
+     }
+ }
++/// 单类描述符的寿命账目；统计只读取计数器，不扫描整张描述符表。
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++pub struct BindlessTableStats {
++    pub capacity: usize,
++    pub live: usize,
++    pub retiring: usize,
++    pub free: usize,
++    /// generation 已溢出的槽永久不可复用，不能计入可分配容量。
++    pub exhausted: usize,
++    pub peak_live: usize,
++    pub peak_retiring: usize,
++}
+ #[derive(Clone, Copy, Debug, Default)]
+ pub struct BindlessStats {
+     pub peak_live: usize,
+@@ -311,6 +353,13 @@
+     pub live: usize,
+     pub retiring: usize,
+     pub free: usize,
++    /// 顺序与 DescriptorKind 一致；优先通过 table() 按类别读取。
++    pub tables: [BindlessTableStats; 4],
++}
++impl BindlessStats {
++    pub fn table(&self, kind: DescriptorKind) -> BindlessTableStats {
++        self.tables[kind as usize]
++    }
+ }
+ impl BindlessHeap {
+     pub fn new(device: Arc<Device>, config: BindlessConfig) -> Result<Arc<Self>> {
+@@ -423,6 +472,7 @@
+             live: slots.live,
+             retiring: slots.retiring_count,
+             free: slots.free.iter().map(VecDeque::len).sum(),
++            tables: DescriptorKind::ALL.map(|kind| slots.table_stats(kind)),
+         }
+     }
+     fn reserve(self: &Arc<Self>, kind: DescriptorKind, owner: Owner) -> Result<Arc<BindlessLease>> {
+@@ -906,6 +956,44 @@
+         assert!(slots.valid(second));
+     }
+     #[test]
++    fn table_statistics_distinguish_live_retiring_and_exhausted_kinds() {
++        let mut slots = Slots::new([2, 1, 2, 1]).unwrap();
++        let image = slots.allocate(DescriptorKind::SampledImage).unwrap();
++        let buffer = slots.allocate(DescriptorKind::StorageBuffer).unwrap();
++        let other_buffer = slots.allocate(DescriptorKind::StorageBuffer).unwrap();
++        let queue = QueueId::new(0).unwrap();
++        slots.retire(buffer, SyncSet::from_point(SyncPoint { queue, value: 3 }));
++        let buffers = slots.table_stats(DescriptorKind::StorageBuffer);
++        assert_eq!((buffers.live, buffers.retiring, buffers.free), (1, 1, 0));
++        assert_eq!((buffers.peak_live, buffers.peak_retiring), (2, 1));
++        // 采样图的 live 不应冒充 StorageBuffer live，后者的容量也只属于本表。
++        let error = slots.allocate(DescriptorKind::StorageBuffer).unwrap_err();
++        let Error::Exhausted(message) = error else {
++            panic!("unexpected allocation error")
++        };
++        assert!(message.contains("live=1 retiring=1 free=0 exhausted=0 capacity=2"));
++        assert!(message.contains("heap_live=2 heap_retiring=1"));
++        let mut completed = CompletedValues::default();
++        completed.raise(queue, 3);
++        assert_eq!(slots.collect(&completed), 1);
++        slots.retire(other_buffer, SyncSet::EMPTY);
++        slots.retire(image, SyncSet::EMPTY);
++        // generation 溢出不是 live 或 retiring；其空闲队列项被消费后才记为 exhausted。
++        slots.entries[DescriptorKind::Sampler as usize][0].generation = u64::MAX;
++        assert!(slots.allocate(DescriptorKind::Sampler).is_err());
++        for kind in DescriptorKind::ALL {
++            let stats = slots.table_stats(kind);
++            assert_eq!(
++                stats.capacity,
++                stats.live + stats.retiring + stats.free + stats.exhausted
++            );
++        }
++        let buffers = slots.table_stats(DescriptorKind::StorageBuffer);
++        assert_eq!((buffers.live, buffers.retiring, buffers.free), (0, 0, 2));
++        assert_eq!((buffers.peak_live, buffers.peak_retiring), (2, 1));
++        assert_eq!(slots.table_stats(DescriptorKind::Sampler).exhausted, 1);
++    }
++    #[test]
+     fn collection_visits_only_retiring_slots_and_unused_leases_free_immediately() {
+         let queue = QueueId::new(0).unwrap();
+         let mut slots = Slots::new([4; 4]).unwrap();

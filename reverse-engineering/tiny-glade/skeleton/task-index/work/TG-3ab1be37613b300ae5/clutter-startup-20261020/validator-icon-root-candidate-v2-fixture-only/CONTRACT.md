@@ -1,0 +1,9 @@
+# V3实际失败的最窄测试夹具修正
+
+root实际日志 /private/tmp/tg-validator-closure-tests-v3-20261021.log 保留：375 pass、3 fail、2 ignored。失败不是原算法误差，不改任何生产函数或浮点期望、不扩大容差，不跳过测试。作者不Cargo/rustc/GPU，不写生产；本候选基于已整合冻结10源after，仅供root唯一应用。
+
+TG69两项：①Locator测试原stored()已插入d2s，再insert错误地址触发canonical原140a1b4e0 required重复键panic。现在测试显式remove并断言原地址，再insert故意错误地址，仍验证消费者按Locator实际addr查询而非d2s。②maxY闭合测试的looped fixture经PublicWalls.consume已发布regular_heights，真实arch_segment_heights getter优先gable→regular→freeform，故此前freeform截短并未成为实际输入。现在仅测试明确将regular/gable设None，保既定freeform[9,10]；原show_max_wall_y zip/shape闭合body和所有期望数值逐字不动。不是改生产高度策略。
+
+TG3ab图标测试：实际factory已完成build并通过UI组件、TransientMesh、动画断言，失败在测试随后对真Empty mesh调用required positions_without_indices。原Mesh accessor 140a07ca0缺Vertex_Position本应panic，sharedbuilder Empty分支就是Mesh::new无attribute/indices（现canonical complete_builder_tests也已锁同合同）。现在直接断言两容器都空，未造Named/geometry、未改共享builder，仍验证真实UI实体与实际卸载receipt。
+
+两源生产部分按#[cfg(test)]边界逐字相等；所有原候选V1不变。此增量必须另经独审后由root跑实际3失败及相关全包，不将原先源码审当新增测试已经通过。

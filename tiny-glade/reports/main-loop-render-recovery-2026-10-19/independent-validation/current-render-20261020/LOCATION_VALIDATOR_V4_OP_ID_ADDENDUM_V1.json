@@ -1,0 +1,11 @@
+{
+  "reviewer": "/root/render_reviewer",
+  "decision": "相对V3两行接canonical Op actualID无静态阻断；V3全部业务/依赖/未测试边界继续有效",
+  "manifest_sha256": "7fb225a925bb42771280073812f69d51e3979cd96406d6cbef96738964d02cc4",
+  "source_sha256": "d9bab992b289cc21e1c514a365ea709bf8c785e7aa64010de871edb9bb955e4d",
+  "incremental_patch_sha256": "a331308856a69f5556dafe3df4fbb2daa5cfcd9f23047372e1d861018bf1ed5f",
+  "verification": "独立核manifest全部文件SHA；从V4移除两个decorator_id字段后与已审V3逐字相同",
+  "semantic": "两字段均来自同函数当前真实迭代id，非info.decorator_id推断、WallId或默认值；仅配corelead canonical Op新增必需字段。位置数值API与10测试完全未变",
+  "integration": "若已用V3接incremental，若仍before接完整SOURCE.patch；不得重复。canonical Op先/同批；整个旧cull仍partial，不提前挂宿主",
+  "runtime": "parse-only由作者执行，审者未Rust/Cargo/GPU/生产写。"
+}

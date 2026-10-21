@@ -1,0 +1,72 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/flag.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/flag.rs
+@@ -27,7 +27,7 @@
+ use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
+ use country_core::resources::walls::decorator_storage::DecoratorStorage;
+ use country_core::resources::walls::decorator_subtype::{
+-    DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorSubtypes,
++    DecoratorLibKey, DerivedDecoratorInfoResources,
+ };
+ use glam::{Quat, Vec3};
+ 
+@@ -111,39 +111,46 @@
+ pub fn generate_flags(
+     decorator_storage: Res<DecoratorStorage>,
+     cached_transforms: Res<CachedDecoratorTransforms>,
+-    derived_subtypes: Res<DerivedDecoratorSubtypes>,
+-    mesh_lib: Res<DecoratorMeshLibrary>,
++    derived_subtypes: DerivedDecoratorInfoResources,
+     mut blueprints: ResMut<DecoratorBlueprints>,
+     mut transient: ResMut<DecoratorTransientVisualState>,
+ ) {
+-    for (_wall, decorators) in decorator_storage.iter_walls() {
+-        for (id, _info) in decorators.iter_modified() {
++    let derived = derived_subtypes.as_view();
++    let mesh_lib = derived.mesh_library();
++    for (wall, decorators) in decorator_storage.iter_walls() {
++        for (id, info) in decorators.iter_modified() {
+             let transform = cached_transforms.transform(id);
+-            let derived = derived_subtypes.get(id);
+-            let subtype = derived.subtype().0;
++            let subtype = derived
++                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
++                .0;
+             match classify_flag_subtype(subtype) {
+                 Some(FlagSubtype::HandledElsewhere) => continue,
+                 Some(FlagSubtype::Connections) => continue,
+                 Some(FlagSubtype::Flag) => {
+                     // O 蓝图写面：`+0x00 = {1, 0}`，`+0x10.. = cloth 基四元数`，
+                     // 变换槽由缓存变换承载。
+-                    let mut blueprint = crate::blueprint::DecoratorBlueprint::new();
++                    let blueprint = blueprints.insert_for(
++                id,
++                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
++                info.state(),
++            );
+                     blueprint.u50 = 1;
+                     blueprint.flag_cloth_basis = FLAG_CLOTH_QUAT_XYZW;
+                     blueprint.transform = Some(transform);
+                     // O：网格库查询（DecoratorLibKey::new + 查询链）→ 逐条目构建。
+-                    let key = DecoratorLibKey::new(subtype, 0);
+-                    if let Some(collision) = mesh_lib.collision_mesh(key) {
+-                        blueprint.set_colliders(vec![collision]);
+-                    }
+-                    blueprints.insert(id, blueprint);
++                    let key = DecoratorLibKey::new(subtype, info.rank());
++                    blueprint.set_positioned_colliders(
++                        std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
++                        std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
++                        &transform.translation,
++                        &transform.rotation,
++                    );
+                     // O：旗布几何（四元数 + 0.48/0.08 常量）。
+                     let pos = transform.translation;
+                     let corners = flag_cloth_corners(pos, transform.rotation);
+                     let _ = corners;
+                     // O：视觉实体 builder（沿用 id/位置；mesh 名静态表 U）。
+-                    let mut builder =
+-                        WindowVisualEntityBuilder::new(pos, transform.rotation, id);
++                    let mut builder = WindowVisualEntityBuilder::new(pos, transform.rotation, id);
+                     match subtype {
+                         FLAG_WALL_SUBTYPE => {
+                             builder.flag_wall_cloth();

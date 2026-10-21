@@ -1,0 +1,9 @@
+# 七源canonical蓝图entry v2源码独立复核
+
+复核人 core_business_lead，2026-10-21。接受本source最窄typed owner/真实entry/collider闭包候选；生产before `3b097568cdec6ed1a7eb001b7fafc22361376917eec8b36a69a1533a6a14f491`，candidate `158ef9df0a6623e112a3a0ca41ede8a2f518c97284caa50b580771774c24d504`。已核最终source hash、生产before、v1→v2 patch及combined-from-original patch，未执行Cargo/原程序/GPU。
+
+复用唯一 DerivedDecoratorInfoResources owner、required subtype/rank库记录及同一Arc，不造bbox默认geometry。按本源原1408258b0时点使用insert_for，实际WallStorageAddr与Info+47原字节进入蓝图；current唯一allocation复用、共享previous则新allocation，并保留entry前后失败副作用。现instantiate_decorator_colliders实际要求storage_addr，这修复v1 legacyinsert的运行panic；禁止再使用旧v1作为可运行终版。
+
+代表性cottage测试穿过实际generator→两live物理map→RaycastWorld registry，核Arc、pose、source与非零flags1；另核唯一entry复用及previous快照保持。roof使用原尺寸真实cuboid、局部中心零/世界Y半高、sameArc双槽；不降级为label collider。所有新增测试仅完成源码独审/语法解析，root仍须真实Cargo和集成验收。
+
+上游state2冲突已独立原证定位：14155afe0的RCX为返回Option输出，R9为输入Info，b049先map.insert，b04e检查返回旧Option niche，b076写返回+47=2代表None。当前apply_decorator_place的state2业务推断须root同owner修复，不能由visual mask值掩盖。其它visual几何/装配或terrain-stair遍历旧缺口未由本最窄适配恢复，不声称整族完成。

@@ -231,11 +231,15 @@ impl Device {
         if self.is_device_lost() {
             return Err(Error::DeviceLost);
         }
+        let mut trace = crate::raw::command_buffer::SubmitTrace::new("device_submit_prepared");
+        trace.count("batches", batches.len());
         let id = self.queue_id(queue)?;
         for batch in batches {
             batch.validate(&self.queues.timelines)?;
         }
+        trace.mark("validate_batches");
         self.flush_deferred_host_writes()?;
+        trace.mark("flush_host_writes");
         if self
             .caps()
             .is_enabled(crate::device::Feature::Synchronization2)
@@ -325,16 +329,19 @@ impl Device {
         )?;
         native_count(infos.len())?;
         let (point, ()) = self.queues.timelines.submit(id, |signal| {
+            let mut driver_trace = crate::raw::command_buffer::SubmitTrace::new("vkQueueSubmit");
+            driver_trace.count("submit_infos", infos.len());
             // SAFETY: validated batches, fixed-capacity arrays and their Vulkan
             // views above remain alive and unmoved throughout this queue call.
             // Write through the same raw exclusive pointers used by the views;
             // no competing Rust reference or driver read exists at this point.
-            unsafe {
+            let result = unsafe {
                 signals_ptr.add(signal_count - 1).write(signal.semaphore);
                 values_ptr.add(signal_count - 1).write(signal.value);
                 self.core.device.queue_submit(queue, &infos, fence)
-            }
-            .map_err(Into::into)
+            };
+            driver_trace.mark("driver");
+            result.map_err(Into::into)
         })?;
         Ok(point)
     }
@@ -438,9 +445,11 @@ impl Device {
         native_count(infos.len())?;
         let extension = self.core.synchronization2.as_ref();
         let (point, ()) = self.queues.timelines.submit(id, |signal| {
+            let mut driver_trace = crate::raw::command_buffer::SubmitTrace::new("vkQueueSubmit2");
+            driver_trace.count("submit_infos", infos.len());
             // SAFETY: all arrays are owned by this call, all counts are checked,
             // and no backing can grow or move while the driver reads the views.
-            unsafe {
+            let result = unsafe {
                 let last = signals_ptr.add(counts.2 - 1);
                 std::ptr::addr_of_mut!((*last).semaphore).write(signal.semaphore);
                 std::ptr::addr_of_mut!((*last).value).write(signal.value);
@@ -449,8 +458,9 @@ impl Device {
                 } else {
                     self.core.device.queue_submit2(queue, &infos, fence)
                 }
-            }
-            .map_err(Into::into)
+            };
+            driver_trace.mark("driver");
+            result.map_err(Into::into)
         })?;
         Ok(point)
     }

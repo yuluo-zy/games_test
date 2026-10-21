@@ -1,0 +1,7 @@
+# Gothic canonical直接调用迁移独立审查
+
+通过此最窄接口迁移的源码独审。完整哥特窗主body仍是旧部分实现，禁止据此挂载visual宿主。
+
+逐hunk核对：仅增加同一DecoratorMeshLibrary资源；保留0x39类型门及required subtype/cache；真实Info.rank构造唯一key，两个required record查询。Arc只clone同owner，不由bbox造geometry；insert_for保真实Wall地址和raw flags，positioned colliders保真实缓存translation/rotation并set_cached_transform。旧数值helpers及其余body未变，未增默认成功/并行表。审查仅证明typed API与已审canonical schema对接及本次副作用，不能把旧无洞/未成形窗算法记为恢复。
+
+before75da019bd17e76d5e9204b62fad91c206688a05c06228af50ce13cd21d2be2bc；after4ed2f8bc6027b2fdcbe9ee9c875f8df02fa3b03249bc67ebd254d781b8806df7。独立临时patch -p1 -F0逐字hash相等。未执行Cargo/runtime；用户目标C未做等价证明。

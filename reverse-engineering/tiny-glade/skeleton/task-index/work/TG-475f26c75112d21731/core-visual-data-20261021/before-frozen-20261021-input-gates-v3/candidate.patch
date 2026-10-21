@@ -1,0 +1,46 @@
+--- a/tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs
++++ b/tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs
+@@ -89,20 +89,24 @@
+     let mesh_lib = derived.mesh_library();
+     for (wall, decorators) in decorator_storage.iter_walls() {
+         for (id, info) in decorators.iter_modified() {
+-            // O：仅 premade 形状（is_premade_shape）。
+-            let Some(wall_state) = walls.get(wall) else {
+-                continue;
+-            };
+-            if !wall_state.is_premade_shape() {
+-                continue;
+-            }
+             if !is_arrow_slit(info) {
+                 continue;
+             }
+-            let transform = cached_transforms.transform(id);
+             let subtype = derived
+                 .subtype(country_core::resources::walls::decorator::DecoratorId(id))
+                 .0;
++            // 原bc528排除loader故意不注册的23/rank1，先于墙/网格/cache读取。
++            if subtype == 23 && info.rank() == 1 {
++                continue;
++            }
++            let _wall_state = walls
++                .get(wall)
++                .expect("arrow slit requires its public wall");
++            let key = DecoratorLibKey::new(subtype, info.rank());
++            let collision = mesh_lib.collision_record(key);
++            info.dst_as_wall();
++            // 原bc703的完整bones/面板桥仍未恢复；保现真实缓存适配，不能提前吞required失败。
++            let transform = cached_transforms.transform(id);
+             // O：洞记录（DormerHoleSsbo::gothic，尾参数 2.5/0.05）。
+             let _hole = DormerHoleSsbo::gothic(
+                 [0; 16],
+@@ -116,9 +120,8 @@
+                 country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
+                 info.state(),
+             );
+-            let key = DecoratorLibKey::new(subtype, info.rank());
+             blueprint.set_positioned_colliders(
+-                std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
++                std::sync::Arc::clone(&collision.mesh),
+                 std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
+                 &transform.translation,
+                 &transform.rotation,

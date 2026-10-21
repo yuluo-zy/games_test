@@ -34,6 +34,11 @@ pub fn install(app: &mut App, installed: &Path) -> anyhow::Result<()> {
             std::thread::Builder::new().name("FMOD bank samples".into()).spawn(loader)?;
         }
     }
+    // 鸭子的构造工厂持有同一 FMOD 引擎；不再丢弃原 Pitch/Flap 音频链。
+    let critter_audio = system_critters::audio::CritterAudioCore::from_audio_core(
+        share_core(app.world().resource::<AudioCore<NativeStudio>>()),
+    );
+    app.insert_resource(critter_audio);
     let music = NativeMusicBackend(app.world().resource::<AudioCore<NativeStudio>>().studio.clone());
     app.insert_resource(music);
     app.add_systems(PreStartup, receive_samples);

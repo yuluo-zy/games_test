@@ -272,6 +272,233 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
 }
 
 #[test]
+fn complete_groups_page_without_changing_the_abi_or_immutable_push_values() {
+    use rhapsody::bindless::{BindlessPagePool, DescriptorKind};
+    let Some(device) = gpu_test_support::initialize(
+        "paged bindless ABI",
+        Device::new_headless(&DeviceConfig::headless()),
+    ) else {
+        return;
+    };
+    let heap = BindlessHeap::new(
+        device.clone(),
+        BindlessConfig {
+            sampled_images: 1,
+            storage_images: 1,
+            storage_buffers: 5,
+            samplers: 1,
+        },
+    )
+    .unwrap();
+    let pages = BindlessPagePool::new(heap.clone()).unwrap();
+    let package = BindlessShaderPackage::new(&heap, &input(), 64).unwrap();
+    let compiler = AsyncPipelineCompiler::new(
+        Arc::new(PipelineCache::new(device.clone(), &[]).unwrap()),
+        CompilerConfig::default(),
+    )
+    .unwrap();
+    let pipeline = compiler
+        .request_compute_spirv(
+            package.stages[0].spirv_bytes(),
+            c"main".into(),
+            package.layout,
+        )
+        .unwrap()
+        .wait(Duration::from_secs(10))
+        .unwrap();
+    let buffer = || {
+        Arc::new(
+            Buffer::new(
+                device.clone(),
+                &BufferDesc::new_cpu_to_gpu(
+                    4,
+                    vk::BufferUsageFlags::STORAGE_BUFFER
+                        | vk::BufferUsageFlags::UNIFORM_BUFFER
+                        | vk::BufferUsageFlags::TRANSFER_SRC,
+                ),
+            )
+            .unwrap(),
+        )
+    };
+    let owners = [buffer(), buffer(), buffer()];
+    owners[0].write_bytes(0, &123u32.to_le_bytes()).unwrap();
+    owners[1].write_bytes(0, &[0; 4]).unwrap();
+    owners[2].write_bytes(0, &25u32.to_le_bytes()).unwrap();
+    let locations = [
+        (BindingLocation { set: 0, binding: 5 }, 0),
+        (BindingLocation { set: 0, binding: 5 }, 1),
+        (BindingLocation { set: 1, binding: 3 }, 0),
+    ];
+    let resources: Vec<_> = owners
+        .iter()
+        .map(|buffer| BindlessResource::Buffer {
+            buffer: buffer.clone(),
+            offset: 0,
+            size: 4,
+        })
+        .collect();
+    let mut required = BindlessParameters::resource_requirements(
+        &package.abi,
+        locations
+            .iter()
+            .zip(&resources)
+            .map(|((location, element), resource)| (*location, *element, resource)),
+    )
+    .unwrap();
+    assert_eq!(required, [0, 0, 3, 0]);
+    required[2] += 1;
+    let mut cursor = pages.cursor();
+    // 超过新页容量的完整组立即报告逐类需求，不创建页或分配半组。
+    let oversized = cursor.prepare(|group| {
+        group.require_slots([0, 0, 6, 0])?;
+        unreachable!("oversized group must fail admission")
+    });
+    assert!(matches!(oversized, Err(rhapsody::Error::Unsupported(_))));
+    assert_eq!(pages.page_count(), 1);
+    // 实际分配后的普通错误也必须原样退出；未提交租约立即归还原页。
+    let failed = cursor.prepare(|group| {
+        group.require_slots([0, 0, 1, 0])?;
+        let _lease = group.heap().storage_buffer(owners[0].clone(), 0, 4)?;
+        Err(rhapsody::Error::invalid_usage("intentional group preparation failure").into())
+    });
+    assert!(matches!(failed, Err(rhapsody::Error::InvalidUsage { .. })));
+    assert_eq!(heap.stats().table(DescriptorKind::StorageBuffer).free, 5);
+    let mut constants = DynamicConstants::new(device.clone()).unwrap();
+    let mut prepared: Vec<rhapsody::bindless::PreparedBindlessParameters> = Vec::new();
+    for value in [17u32, 18, 19] {
+        let previous = prepared.last();
+        let next = cursor
+            .prepare(|group| {
+                if let Some(previous) =
+                    previous.filter(|previous| previous.belongs_to(group.heap()))
+                {
+                    group.require_slots([0, 0, 1, 0])?;
+                    return previous
+                        .with_push(&value.to_le_bytes(), &mut constants)
+                        .map_err(Into::into);
+                }
+                group.require_slots(required)?;
+                let mut bindings = BindlessParameters::new(
+                    group.heap().clone(),
+                    package.abi.clone(),
+                    &value.to_le_bytes(),
+                )?;
+                for ((location, element), resource) in locations.iter().zip(&resources) {
+                    bindings.write(*location, *element, resource.clone())?;
+                }
+                bindings.finish(&mut constants).map_err(Into::into)
+            })
+            .unwrap();
+        prepared.push(next);
+    }
+    assert_eq!(pages.page_count(), 2);
+    assert!(prepared[0].belongs_to(&heap));
+    assert!(prepared[1].belongs_to(&heap));
+    assert!(!prepared[2].belongs_to(&heap));
+    let readback = Buffer::new(
+        device.clone(),
+        &BufferDesc::new_gpu_to_cpu(12, vk::BufferUsageFlags::TRANSFER_DST),
+    )
+    .unwrap();
+    let pool = VulkanCommandPool::new(device.clone()).unwrap();
+    let mut command = pool.allocate().unwrap();
+    command.begin().unwrap();
+    unsafe {
+        pipeline.bind_pipeline(command.raw_handle());
+        for (index, parameters) in prepared.iter().enumerate() {
+            parameters
+                .bind_command(&mut command, pipeline.clone())
+                .unwrap();
+            device
+                .raw_device()
+                .cmd_dispatch(command.raw_handle(), 1, 1, 1);
+            device.raw_device().cmd_pipeline_barrier(
+                command.raw_handle(),
+                vk::PipelineStageFlags::COMPUTE_SHADER,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[vk::BufferMemoryBarrier::default()
+                    .buffer(owners[1].raw_handle())
+                    .offset(0)
+                    .size(4)
+                    .src_access_mask(vk::AccessFlags::SHADER_WRITE)
+                    .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
+                    .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                    .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)],
+                &[],
+            );
+            device.raw_device().cmd_copy_buffer(
+                command.raw_handle(),
+                owners[1].raw_handle(),
+                readback.raw_handle(),
+                &[vk::BufferCopy {
+                    src_offset: 0,
+                    dst_offset: index as u64 * 4,
+                    size: 4,
+                }],
+            );
+            device.raw_device().cmd_pipeline_barrier(
+                command.raw_handle(),
+                vk::PipelineStageFlags::TRANSFER,
+                vk::PipelineStageFlags::COMPUTE_SHADER,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[vk::BufferMemoryBarrier::default()
+                    .buffer(owners[1].raw_handle())
+                    .offset(0)
+                    .size(4)
+                    .src_access_mask(vk::AccessFlags::TRANSFER_READ)
+                    .dst_access_mask(vk::AccessFlags::SHADER_WRITE)
+                    .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                    .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)],
+                &[],
+            );
+        }
+        device.raw_device().cmd_pipeline_barrier(
+            command.raw_handle(),
+            vk::PipelineStageFlags::TRANSFER,
+            vk::PipelineStageFlags::HOST,
+            vk::DependencyFlags::empty(),
+            &[],
+            &[vk::BufferMemoryBarrier::default()
+                .buffer(readback.raw_handle())
+                .offset(0)
+                .size(12)
+                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                .dst_access_mask(vk::AccessFlags::HOST_READ)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)],
+            &[],
+        );
+    }
+    command.end().unwrap();
+    let pending = command.submit().unwrap();
+    drop(prepared);
+    device
+        .wait(
+            &rhapsody::sync::SyncSet::from_point(pending.point),
+            10_000_000_000,
+        )
+        .unwrap();
+    drop(pending);
+    let mut snapshots = [0; 12];
+    readback.read_bytes(0, &mut snapshots).unwrap();
+    let values: Vec<_> = snapshots
+        .chunks_exact(4)
+        .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
+        .collect();
+    assert_eq!(values, [42, 43, 44]);
+    let mut actual = [0; 4];
+    owners[1].read_bytes(0, &mut actual).unwrap();
+    assert_eq!(u32::from_le_bytes(actual), 44);
+    owners[0].read_bytes(0, &mut actual).unwrap();
+    assert_eq!(u32::from_le_bytes(actual), 123);
+    assert_eq!(compiler.stats().compiled, 1);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
+}
+
+#[test]
 fn hot_reload_rejects_a_changed_logical_abi_even_when_lowered_spirv_is_identical() {
     let Some(device) = gpu_test_support::initialize(
         "bindless hot ABI",

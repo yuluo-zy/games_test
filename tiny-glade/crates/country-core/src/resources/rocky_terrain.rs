@@ -329,8 +329,9 @@ mod tests {
     fn actual_b_asset_loads_through_the_real_library_and_native_record_layouts() {
         // This recovery regression intentionally reads the separately hash-bound
         // original B asset, not a fabricated DTO fixture or a GPU simulation.
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../ljxsj_92385/Tiny Glade/assets/data/rocky_terrain.json");
+        let path = (std::env::var_os("TG_INSTALL_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade"))).join("assets/data/rocky_terrain.json");
         let library = AssetSsboLibrary::new();
         let device = MockDevice::default();
         let mesh = RockyTerrainMesh::load(&path, &library, &device).unwrap();

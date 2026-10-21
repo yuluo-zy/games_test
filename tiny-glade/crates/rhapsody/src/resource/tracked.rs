@@ -297,6 +297,19 @@ impl SyncCell {
             .expect("initialized native state")
             .prepare(patches, queue, family)
     }
+    /// 同一次提交的已准备前缀增量；调用者必须持续持有此资源的提交 gate。
+    pub(crate) fn append_prepared_range_state(
+        &self,
+        patches: &[super::range_state::StatePatch],
+        queue: QueueId,
+        family: u32,
+    ) -> crate::Result<()> {
+        let mut table = self.native_state.lock();
+        table
+            .as_mut()
+            .ok_or_else(|| crate::Error::invalid_usage("native range append has no prepared state"))?
+            .append_prepared(patches, queue, family)
+    }
     pub(crate) fn publish_range_state(&self, point: SyncPoint) {
         self.native_state
             .lock()

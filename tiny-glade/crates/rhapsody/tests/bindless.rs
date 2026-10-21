@@ -110,13 +110,75 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
         return;
     };
     let heap = BindlessHeap::new(device.clone(), small()).unwrap();
+    pending_shader_retires_its_actual_page(device, heap.clone(), heap.layout.clone(), None);
+}
+
+#[test]
+fn a_pending_layout_shared_page_rejects_foreign_indices_and_retires_independently() {
+    let Some(device) = device() else {
+        return;
+    };
+    let template = BindlessHeap::new(device.clone(), small()).unwrap();
+    let page = template.new_page().unwrap();
+    assert!(Arc::ptr_eq(&template.layout, &page.layout));
+    let foreign = template.storage_buffer(target(&device), 0, 4).unwrap();
+    assert_eq!(foreign.index().index, 0);
+    let layout = template.layout.clone();
+    let template_owner = Arc::downgrade(&template);
+    drop(template);
+    pending_shader_retires_its_actual_page(device, page.clone(), layout, Some(foreign));
+    assert!(
+        template_owner.upgrade().is_none(),
+        "new page must not retain its template heap"
+    );
+    assert_eq!(
+        page.stats()
+            .table(rhapsody::bindless::DescriptorKind::StorageBuffer)
+            .live,
+        0
+    );
+}
+
+#[test]
+fn a_layout_shared_page_has_independent_slots_and_unused_leases() {
+    let Some(device) = device() else {
+        return;
+    };
+    let template = BindlessHeap::new(device.clone(), small()).unwrap();
+    let page = template.new_page().unwrap();
+    assert!(Arc::ptr_eq(&template.layout, &page.layout));
+    let template_lease = template.storage_buffer(target(&device), 0, 4).unwrap();
+    let page_lease = page.storage_buffer(target(&device), 0, 4).unwrap();
+    assert_eq!(template_lease.index(), page_lease.index());
+    assert!(matches!(
+        page.storage_buffer(target(&device), 0, 4),
+        Err(rhapsody::Error::Exhausted(_))
+    ));
+    drop(template_lease);
+    let kind = rhapsody::bindless::DescriptorKind::StorageBuffer;
+    assert_eq!(template.stats().table(kind).free, 1);
+    assert_eq!(page.stats().table(kind).free, 0);
+    let template_owner = Arc::downgrade(&template);
+    drop(template);
+    assert!(template_owner.upgrade().is_none());
+    drop(page_lease);
+    assert_eq!(page.stats().table(kind).free, 1);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
+}
+
+fn pending_shader_retires_its_actual_page(
+    device: Arc<Device>,
+    heap: Arc<BindlessHeap>,
+    layout: Arc<rhapsody::raw::descriptor_set::VulkanDescriptorSetLayout>,
+    foreign: Option<Arc<rhapsody::bindless::BindlessLease>>,
+) {
     let buffer = target(&device);
     buffer.write_bytes(0, &0u32.to_le_bytes()).unwrap();
     let lease = heap.storage_buffer(buffer.clone(), 0, 4).unwrap();
     let first = lease.index();
     let layout = PipelineLayout::new(
         device.clone(),
-        vec![heap.layout.clone()],
+        vec![layout],
         vec![vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::COMPUTE,
             offset: 0,
@@ -134,6 +196,13 @@ fn a_real_pending_shader_keeps_the_bindless_slot_until_actual_completion() {
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
+    if let Some(foreign) = foreign {
+        // 数字下标相同不构成同页证明；拒绝后还必须能正常绑定真实页。
+        assert!(matches!(
+            unsafe { heap.bind_command(&mut command, pipeline.clone(), 0, &[foreign]) },
+            Err(rhapsody::Error::InvalidUsage { .. })
+        ));
+    }
     unsafe {
         pipeline.bind_pipeline(command.raw_handle());
         heap.bind_command(
@@ -383,4 +452,110 @@ fn known_host_slot_storage_is_admitted_and_released_by_the_unified_budget() {
         baseline
     );
     assert_eq!(device.memory_budget_usage().unwrap().total(), baseline);
+}
+
+/// 只做真实布局支持诊断；由唯一 GPU 验证 owner 显式运行，不改变游戏资源或绘制数。
+#[test]
+#[ignore = "由 root 显式运行真实设备布局矩阵"]
+fn actual_bindless_layout_support_matrix() {
+    use rhapsody::raw::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
+    // 矩阵包含变长绑定查询，必须先启用该 feature，不能用未启用特性的输入测支持。
+    let mut config = DeviceConfig::headless();
+    config.required_features = config.required_features.with(
+        rhapsody::device::Feature::DescriptorBindingVariableDescriptorCount,
+    );
+    let Some(device) = gpu_test_support::initialize(
+        "bindless layout matrix",
+        Device::new_headless(&config),
+    ) else { return };
+    let kinds = [
+        vk::DescriptorType::SAMPLED_IMAGE,
+        vk::DescriptorType::STORAGE_IMAGE,
+        vk::DescriptorType::STORAGE_BUFFER,
+        vk::DescriptorType::SAMPLER,
+    ];
+    for (name, counts, variable_kind) in [
+        ("production_fixed", [8192, 256, 16384, 64], None),
+        ("default_fixed", [256, 256, 256, 64], None),
+        ("below_1212", [1, 1, 1208, 1], None),
+        ("at_1212", [1, 1, 1209, 1], None),
+        ("above_1212", [1, 1, 1210, 1], None),
+        ("page_query_only", [128, 64, 960, 32], None),
+        ("single_storage_fixed_16384", [0, 0, 16384, 0], None),
+        ("single_storage_variable_16384", [0, 0, 16384, 0], Some(2)),
+        ("single_storage_variable_31", [0, 0, 31, 0], Some(2)),
+        ("single_storage_variable_32", [0, 0, 32, 0], Some(2)),
+    ] {
+        let nonzero = counts.iter().enumerate().filter(|(_, count)| **count != 0);
+        let bindings: Vec<_> = nonzero
+            .clone()
+            .map(|(kind, count)| {
+                vk::DescriptorSetLayoutBinding::default()
+                    .binding(kind as u32)
+                    .descriptor_type(kinds[kind])
+                    .descriptor_count(*count)
+                    .stage_flags(vk::ShaderStageFlags::ALL)
+            })
+            .collect();
+        let common = vk::DescriptorBindingFlags::UPDATE_AFTER_BIND
+            | vk::DescriptorBindingFlags::PARTIALLY_BOUND
+            | vk::DescriptorBindingFlags::UPDATE_UNUSED_WHILE_PENDING;
+        let flags: Vec<_> = nonzero
+            .map(|(kind, _)| {
+                if variable_kind == Some(kind) {
+                    common | vk::DescriptorBindingFlags::VARIABLE_DESCRIPTOR_COUNT
+                } else {
+                    common
+                }
+            })
+            .collect();
+        let mut flag_info =
+            vk::DescriptorSetLayoutBindingFlagsCreateInfo::default().binding_flags(&flags);
+        let info = vk::DescriptorSetLayoutCreateInfo::default()
+            .flags(vk::DescriptorSetLayoutCreateFlags::UPDATE_AFTER_BIND_POOL)
+            .bindings(&bindings)
+            .push_next(&mut flag_info);
+        let mut variable_support = vk::DescriptorSetVariableDescriptorCountLayoutSupport::default();
+        let mut support = vk::DescriptorSetLayoutSupport::default();
+        if variable_kind.is_some() {
+            support = support.push_next(&mut variable_support);
+        }
+        unsafe {
+            device
+                .raw_device()
+                .get_descriptor_set_layout_support(&info, &mut support)
+        };
+        let supported = support.supported != vk::FALSE;
+        eprintln!(
+            "LAYOUT_MATRIX name={name} counts={counts:?} total={} variable={variable_kind:?} supported={supported} max_variable={}",
+            counts.iter().sum::<u32>(),
+            variable_support.max_variable_descriptor_count
+        );
+        if variable_kind.is_none() {
+            let plan = LayoutPlan {
+                flags: info.flags.as_raw(),
+                bindings: bindings
+                    .iter()
+                    .map(|binding| LayoutBinding {
+                        binding: binding.binding,
+                        descriptor_type: binding.descriptor_type.as_raw(),
+                        descriptor_count: binding.descriptor_count,
+                        stage_flags: binding.stage_flags.as_raw(),
+                        immutable_sampler: None,
+                    })
+                    .collect(),
+                binding_flags: flags.iter().map(|flag| flag.as_raw()).collect(),
+            };
+            let created = VulkanDescriptorSetLayout::new(device.clone(), &plan);
+            if supported {
+                assert!(created.is_ok(), "supported layout {name} failed creation");
+            } else {
+                assert!(
+                    matches!(created, Err(rhapsody::Error::Unsupported(_))),
+                    "unsupported layout {name} was not rejected"
+                );
+            }
+        }
+    }
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }

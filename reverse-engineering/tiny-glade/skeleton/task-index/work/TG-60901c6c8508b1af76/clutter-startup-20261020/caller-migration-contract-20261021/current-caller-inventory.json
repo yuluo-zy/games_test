@@ -1,0 +1,1000 @@
+[
+  {
+    "path": "tiny-glade/crates/country-core/src/resources/walls/decorator_subtype.rs",
+    "sha256": "7506ddc7b4c6b0dbe61429bbaaa27c9a02fb90a8b58224ab5c49b022ca4a793d",
+    "task_id": "TG-60901c6c8508b1af76",
+    "owner": "clutter-startup-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60901c6c8508b1af76/clutter-startup-20261020",
+    "refs": [
+      {
+        "line": 75,
+        "function_or_previous": "new",
+        "text": "pub struct DecoratorCollision {"
+      },
+      {
+        "line": 82,
+        "function_or_previous": "new",
+        "text": "impl DecoratorCollision {"
+      },
+      {
+        "line": 109,
+        "function_or_previous": "dims_wall_space",
+        "text": "pub struct LegacyDerivedDecoratorInfoRecord {"
+      },
+      {
+        "line": 121,
+        "function_or_previous": "dims_wall_space",
+        "text": "#[deprecated(note = \"legacy bbox record; canonical ID lookup is DerivedDecoratorInfoView\")]"
+      },
+      {
+        "line": 122,
+        "function_or_previous": "dims_wall_space",
+        "text": "pub type DerivedDecoratorInfo = LegacyDerivedDecoratorInfoRecord;"
+      },
+      {
+        "line": 124,
+        "function_or_previous": "dims_wall_space",
+        "text": "impl LegacyDerivedDecoratorInfoRecord {"
+      },
+      {
+        "line": 154,
+        "function_or_previous": "collision_mesh",
+        "text": "pub fn collision_mesh(&self) -> DecoratorCollision {"
+      },
+      {
+        "line": 155,
+        "function_or_previous": "collision_mesh",
+        "text": "DecoratorCollision {"
+      },
+      {
+        "line": 166,
+        "function_or_previous": "interaction_mesh",
+        "text": "pub fn interaction_mesh(&self) -> DecoratorCollision {"
+      },
+      {
+        "line": 171,
+        "function_or_previous": "interaction_mesh",
+        "text": "impl IntoDecoratorSubtype for LegacyDerivedDecoratorInfoRecord {"
+      },
+      {
+        "line": 181,
+        "function_or_previous": "into_decorator_subtype",
+        "text": "pub struct DerivedDecoratorSubtypes {"
+      },
+      {
+        "line": 182,
+        "function_or_previous": "into_decorator_subtype",
+        "text": "map: HashMap<u32, Arc<LegacyDerivedDecoratorInfoRecord>>,"
+      },
+      {
+        "line": 185,
+        "function_or_previous": "into_decorator_subtype",
+        "text": "impl DerivedDecoratorSubtypes {"
+      },
+      {
+        "line": 187,
+        "function_or_previous": "get",
+        "text": "pub fn get(&self, id: u32) -> Arc<LegacyDerivedDecoratorInfoRecord> {"
+      },
+      {
+        "line": 194,
+        "function_or_previous": "insert",
+        "text": "pub fn insert(&mut self, id: u32, info: Arc<LegacyDerivedDecoratorInfoRecord>) {"
+      },
+      {
+        "line": 205,
+        "function_or_previous": "insert",
+        "text": "pub struct DecoratorMeshLibrary {"
+      },
+      {
+        "line": 207,
+        "function_or_previous": "insert",
+        "text": "pub collision: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,"
+      },
+      {
+        "line": 209,
+        "function_or_previous": "insert",
+        "text": "pub interaction: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,"
+      },
+      {
+        "line": 211,
+        "function_or_previous": "insert",
+        "text": "pub outline: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,"
+      },
+      {
+        "line": 213,
+        "function_or_previous": "insert",
+        "text": "pub collision_outline: HashMap<DecoratorLibKey, Arc<LegacyDerivedDecoratorInfoRecord>>,"
+      },
+      {
+        "line": 216,
+        "function_or_previous": "insert",
+        "text": "impl DecoratorMeshLibrary {"
+      },
+      {
+        "line": 221,
+        "function_or_previous": "insert_collision_and_interaction_as_same",
+        "text": "info: Arc<LegacyDerivedDecoratorInfoRecord>,"
+      },
+      {
+        "line": 228,
+        "function_or_previous": "insert",
+        "text": "pub fn insert(&mut self, key: u32, info: Arc<LegacyDerivedDecoratorInfoRecord>) {"
+      },
+      {
+        "line": 236,
+        "function_or_previous": "get_outline",
+        "text": "pub fn get_outline(&self, key: DecoratorLibKey) -> Option<Arc<LegacyDerivedDecoratorInfoRecord>> {"
+      },
+      {
+        "line": 241,
+        "function_or_previous": "get_collision_outline",
+        "text": "pub fn get_collision_outline(&self, key: DecoratorLibKey) -> Option<Arc<LegacyDerivedDecoratorInfoRecord>> {"
+      },
+      {
+        "line": 266,
+        "function_or_previous": "collision_mesh",
+        "text": "pub fn collision_mesh(&self, key: DecoratorLibKey) -> Option<DecoratorCollision> {"
+      },
+      {
+        "line": 271,
+        "function_or_previous": "interaction_mesh",
+        "text": "pub fn interaction_mesh(&self, key: DecoratorLibKey) -> Option<DecoratorCollision> {"
+      },
+      {
+        "line": 277,
+        "function_or_previous": "interaction_mesh",
+        "text": "impl From<&LegacyDerivedDecoratorInfoRecord> for DecoratorSubtype {"
+      },
+      {
+        "line": 278,
+        "function_or_previous": "from",
+        "text": "fn from(info: &LegacyDerivedDecoratorInfoRecord) -> Self {"
+      },
+      {
+        "line": 289,
+        "function_or_previous": "from",
+        "text": "pub struct DerivedDecoratorInfoResources<'w> {"
+      },
+      {
+        "line": 290,
+        "function_or_previous": "from",
+        "text": "subtypes: Res<'w, DerivedDecoratorSubtypes>,"
+      },
+      {
+        "line": 291,
+        "function_or_previous": "from",
+        "text": "mesh_lib: Res<'w, DecoratorMeshLibrary>,"
+      },
+      {
+        "line": 294,
+        "function_or_previous": "from",
+        "text": "impl DerivedDecoratorInfoResources<'_> {"
+      },
+      {
+        "line": 295,
+        "function_or_previous": "as_view",
+        "text": "pub fn as_view(&self) -> DerivedDecoratorInfoView<'_> {"
+      },
+      {
+        "line": 296,
+        "function_or_previous": "as_view",
+        "text": "DerivedDecoratorInfoView::new(&self.subtypes, &self.mesh_lib)"
+      },
+      {
+        "line": 301,
+        "function_or_previous": "as_view",
+        "text": "#[deprecated(note = \"use DerivedDecoratorInfoResources and borrow its actual two-owner view\")]"
+      },
+      {
+        "line": 302,
+        "function_or_previous": "as_view",
+        "text": "pub type DecoratorSubtypes<'w> = DerivedDecoratorInfoResources<'w>;"
+      },
+      {
+        "line": 310,
+        "function_or_previous": "as_view",
+        "text": "pub struct DerivedDecoratorInfoView<'a> {"
+      },
+      {
+        "line": 311,
+        "function_or_previous": "as_view",
+        "text": "subtypes: &'a DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 312,
+        "function_or_previous": "as_view",
+        "text": "mesh_lib: &'a DecoratorMeshLibrary,"
+      },
+      {
+        "line": 315,
+        "function_or_previous": "as_view",
+        "text": "impl<'a> DerivedDecoratorInfoView<'a> {"
+      },
+      {
+        "line": 317,
+        "function_or_previous": "new",
+        "text": "subtypes: &'a DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 318,
+        "function_or_previous": "new",
+        "text": "mesh_lib: &'a DecoratorMeshLibrary,"
+      },
+      {
+        "line": 338,
+        "function_or_previous": "subtype_library",
+        "text": "pub fn subtype_library(&self) -> &'a DerivedDecoratorSubtypes {"
+      },
+      {
+        "line": 343,
+        "function_or_previous": "mesh_library",
+        "text": "pub fn mesh_library(&self) -> &'a DecoratorMeshLibrary {"
+      },
+      {
+        "line": 348,
+        "function_or_previous": "mesh_library",
+        "text": "impl<'a, 'w> From<&'a DerivedDecoratorInfoResources<'w>> for DerivedDecoratorInfoView<'a> {"
+      },
+      {
+        "line": 349,
+        "function_or_previous": "from",
+        "text": "fn from(resources: &'a DerivedDecoratorInfoResources<'w>) -> Self {"
+      },
+      {
+        "line": 368,
+        "function_or_previous": "mesh_library_insert_and_query_4_tables",
+        "text": "let mut lib = DecoratorMeshLibrary::default();"
+      },
+      {
+        "line": 369,
+        "function_or_previous": "mesh_library_insert_and_query_4_tables",
+        "text": "let info = Arc::new(LegacyDerivedDecoratorInfoRecord::new("
+      },
+      {
+        "line": 387,
+        "function_or_previous": "derived_subtypes_get_panics_on_missing",
+        "text": "let lib = DerivedDecoratorSubtypes::default();"
+      },
+      {
+        "line": 397,
+        "function_or_previous": "into_decorator_subtype_forwarding",
+        "text": "let d = LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(6), glam::Vec3::ZERO, glam::Vec3::ONE);"
+      },
+      {
+        "line": 402,
+        "function_or_previous": "derived_view_borrows_existing_entry_without_cloning_arc",
+        "text": "let mut subtypes = DerivedDecoratorSubtypes::default();"
+      },
+      {
+        "line": 403,
+        "function_or_previous": "derived_view_borrows_existing_entry_without_cloning_arc",
+        "text": "let mesh_lib = DecoratorMeshLibrary::default();"
+      },
+      {
+        "line": 404,
+        "function_or_previous": "derived_view_borrows_existing_entry_without_cloning_arc",
+        "text": "let entry = Arc::new(LegacyDerivedDecoratorInfoRecord::new("
+      },
+      {
+        "line": 409,
+        "function_or_previous": "derived_view_borrows_existing_entry_without_cloning_arc",
+        "text": "let view = DerivedDecoratorInfoView::new(&subtypes, &mesh_lib);"
+      },
+      {
+        "line": 420,
+        "function_or_previous": "derived_view_required_missing_id_is_observable",
+        "text": "let subtypes = DerivedDecoratorSubtypes::default();"
+      },
+      {
+        "line": 421,
+        "function_or_previous": "derived_view_required_missing_id_is_observable",
+        "text": "let mesh_lib = DecoratorMeshLibrary::default();"
+      },
+      {
+        "line": 422,
+        "function_or_previous": "derived_view_required_missing_id_is_observable",
+        "text": "let view = DerivedDecoratorInfoView::new(&subtypes, &mesh_lib);"
+      },
+      {
+        "line": 432,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "world.insert_resource(DerivedDecoratorSubtypes::default());"
+      },
+      {
+        "line": 433,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "world.insert_resource(DecoratorMeshLibrary::default());"
+      },
+      {
+        "line": 434,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "let mut state = SystemState::<DerivedDecoratorInfoResources>::new(&mut world);"
+      },
+      {
+        "line": 437,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "let view = DerivedDecoratorInfoView::from(&resources);"
+      },
+      {
+        "line": 438,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "assert!(core::ptr::eq(view.subtype_library(), world.resource::<DerivedDecoratorSubtypes>()));"
+      },
+      {
+        "line": 439,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "assert!(core::ptr::eq(view.mesh_library(), world.resource::<DecoratorMeshLibrary>()));"
+      },
+      {
+        "line": 442,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "world.resource_mut::<DerivedDecoratorSubtypes>().insert(7, Arc::new("
+      },
+      {
+        "line": 443,
+        "function_or_previous": "system_param_view_reuses_actual_world_owners_and_sees_next_producer_write",
+        "text": "LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(5), glam::Vec3::ZERO, glam::Vec3::ONE),"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/tests/core_paths_integration.rs",
+    "sha256": "0dcf70aa6cea869fc08ef33cc354a57d6d76698002a0d726b47ff3a508f2207d",
+    "task_id": null,
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 20,
+        "function_or_previous": null,
+        "text": "DecoratorMeshLibrary, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 265,
+        "function_or_previous": "merge_proposal_blocks_incompatible_family_before_collision_metrics",
+        "text": "let mesh_lib = DecoratorMeshLibrary::default();"
+      },
+      {
+        "line": 266,
+        "function_or_previous": "merge_proposal_blocks_incompatible_family_before_collision_metrics",
+        "text": "let derived = DerivedDecoratorSubtypes::default();"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/collision_detection.rs",
+    "sha256": "229d084f590d73a70df70936e4241e3d0a410d41164a1ea183b84728ca223841",
+    "task_id": "TG-e3145687c65378b3d0",
+    "owner": "rhapsody-correctness-20261019",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e3145687c65378b3d0/rhapsody-correctness-20261019",
+    "refs": [
+      {
+        "line": 35,
+        "function_or_previous": null,
+        "text": "DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorInfo, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 135,
+        "function_or_previous": "existing_collision_metrics",
+        "text": "subtypes: &DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 136,
+        "function_or_previous": "existing_collision_metrics",
+        "text": "mesh_lib: &DecoratorMeshLibrary,"
+      },
+      {
+        "line": 154,
+        "function_or_previous": "wall_decorator_intersects_existing",
+        "text": "subtypes: &DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 155,
+        "function_or_previous": "wall_decorator_intersects_existing",
+        "text": "mesh_lib: &DecoratorMeshLibrary,"
+      },
+      {
+        "line": 188,
+        "function_or_previous": "intersect_wall_decorators_predicate",
+        "text": "derived_b: DerivedDecoratorInfo,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/blueprint.rs",
+    "sha256": "a72b3901990f3256baf669451b532d033c8c6cb439e26e25d8ef2a6346838ec9",
+    "task_id": "TG-69cc2f973d7c14cb28",
+    "owner": "scene-clutter-producer-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-69cc2f973d7c14cb28/scene-clutter-producer-20261020",
+    "refs": [
+      {
+        "line": 22,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DecoratorCollision;"
+      },
+      {
+        "line": 147,
+        "function_or_previous": "eq",
+        "text": "pub colliders: Vec<DecoratorCollision>,"
+      },
+      {
+        "line": 206,
+        "function_or_previous": "set_colliders",
+        "text": "pub fn set_colliders(&mut self, colliders: Vec<DecoratorCollision>) {"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/remove_ivy_under_windows.rs",
+    "sha256": "ec3d7c77e4d8bed26b45ce0951d0b65401f0d88a4b652d25eea2c874836e4ab7",
+    "task_id": "TG-5e91e2eb0e3113e99d",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 25,
+        "function_or_previous": null,
+        "text": "DecoratorLibKey, DecoratorMeshLibrary,"
+      },
+      {
+        "line": 37,
+        "function_or_previous": "remove_ivy_under_windows",
+        "text": "mesh_lib: Res<DecoratorMeshLibrary>,"
+      },
+      {
+        "line": 79,
+        "function_or_previous": "emit_remove_ivy",
+        "text": "mesh_lib: &DecoratorMeshLibrary,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/merge_proposal_roof_decorators.rs",
+    "sha256": "50eeaacff4a25c54bdc4f184980f70948a4236b079de214cff04146e415ab3d8",
+    "task_id": "TG-4f40224d71f85debf9",
+    "owner": "rhapsody-correctness-20261019",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4f40224d71f85debf9/rhapsody-correctness-20261019",
+    "refs": [
+      {
+        "line": 37,
+        "function_or_previous": null,
+        "text": "DecoratorMeshLibrary, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 112,
+        "function_or_previous": "find_best_roof_decorator_merge_position",
+        "text": "mesh_lib: &DecoratorMeshLibrary,"
+      },
+      {
+        "line": 113,
+        "function_or_previous": "find_best_roof_decorator_merge_position",
+        "text": "derived_subtypes: &DerivedDecoratorSubtypes,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/lib.rs",
+    "sha256": "372f6d9dfdc17125cb74a307fd9e2c5fb302109f0ab13a5e829ab8bbd40106b5",
+    "task_id": "TG-3f1713b27c7e76b81f",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 219,
+        "function_or_previous": "add_decorator_events_and_resources",
+        "text": "world.init_resource::<country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes>();"
+      },
+      {
+        "line": 220,
+        "function_or_previous": "add_decorator_events_and_resources",
+        "text": "world.init_resource::<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>();"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/derive_decorator_subtype.rs",
+    "sha256": "6ce9a006a2d7af9531e8bba64b8c7cc8d5bb390d1a73cd7a098b40eaff56522d",
+    "task_id": "TG-a790a7eb5fc820c629",
+    "owner": "rhapsody-correctness-20261019",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a790a7eb5fc820c629/rhapsody-correctness-20261019",
+    "refs": [
+      {
+        "line": 36,
+        "function_or_previous": null,
+        "text": "DecoratorLibKey, DecoratorMeshLibrary, DecoratorSubtype, DerivedDecoratorInfo,"
+      },
+      {
+        "line": 37,
+        "function_or_previous": null,
+        "text": "DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 395,
+        "function_or_previous": "plain_collision_entry",
+        "text": "mesh_lib: &DecoratorMeshLibrary,"
+      },
+      {
+        "line": 424,
+        "function_or_previous": "derive_decorator_subtypes",
+        "text": "mesh_lib: Option<Res<DecoratorMeshLibrary>>,"
+      },
+      {
+        "line": 425,
+        "function_or_previous": "derive_decorator_subtypes",
+        "text": "mut subtypes: ResMut<DerivedDecoratorSubtypes>,"
+      },
+      {
+        "line": 429,
+        "function_or_previous": "derive_decorator_subtypes",
+        "text": "*subtypes = DerivedDecoratorSubtypes::default();"
+      },
+      {
+        "line": 432,
+        "function_or_previous": "derive_decorator_subtypes",
+        "text": "\"derive_decorator_subtypes: DecoratorMeshLibrary resource missing; subtypes stay empty\""
+      },
+      {
+        "line": 468,
+        "function_or_previous": "derive_one",
+        "text": "mesh_lib: &DecoratorMeshLibrary,"
+      },
+      {
+        "line": 470,
+        "function_or_previous": "derive_one",
+        "text": ") -> Result<DerivedDecoratorInfo, SubtypeError> {"
+      },
+      {
+        "line": 495,
+        "function_or_previous": "derive_one",
+        "text": "Ok(DerivedDecoratorInfo::new("
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/merge_proposal_wall_decorators.rs",
+    "sha256": "a141605f39aec4ec0838461a0a456f534c9c5a76a6852e18113f072e9d2627e8",
+    "task_id": "TG-e6891d165c4bc44d47",
+    "owner": "rhapsody-correctness-20261019",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-e6891d165c4bc44d47/rhapsody-correctness-20261019",
+    "refs": [
+      {
+        "line": 36,
+        "function_or_previous": null,
+        "text": "DecoratorMeshLibrary, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 81,
+        "function_or_previous": "is_blocked",
+        "text": "pub mesh_lib: &'a DecoratorMeshLibrary,"
+      },
+      {
+        "line": 82,
+        "function_or_previous": "is_blocked",
+        "text": "pub derived_subtypes: &'a DerivedDecoratorSubtypes,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/dormer_holes.rs",
+    "sha256": "01c9ea7ad3807e007dfabf1b05211c31403a722cc69c9a96626cdb8285442bc4",
+    "task_id": "TG-49d0aa806ff89f98e5",
+    "owner": "scene-clutter-producer-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-49d0aa806ff89f98e5/scene-clutter-producer-20261020",
+    "refs": [
+      {
+        "line": 134,
+        "function_or_previous": "upload_dormer_holes",
+        "text": "use country_core::resources::walls::decorator_subtype::DecoratorCollision;"
+      },
+      {
+        "line": 187,
+        "function_or_previous": "collider_footprints_are_not_dormer_hole_inputs",
+        "text": "blueprint.set_colliders(vec![DecoratorCollision::empty()]);"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/ui_systems/decorator_interaction_intent.rs",
+    "sha256": "929c4ca757c027dc62eec2d140b453690558d15a9e5d86efe3669042209927cd",
+    "task_id": "TG-60234a3eb4a6f6e4d2",
+    "owner": "rhapsody-correctness-20261019",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-60234a3eb4a6f6e4d2/rhapsody-correctness-20261019",
+    "refs": [
+      {
+        "line": 21,
+        "function_or_previous": null,
+        "text": "DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorInfo,"
+      },
+      {
+        "line": 64,
+        "function_or_previous": "calculate_decorator_interaction_intent",
+        "text": "subtype: &DerivedDecoratorInfo,"
+      },
+      {
+        "line": 155,
+        "function_or_previous": "snap_balcony_door",
+        "text": "meshes: &DecoratorMeshLibrary,"
+      },
+      {
+        "line": 249,
+        "function_or_previous": "snap_collision_height",
+        "text": "fn snap_collision_height(meshes: &DecoratorMeshLibrary, key: DecoratorLibKey) -> f32 {"
+      },
+      {
+        "line": 331,
+        "function_or_previous": "scene",
+        "text": "let mut meshes = DecoratorMeshLibrary::default();"
+      },
+      {
+        "line": 335,
+        "function_or_previous": "scene",
+        "text": "Arc::new(DerivedDecoratorInfo::new("
+      },
+      {
+        "line": 389,
+        "function_or_previous": "invoke",
+        "text": "ecs.resource::<DecoratorMeshLibrary>(), prefer_outline, ecs.resource::<RaycastWorld>())"
+      },
+      {
+        "line": 405,
+        "function_or_previous": "unsupported_type_does_not_consult_missing_keys",
+        "text": "ecs.resource_mut::<DecoratorMeshLibrary>().collision.clear();"
+      },
+      {
+        "line": 425,
+        "function_or_previous": "dtype_rank_and_second_bbox_lookup_are_strict",
+        "text": "ecs.resource_mut::<DecoratorMeshLibrary>().collision.remove(&DecoratorLibKey::new(0, 1));"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_balcony_door.rs",
+    "sha256": "ebd0c8cb76e1416a821f7c553e0b6880bbb7ad1eb5e7c591f163702545245117",
+    "task_id": "TG-dfec84bcd0f1e9c7c5",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 31,
+        "function_or_previous": null,
+        "text": "DecoratorMeshLibrary, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 141,
+        "function_or_previous": "generate_cottage_balcony_doors",
+        "text": "_mesh_lib: Res<DecoratorMeshLibrary>,"
+      },
+      {
+        "line": 142,
+        "function_or_previous": "generate_cottage_balcony_doors",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_wall_window.rs",
+    "sha256": "05a112e8aed1bdf06aaae483a3f493e0df913b0ef69478a9a3d50b4933db929b",
+    "task_id": "TG-52f7fc4f94ad125530",
+    "owner": "cloth-visual-state-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-52f7fc4f94ad125530/cloth-visual-state-20261020",
+    "refs": [
+      {
+        "line": 37,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 210,
+        "function_or_previous": "generate_cottage_wall_windows",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_corner_window.rs",
+    "sha256": "13ad6e19c886874cfde23ab19f60da6923474078bb391e47dab23daff0e46619",
+    "task_id": "TG-22f30e59ceb8a973c8",
+    "owner": "cloth-visual-state-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-22f30e59ceb8a973c8/cloth-visual-state-20261020",
+    "refs": [
+      {
+        "line": 17,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 29,
+        "function_or_previous": "generate_cottage_corner_windows",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/trap_doors.rs",
+    "sha256": "f39131636473db4d2a1186e0490717cf110b6200988193d37607753244777a67",
+    "task_id": "TG-0e52e2ec64528325e0",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 26,
+        "function_or_previous": null,
+        "text": "DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 87,
+        "function_or_previous": "generate_trap_doors",
+        "text": "mesh_lib: Res<DecoratorMeshLibrary>,"
+      },
+      {
+        "line": 88,
+        "function_or_previous": "generate_trap_doors",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_wall.rs",
+    "sha256": "7e56477796f7250ac5095c618922c37b887f97a5e5c95c895699885c86ece8d1",
+    "task_id": "TG-1cafd83cc5b4685781",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 23,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 45,
+        "function_or_previous": "generate_wall_chimneys",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs",
+    "sha256": "87435b0f6c78d5695d7f1d89a2f8768585d7a62a34ab26a60d4e175ece0427c6",
+    "task_id": "TG-f768c2955f5ef10ede",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 20,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 105,
+        "function_or_previous": "generate_playermade_stair_decorators",
+        "text": "_derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_assemble_bricks.rs",
+    "sha256": "f88b5184d67d4004b1161375b38dc292fa9c1ef80b2eaa1579ff34f7964054a2",
+    "task_id": "TG-917d6130810801d337",
+    "owner": "deco-trackers-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-917d6130810801d337/deco-trackers-20261020",
+    "refs": [
+      {
+        "line": 25,
+        "function_or_previous": null,
+        "text": "walls::{decorator_subtype::DerivedDecoratorInfoResources, public_walls::PublicWalls},"
+      },
+      {
+        "line": 234,
+        "function_or_previous": "chimney_assemble_bricks",
+        "text": "derived: DerivedDecoratorInfoResources,"
+      },
+      {
+        "line": 411,
+        "function_or_previous": "emitted_payload_and_rng_continue_after_a_failed_brick",
+        "text": "resources::walls::{InnerWalls, WallState, public_walls::WallEntities, publication_source::TerrainHeightGrid512, decorator_storage::DecoratorStorageAddr, decorator_subtype::{DerivedDecoratorSubtypes, DecoratorMeshLibrary, DecoratorSubtype, LegacyDerivedDecoratorInfoRecord}},"
+      },
+      {
+        "line": 474,
+        "function_or_previous": "actual_world",
+        "text": "world.init_resource::<DerivedDecoratorSubtypes>(); world.init_resource::<DecoratorMeshLibrary>();"
+      },
+      {
+        "line": 498,
+        "function_or_previous": "removed_audio_borrows_the_actual_subtype_owner_and_uses_previous_position",
+        "text": "world.resource_mut::<DerivedDecoratorSubtypes>().insert(id.0, Arc::new(LegacyDerivedDecoratorInfoRecord::new(DecoratorSubtype(0x14), Vec3::ZERO, Vec3::ZERO)));"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/flag.rs",
+    "sha256": "c6562f30c4f83c14d514f14fde6d5a1f9cffb51d913a15a999fbb88270787b49",
+    "task_id": "TG-7a5f2ac3f0539ed209",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 30,
+        "function_or_previous": null,
+        "text": "DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 114,
+        "function_or_previous": "generate_flags",
+        "text": "derived_subtypes: Res<DerivedDecoratorSubtypes>,"
+      },
+      {
+        "line": 115,
+        "function_or_previous": "generate_flags",
+        "text": "mesh_lib: Res<DecoratorMeshLibrary>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/lantern.rs",
+    "sha256": "1979c816d0e6ca25c49837d36204fc9886a0b509120d53e86f56f725fe23f091",
+    "task_id": "TG-57cd1f3853baf87530",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 34,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary;"
+      },
+      {
+        "line": 188,
+        "function_or_previous": "generate_lanterns",
+        "text": "mesh_lib: Res<DecoratorMeshLibrary>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_dormer.rs",
+    "sha256": "3b097568cdec6ed1a7eb001b7fafc22361376917eec8b36a69a1533a6a14f491",
+    "task_id": "TG-6a3ef5303dfe62a5a7",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 23,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 78,
+        "function_or_previous": "generate_gothic_dormers",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      },
+      {
+        "line": 81,
+        "function_or_previous": "generate_gothic_dormers",
+        "text": "_mesh_lib: Res<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_balcony_door.rs",
+    "sha256": "5cba8dce524db9c796901c1c35e78311a5d71394e0105099641390fc59f0bf2e",
+    "task_id": "TG-9c723a6c0b7b54be61",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 13,
+        "function_or_previous": null,
+        "text": "decorator_subtype::{DecoratorMeshLibrary, DerivedDecoratorSubtypes},"
+      },
+      {
+        "line": 61,
+        "function_or_previous": "generate_gothic_balcony_doors",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      },
+      {
+        "line": 67,
+        "function_or_previous": "generate_gothic_balcony_doors",
+        "text": "_mesh_lib: Res<DecoratorMeshLibrary>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/chimney_roof.rs",
+    "sha256": "1a65764e5e0b06125ef0572db37c9ac625b8ade0ce87943a4c83a19a8dd42908",
+    "task_id": "TG-6e0356199a459230ad",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 27,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 70,
+        "function_or_previous": "generate_roof_chimneys",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/arrow_slit.rs",
+    "sha256": "9bd05b7f54e43817d53ada2df19a941c394227d7abfc2d5ed1413d1ceb9fb5c3",
+    "task_id": "TG-475f26c75112d21731",
+    "owner": null,
+    "work_dir": null,
+    "refs": [
+      {
+        "line": 33,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 85,
+        "function_or_previous": "generate_arrow_slits",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/gothic_wall_window.rs",
+    "sha256": "75da019bd17e76d5e9204b62fad91c206688a05c06228af50ce13cd21d2be2bc",
+    "task_id": "TG-73d8f60997815a3b36",
+    "owner": "scene-clutter-producer-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-73d8f60997815a3b36/scene-clutter-producer-20261020",
+    "refs": [
+      {
+        "line": 40,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 285,
+        "function_or_previous": "generate_gothic_wall_windows",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/assemble_dormer_roof_tiles.rs",
+    "sha256": "acf3ad77c6350cc78cb6f0df5364f2168f8e4589b5d625054ac3d5ab44535468",
+    "task_id": "TG-971fce9dfe7b86b81c",
+    "owner": "scene-clutter-producer-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-971fce9dfe7b86b81c/scene-clutter-producer-20261020",
+    "refs": [
+      {
+        "line": 24,
+        "function_or_previous": null,
+        "text": "use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;"
+      },
+      {
+        "line": 78,
+        "function_or_previous": "generate_dormer_roofs",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      }
+    ]
+  },
+  {
+    "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/cottage_dormers/cottage_dormer.rs",
+    "sha256": "83bfdf7b551ceaf2447eee58539bd8a154b39ed0412fe06bc318721db371110b",
+    "task_id": "TG-4a10377b42911028e3",
+    "owner": "clutter-startup-20261020",
+    "work_dir": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/task-index/work/TG-4a10377b42911028e3/clutter-startup-20261020",
+    "refs": [
+      {
+        "line": 22,
+        "function_or_previous": null,
+        "text": "DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorSubtypes,"
+      },
+      {
+        "line": 122,
+        "function_or_previous": "generate_cottage_dormers",
+        "text": "derived: Res<DerivedDecoratorSubtypes>,"
+      },
+      {
+        "line": 126,
+        "function_or_previous": "generate_cottage_dormers",
+        "text": "mesh_lib: Res<DecoratorMeshLibrary>,"
+      }
+    ]
+  }
+]

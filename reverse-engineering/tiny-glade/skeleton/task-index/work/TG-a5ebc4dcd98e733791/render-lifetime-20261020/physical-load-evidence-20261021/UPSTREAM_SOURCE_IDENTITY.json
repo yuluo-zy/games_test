@@ -1,0 +1,62 @@
+{
+  "official_moltenvk_pin": {
+    "url": "https://raw.githubusercontent.com/KhronosGroup/MoltenVK/v1.4.2/ExternalRevisions/SPIRV-Cross_repo_revision",
+    "content": "6c09849fe88c48eaed08413aa022aaa136a3a057"
+  },
+  "sources": [
+    {
+      "url": "https://github.com/KhronosGroup/SPIRV-Cross/blob/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_msl.cpp#L9813-L9831",
+      "raw_url": "https://raw.githubusercontent.com/KhronosGroup/SPIRV-Cross/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_msl.cpp",
+      "function": "CompilerMSL::emit_instruction pointer conversions",
+      "lines": [
+        9813,
+        9831
+      ],
+      "observation": "pointer cast result loaded_from assigned numeric source backing variable when one exists"
+    },
+    {
+      "url": "https://github.com/KhronosGroup/SPIRV-Cross/blob/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_glsl.cpp#L11134-L11175",
+      "raw_url": "https://raw.githubusercontent.com/KhronosGroup/SPIRV-Cross/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_glsl.cpp",
+      "function": "CompilerGLSL::should_dereference",
+      "lines": [
+        11134,
+        11175
+      ],
+      "observation": "copy check compares pointer/depth/parent_type, not storage class; matching Function numeric backing variable can suppress dereference"
+    },
+    {
+      "url": "https://github.com/KhronosGroup/SPIRV-Cross/blob/6c09849fe88c48eaed08413aa022aaa136a3a057/spirv_cross.cpp#L389-L410",
+      "function": "Compiler::maybe_get_backing_variable",
+      "lines": [
+        389,
+        410
+      ]
+    }
+  ],
+  "installed_driver": {
+    "path": "/opt/homebrew/Cellar/molten-vk/1.4.2/lib/libMoltenVK.dylib",
+    "sha256": "05df2d2145b9ef5b86b08ed93a7a6e916815c2bbac244298a50b2d58061600d1",
+    "relationship": "official MoltenVK1.4.2 source pin is explanatory evidence; exact installed dylib build commit is not proven"
+  },
+  "local_cpu_cli": {
+    "path": "/opt/homebrew/Cellar/spirv-cross/1.4.363.0/bin/spirv-cross",
+    "sha256": "242d2c694be3ec9191002a2d066e068323a79479a59453ecd2e14b2e1b461d0f",
+    "revision_output": "Git commit:  Timestamp: 2026-09-16T11:27:19",
+    "relationship": "different tool identity; baseline reproduces runtime missing-dereference symptom, normalized output is CPU evidence only"
+  },
+  "cpu_command_options": [
+    "--msl",
+    "--msl-version",
+    "30000",
+    "--msl-argument-buffers",
+    "--msl-argument-buffer-tier",
+    "1",
+    "--msl-device-argument-buffer",
+    "0",
+    "--stage",
+    "vert",
+    "--entry",
+    "vs_main"
+  ],
+  "native_pipeline_acceptance": "pending root only GPU validation"
+}

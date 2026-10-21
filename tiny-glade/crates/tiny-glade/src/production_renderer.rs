@@ -165,6 +165,13 @@ pub fn render_headless_gameplay_frame(
     let capture_graph_id = built.graph_id();
     let compiled = bridge.compile_built(built).context("compile world graph")?;
     let compile = started.elapsed();
+    // 原窗口链在 compile 成功后、execute 前 drain_finished_frames；只处理真实已完成帧。
+    // 新 compiled 仍持有自己的声明和回调，未完成的旧帧也不会在此提前释放。
+    if let Err(error) = bridge.collect_completed_frames() {
+        drop(compiled);
+        crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
+        return Err(anyhow::Error::from(error).context("collect completed gameplay frames"));
+    }
     let started = std::time::Instant::now();
     let receipt = match bridge.execute_compiled(compiled) {
         Ok(receipt) => receipt,
@@ -798,6 +805,10 @@ impl ProductionRenderer {
     }
     pub fn any_present_successful(&self) -> bool {
         self.swapchain.any_present_successful()
+    }
+    /// 当前交换链代真实 native present 成功次数，供窗口验证使用。
+    pub fn native_present_success_count(&self) -> u64 {
+        self.swapchain.native_present_success_count()
     }
     pub fn frame_observation(&self) -> Option<&ProductionFrameObservation> {
         self.frame_observation.as_ref()

@@ -1,0 +1,9 @@
+# 必要canonical依赖源码独立复核（lead）
+
+源码最窄范围通过；逐项读合同/patch并核真实caller/pin API，原生产before隔离patch-F0退出0且字节等于冻结候选。未Cargo/GPU/运行，生产保持before；不能据此冒全模块业务完成。
+
+仅原委派四源编译/依赖hunk：chimney砖测试删除Legacy Arc夹具、保真实Subtype20；dormer_tiles单required get读取新tuple值；outline四个positions→唯一curve.points且完整fixture显式提供真实字段，不动原图算法/截断；stairs_state唯一AtomicBool初true绑定原PE slot→byte1，静态自身不当运行写producer、无测试并发store。无新镜像/几何fallback/额外业务。
+
+outline仍必须配owner2a046da8及smallvec exact依赖，其余旧visual算法未因此完成；global只有后续真实interpolate读才算消费闭合。无镜像测试，只沿既有实际World测试验证。当前四源claims保持原owner，未生产写。
+
+before `f88b5184d67d4004b1161375b38dc292fa9c1ef80b2eaa1579ff34f7964054a2`；after `6d8fd1d6974f1d8180707aa0ad9e2f01e1d34934b207a0ccbcabcf1701ca1090`；patch `cc9be0c44745735988da302760804877741e888f24dc06d40745bef8400b34e6`。

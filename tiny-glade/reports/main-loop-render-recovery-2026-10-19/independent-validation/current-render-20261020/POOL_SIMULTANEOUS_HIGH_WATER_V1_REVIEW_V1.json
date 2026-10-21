@@ -1,0 +1,34 @@
+{
+  "schema": "tiny-glade-independent-review/v1",
+  "reviewer": "render_reviewer",
+  "date": "2026-10-21",
+  "decision": "accept bounded statistics candidate for root CPU/GPU validation; no source blocker found",
+  "manifest": "reverse-engineering/tiny-glade/skeleton/task-index/work/TG-a5ebc4dcd98e733791/render-lifetime-20261020/pool-high-water-v1-20261021/MANIFEST.json",
+  "manifest_sha256": "ff1335fa4b293fe7183d80dcac4344429a53c6c555cd0d1283dddfe955b22df7",
+  "source": "tiny-glade/crates/rhapsody/src/bindless.rs",
+  "before_sha256": "2b1870821028a3a4a9fae16187e61023473476dcef1556a3f29e3dfc8b65f375",
+  "after_sha256": "9fe4e3f97bd92b6925892839cde8aec818e7d7cf5811b2ab8a3ac43895ef9016",
+  "patch_sha256": "9b3916ed06bd168d2c5de1952750aff655303600a7c7038cf2c1616160617734",
+  "classification": "当前 rhapsody 分页工程适配的统计语义修复；不称原版 B 业务算法",
+  "independent_checks": [
+    "全部清单 SHA、baseline 与当前生产、bindless_parameters 未改依赖一致。",
+    "旧每heap stats 字段原样提取为 Slots::statistics；旧heap peaks不清零、不改容量/分配回收/SyncSet条件。",
+    "真实 allocate 成功/永久exhausted、retire used与unused、实际collect各kind、注册/注销/SlotsDrop均在原Slots互斥域记录事件。retire两个量在同一counter锁事务改变；无GPU/poll/等待新增。",
+    "seed使用checked副本，所有field成功才赋值；watch先TempList reserve、成功seed后add_reserved。Poolnew所有fallible元数据先完成，最后登记后只有构造。",
+    "PoolDrop pages.get_mut不持manager锁，先unwatch移除订阅，随后SlotsDrop不双减；append add失败最后page owner在manager外drop，SlotsDrop撤current，历史peak不降低。",
+    "同模板多个pool各自counter，seed只取现有current而不混入旧heap历史；strong Arc纯counter无Heap/Page/Pool反向，不成环，预算ticket与最后强owner共同存续。",
+    "锁序Slots→单counter；record返回才下一个counter；stats只取counter一致快照，无manager/Slots反锁/Vec分配/页遍历。逻辑事件线性化在counter更新，Slots锁内状态在此之前不可对外解锁观察。",
+    "7新增模型测试以真实Slots操作生成状态，覆盖错峰8+8→真实峰8、未采样瞬时峰12、多kind不同时间、真实SyncSet多队列、同heap多owner、OOM、注销/Drop/Exhausted、128轮并发重叠；均尚未由reviewer执行。"
+  ],
+  "minimal_counterexample_old_semantics": "两页依次各live=1后归零，旧sum(max page live)=2，任一时刻整池实际live最大=1。因此旧值不能直接与单heap原peak断言比较。",
+  "root_gates": [
+    "实际旧3+新7 Slots tests、既有GPU bindless/ABI回归。",
+    "原30world全部live/peak/memory/像素断言保持不变；真实高水位仍可能增长，不能承诺改后必过。",
+    "记录真实counter写锁新增成本；事件无分配/全表扫描，多个pool为O(订阅数×4)，默认一pool。"
+  ],
+  "limits": [
+    "未运行 Cargo/rustc/GPU，不能替代真实App长稳验收。",
+    "本次不改GC/trim/页容量/绘制/lease寿命，不证明真实内存稳定。",
+    "PoolDrop故障回滚等代码已审，新增主要是Slots模型测试，不冒称完整原生页创建失败动态覆盖。"
+  ]
+}
