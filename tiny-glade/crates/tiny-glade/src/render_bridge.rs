@@ -295,6 +295,9 @@ impl CoreRenderBridge {
                 "a failed core frame phase was ignored by its caller",
             ));
         }
+        // Every host write of this declaration is submitted now, ahead of the
+        // graph that reads it, without waiting for it to complete.
+        self.tables.buffers.flush_pending_uploads()?;
         let graph = frame.take_graph()?;
         Ok((
             value,
@@ -311,6 +314,7 @@ impl CoreRenderBridge {
         graph: BuiltCoreGraph,
     ) -> rhapsody::Result<SessionFrameReceipt> {
         let graph = self.claim_built(graph)?;
+        self.tables.buffers.flush_pending_uploads()?;
         self.session.borrow_mut().execute_frame(graph)
     }
 
@@ -346,6 +350,7 @@ impl CoreRenderBridge {
                 "compiled frame belongs to another bridge",
             ));
         }
+        self.tables.buffers.flush_pending_uploads()?;
         self.session
             .borrow_mut()
             .execute_prepared(compiled.frame.take().expect("compiled graph consumed once"))

@@ -52,6 +52,9 @@ fn read_prefix(
     buffer: &Buffer,
     size: usize,
 ) -> Vec<u8> {
+    // Host writes are queued; submit them before reading the device copy, as the
+    // renderer does before every graph.
+    host.flush_pending_uploads().unwrap();
     let source = host.managed_buffer(buffer).unwrap();
     let output = Arc::new(
         NativeBuffer::new(

@@ -877,7 +877,8 @@ fn device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their
         .collect::<Vec<_>>();
     let ranges = [0..512, 256..1024, 2048..payload.len()];
     let idle = device.retirement_stats().idle_waits;
-    host.update_buffer_bytes(&buffer, &payload, &ranges, 32)
+    // The explicit synchronous variant keeps the original "complete on return" contract.
+    host.update_buffer_bytes_wait(&buffer, &payload, &ranges, 32)
         .unwrap();
     let stats = host
         .queued_upload_stats()
@@ -934,6 +935,63 @@ fn device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their
         submitted,
         "invalid ranges must be rejected before submitting any batch"
     );
+    assert!(host.release(&buffer));
+}
+
+#[test]
+fn queued_device_local_updates_coalesce_in_call_order_and_submit_on_flush_without_waiting() {
+    use ash::vk;
+    use rhapsody::transfer::{TransferConfig, TransferManager};
+    let Some(device) = graphics_device() else {
+        return;
+    };
+    let host = BufferHost::new(device.clone());
+    let capacity = (2 << 20) + 128;
+    let desc = BufferDesc::new(
+        capacity,
+        (vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST).as_raw(),
+        1,
+    );
+    let initial = vec![0x55; capacity];
+    let buffer = host
+        .create_buffer(&desc, "queued GPU buffer", Some(&initial))
+        .unwrap();
+    let first = vec![0xA1u8; 4096];
+    let second = vec![0xB2u8; 1024];
+    let big = (0..(1 << 20) + 513).map(|i| (i % 249) as u8).collect::<Vec<_>>();
+    let idle = device.retirement_stats().idle_waits;
+    // Overlapping writes in one frame: the later bytes win, the earlier tail survives.
+    host.update_buffer_bytes(&buffer, &first, &[0..first.len()], 0).unwrap();
+    host.update_buffer_bytes(&buffer, &second, &[0..second.len()], 512).unwrap();
+    // A write larger than one staging chunk is split, not rejected.
+    host.update_buffer_bytes(&buffer, &big, &[0..big.len()], 8192).unwrap();
+    let before = host.queued_upload_stats().expect("queued uploader exists");
+    assert!(before.queued_jobs > 0, "nothing is submitted before the flush");
+    assert_eq!(before.submitted_jobs, 0);
+    host.flush_pending_uploads().unwrap();
+    let after = host.queued_upload_stats().unwrap();
+    assert_eq!(after.queued_jobs, 0);
+    assert!(after.submitted_jobs > 0);
+    assert_eq!(device.retirement_stats().idle_waits, idle, "no device idle wait");
+    // A second flush with nothing queued is a no-op.
+    host.flush_pending_uploads().unwrap();
+    assert_eq!(host.queued_upload_stats().unwrap().submitted_jobs, after.submitted_jobs);
+
+    let raw = host.get_by_id(buffer.id).unwrap().shared();
+    let mut reads = TransferManager::new(
+        device.clone(),
+        TransferConfig { slots: 1, chunk_bytes: capacity as u64, max_bytes: 8 << 20 },
+    )
+    .unwrap();
+    let read = reads.read_buffer(raw.clone(), 0, capacity).unwrap();
+    read.wait(5_000_000_000).unwrap();
+    let mut actual = vec![0; capacity];
+    read.try_read(&mut actual).unwrap().unwrap();
+    let mut expected = initial;
+    expected[..first.len()].copy_from_slice(&first);
+    expected[512..512 + second.len()].copy_from_slice(&second);
+    expected[8192..8192 + big.len()].copy_from_slice(&big);
+    assert_eq!(actual, expected, "queued writes land exactly as sequential writes would");
     assert!(host.release(&buffer));
 }
 

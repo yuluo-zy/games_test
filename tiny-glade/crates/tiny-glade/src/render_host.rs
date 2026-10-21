@@ -27,6 +27,20 @@ pub struct BufferHost {
 struct BufferUploads {
     manager: rhapsody::transfer::TransferManager,
     epoch: u64,
+    /// Bytes accepted since the last flush.
+    queued_bytes: u64,
+}
+
+const UPLOAD_CHUNK_BYTES: u64 = 1 << 20;
+const UPLOAD_STAGING_SLOTS: u32 = 3;
+const UPLOAD_STAGING_BYTES: u64 = 16 << 20;
+const UPLOAD_FLUSH_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// `TG_SYNC_UPLOAD=1` restores the old behaviour: every device-local write waits
+/// for its own completion. Rollback switch for the queued path.
+fn sync_upload_forced() -> bool {
+    static FORCED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *FORCED.get_or_init(|| std::env::var_os("TG_SYNC_UPLOAD").is_some_and(|value| value == "1"))
 }
 
 impl BufferHost {
@@ -39,6 +53,180 @@ impl BufferHost {
             slots: Mutex::new(Vec::new()),
             uploads: Mutex::new(None),
         }
+    }
+
+    /// Lazily creates the bounded upload service shared by the queued and the
+    /// waited paths. Three 1 MiB staging slots cover two frames in flight plus the
+    /// frame being declared.
+    fn upload_service<'a>(
+        &self,
+        uploads: &'a mut Option<BufferUploads>,
+    ) -> Result<&'a mut BufferUploads, BackendError> {
+        if uploads.is_none() {
+            *uploads = Some(BufferUploads {
+                manager: rhapsody::transfer::TransferManager::new_with_queue(
+                    self.device.clone(),
+                    rhapsody::transfer::TransferConfig {
+                        slots: UPLOAD_STAGING_SLOTS,
+                        chunk_bytes: UPLOAD_CHUNK_BYTES,
+                        max_bytes: UPLOAD_STAGING_BYTES,
+                    },
+                    rhapsody::transfer::UploadQueueConfig {
+                        max_keys: 1024,
+                        ..Default::default()
+                    },
+                )?,
+                epoch: 0,
+                queued_bytes: 0,
+            });
+        }
+        Ok(uploads.as_mut().expect("initialized bounded upload service"))
+    }
+
+    /// Accepts the write without GPU work. Every write of one frame shares one
+    /// epoch, so overlapping writes to a buffer coalesce in call order instead of
+    /// cancelling each other (a new epoch cancels older pending jobs of its key).
+    /// `flush_pending_uploads` submits them before the graph that reads them.
+    fn queue_upload(
+        &self,
+        managed: &ManagedBuffer,
+        buffer: &Buffer,
+        data: &[u8],
+        ranges: &[Range<usize>],
+        offset: usize,
+    ) -> Result<(), BackendError> {
+        let mut uploads = self.uploads.lock();
+        let service = self.upload_service(&mut uploads)?;
+        let options = rhapsody::transfer::UploadOptions {
+            key: rhapsody::transfer::UploadKey(buffer.id),
+            epoch: service.epoch,
+            priority: rhapsody::transfer::UploadPriority::High,
+        };
+        let mut result = Ok(());
+        'ranges: for range in ranges.iter().filter(|range| !range.is_empty()) {
+            let mut cursor = range.start;
+            while cursor < range.end {
+                let bytes = (range.end - cursor).min(UPLOAD_CHUNK_BYTES as usize);
+                let at = offset as u64 + cursor as u64;
+                let slice = &data[cursor..cursor + bytes];
+                let mut accepted = service
+                    .manager
+                    .enqueue_upload(managed.shared(), at, slice, options);
+                if accepted.is_err() {
+                    // Queue or memory pressure: drain what is pending, then retry once.
+                    Self::flush_locked(service)?;
+                    accepted = service
+                        .manager
+                        .enqueue_upload(managed.shared(), at, slice, options);
+                }
+                if let Err(error) = accepted {
+                    result = Err(error);
+                    break 'ranges;
+                }
+                service.queued_bytes += bytes as u64;
+                cursor += bytes;
+            }
+        }
+        if let Err(error) = result {
+            // Never lose the write: complete everything queued so far, then wait for this one.
+            log::warn!(target: "tiny_glade::upload", "queued upload rejected ({error}); falling back to a waited write");
+            drop(uploads);
+            return self.upload_waited(managed, buffer, data, ranges, offset);
+        }
+        Ok(())
+    }
+
+    /// Submits every queued write to the graphics queue, in order, without
+    /// waiting for their completion. Call after all host writes of a frame and
+    /// before the graph that reads them is submitted: the submitted jobs publish
+    /// their completion into the buffers' range state, so the graph's bind step
+    /// orders itself after them (queue order plus the recorded dependency).
+    /// Waits only while the staging ring is full, bounded by `UPLOAD_FLUSH_TIMEOUT`.
+    pub fn flush_pending_uploads(&self) -> Result<(), BackendError> {
+        let mut uploads = self.uploads.lock();
+        let Some(service) = uploads.as_mut() else {
+            return Ok(());
+        };
+        Self::flush_locked(service)
+    }
+
+    fn flush_locked(service: &mut BufferUploads) -> Result<(), BackendError> {
+        if service.queued_bytes == 0 {
+            return Ok(());
+        }
+        let deadline = Instant::now() + UPLOAD_FLUSH_TIMEOUT;
+        loop {
+            let flush = service.manager.flush_uploads(usize::MAX)?;
+            if flush.remaining_jobs == 0 {
+                break;
+            }
+            if !flush.capacity_deferred {
+                return Err(rhapsody::Error::invalid_usage(
+                    "upload queue stalled without staging pressure",
+                ));
+            }
+            // Staging is full: earlier uploads must finish first. `flush_uploads`
+            // polls the device each call, so yield and retry within the bound.
+            if Instant::now() >= deadline {
+                return Err(rhapsody::Error::Timeout);
+            }
+            std::thread::yield_now();
+        }
+        // Next frame's writes get a fresh epoch; this frame's jobs are submitted.
+        service.epoch = service
+            .epoch
+            .checked_add(1)
+            .ok_or_else(|| BackendError::invalid_usage("buffer upload epoch exhausted"))?;
+        service.queued_bytes = 0;
+        Ok(())
+    }
+
+    /// Explicit synchronous write: queued writes are submitted first (the waited
+    /// path requires an empty queue), then this write returns once complete.
+    pub fn update_buffer_bytes_wait(
+        &self,
+        buffer: &Buffer,
+        data: &[u8],
+        ranges: &[Range<usize>],
+        offset: usize,
+    ) -> Result<(), BackendError> {
+        let managed = self.lookup(buffer).ok_or_else(|| {
+            BackendError::invalid_usage("buffer host handle is stale or belongs to another host")
+        })?;
+        rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
+        self.upload_waited(&managed, buffer, data, ranges, offset)
+    }
+
+    fn upload_waited(
+        &self,
+        managed: &ManagedBuffer,
+        buffer: &Buffer,
+        data: &[u8],
+        ranges: &[Range<usize>],
+        offset: usize,
+    ) -> Result<(), BackendError> {
+        let mut uploads = self.uploads.lock();
+        let service = self.upload_service(&mut uploads)?;
+        Self::flush_locked(service)?;
+        service.epoch = service
+            .epoch
+            .checked_add(1)
+            .ok_or_else(|| BackendError::invalid_usage("buffer upload epoch exhausted"))?;
+        let started = crate::frame_counters::start();
+        let result = service.manager.upload_buffer_ranges_wait(
+            managed.shared(),
+            data,
+            ranges,
+            offset as u64,
+            rhapsody::transfer::UploadOptions {
+                key: rhapsody::transfer::UploadKey(buffer.id),
+                epoch: service.epoch,
+                priority: rhapsody::transfer::UploadPriority::High,
+            },
+            u64::MAX,
+        );
+        crate::frame_counters::record_upload_wait(started, data.len());
+        result
     }
 
     fn lookup(&self, handle: &Buffer) -> Option<ManagedBuffer> {
@@ -179,49 +367,10 @@ impl CoreGraphicsDevice for BufferHost {
         }
         // Reject invalid ranges before allocating the lazy transfer service.
         rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
-        // This host method promises completion on return. Device-local sparse
-        // updates use the same bounded queued uploader as streaming consumers,
-        // then wait only for these batches' actual points.
-        let mut uploads = self.uploads.lock();
-        if uploads.is_none() {
-            *uploads = Some(BufferUploads {
-                manager: rhapsody::transfer::TransferManager::new_with_queue(
-                    self.device.clone(),
-                    rhapsody::transfer::TransferConfig {
-                        slots: 1,
-                        chunk_bytes: 1 << 20,
-                        max_bytes: 4 << 20,
-                    },
-                    rhapsody::transfer::UploadQueueConfig {
-                        max_keys: 1024,
-                        ..Default::default()
-                    },
-                )?,
-                epoch: 0,
-            });
+        if sync_upload_forced() {
+            return self.upload_waited(&managed, buffer, data, ranges, offset);
         }
-        let service = uploads
-            .as_mut()
-            .expect("initialized bounded upload service");
-        service.epoch = service
-            .epoch
-            .checked_add(1)
-            .ok_or_else(|| BackendError::invalid_usage("buffer upload epoch exhausted"))?;
-        let started = crate::frame_counters::start();
-        let result = service.manager.upload_buffer_ranges_wait(
-            managed.shared(),
-            data,
-            ranges,
-            offset as u64,
-            rhapsody::transfer::UploadOptions {
-                key: rhapsody::transfer::UploadKey(buffer.id),
-                epoch: service.epoch,
-                priority: rhapsody::transfer::UploadPriority::High,
-            },
-            u64::MAX,
-        );
-        crate::frame_counters::record_upload_wait(started, data.len());
-        result
+        self.queue_upload(&managed, buffer, data, ranges, offset)
     }
 
     fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
