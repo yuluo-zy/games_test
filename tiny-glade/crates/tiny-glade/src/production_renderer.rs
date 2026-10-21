@@ -722,6 +722,8 @@ struct RenderStageTiming {
     queue_trim: Duration,
     queue_budget: Duration,
     observed_completion_wall_ns: u64,
+    /// Main-graph recording shape: (batches, parallel batches, chunks).
+    main_recording: Option<(u32, u32, u32)>,
     vao_before: Option<(usize, crate::raster_host::VaoRefreshTiming)>,
 }
 
@@ -1294,6 +1296,9 @@ impl GameRenderHostFactory for ProductionRenderer {
             let ms = |d: Duration| d.as_secs_f64() * 1000.0;
             let c = counters.unwrap_or_default();
             log::info!(target: "tiny_glade::frame_timing",
+                "recording_shape gameplay_n={} main_batches_parallel_chunks={:?}",
+                t.frame, t.main_recording);
+            log::info!(target: "tiny_glade::frame_timing",
                 "frame_counters gameplay_n={} upload_wait_n={} upload_wait_ms={:.3} upload_wait_bytes={} prewarm_calls={} prewarm_tickets={} prewarm_ms={:.3}",
                 t.frame, c.upload_wait_calls, c.upload_wait_ns as f64 / 1_000_000.0, c.upload_wait_bytes,
                 c.prewarm_calls, c.prewarm_tickets, c.prewarm_ns as f64 / 1_000_000.0);
@@ -1642,7 +1647,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         self.renderer.timing_end(TimedStage::Execute, started);
         match result {
             Ok(receipt) => {
-                if let Some(timing) = &mut self.renderer.timing { timing.receipt = Some(receipt.frame); }
+                if let Some(timing) = &mut self.renderer.timing {
+                    timing.receipt = Some(receipt.frame);
+                    timing.main_recording = Some((receipt.stats.batches, receipt.stats.parallel_batches, receipt.stats.chunks));
+                }
                 // This receipt proves submission even if capture bookkeeping
                 // or export validation below subsequently fails. Abort must
                 // preserve that fact rather than report an unsubmitted frame.

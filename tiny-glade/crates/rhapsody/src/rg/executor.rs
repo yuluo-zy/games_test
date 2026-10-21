@@ -26,7 +26,17 @@ pub struct ExecutionChain {
     /// 并行录制配置；默认自适应（无统计或轻帧时串行）。
     pub parallel: crate::rg::parallel::ParallelRecording,
     /// 双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
+    ///
+    /// This is the slot of the graph executed last (`pgo_key`). Slots of other
+    /// graphs are parked in `pgo_parked`, so the main graph never plans its
+    /// chunks from the much lighter presentation graph's timings.
     pub pgo: PassPgoFrames,
+    /// Identity of the graph whose statistics are in `pgo`; `None` before the
+    /// first execution (any pre-seeded statistics are then adopted by that graph).
+    pgo_key: Option<PgoKey>,
+    /// Statistics of recently executed other graphs, least recently used evicted.
+    pgo_parked: Vec<(PgoKey, PassPgoFrames, u64)>,
+    pgo_clock: u64,
     /// Per-batch chunk recording storage reused across batches and frames.
     chunk_scratch: ChunkScratch,
 }
@@ -459,6 +469,12 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     }
 }
 
+/// Identity of a compiled graph for per-graph PGO statistics: the address of its
+/// plan. Equal for every frame that hits the plan cache; a recycled address only
+/// ever yields a poor chunk plan for a frame, never a wrong result.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct PgoKey(pub u64);
+
 /// An allocated graph before command recording. It is bound to its originating
 /// backend and resource pool; cancel it there if the consumer abandons the frame.
 pub struct PreparedGraph {
@@ -467,6 +483,7 @@ pub struct PreparedGraph {
     cpu_arena: Option<CpuArenaLease>,
     queue: (recording::Queue, u32),
     original_pass_count: usize,
+    pgo_key: PgoKey,
 }
 
 pub struct GraphExecution {
@@ -919,6 +936,7 @@ impl ExecutionChain {
             .map(CpuArenaPool::checkout)
             .transpose()
             .map_err(Error::Validation)?;
+        let pgo_key = PgoKey(std::sync::Arc::as_ptr(&plan) as *const () as usize as u64);
         // Allocation is a frame binding operation, never part of plan compilation.
         let compiled =
             crate::rg::graph::instantiate_validated_plan(plan, graph, pool, backend, dependency)
@@ -931,6 +949,7 @@ impl ExecutionChain {
             cpu_arena,
             queue: (queue, family),
             original_pass_count,
+            pgo_key,
         })
     }
 
@@ -945,6 +964,39 @@ impl ExecutionChain {
     ) -> Result<GraphExecution, Error> {
         let prepared = self.compile_graph(graph, pool, dependency, backend, callbacks.len())?;
         self.execute_prepared_inner(prepared, pool, dependency, backend, callbacks, validate)
+    }
+
+    /// Swaps in the statistics of the graph about to execute, parking the
+    /// previous graph's. The first graph adopts whatever `pgo` already holds.
+    fn activate_pgo(&mut self, key: PgoKey) {
+        const MAX_PARKED: usize = 8;
+        if self.pgo_key == Some(key) {
+            return;
+        }
+        self.pgo_clock += 1;
+        let adopt = self.pgo_key.is_none();
+        if let Some(old) = self.pgo_key {
+            if self.pgo_parked.len() >= MAX_PARKED
+                && let Some(oldest) = self
+                    .pgo_parked
+                    .iter()
+                    .enumerate()
+                    .min_by_key(|(_, slot)| slot.2)
+                    .map(|(index, _)| index)
+            {
+                self.pgo_parked.swap_remove(oldest);
+            }
+            let frames = std::mem::take(&mut self.pgo);
+            self.pgo_parked.push((old, frames, self.pgo_clock));
+        }
+        self.pgo = if adopt {
+            std::mem::take(&mut self.pgo)
+        } else if let Some(index) = self.pgo_parked.iter().position(|slot| slot.0 == key) {
+            self.pgo_parked.swap_remove(index).1
+        } else {
+            PassPgoFrames::default()
+        };
+        self.pgo_key = Some(key);
     }
 
     pub fn execute_prepared_validated(
@@ -971,12 +1023,14 @@ impl ExecutionChain {
         callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
+        self.activate_pgo(prepared.pgo_key);
         let PreparedGraph {
             mut compiled,
             mut stats,
             cpu_arena,
             queue: (queue, family),
             original_pass_count,
+            pgo_key: _,
         } = prepared;
         self.recorded_commands = 0;
         if callbacks.len() != original_pass_count {
@@ -1392,18 +1446,22 @@ impl ExecutionChain {
                 if !retained {
                     return Err(Error::MissingCommand(handle));
                 }
-                self.pgo
-                    .current
-                    .extend(durations[..duration_count].iter().enumerate().map(
-                        |(offset, duration)| {
-                            PassPgoDuration::new(
-                                PassPgoNameId::from_shared(std::sync::Arc::clone(
-                                    pass_names[start + offset],
-                                )),
-                                duration.expect("recorded pass duration"),
-                            )
-                        },
-                    ));
+                // Serial recording never reads these statistics, so skip the
+                // per-pass name hashing (it costs a map insert per pass per frame).
+                if !matches!(self.parallel.strategy, crate::rg::parallel::ChunkStrategy::Serial) {
+                    self.pgo
+                        .current
+                        .extend(durations[..duration_count].iter().enumerate().map(
+                            |(offset, duration)| {
+                                PassPgoDuration::new(
+                                    PassPgoNameId::from_shared(std::sync::Arc::clone(
+                                        pass_names[start + offset],
+                                    )),
+                                    duration.expect("recorded pass duration"),
+                                )
+                            },
+                        ));
+                }
                 if let Some(error) = errors.into_inner() {
                     return Err(Error::Validation(error));
                 }
@@ -1569,6 +1627,9 @@ impl ExecutionChain {
             parallel: Default::default(),
             chunk_scratch: Default::default(),
             pgo: Default::default(),
+            pgo_key: None,
+            pgo_parked: Vec::new(),
+            pgo_clock: 0,
         }
     }
 
@@ -2153,3 +2214,52 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod pgo_slot_tests {
+    use super::*;
+
+    fn chain() -> ExecutionChain {
+        ExecutionChain::new(vk::Queue::null(), Vec::new(), 1)
+    }
+    fn record(chain: &mut ExecutionChain, name: &str, ns: u64) {
+        chain
+            .pgo
+            .current
+            .record(PassPgoDuration::new(PassPgoNameId::from_name(name), ns));
+    }
+
+    #[test]
+    fn alternating_graphs_keep_their_own_previous_frame() {
+        let mut chain = chain();
+        let (main, presentation) = (PgoKey(1), PgoKey(2));
+        for _ in 0..3 {
+            chain.activate_pgo(main);
+            // The main graph plans from its own previous frame, never the presentation's.
+            assert!(chain.pgo.previous.is_empty() || chain.pgo.previous.get("main pass").is_some());
+            assert!(chain.pgo.previous.get("resolve").is_none());
+            record(&mut chain, "main pass", 900_000);
+            chain.pgo.end_frame();
+            chain.activate_pgo(presentation);
+            assert!(chain.pgo.previous.get("main pass").is_none());
+            record(&mut chain, "resolve", 30_000);
+            chain.pgo.end_frame();
+        }
+        chain.activate_pgo(main);
+        assert_eq!(chain.pgo.previous.duration_ns("main pass"), 900_000);
+        assert!(chain.pgo.previous.total_ns() >= 200_000, "heavy enough to chunk");
+    }
+
+    #[test]
+    fn first_graph_adopts_preseeded_statistics_and_slots_are_bounded() {
+        let mut chain = chain();
+        record(&mut chain, "seeded", 5);
+        chain.pgo.end_frame();
+        chain.activate_pgo(PgoKey(100));
+        assert_eq!(chain.pgo.previous.duration_ns("seeded"), 5, "first graph keeps the seed");
+        for key in 0..20u64 {
+            chain.activate_pgo(PgoKey(key));
+        }
+        assert!(chain.pgo_parked.len() <= 8);
+    }
+}
