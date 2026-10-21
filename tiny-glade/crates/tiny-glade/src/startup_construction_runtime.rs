@@ -115,3 +115,55 @@ fn install_open_adapter_inputs(app: &mut App) {
     app.add_event::<focus::SignifierDrawTopology>();
     app.add_event::<focus::TerrainFocusTrigger>();
 }
+
+#[cfg(test)]
+mod segmentation_chain_tests {
+    use crate::app_systems::WallSystems;
+    use bevy_app::{App, Update};
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::systems::GameSystemSet;
+
+    /// 原版 0x140493120 把 `chain_ignore_deferred(chain1, chain2)` 放进 Update/set 19，
+    /// chain2 尾部三项（0x140335d53/5f/68）依次为 sample_wall_path_intersections →
+    /// calculate_path_wall_segmentation → init_wall_height_and_arch_segment_height；
+    /// set 22（startup_construction_runtime）里 split_wall_path_segment_into_platform_stairs
+    /// 读取前者产出的原始掩码，必须排在其后。这里按宿主的 set 链构图并读出拓扑序。
+    #[test]
+    fn segmentation_chain_is_scheduled_in_original_order() {
+        let mut app = App::new();
+        for stage in 0..44 {
+            app.configure_sets(Update, GameSystemSet(stage).before(GameSystemSet(stage + 1)));
+        }
+        app.add_wall_systems();
+        super::install(&mut app);
+        let order: Vec<String> = app.world_mut().schedule_scope(Update, |world, schedule| {
+            schedule.initialize(world).expect("Update schedule must build");
+            schedule
+                .systems()
+                .expect("initialized")
+                .map(|(_, system)| system.name().to_string())
+                .collect()
+        });
+        let pos = |needle: &str| {
+            let hits: Vec<usize> = order
+                .iter()
+                .enumerate()
+                .filter(|(_, name)| name.contains(needle))
+                .map(|(i, _)| i)
+                .collect();
+            assert_eq!(hits.len(), 1, "{needle} must be registered exactly once: {hits:?}");
+            hits[0]
+        };
+        let sample = pos("sample_wall_path_intersections::sample_wall_path_intersections");
+        let calc = pos("calculate_wall_path_segmentation::calculate_wall_path_segmentation");
+        let init = pos("init_wall_height_and_arch_segment_height::init_wall_height_and_arch_segment_height");
+        let gate_clear = pos("gpu_clear_wall_gate_pieces");
+        let split = pos("split_wall_path_segment_into_platform_stairs::split_wall_path_segment_into_platform_stairs");
+        let arches = pos("construct_arches::construct_arches");
+        let lintels = pos("construct_lintels::construct_lintels");
+        let adjust = pos("adjust_wall_height_impl::adjust_wall_height_impl");
+        assert!(adjust < gate_clear && gate_clear < sample, "set 19 chain2 head order");
+        assert!(sample < calc && calc < init, "set 19 chain2 tail order");
+        assert!(init < split && split < arches && arches < lintels, "set 19 before set 22 chain");
+    }
+}
