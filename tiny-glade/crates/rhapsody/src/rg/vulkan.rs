@@ -316,6 +316,9 @@ pub struct VulkanGraphBackend {
     pub resources: BTreeMap<u64, GpuResource>,
     pub accesses: AccessTable,
     pub submissions: Vec<GpuSubmissionCapture>,
+    /// Set by the session right after it validated the declaration, so the
+    /// trait's `prepare_declaration` does not validate the same graph twice.
+    declaration_prevalidated: bool,
     recording_error: Option<crate::Error>,
     specifications: BTreeMap<String, ResourceSpec>,
     transient_aliasing: bool,
@@ -673,6 +676,7 @@ impl VulkanGraphBackend {
             device,
             accesses,
             submissions: vec![],
+            declaration_prevalidated: false,
             recording_error: None,
             resources: BTreeMap::new(),
             specifications: BTreeMap::new(),
@@ -1541,9 +1545,13 @@ impl ExecutionBackend for VulkanGraphBackend {
         &mut self,
         declaration: &mut graph::GraphDeclaration,
     ) -> crate::Result<()> {
-        let result = self
-            .validate_graph(declaration)
-            .and_then(|()| self.begin_command_frame());
+        let prevalidated = std::mem::take(&mut self.declaration_prevalidated);
+        let result = (if prevalidated {
+            Ok(())
+        } else {
+            self.validate_graph(declaration)
+        })
+        .and_then(|()| self.begin_command_frame());
         if result.as_ref().is_err_and(|error| error.is_device_lost()) {
             self.device.queues.timelines.mark_device_lost();
         }
@@ -3024,6 +3032,7 @@ impl VulkanGraphSession {
                 self.backend.device.generation().value(),
             )?;
             self.backend.validate_graph(&declaration)?;
+            self.backend.declaration_prevalidated = true;
             self.pending.reserve_frame()?;
             if self.receipt_storage.is_none() {
                 self.receipt_storage = Some(super::receipt_storage::ReceiptStorage::new(
@@ -3032,7 +3041,7 @@ impl VulkanGraphSession {
                 )?);
             }
             let mut access = self.backend.accesses.clone();
-            let mut prepared = self
+            let prepared = self
                 .chain
                 .compile_graph(
                     declaration,
@@ -3040,8 +3049,10 @@ impl VulkanGraphSession {
                     &mut access,
                     &mut self.backend,
                     callbacks.len(),
-                )
-                .map_err(crate::Error::from)?;
+                );
+            // Consumed by `prepare_declaration`; never let it leak to a later graph.
+            self.backend.declaration_prevalidated = false;
+            let mut prepared = prepared.map_err(crate::Error::from)?;
             let reservation = (|| {
                 validate(&prepared.compiled)?;
                 let capacity = prepared.compiled.snapshot.batches.len().saturating_add(
@@ -3318,14 +3329,17 @@ impl VulkanGraphSession {
             );
         } else {
             let completed = self.backend.device.poll().unwrap_or_default();
-            let created = compiled
+            // A sorted vector instead of a tree: one allocation, no node churn.
+            let mut created = compiled
                 .declarations
                 .resources
                 .iter()
                 .enumerate()
                 .filter(|(_, r)| matches!(r.source, graph::OriginSource::Create))
                 .filter_map(|(i, _)| compiled.snapshot.physical_mapping[i].token)
-                .collect::<std::collections::BTreeSet<_>>();
+                .collect::<Vec<u64>>();
+            created.sort_unstable();
+            created.dedup();
             // 只有本图创建的非导出资源加入 Pool；外部导入不被误当作可任意覆盖的暂存资源。
             let registry = &mut compiled.tables.registry;
             let exported = &registry.exported_logical_handles;
@@ -3342,7 +3356,7 @@ impl VulkanGraphSession {
                 }
                 match resource {
                     graph::RegistryResource::OwnedBuffer(buffer)
-                        if created.contains(&buffer.handle) =>
+                        if created.binary_search(&buffer.handle).is_ok() =>
                     {
                         if graph::ResourceBackend::is_transient_alias(&self.backend, buffer.handle)
                         {
@@ -3366,7 +3380,7 @@ impl VulkanGraphSession {
                         graph::ResourceBackend::park_pooled(&mut self.backend, token);
                     }
                     graph::RegistryResource::OwnedTexture(texture)
-                        if created.contains(&texture.handle) =>
+                        if created.binary_search(&texture.handle).is_ok() =>
                     {
                         if graph::ResourceBackend::is_transient_alias(&self.backend, texture.handle)
                         {

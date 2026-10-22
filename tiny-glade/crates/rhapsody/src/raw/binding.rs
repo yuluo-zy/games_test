@@ -88,7 +88,7 @@ impl DescriptorSetBinding {
                 ),
             }
         }
-        count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
 }

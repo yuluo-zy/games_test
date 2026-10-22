@@ -333,6 +333,9 @@ pub struct AttachmentCache {
     limits: vk::PhysicalDeviceLimits,
     capacity: usize,
     views: Vec<(ViewKey, Arc<TextureView>)>,
+    /// Where the next lookup starts: frames request the same attachments in
+    /// the same order, so the entry after the previous hit is the next hit.
+    cursor: usize,
     _view_memory: crate::raw::allocator::CpuMemoryReservation,
 }
 impl AttachmentCache {
@@ -364,11 +367,23 @@ impl AttachmentCache {
             limits,
             capacity,
             views: Vec::new(),
+            cursor: 0,
             _view_memory: memory,
         })
     }
     pub fn capacity(&self) -> usize {
         self.capacity
+    }
+    /// Index of `key`, scanning from the previous hit (wrapping). Misses scan
+    /// everything, hits in a repeating frame are found at the first probe.
+    fn find_view(&mut self, key: &ViewKey) -> Option<usize> {
+        let len = self.views.len();
+        let start = if self.cursor < len { self.cursor } else { 0 };
+        let found = (start..len)
+            .chain(0..start)
+            .find(|&index| self.views[index].0 == *key)?;
+        self.cursor = found + 1;
+        Some(found)
     }
     pub fn view_count(&self) -> usize {
         self.views.len()
@@ -416,10 +431,8 @@ impl AttachmentCache {
         for attachment in attachments {
             let key = attachment.view_key();
             let view = match self
-                .views
-                .iter()
-                .find(|(old, _)| old == &key)
-                .map(|(_, view)| view)
+                .find_view(&key)
+                .map(|index| &self.views[index].1)
                 .or_else(|| {
                     new_views
                         .iter()
@@ -538,13 +551,12 @@ impl AttachmentCache {
     }
     /// 整次生产成功后才发布缓存项，失败不会留下半完成对象。
     fn reserve_views(&mut self, views: &[ViewKey]) -> Result<()> {
-        let missing = views
-            .iter()
-            .enumerate()
-            .filter(|(index, key)| {
-                !views[..*index].contains(key) && !self.views.iter().any(|(old, _)| old == *key)
-            })
-            .count();
+        let mut missing = 0;
+        for (index, key) in views.iter().enumerate() {
+            if !views[..index].contains(key) && self.find_view(key).is_none() {
+                missing += 1;
+            }
+        }
         if missing > 0 {
             self.release_unreachable_textures()?;
         }
