@@ -118,6 +118,17 @@ impl<T> TempList<T> {
         assert!(self.items.len() < self.items.capacity() && self.items.len() < self.max_items);
         self.items.push(item);
     }
+    /// Move the last item to its position in a list otherwise sorted by `key`
+    /// (one binary search and memmove instead of a full re-sort).
+    pub(crate) fn sift_last_by_key<K: Ord>(&mut self, mut key: impl FnMut(&T) -> K) {
+        let Some(last) = self.items.last() else {
+            return;
+        };
+        let wanted = key(last);
+        let len = self.items.len();
+        let at = self.items[..len - 1].partition_point(|item| key(item) < wanted);
+        self.items[at..].rotate_right(1);
+    }
     pub(crate) fn sort_dedup_by_key<K: Ord>(&mut self, mut key: impl FnMut(&T) -> K) {
         self.items.sort_unstable_by_key(&mut key);
         self.items.dedup_by(|a, b| key(a) == key(b));

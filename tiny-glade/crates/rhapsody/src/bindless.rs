@@ -17,7 +17,7 @@ use crate::{
         shader::VulkanPipeline,
         texture::TextureView,
     },
-    resource::{GpuUse, SyncCell},
+    resource::GpuUse,
     sync::{CompletedValues, SyncSet},
 };
 use ash::vk;
@@ -513,7 +513,6 @@ impl GpuUse for Owner {
 pub struct BindlessLease {
     heap: Arc<BindlessHeap>,
     index: BindlessIndex,
-    last_use: Arc<SyncCell>,
     owner: Owner,
     _memory: crate::raw::allocator::CpuMemoryReservation,
 }
@@ -524,17 +523,18 @@ impl BindlessLease {
 }
 impl GpuUse for BindlessLease {
     fn visit_uses(&self, visit: &mut crate::resource::UseVisitor<'_>) -> Result<()> {
-        visit(&self.last_use)?;
         self.owner.visit_uses(visit)?;
         self.heap.visit_uses(visit)
     }
+    fn held_until_completion(&self) -> bool {
+        true
+    }
 }
+/// Every command that uses a lease retains its Arc until the command completes
+/// (`Doomed::Owners`), so the last drop proves the GPU no longer reads the slot.
 impl Drop for BindlessLease {
     fn drop(&mut self) {
-        self.heap
-            .slots
-            .lock()
-            .retire(self.index, self.last_use.snapshot());
+        self.heap.slots.lock().retire(self.index, SyncSet::EMPTY);
     }
 }
 impl GpuUse for BindlessHeap {
@@ -727,12 +727,17 @@ impl BindlessHeap {
     }
     /// Recycle retired slots whose GPU uses have completed. Call once per
     /// frame tick; allocation also collects lazily when a table runs dry.
+    /// Return the slots whose last GPU use completed. Leases retained by a
+    /// dropped command wait in the device graveyard; collecting it drops them.
     pub fn collect(&self) -> Result<usize> {
-        if !self.slots.lock().has_retiring() {
-            return Ok(0);
+        let free = |slots: &Slots| slots.free.iter().map(VecDeque::len).sum::<usize>();
+        let before = free(&self.slots.lock());
+        self.device.try_collect_garbage()?;
+        if self.slots.lock().has_retiring() {
+            let completed = self.device.poll()?;
+            self.slots.lock().collect(&completed);
         }
-        let completed = self.device.poll()?;
-        Ok(self.slots.lock().collect(&completed))
+        Ok(free(&self.slots.lock()).saturating_sub(before))
     }
     pub fn stats(&self) -> BindlessStats {
         self.slots.lock().statistics()
@@ -748,14 +753,11 @@ impl BindlessHeap {
             crate::raw::allocator::shared_cpu_bytes::<BindlessLease>()?,
             crate::device::BudgetCategory::Live,
         )?;
-        let last_use =
-            SyncCell::for_device_budgeted(self.device.generation(), &self.device.memory.stats)?;
         let index = self.slots.lock().allocate(kind)?;
         Ok(Arc::new(BindlessLease {
             heap: self.clone(),
             index,
             owner,
-            last_use,
             _memory: memory,
         }))
     }

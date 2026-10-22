@@ -256,7 +256,10 @@ fn pending_shader_retires_its_actual_page(
         .unwrap();
     let point = pending.point;
     drop((lease, pending));
-    assert_eq!(heap.stats().retiring, 1);
+    // The dropped command keeps its lease until completion, so the slot is
+    // still live (not merely retiring) and cannot be handed out again.
+    assert_eq!(heap.stats().live, 1);
+    assert_eq!(heap.stats().retiring, 0);
     assert!(matches!(
         heap.storage_buffer(target(&device), 0, 4),
         Err(rhapsody::Error::Exhausted(_))
@@ -269,6 +272,7 @@ fn pending_shader_retires_its_actual_page(
     let mut bytes = [0; 4];
     buffer.read_bytes(0, &mut bytes).unwrap();
     assert_eq!(u32::from_le_bytes(bytes), 77);
+    assert_eq!(heap.collect().unwrap(), 1);
     let next = heap.storage_buffer(target(&device), 0, 4).unwrap();
     assert_eq!(next.index().index, first.index);
     assert!(next.index().generation > first.generation);

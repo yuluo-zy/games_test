@@ -62,7 +62,7 @@ colored.workspace = true
 fern.workspace = true
 ron.workspace = true
 time.workspace = true
-parking_lot = { workspace = true, features = ["deadlock_detection"] }
+parking_lot.workspace = true
 hashbrown.workspace = true
 log.workspace = true
 puffin.workspace = true
@@ -91,6 +91,11 @@ backtrace = { version = "=0.3.71", features = ["serialize-serde"] }
 sentry-types = "=0.31.7"
 
 [features]
+# The original build's parking_lot deadlock detector (hang watchdog report).
+# Off by default: it tracks every lock in a thread-local list and makes each
+# release O(locks held), which is quadratic when submission holds one gate
+# per resource.
+deadlock-detection = ["parking_lot/deadlock_detection"]
 # Sampling profiler for the host binary (TG_PROFILE_OUT=<file>, see tiny-glade-host.rs).
 profile = ["dep:pprof"]
 # mimalloc as the process-wide allocator of the shipped binaries. The default

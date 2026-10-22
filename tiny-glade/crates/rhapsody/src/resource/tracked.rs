@@ -655,10 +655,19 @@ impl Default for SyncCell {
 pub type UseVisitor<'a> = dyn FnMut(&std::sync::Arc<SyncCell>) -> crate::Result<()> + 'a;
 pub trait GpuUse: Send + Sync {
     fn visit_uses(&self, visitor: &mut UseVisitor<'_>) -> crate::Result<()>;
+    /// True for objects without their own use cell: a command that retained
+    /// one keeps it alive until the command's completion, even when the
+    /// command wrapper is dropped earlier.
+    fn held_until_completion(&self) -> bool {
+        false
+    }
 }
 impl<T: GpuUse + ?Sized> GpuUse for std::sync::Arc<T> {
     fn visit_uses(&self, visitor: &mut UseVisitor<'_>) -> crate::Result<()> {
         (**self).visit_uses(visitor)
+    }
+    fn held_until_completion(&self) -> bool {
+        (**self).held_until_completion()
     }
 }
 impl GpuUse for () {

@@ -35,6 +35,10 @@ pub enum Doomed {
         vk::CommandBuffer,
         std::sync::Arc<super::command_buffer::CommandPoolAllocation>,
     ),
+    /// Objects a submitted command retained. Holding them until the command's
+    /// completion is what makes per-object completion tracking unnecessary for
+    /// purely CPU-side owners (bindless leases).
+    Owners(super::temp_list::TempList<super::binding::ResourceOwner>),
 }
 
 /// Retirement queue state. Per-queue timeline values are reported as-is; sums

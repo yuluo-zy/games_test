@@ -174,6 +174,7 @@ impl Device {
                 Doomed::DescriptorPool(pool) => drop(pool),
                 Doomed::DescriptorSet(handle, pool) => pool.free(handle),
                 Doomed::CommandBuffer(handle, pool) => pool.free(handle),
+                Doomed::Owners(owners) => drop(owners),
             }
         }
     }

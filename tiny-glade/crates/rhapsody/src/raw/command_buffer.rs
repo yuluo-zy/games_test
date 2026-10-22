@@ -1144,7 +1144,9 @@ impl VulkanCommandBuffer {
         self.uses.add(cell.clone())?;
         self.use_set.insert(key, ());
         if self.executable {
-            self.normalize_uses();
+            // `end` sorted the uses and `use_set` excludes duplicates, so placing
+            // the new cell keeps them sorted (a full sort per patch was quadratic).
+            self.uses.sift_last_by_key(|cell| Arc::as_ptr(cell) as usize);
         }
         Ok(())
     }
@@ -1604,6 +1606,27 @@ impl Drop for VulkanCommandBuffer {
                 self.pool.allocation.end_recording(&mut sync);
             }
             self.pool.live_commands.fetch_sub(1, Ordering::Relaxed);
+        }
+        // Retained objects live until the command's completion, not until this
+        // wrapper is dropped.
+        // Objects that track completion through their own use cells retire
+        // themselves; only the others move into the graveyard.
+        if !self.last_use.is_empty()
+            && self
+                .owners
+                .as_slice()
+                .iter()
+                .any(|owner| owner.held_until_completion())
+        {
+            self.owners.retain(|owner| owner.held_until_completion());
+            let owners = std::mem::replace(
+                &mut self.owners,
+                super::temp_list::TempList::new(1, self.pool.device.memory.stats.clone())
+                    .expect("nonzero limit"),
+            );
+            self.pool
+                .device
+                .retire(self.last_use, super::graveyard::Doomed::Owners(owners));
         }
         if self.detached {
             return;

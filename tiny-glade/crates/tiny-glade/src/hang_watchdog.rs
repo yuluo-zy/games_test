@@ -79,25 +79,8 @@ pub fn hang_watchdog() -> ! {
             }
         }
 
-        // parking_lot 的 `deadlock_detection` 特性下 `check_deadlock()` 返回
-        // `Vec<Vec<DeadlockedThread>>`（旧版曾返回 `Option<_>`）。
-        let deadlocks = parking_lot::deadlock::check_deadlock();
-        if !deadlocks.is_empty() {
-            log::error!(target: TARGET, "Deadlock detected");
-            for (index, threads) in deadlocks.iter().enumerate() {
-                log::error!(target: TARGET, "🛑 Deadlock :{}", index);
-                for (thread_index, thread) in threads.iter().enumerate() {
-                    log::error!(
-                        target: TARGET,
-                        "Thread {} backtrace:\n{:?}",
-                        thread_index,
-                        thread.backtrace()
-                    );
-                }
-            }
-            log::info!(target: TARGET, "🔥 Triggering an intentional crash...");
-            std::process::abort();
-        }
+        #[cfg(feature = "deadlock-detection")]
+        report_deadlocks();
 
         let current = TICK_IDX.load(Ordering::Relaxed);
         if current == frame_index {
@@ -112,6 +95,30 @@ pub fn hang_watchdog() -> ! {
 
         frame_index = current;
         deadline = Instant::now() + WATCHDOG_INTERVAL;
+    }
+}
+
+/// Deadlock half of the watchdog tick (`deadlock-detection` builds only).
+#[cfg(feature = "deadlock-detection")]
+fn report_deadlocks() {
+    // parking_lot 的 `deadlock_detection` 特性下 `check_deadlock()` 返回
+    // `Vec<Vec<DeadlockedThread>>`（旧版曾返回 `Option<_>`）。
+    let deadlocks = parking_lot::deadlock::check_deadlock();
+    if !deadlocks.is_empty() {
+        log::error!(target: TARGET, "Deadlock detected");
+        for (index, threads) in deadlocks.iter().enumerate() {
+            log::error!(target: TARGET, "🛑 Deadlock :{}", index);
+            for (thread_index, thread) in threads.iter().enumerate() {
+                log::error!(
+                    target: TARGET,
+                    "Thread {} backtrace:\n{:?}",
+                    thread_index,
+                    thread.backtrace()
+                );
+            }
+        }
+        log::info!(target: TARGET, "🔥 Triggering an intentional crash...");
+        std::process::abort();
     }
 }
 
