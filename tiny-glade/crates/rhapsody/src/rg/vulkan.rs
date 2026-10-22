@@ -320,7 +320,7 @@ pub struct VulkanGraphBackend {
     /// trait's `prepare_declaration` does not validate the same graph twice.
     declaration_prevalidated: bool,
     recording_error: Option<crate::Error>,
-    specifications: BTreeMap<String, ResourceSpec>,
+    specifications: BTreeMap<crate::resource::ResourceName, ResourceSpec>,
     transient_aliasing: bool,
     prepared_transients: super::transient_resources::PreparedTransients,
     /// Evictable idle pool and alias sets, registered with the device.
@@ -366,6 +366,11 @@ pub struct VulkanGraphBackend {
     pub stores: ManagedResources,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
     barriers: BTreeMap<u64, crate::raw::barrier::SynchronizationScope>,
+    /// Tokens already retained by `retained_command` in this recording; a
+    /// resource touched by many transitions is retained (and its use cell
+    /// scanned for) once. Sorted, capacity kept across frames.
+    retained_command: u64,
+    retained_tokens: Vec<u64>,
 }
 
 impl VulkanGraphBackend {
@@ -703,6 +708,8 @@ impl VulkanGraphBackend {
             stores,
             barrier_dispatch,
             barriers: BTreeMap::new(),
+            retained_command: 0,
+            retained_tokens: Vec::new(),
         })
     }
     /// Release a pooled token's resource, wherever it is (owner table or the
@@ -1049,7 +1056,7 @@ impl VulkanGraphBackend {
         spec: ResourceSpec,
     ) -> Result<super::resource::ResourceHandle, graph::BuildError> {
         let descriptor = spec.descriptor();
-        if self.specifications.contains_key(name) {
+        if self.specifications.contains_key(&crate::resource::ResourceName::new(name)) {
             return Err(graph::BuildError::DuplicateResourceName(name.into()));
         }
         let handle = graph.create_raw_resource(
@@ -1086,7 +1093,7 @@ impl VulkanGraphBackend {
                 "sharing cannot be changed after physical resource creation",
             ));
         }
-        let specification = self.specifications.get_mut(name).ok_or_else(|| {
+        let specification = self.specifications.get_mut(&crate::resource::ResourceName::new(name)).ok_or_else(|| {
             crate::Error::invalid_usage("sharing override has no allocation specification")
         })?;
         *specification = specification.with_sharing(sharing);
@@ -1348,7 +1355,7 @@ impl graph::ResourceBackend for VulkanGraphBackend {
     fn has_prepared_resource(&self, name: &str) -> bool {
         self.lent_aliases
             .as_ref()
-            .is_some_and(|lent| lent.resources.contains_key(name))
+            .is_some_and(|lent| lent.resources.contains_key(&crate::resource::ResourceName::new(name)))
     }
     fn is_transient_alias(&self, token: u64) -> bool {
         self.transient_alias_tokens.contains_key(&token)
@@ -1387,13 +1394,13 @@ impl graph::ResourceBackend for VulkanGraphBackend {
         let prepared = self
             .lent_aliases
             .as_mut()
-            .and_then(|lent| lent.resources.remove(name));
+            .and_then(|lent| lent.resources.remove(&crate::resource::ResourceName::new(name)));
         let origin = prepared.as_ref().map(|(_, origin)| *origin);
         let resource = if let Some((resource, _)) = prepared {
             resource
         } else {
             self.specifications
-                .get(name)
+                .get(&crate::resource::ResourceName::new(name))
                 .copied()
                 .ok_or_else(|| crate::Error::invalid_usage(format!("缺少资源规格 {name}")))?
                 .create_resource(self.device.clone(), descriptor.usage())?
@@ -1435,7 +1442,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         &mut self,
         command: u64,
         pass: usize,
-        name: &Arc<str>,
+        name: &crate::resource::ResourceName,
     ) -> Option<super::profiling::GpuPassTimestamp> {
         self.gpu_timing.as_mut()?.reserve_pass(command, pass, name)
     }
@@ -1760,6 +1767,8 @@ impl ExecutionBackend for VulkanGraphBackend {
         Ok((view, leases))
     }
     fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure> {
+        self.retained_tokens.clear();
+        self.retained_command = handle;
         let result = self
             .commands
             .get_mut(&handle)
@@ -1781,6 +1790,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         })
     }
     fn end_command(&mut self, handle: vk::CommandBuffer) -> bool {
+        self.retained_tokens.clear();
         if !self.flush_barriers(handle.as_raw()) {
             return false;
         }
@@ -1828,16 +1838,35 @@ impl ExecutionBackend for VulkanGraphBackend {
         let Some(recording) = self.commands.get_mut(&command) else {
             return false;
         };
-        // SAFETY: this operand is exactly covered by the graph's bound native
-        // transition and by the batch state patch attached before submission.
-        let retained = unsafe {
-            match self.resources.get(&token) {
-                Some(GpuResource::Buffer(buffer)) => recording.retain_recorded(buffer.clone()),
-                Some(GpuResource::Image(image)) => recording.retain_recorded(image.clone()),
-                None => return false,
+        if self.retained_command != command {
+            self.retained_tokens.clear();
+            self.retained_command = command;
+        }
+        let first_in_command = match self.retained_tokens.binary_search(&token) {
+            Ok(_) => false,
+            Err(at) => {
+                self.retained_tokens.insert(at, token);
+                true
             }
         };
+        // SAFETY: this operand is exactly covered by the graph's bound native
+        // transition and by the batch state patch attached before submission.
+        let retained = if first_in_command {
+            unsafe {
+                match self.resources.get(&token) {
+                    Some(GpuResource::Buffer(buffer)) => recording.retain_recorded(buffer.clone()),
+                    Some(GpuResource::Image(image)) => recording.retain_recorded(image.clone()),
+                    None => return false,
+                }
+            }
+        } else {
+            Ok(())
+        };
         if let Err(error) = retained {
+            // Not retained: the next transition for this token must retry.
+            if let Ok(at) = self.retained_tokens.binary_search(&token) {
+                self.retained_tokens.remove(at);
+            }
             self.recording_error = Some(error);
             return false;
         }
@@ -2591,6 +2620,10 @@ impl VulkanGraphSession {
         let Some(named) = &mut self.named else {
             return;
         };
+        if named.resources.retired.is_empty() {
+            return;
+        }
+        let mut removed_any = false;
         named.resources.retired.retain(|token| {
             if self.pending.iter().any(|frame| {
                 frame
@@ -2603,12 +2636,17 @@ impl VulkanGraphSession {
             }) {
                 return true;
             }
-            self.backend.clear_pass_resources();
+            removed_any = true;
             self.backend.resources.remove(token);
             self.backend.import_families.remove(token);
             self.backend.history_validity.remove(token);
             false
         });
+        // Invalidating the pass-resource projection once is enough; doing it
+        // per token also forced a full rebuild for each retired resource.
+        if removed_any {
+            self.backend.clear_pass_resources();
+        }
     }
     /// Drop pool entries whose parked resource the device's eviction already
     /// released (see `rg::graph_caches`).
@@ -3579,7 +3617,7 @@ impl NamedResources {
         Ok(())
     }
     fn ensure_capacity(&self, key: &str, additional: usize) -> crate::Result<()> {
-        if !self.resources.specifications.contains_key(key)
+        if !self.resources.specifications.contains_key(&crate::resource::ResourceName::new(key))
             && self
                 .resources
                 .specifications
@@ -3598,7 +3636,7 @@ impl NamedResources {
 /// 帧缓存持有实际资源；每帧后端导入 Arc 后，resize 可安全释放旧缓存引用。
 struct TemporalGpuResources {
     pub(crate) device: Arc<Device>,
-    specifications: BTreeMap<String, ResourceSpec>,
+    specifications: BTreeMap<crate::resource::ResourceName, ResourceSpec>,
     /// Keys whose buffer is zero-filled when it is (re)created.
     zero_initialized: std::collections::BTreeSet<String>,
     /// Tokens whose complete allocation was uploaded at creation.
@@ -3633,7 +3671,7 @@ impl TemporalGpuResources {
         if let Some(previous) = previous {
             self.specifications.insert(name.into(), previous);
         } else {
-            self.specifications.remove(name);
+            self.specifications.remove(&crate::resource::ResourceName::new(name));
         }
     }
     pub fn resource(&self, token: u64) -> Option<GpuResource> {
@@ -3665,7 +3703,7 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
         name: &str,
         descriptor: graph::Descriptor,
     ) -> Result<u64, graph::BuildError> {
-        let spec = self.specifications.get(name).copied().ok_or_else(|| {
+        let spec = self.specifications.get(&crate::resource::ResourceName::new(name)).copied().ok_or_else(|| {
             graph::BuildError::ResourceCreationFailed(format!("没有{name}的物理资源规格"))
         })?;
         if spec.descriptor() != descriptor {
@@ -3745,7 +3783,7 @@ impl super::temporal::TemporalResourceOwner for TemporalGpuResources {
     }
     fn temporal_sharing(&self, name: &str) -> crate::resource::ResourceSharing {
         self.specifications
-            .get(name)
+            .get(&crate::resource::ResourceName::new(name))
             .map(|spec| spec.sharing())
             .unwrap_or_default()
     }

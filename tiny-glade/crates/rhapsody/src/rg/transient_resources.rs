@@ -371,7 +371,7 @@ pub(crate) struct LentAliases {
     /// memory last used by the final member). Shared, immutable.
     pub plan: Arc<PhysicalMemoryPlan>,
     pub edges: Arc<[(u32, u32)]>,
-    pub resources: BTreeMap<String, (GpuResource, AliasOrigin)>,
+    pub resources: BTreeMap<crate::resource::ResourceName, (GpuResource, AliasOrigin)>,
 }
 /// Cache of physical alias plans keyed by [`AliasKey`]. A cache hit performs no
 /// Vulkan object creation, memory query or allocation.
@@ -485,7 +485,7 @@ impl AliasCache {
     }
     fn build_key(
         &mut self,
-        specifications: &BTreeMap<String, ResourceSpec>,
+        specifications: &BTreeMap<crate::resource::ResourceName, ResourceSpec>,
         plan: &CompiledPlan,
         graph: &graph::GraphDeclaration,
     ) {
@@ -568,7 +568,7 @@ impl AliasCache {
     pub(crate) fn lend(
         &mut self,
         device: &Arc<Device>,
-        specifications: &BTreeMap<String, ResourceSpec>,
+        specifications: &BTreeMap<crate::resource::ResourceName, ResourceSpec>,
         plan: &CompiledPlan,
         graph: &graph::GraphDeclaration,
         counters: Arc<TransientBackingCounters>,

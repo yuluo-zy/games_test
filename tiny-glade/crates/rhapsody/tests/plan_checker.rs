@@ -36,7 +36,7 @@ fn graph(resources: usize) -> GraphDeclaration {
         resources: (0..resources)
             .map(|index| ResourceDeclaration {
                 sharing: rhapsody::resource::ResourceSharing::Exclusive,
-                name: format!("buffer-{index}"),
+                name: format!("buffer-{index}").into(),
                 descriptor: Descriptor::Buffer(BufferDesc {
                     word_at_00: SIZE as u64,
                     word_at_08: 0,

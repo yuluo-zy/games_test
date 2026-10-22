@@ -20,59 +20,44 @@ fn separately_allocated_names_compare_by_complete_content() {
     assert_eq!(stats.duration_ns("Shadow"), 70);
 }
 #[test]
-fn obsolete_names_are_reclaimed_when_real_double_buffer_statistics_reset() {
-    let mut frames = PassPgoFrames::default();
-    let mut previous = None;
-    for index in 0..1000 {
-        let name: Arc<str> = format!("dynamic-pass-{index}").into();
-        let weak = Arc::downgrade(&name);
-        frames
-            .current
-            .record(PassPgoDuration::new(PassPgoNameId::from_shared(name), 1));
-        frames.end_frame();
-        if let Some(old) = previous.replace(weak.clone()) {
-            assert!(std::sync::Weak::<str>::upgrade(&old).is_none());
-        }
-        assert!(weak.upgrade().is_some());
-    }
-    frames.end_frame();
-    assert!(previous.unwrap().upgrade().is_none());
-}
-#[test]
-fn production_compilation_and_observations_share_the_declaration_name() {
+fn production_compilation_and_observations_share_the_interned_declaration_name() {
     use rhapsody::rg::{
         graph::RenderGraph,
         plan::{GraphDefinition, PlanContext, compile_definition},
         vulkan::AccessTable,
     };
+    // Names are interned process-wide: the declaration, the plan definition and
+    // the PGO observation all carry one pointer, however the name was supplied.
     let name: Arc<str> = "shared producer".into();
-    let weak = Arc::downgrade(&name);
     let mut graph = RenderGraph::new();
     graph
         .add_pass(name.clone())
         .with_side_effect()
         .render(|_| true);
     let (declaration, _, _) = graph.build().into_parts();
-    assert!(Arc::ptr_eq(&name, &declaration.passes[0].name));
+    let interned = declaration.passes[0].name;
+    assert_eq!(interned, "shared producer");
     let definition = GraphDefinition::from_declaration(
         &declaration,
         &mut AccessTable::original(),
         PlanContext::default(),
     )
     .unwrap();
-    assert!(Arc::ptr_eq(&name, &definition.passes[0].name));
+    assert!(std::ptr::eq(interned.as_str(), definition.passes[0].name.as_str()));
     let plan = compile_definition(definition).unwrap();
     let mut frames = PassPgoFrames::default();
     frames.current.record(PassPgoDuration::new(
-        PassPgoNameId::from_shared(plan.definition.passes[0].name.clone()),
+        PassPgoNameId::from_resource_name(plan.definition.passes[0].name),
         10,
     ));
-    drop(name);
-    drop(declaration);
-    drop(plan);
-    assert!(weak.upgrade().is_some());
+    assert_eq!(frames.current.get(&PassPgoNameId::from_name("shared producer")), Some(10));
+    // A second graph naming the pass differently-allocated still hits the same identity.
+    let mut again = RenderGraph::new();
+    again.add_pass("shared producer").with_side_effect().render(|_| true);
+    let (second, _, _) = again.build().into_parts();
+    assert!(std::ptr::eq(interned.as_str(), second.passes[0].name.as_str()));
     frames.current.reset();
-    assert!(weak.upgrade().is_none());
+    assert!(frames.current.is_empty());
 }
 #[test]
 fn pgo_lookup_and_frame_swap_keep_final_duration_and_total_observations() {

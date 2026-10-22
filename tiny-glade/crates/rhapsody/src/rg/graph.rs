@@ -53,7 +53,7 @@ pub enum OriginSource {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResourceDeclaration {
     pub sharing: crate::resource::ResourceSharing,
-    pub name: String,
+    pub name: crate::resource::ResourceName,
     pub descriptor: Descriptor,
     pub source: OriginSource,
 }
@@ -78,7 +78,7 @@ impl ExportableResource {
 pub struct PassDeclaration {
     pub queue_class: crate::device::QueueClass,
     pub graph_id: Option<super::resource::GraphId>,
-    pub name: std::sync::Arc<str>,
+    pub name: crate::resource::ResourceName,
     pub accesses: Vec<AccessDeclaration>,
     /// Keeps externally observable work even when none of its outputs is exported.
     pub side_effect: bool,
@@ -266,7 +266,7 @@ impl RenderGraph {
 
     pub fn create_raw_resource(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         origin: super::resource::ResourceOrigin,
     ) -> Result<super::resource::ResourceHandle, BuildError> {
         // 复用记录采用 u16 物理索引，最大值保留给无映射状态。
@@ -289,7 +289,7 @@ impl RenderGraph {
     /// `create_raw_resource` 的别名。
     pub fn create_resource_handle(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         origin: super::resource::ResourceOrigin,
     ) -> Result<super::resource::ResourceHandle, BuildError> {
         self.create_raw_resource(name, origin)
@@ -332,7 +332,7 @@ impl RenderGraph {
     /// [`BuildError::PassLimit`]，需要在拿到 builder 前就得到错误时用 [`Self::try_add_pass`]。
     pub fn add_pass(
         &mut self,
-        name: impl Into<std::sync::Arc<str>>,
+        name: impl Into<crate::resource::ResourceName>,
     ) -> super::pass_builder::PassBuilder<'_> {
         let graph_id = self.graph_id;
         super::pass_builder::PassBuilder {
@@ -350,7 +350,7 @@ impl RenderGraph {
     /// 带 pass 上限检查的 `add_pass`：已有 `MAX_PASSES` 个 pass 时返回 [`BuildError::PassLimit`]。
     pub fn try_add_pass(
         &mut self,
-        name: impl Into<std::sync::Arc<str>>,
+        name: impl Into<crate::resource::ResourceName>,
     ) -> Result<super::pass_builder::PassBuilder<'_>, BuildError> {
         self.check_pass_capacity()?;
         Ok(self.add_pass(name))

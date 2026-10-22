@@ -22,7 +22,7 @@ pub enum ResourceOriginKind {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ResourceDefinition {
     pub sharing: crate::resource::ResourceSharing,
-    pub name: String,
+    pub name: crate::resource::ResourceName,
     pub descriptor: Descriptor,
     pub origin: ResourceOriginKind,
 }
@@ -1182,7 +1182,7 @@ mod borrowed_definition_tests {
         let key = GraphDefinition::from_declaration(&graph, &mut AccessTable::original(), context)
             .unwrap();
         let changes: &[fn(&mut GraphDeclaration)] = &[
-            |g| g.resources[0].name.push('!'),
+            |g| g.resources[0].name = format!("{}!", g.resources[0].name).into(),
             |g| {
                 g.resources[0].descriptor = Descriptor::Buffer(BufferDesc {
                     word_at_00: 128,
@@ -1391,7 +1391,7 @@ mod borrowed_definition_tests {
                 .resources
                 .push(super::super::graph::ResourceDeclaration {
                     sharing: Default::default(),
-                    name: String::from("image"),
+                    name: "image".into(),
                     descriptor,
                     source: OriginSource::ImportUnowned {
                         token: 1,

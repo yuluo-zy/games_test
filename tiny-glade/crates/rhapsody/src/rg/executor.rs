@@ -75,7 +75,7 @@ struct ChunkedBatch<'a, C> {
     final_batch: bool,
     compiled: &'a crate::rg::graph::FrameInstance,
     managed: Option<&'a std::sync::Arc<crate::rg::pass_bindings::ManagedPassResources>>,
-    pass_names: &'a [&'a std::sync::Arc<str>],
+    pass_names: &'a [&'a crate::resource::ResourceName],
     cpu: Option<&'a CpuArenaLease>,
     family: u32,
     queue: recording::Queue,
@@ -303,7 +303,7 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         &mut self,
         _command: u64,
         _pass: usize,
-        _name: &std::sync::Arc<str>,
+        _name: &crate::resource::ResourceName,
     ) -> Option<super::profiling::GpuPassTimestamp> {
         None
     }
@@ -1359,6 +1359,8 @@ impl ExecutionChain {
                 let mut durations = scratch_slice(cpu_arena, batch.pass_range.len(), |_| None)
                     .map_err(Error::Validation)?;
                 let mut duration_count = 0;
+                let serial_strategy =
+                    matches!(self.parallel.strategy, crate::rg::parallel::ChunkStrategy::Serial);
                 let outcome = self.record(
                     &mut recorder,
                     &mut passes[batch.pass_range.clone()],
@@ -1391,7 +1393,8 @@ impl ExecutionChain {
                                 new.handle(),
                                 pass_names[pass_index],
                             );
-                            let timer = std::time::Instant::now();
+                            // Serial recording never reads the per-pass durations.
+                            let timer = (!serial_strategy).then(std::time::Instant::now);
                             let ok = callbacks[pass_index](PassContext {
                                 pass_index,
                                 cpu: cpu_arena,
@@ -1405,7 +1408,8 @@ impl ExecutionChain {
                                 // SAFETY: the same command and reserved pair remain exclusively owned.
                                 unsafe { backend.write_pass_timestamp(handle, pair, true) };
                             }
-                            durations[duration_count] = Some(timer.elapsed().as_nanos() as u64);
+                            durations[duration_count] =
+                                timer.map(|timer| timer.elapsed().as_nanos() as u64);
                             duration_count += 1;
                             let ok = ok && errors.borrow().is_none();
                             record_trace.complete(ok);
@@ -1454,9 +1458,7 @@ impl ExecutionChain {
                         .extend(durations[..duration_count].iter().enumerate().map(
                             |(offset, duration)| {
                                 PassPgoDuration::new(
-                                    PassPgoNameId::from_shared(std::sync::Arc::clone(
-                                        pass_names[start + offset],
-                                    )),
+                                    PassPgoNameId::from_resource_name(*pass_names[start + offset]),
                                     duration.expect("recorded pass duration"),
                                 )
                             },
@@ -1956,9 +1958,9 @@ impl ExecutionChain {
                     .enumerate()
                     .map(|(offset, duration)| {
                         PassPgoDuration::new(
-                            PassPgoNameId::from_shared(std::sync::Arc::clone(
-                                pass_names[first_pass + range.start + offset],
-                            )),
+                            PassPgoNameId::from_resource_name(
+                                *pass_names[first_pass + range.start + offset],
+                            ),
                             duration.expect("recorded pass duration"),
                         )
                     }),
@@ -2050,27 +2052,30 @@ impl ExecutionChain {
 /// Owned full-content PGO identity. Cloning a declaration's name shares the
 /// existing allocation, and names disappear with the last plan or observation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct PassPgoNameId(std::sync::Arc<str>);
+pub struct PassPgoNameId(crate::resource::ResourceName);
 impl PassPgoNameId {
     pub fn from_shared(name: std::sync::Arc<str>) -> Self {
+        Self(name.into())
+    }
+    pub fn from_resource_name(name: crate::resource::ResourceName) -> Self {
         Self(name)
     }
     /// Cold-path convenience; production recording shares the declaration Arc.
     pub fn from_static(name: &'static str) -> Self {
-        Self(name.into())
+        Self(crate::resource::ResourceName::new(name))
     }
     pub fn from_name(name: &str) -> Self {
-        Self(name.into())
+        Self(crate::resource::ResourceName::new(name))
     }
 }
 impl AsRef<str> for PassPgoNameId {
     fn as_ref(&self) -> &str {
-        &self.0
+        self.0.as_str()
     }
 }
-impl std::borrow::Borrow<str> for PassPgoNameId {
-    fn borrow(&self) -> &str {
-        &self.0
+impl PassPgoNameId {
+    pub fn resource_name(&self) -> crate::resource::ResourceName {
+        self.0
     }
 }
 #[derive(Clone, Debug)]
@@ -2108,10 +2113,14 @@ impl PassPgoStats {
         self.get(id).unwrap_or(0)
     }
     pub fn get(&self, id: impl AsRef<str>) -> Option<u64> {
-        self.durations.get(id.as_ref()).copied()
+        // A name never interned was never recorded.
+        let name = crate::resource::ResourceName::from_existing(id.as_ref())?;
+        self.durations.get(&PassPgoNameId(name)).copied()
     }
     pub fn call_count(&self, id: impl AsRef<str>) -> u64 {
-        self.counts.get(id.as_ref()).copied().unwrap_or(0)
+        crate::resource::ResourceName::from_existing(id.as_ref())
+            .and_then(|name| self.counts.get(&PassPgoNameId(name)).copied())
+            .unwrap_or(0)
     }
     pub fn is_empty(&self) -> bool {
         self.durations.is_empty()
@@ -2119,8 +2128,11 @@ impl PassPgoStats {
     /// Read-only view for diagnostics: `(pass name, final duration ns, invocation count)`.
     pub fn iter(&self) -> impl Iterator<Item = (&str, u64, u64)> + '_ {
         self.durations.iter().map(|(name, duration)| {
-            let name: &str = std::borrow::Borrow::borrow(name);
-            (name, *duration, self.counts.get(name).copied().unwrap_or(0))
+            (
+                name.0.as_str(),
+                *duration,
+                self.counts.get(name).copied().unwrap_or(0),
+            )
         })
     }
     pub fn total_ns(&self) -> u64 {

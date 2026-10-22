@@ -63,7 +63,7 @@ typed_resource!(BufferId);
 impl super::graph::RenderGraph {
     pub fn create_texture(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         descriptor: super::graph::TextureDesc,
     ) -> Result<TextureId, super::graph::BuildError> {
         let handle = self.create_raw_resource(
@@ -77,7 +77,7 @@ impl super::graph::RenderGraph {
     }
     pub fn create_buffer(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         descriptor: super::graph::BufferDesc,
     ) -> Result<BufferId, super::graph::BuildError> {
         let handle = self.create_raw_resource(

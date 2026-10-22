@@ -6,7 +6,7 @@ use super::{
 impl RenderGraph {
     pub fn import_unowned_with_sharing(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         descriptor: Descriptor,
         token: u64,
         initial_access: u8,
@@ -18,7 +18,7 @@ impl RenderGraph {
     }
     pub fn import_owned_with_sharing(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         descriptor: Descriptor,
         token: u64,
         initial_access: u8,
@@ -39,7 +39,7 @@ impl RenderGraph {
     }
     pub fn import_unowned(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         descriptor: Descriptor,
         token: u64,
         initial_access: u8,
@@ -57,7 +57,7 @@ impl RenderGraph {
     }
     pub fn import_owned(
         &mut self,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         descriptor: Descriptor,
         token: u64,
         initial_access: u8,
@@ -96,7 +96,7 @@ pub trait ImportExportToRenderGraph: Sized {
     fn import_unowned(
         &self,
         graph: &mut RenderGraph,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         access: u8,
     ) -> Result<ResourceHandle, BuildError> {
         graph.import_unowned(name, self.descriptor(), self.token(), access)
@@ -105,7 +105,7 @@ pub trait ImportExportToRenderGraph: Sized {
     fn import_owned(
         self,
         graph: &mut RenderGraph,
-        name: impl Into<String>,
+        name: impl Into<crate::resource::ResourceName>,
         access: u8,
     ) -> Result<ResourceHandle, BuildError> {
         graph.import_owned(name, self.descriptor(), self.token(), access)

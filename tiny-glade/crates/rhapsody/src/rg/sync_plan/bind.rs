@@ -189,6 +189,8 @@ pub struct SynchronizationPlanner {
     by_resource: Vec<ResourceShadow>,
     /// `initial` row of each pushed patch (parallel to `bound.patches`).
     patch_slots: Vec<u32>,
+    /// Reused every frame so computing the template key allocates nothing.
+    key_scratch: Vec<InitKey>,
     templates: Vec<Template>,
     template_clock: u64,
     template_hits: u64,
@@ -226,6 +228,7 @@ impl SynchronizationPlanner {
             shadow: Storage::new(0, &budget)?,
             by_resource: Vec::new(),
             patch_slots: Vec::new(),
+            key_scratch: Vec::new(),
             templates: Vec::new(),
             template_clock: 0,
             template_hits: 0,
@@ -322,11 +325,25 @@ impl SynchronizationPlanner {
         pin: Arc<dyn std::any::Any + Send + Sync>,
         family_domain: impl FnMut(u32) -> Result<QueueDomain>,
     ) -> Result<()> {
-        let key = self.template_key();
-        if let Some(key) = &key {
+        let key_ok = self.template_key();
+        let key = std::mem::take(&mut self.key_scratch);
+        let result = self.bind_cached_keyed(program, id, pin, family_domain, key_ok, &key);
+        self.key_scratch = key;
+        result
+    }
+    fn bind_cached_keyed(
+        &mut self,
+        program: &RangeProgram,
+        id: usize,
+        pin: Arc<dyn std::any::Any + Send + Sync>,
+        family_domain: impl FnMut(u32) -> Result<QueueDomain>,
+        key_ok: bool,
+        key: &[InitKey],
+    ) -> Result<()> {
+        if key_ok {
             let found = self.templates.iter().position(|template| {
                 template.id == id
-                    && template.key == *key
+                    && template.key[..] == *key
                     && template.aliases == self.bound.aliases.values[..]
             });
             if let Some(index) = found {
@@ -352,8 +369,8 @@ impl SynchronizationPlanner {
             }
         }
         self.bind_full(program, family_domain)?;
-        if let Some(key) = key {
-            self.save_template(id, pin, key);
+        if key_ok {
+            self.save_template(id, pin, key.to_vec());
         }
         Ok(())
     }
@@ -372,14 +389,20 @@ impl SynchronizationPlanner {
     }
     /// Frame-independent projection of the initial state; `None` when a
     /// released ownership makes the binding depend on a pending transfer.
-    fn template_key(&self) -> Option<Vec<InitKey>> {
-        let mut key = Vec::with_capacity(self.bound.initial.values.len());
+    fn template_key(&mut self) -> bool {
+        let mut key = std::mem::take(&mut self.key_scratch);
+        key.clear();
+        let ok = self.fill_template_key(&mut key);
+        self.key_scratch = key;
+        ok
+    }
+    fn fill_template_key(&self, key: &mut Vec<InitKey>) -> bool {
         for initial in &self.bound.initial.values {
             let state = initial.cell.state;
             let owner = match state.owner {
                 RangeOwner::Unclaimed => None,
                 RangeOwner::Owned(family) => Some(family),
-                RangeOwner::Released { .. } => return None,
+                RangeOwner::Released { .. } => return false,
             };
             let mask = |frontier: &Frontier| {
                 frontier
@@ -401,7 +424,7 @@ impl SynchronizationPlanner {
                 readers_queues: mask(&state.readers),
             });
         }
-        Some(key)
+        true
     }
     fn save_template(&mut self, id: usize, pin: Arc<dyn std::any::Any + Send + Sync>, key: Vec<InitKey>) {
         let bound = &self.bound;

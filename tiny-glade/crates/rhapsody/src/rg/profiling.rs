@@ -109,7 +109,7 @@ pub(crate) struct GpuTimingRing {
     // Slots and completed samples drop before their reservation.
     slots: Vec<Option<Tracked>>,
     /// Pass names of reserved pass-span slots, removed when the slot is released.
-    slot_names: std::collections::HashMap<usize, Arc<str>>,
+    slot_names: std::collections::HashMap<usize, crate::resource::ResourceName>,
     active: Vec<(u64, usize)>,
     free: VecDeque<usize>,
     samples: VecDeque<GpuCommandTiming>,
@@ -295,7 +295,7 @@ impl GpuTimingRing {
         &mut self,
         command: u64,
         pass_index: usize,
-        name: &Arc<str>,
+        name: &crate::resource::ResourceName,
     ) -> Option<GpuPassTimestamp> {
         if !self.pass_spans {
             return None;

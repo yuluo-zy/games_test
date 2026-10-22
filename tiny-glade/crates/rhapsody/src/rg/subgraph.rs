@@ -550,9 +550,9 @@ fn local_key(
             .ok_or_else(|| crate::Error::invalid_usage("subgraph version precedes its boundary"))
     };
     let mut local_passes = passes.to_vec();
-    let no_name: std::sync::Arc<str> = "".into();
+    let no_name = crate::resource::ResourceName::new("");
     for pass in &mut local_passes {
-        pass.name = no_name.clone();
+        pass.name = no_name;
         pass.graph_id = None;
         for access in &mut pass.accesses {
             access.range = access
@@ -590,7 +590,7 @@ fn local_key(
         .map(|&resource| definition.resources[resource as usize].clone())
         .collect::<Vec<_>>();
     for resource in &mut local_resources {
-        resource.name = String::new();
+        resource.name = crate::resource::ResourceName::new("");
     }
     let codes: BTreeSet<_> = local_passes
         .iter()
