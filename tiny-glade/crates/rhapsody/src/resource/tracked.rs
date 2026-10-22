@@ -310,6 +310,20 @@ impl SyncCell {
             .ok_or_else(|| crate::Error::invalid_usage("native range append has no prepared state"))?
             .append_prepared(patches, queue, family)
     }
+    /// [`Self::append_prepared_range_state`] for many pairwise-disjoint buffer
+    /// reads at once; falls back to the sequential path when they are not.
+    pub(crate) fn append_prepared_range_state_disjoint(
+        &self,
+        patches: &[super::range_state::StatePatch],
+        queue: QueueId,
+        family: u32,
+    ) -> crate::Result<()> {
+        let mut table = self.native_state.lock();
+        table
+            .as_mut()
+            .ok_or_else(|| crate::Error::invalid_usage("native range append has no prepared state"))?
+            .append_prepared_disjoint(patches, queue, family)
+    }
     pub(crate) fn publish_range_state(&self, point: SyncPoint) {
         self.native_state
             .lock()

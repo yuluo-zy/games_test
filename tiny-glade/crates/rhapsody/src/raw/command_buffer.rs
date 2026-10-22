@@ -743,6 +743,46 @@ pub(crate) unsafe fn prepare_submission_states(
             }
             if fallback {patches.add(StatePatch {range:domain,expected_revision:u64::MAX,action:PatchAction::Unknown {queue,family}})?;}
             let declared=patches.as_slice().len();
+            // A bindless parameter page records one private read per bind (hundreds
+            // on one buffer). Preparing each read incrementally rescans every cell
+            // the earlier reads split off: O(reads^2). When the reads are pairwise
+            // disjoint they cannot affect one another, so generate every patch
+            // from the state after the declared accesses and apply them in one
+            // sweep; the end state is identical to the one-by-one path below.
+            let batched_reads: smallvec::SmallVec<[&UploadRead; 16]> = own
+                .iter()
+                .filter(|item| item.1 == 2)
+                .map(|&(_, _, command_index, entry_index)| {
+                    &commands[command_index].upload_reads.as_slice()[entry_index]
+                })
+                .collect();
+            if batched_reads.len() >= 4
+                && let Some(merged) = merge_upload_reads(&batched_reads)
+            {
+                for &(offset, end, _) in &merged {
+                    let range = crate::resource::OwnershipRange::Buffer { offset, size: end - offset };
+                    if patches.as_slice()[..declared].iter().any(|patch| crate::resource::range_state::intersection(patch.range, range).is_some()) {
+                        return Err(crate::Error::unsupported("private upload read overlaps a declared or opaque native access"));
+                    }
+                }
+                cell.prepare_range_state(patches.as_slice(), queue, family, stats)?;
+                cell.with_prepared_range_state(|table| {
+                    for &(offset, end, scope) in &merged {
+                        let wanted = crate::resource::OwnershipRange::Buffer { offset, size: end - offset };
+                        for current in table.prepared_cells() {
+                            let Some(range) = crate::resource::range_state::intersection(current.range, wanted) else { continue; };
+                            if !current.state.writer.points.is_empty() || current.state.writer.scopes.iter().any(|scope| !scope.is_empty()) {
+                                return Err(crate::Error::unsupported("private upload read has a GPU producer; a declared native access is required"));
+                            }
+                            patches.add(StatePatch { range, expected_revision: current.state.revision, action: PatchAction::Access { scope, layout: vk::ImageLayout::UNDEFINED, queue, family } })?;
+                        }
+                    }
+                    Ok(())
+                })?;
+                cell.append_prepared_range_state_disjoint(&patches.as_slice()[declared..], queue, family)?;
+                prepared.dependencies.merge(&cell.prepared_range_staged_dependencies());
+                return Ok(());
+            }
             let mut prepared_prefix = None;
             for read in own.iter().filter(|item|item.1==2).map(|&(_,_,command_index,entry_index)|&commands[command_index].upload_reads.as_slice()[entry_index]) {
                 let range=crate::resource::OwnershipRange::Buffer {offset:read.offset,size:read.size};
@@ -778,6 +818,41 @@ pub(crate) unsafe fn prepare_submission_states(
     trace.mark("prepare_all_cells");
     trace.count("physical_cells", prepared.cells.len());
     Ok(prepared)
+}
+
+/// Unions private upload reads into disjoint byte spans `(start, end, scope)`.
+/// Duplicates, overlaps and touching spans with the same scope become one span;
+/// the bytes covered and the scope applied to each byte are exactly those of the
+/// original reads. `None` when a span is empty or overflows, or when reads with
+/// different scopes overlap (the one-by-one path then decides the outcome).
+fn merge_upload_reads(reads: &[&UploadRead]) -> Option<MergedReads> {
+    let mut spans = MergedReads::new();
+    for read in reads {
+        spans.push((read.offset, read.offset.checked_add(read.size)?, read.scope));
+        if read.size == 0 {
+            return None;
+        }
+    }
+    merge_read_spans(spans)
+}
+type MergedReads =
+    smallvec::SmallVec<[(u64, u64, crate::resource::range_state::AccessScope); 16]>;
+fn merge_read_spans(mut spans: MergedReads) -> Option<MergedReads> {
+    spans.sort_unstable_by_key(|span| (span.0, span.1));
+    let mut merged = MergedReads::new();
+    for span in spans {
+        match merged.last_mut() {
+            Some(last) if span.0 < last.1 => {
+                if span.2 != last.2 {
+                    return None;
+                }
+                last.1 = last.1.max(span.1);
+            }
+            Some(last) if span.0 == last.1 && span.2 == last.2 => last.1 = span.1,
+            _ => merged.push(span),
+        }
+    }
+    Some(merged)
 }
 
 pub(crate) fn validate_submission_commands(commands: &[&VulkanCommandBuffer]) -> crate::Result<()> {
@@ -1882,5 +1957,37 @@ mod native_state_submission_tests {
                 Ok(())
             })
             .unwrap();
+    }
+}
+
+#[cfg(test)]
+mod merge_read_tests {
+    use super::*;
+    use crate::resource::range_state::AccessScope;
+    fn scope(write: bool) -> AccessScope {
+        AccessScope {
+            stages: vk::PipelineStageFlags::VERTEX_SHADER,
+            access: vk::AccessFlags::SHADER_READ,
+            write,
+        }
+    }
+    fn merge(spans: &[(u64, u64, AccessScope)]) -> Option<Vec<(u64, u64)>> {
+        merge_read_spans(spans.iter().copied().collect())
+            .map(|merged| merged.iter().map(|span| (span.0, span.1)).collect())
+    }
+    #[test]
+    fn duplicates_overlaps_and_touching_spans_union() {
+        let s = scope(false);
+        assert_eq!(
+            merge(&[(256, 512, s), (0, 256, s), (256, 512, s), (400, 700, s), (900, 950, s)]),
+            Some(vec![(0, 700), (900, 950)])
+        );
+        assert_eq!(merge(&[]), Some(vec![]));
+    }
+    #[test]
+    fn different_scopes_may_touch_but_not_overlap() {
+        let (a, b) = (scope(false), scope(true));
+        assert_eq!(merge(&[(0, 10, a), (10, 20, b)]), Some(vec![(0, 10), (10, 20)]));
+        assert_eq!(merge(&[(0, 10, a), (5, 20, b)]), None);
     }
 }

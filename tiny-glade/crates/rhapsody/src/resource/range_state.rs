@@ -476,6 +476,210 @@ impl RangeStateTable {
         self.apply_prepared_patches(patches, queue, family)?;
         self.admit_prepared(queue, family)
     }
+    /// [`Self::append_prepared`] for many `Access` patches on pairwise-disjoint
+    /// buffer ranges (a bindless parameter page records one private read per
+    /// bind: hundreds on one buffer). Each patch then only touches cells no other
+    /// patch touches, so the result equals applying them one by one, but one
+    /// sweep over the sorted cells replaces a scan of every cell per patch
+    /// (O(cells + patches) instead of O(cells x patches)). Anything else - an
+    /// image domain, another action, overlapping patches - takes the exact
+    /// sequential path.
+    pub(crate) fn append_prepared_disjoint(
+        &mut self,
+        patches: &[StatePatch],
+        queue: QueueId,
+        family: u32,
+    ) -> Result<()> {
+        let valid_prefix = self.prepared_queue == Some(queue)
+            && self.prepared_family == Some(family)
+            && !self.prepared_host;
+        self.prepared_queue = None;
+        self.prepared_family = None;
+        if !valid_prefix {
+            self.cancel_prepared();
+            return Err(Error::invalid_usage(
+                "native range append requires a successful prefix on the same queue and family",
+            ));
+        }
+        if !self.apply_disjoint_buffer_accesses(patches, queue, family)? {
+            self.apply_prepared_patches(patches, queue, family)?;
+        }
+        self.admit_prepared(queue, family)
+    }
+    /// `Ok(false)` leaves every table untouched (precondition not met).
+    fn apply_disjoint_buffer_accesses(
+        &mut self,
+        patches: &[StatePatch],
+        queue: QueueId,
+        family: u32,
+    ) -> Result<bool> {
+        if patches.len() < 2
+            || self.scratch.values.is_empty()
+            || !matches!(self.domain, NativeRange::Buffer { .. })
+        {
+            return Ok(false);
+        }
+        let mut order: smallvec::SmallVec<[(u64, u64, u32); 16]> = smallvec::SmallVec::new();
+        for (index, patch) in patches.iter().enumerate() {
+            let (NativeRange::Buffer { offset, size }, PatchAction::Access { .. }) =
+                (patch.range, patch.action)
+            else {
+                return Ok(false);
+            };
+            if size == 0 || offset.checked_add(size).is_none() {
+                return Ok(false);
+            }
+            order.push((offset, offset + size, index as u32));
+        }
+        order.sort_unstable();
+        if order.windows(2).any(|pair| pair[0].1 > pair[1].0) {
+            return Ok(false);
+        }
+        // Same per-patch validation the sequential path performs, in patch order.
+        for patch in patches {
+            validate_range(patch.range)?;
+            if !contains(self.domain, patch.range) {
+                return Err(Error::invalid_usage(
+                    "state patch exceeds physical resource",
+                ));
+            }
+        }
+        self.scratch
+            .values
+            .sort_unstable_by_key(|prepared| key(prepared.cell.range));
+        // Pieces each cell turns into: a gap before/between/after its patches
+        // (when non-empty) plus one changed piece per overlapping patch.
+        let pieces_of = |range: NativeRange, from: &mut usize| -> usize {
+            let NativeRange::Buffer { offset, size } = range else {
+                return 1;
+            };
+            let end = offset + size;
+            while *from < order.len() && order[*from].1 <= offset {
+                *from += 1;
+            }
+            let mut count = 0;
+            let mut cursor = offset;
+            let mut at = *from;
+            while at < order.len() && order[at].0 < end {
+                let start = order[at].0.max(offset);
+                let stop = order[at].1.min(end);
+                count += usize::from(start > cursor) + 1;
+                cursor = stop;
+                at += 1;
+            }
+            if count == 0 {
+                1
+            } else {
+                count + usize::from(cursor < end)
+            }
+        };
+        let mut from = 0;
+        let mut total = 0usize;
+        for prepared in &self.scratch.values {
+            total = total
+                .checked_add(pieces_of(prepared.cell.range, &mut from))
+                .ok_or(Error::OutOfHostMemory)?;
+        }
+        let old = self.scratch.values.len();
+        if total > old {
+            self.scratch
+                .grow(total, self.cells.bytes(), self.config, &self.budget)?;
+        }
+        // Expand back to front inside the vector: outputs never trail inputs.
+        let filler = self.scratch.values[0];
+        self.scratch.values.resize(total, filler);
+        let mut write = total;
+        let mut dependencies = std::mem::take(&mut self.prepared_dependencies);
+        let mut result = Ok(());
+        'cells: for read in (0..old).rev() {
+            let original = self.scratch.values[read];
+            let NativeRange::Buffer { offset, size } = original.cell.range else {
+                unreachable!("buffer domain holds buffer cells");
+            };
+            let end = offset + size;
+            // Patches overlapping [offset, end): binary-search the first.
+            let first = order.partition_point(|entry| entry.1 <= offset);
+            let mut last = first;
+            while last < order.len() && order[last].0 < end {
+                last += 1;
+            }
+            if first == last {
+                write -= 1;
+                self.scratch.values[write] = original;
+                continue;
+            }
+            // Build this cell's pieces in order, then place them at the tail.
+            let mut pieces: smallvec::SmallVec<[PreparedCell; 5]> = smallvec::SmallVec::new();
+            let mut cursor = offset;
+            for entry in &order[first..last] {
+                let patch = &patches[entry.2 as usize];
+                let start = entry.0.max(offset);
+                let stop = entry.1.min(end);
+                if start > cursor {
+                    let mut gap = original;
+                    gap.cell.range = NativeRange::Buffer {
+                        offset: cursor,
+                        size: start - cursor,
+                    };
+                    pieces.push(gap);
+                }
+                if original.cell.state.revision != patch.expected_revision {
+                    result = Err(Error::Timeout);
+                    break 'cells;
+                }
+                let PatchAction::Access { scope, layout, .. } = patch.action else {
+                    unreachable!("checked above");
+                };
+                let (deps, stages) = (
+                    original.cell.state.dependencies(
+                        scope.write
+                            || !original.cell.state.layout_known
+                            || original.cell.state.layout != layout,
+                    ),
+                    scope.stages,
+                );
+                dependencies.merge_set(&deps, stages);
+                let mut changed = original;
+                changed.cell.range = NativeRange::Buffer {
+                    offset: start,
+                    size: stop - start,
+                };
+                if let Err(error) = apply_preview(&mut changed, patch.action, self.sharing, queue, family) {
+                    result = Err(error);
+                    break 'cells;
+                }
+                changed.cell.state.revision = match original
+                    .cell
+                    .state
+                    .revision
+                    .checked_add(1)
+                    .filter(|revision| *revision != u64::MAX)
+                {
+                    Some(revision) => revision,
+                    None => {
+                        result = Err(Error::unsupported("native range revision exhausted"));
+                        break 'cells;
+                    }
+                };
+                pieces.push(changed);
+                cursor = stop;
+            }
+            if cursor < end {
+                let mut gap = original;
+                gap.cell.range = NativeRange::Buffer {
+                    offset: cursor,
+                    size: end - cursor,
+                };
+                pieces.push(gap);
+            }
+            write -= pieces.len();
+            for (at, piece) in pieces.iter().enumerate() {
+                self.scratch.values[write + at] = *piece;
+            }
+        }
+        self.prepared_dependencies = dependencies;
+        result.map(|()| true)
+    }
     fn apply_prepared_patches(
         &mut self,
         patches: &[StatePatch],
@@ -1573,6 +1777,193 @@ mod tests {
         assert_eq!(stats.cpu_memory_usage().total(), 0);
     }
     // 完整 prepare 路径作为前缀重放 oracle，逐边界比较全部暂存标记及预算历史。
+    /// Many disjoint private reads on one buffer (the bindless parameter page
+    /// case) must leave exactly the state the one-by-one path leaves.
+    #[test]
+    fn disjoint_buffer_reads_match_sequential_append_exactly() {
+        let domain = bytes(0, 8192);
+        let mut state = NativeState::default();
+        state.revision = 5;
+        // A declared write splits the page and gives pieces different revisions.
+        let declared = [
+            access(bytes(1024, 512), 5, write(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(4096, 1024), 5, write(), vk::ImageLayout::UNDEFINED, 0),
+        ];
+        // Reads: inside one cell, across a boundary of equal revision, and in
+        // the written pieces (revision 6). Disjoint and deliberately unsorted.
+        let reads = [
+            access(bytes(6000, 64), 5, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(0, 256), 5, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(1100, 128), 6, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(256, 256), 5, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(4500, 100), 6, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(7000, 1000), 5, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(2000, 64), 5, read(), vk::ImageLayout::UNDEFINED, 0),
+        ];
+        let run = |batched: bool| {
+            let stats = Arc::new(AllocatorStats::default());
+            let mut table = RangeStateTable::new(
+                domain,
+                ResourceSharing::Exclusive,
+                state,
+                RangeStateConfig::default(),
+                stats,
+            )
+            .unwrap();
+            table.prepare(&declared, q(0), 0).unwrap();
+            if batched {
+                table.append_prepared_disjoint(&reads, q(0), 0).unwrap();
+            } else {
+                table.append_prepared(&reads, q(0), 0).unwrap();
+            }
+            let mut prepared: Vec<_> = table.prepared_cells().collect();
+            prepared.sort_by_key(|cell| key(cell.range));
+            let dependencies = table.prepared_staged_dependencies();
+            table.publish(point(0, 9));
+            (prepared, dependencies, table.cells().to_vec())
+        };
+        let sequential = run(false);
+        let batched = run(true);
+        assert_eq!(batched.0, sequential.0, "prepared cells");
+        assert_eq!(batched.1, sequential.1, "staged dependencies");
+        assert_eq!(batched.2, sequential.2, "published cells");
+    }
+    /// Production unions duplicate, overlapping and touching same-scope reads
+    /// before the batched sweep. Bytes and scopes must end up exactly as the
+    /// one-by-one path leaves them; only revision counters (one bump per union
+    /// instead of one per read) and the split of equal neighbours may differ.
+    #[test]
+    fn unioned_reads_leave_the_same_state_as_one_by_one_reads() {
+        let domain = bytes(0, 8192);
+        let mut state = NativeState::default();
+        state.revision = 5;
+        let declared = [access(
+            bytes(1024, 512),
+            5,
+            write(),
+            vk::ImageLayout::UNDEFINED,
+            0,
+        )];
+        // Duplicate, overlapping, touching, and straddling the written piece.
+        let reads: [(u64, u64); 8] = [
+            (0, 256),
+            (256, 256),
+            (256, 256),
+            (400, 300),
+            (1000, 100),
+            (1100, 600),
+            (4000, 64),
+            (4064, 64),
+        ];
+        let union: [(u64, u64); 3] = [(0, 700), (1000, 700), (4000, 128)];
+        let make = || {
+            let mut table = RangeStateTable::new(
+                domain,
+                ResourceSharing::Exclusive,
+                state,
+                RangeStateConfig::default(),
+                Arc::new(AllocatorStats::default()),
+            )
+            .unwrap();
+            table.prepare(&declared, q(0), 0).unwrap();
+            table
+        };
+        let patches_for = |table: &RangeStateTable, (offset, size): (u64, u64)| {
+            let wanted = bytes(offset, size);
+            table
+                .prepared_cells()
+                .filter_map(|cell| {
+                    let range = intersection(cell.range, wanted)?;
+                    Some(access(
+                        range,
+                        cell.state.revision,
+                        read(),
+                        vk::ImageLayout::UNDEFINED,
+                        0,
+                    ))
+                })
+                .collect::<Vec<_>>()
+        };
+        let mut sequential = make();
+        for &span in &reads {
+            let patches = patches_for(&sequential, span);
+            sequential.append_prepared(&patches, q(0), 0).unwrap();
+        }
+        let mut batched = make();
+        let mut all = Vec::new();
+        for &span in &union {
+            all.extend(patches_for(&batched, span));
+        }
+        batched.append_prepared_disjoint(&all, q(0), 0).unwrap();
+        let normalize = |table: &mut RangeStateTable| {
+            table.publish(point(0, 9));
+            let mut cells: Vec<RangeCell> = table.cells().to_vec();
+            cells.sort_by_key(|cell| key(cell.range));
+            let mut out: Vec<RangeCell> = Vec::new();
+            for mut cell in cells {
+                cell.state.revision = 0;
+                match out.last_mut() {
+                    Some(last)
+                        if last.state == cell.state
+                            && matches!((last.range, cell.range),
+                                (NativeRange::Buffer { offset: a, size: b },
+                                 NativeRange::Buffer { offset: c, .. }) if a + b == c) =>
+                    {
+                        let (NativeRange::Buffer { offset, size }, NativeRange::Buffer { size: more, .. }) =
+                            (last.range, cell.range)
+                        else {
+                            unreachable!()
+                        };
+                        last.range = NativeRange::Buffer { offset, size: size + more };
+                    }
+                    _ => out.push(cell),
+                }
+            }
+            out
+        };
+        assert_eq!(
+            batched.prepared_staged_dependencies(),
+            sequential.prepared_staged_dependencies()
+        );
+        assert_eq!(normalize(&mut batched), normalize(&mut sequential));
+    }
+    /// The same wrong expected revision fails both ways, and overlapping or
+    /// non-read patches take the sequential path unchanged.
+    #[test]
+    fn disjoint_fast_path_keeps_error_and_fallback_behaviour() {
+        let domain = bytes(0, 1024);
+        let mk = || {
+            let mut table = table(domain, NativeState::default());
+            table.prepare(&[], q(0), 0).unwrap();
+            table
+        };
+        let stale = [
+            access(bytes(0, 64), 0, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(128, 64), 99, read(), vk::ImageLayout::UNDEFINED, 0),
+        ];
+        assert!(matches!(
+            mk().append_prepared(&stale, q(0), 0),
+            Err(Error::Timeout)
+        ));
+        assert!(matches!(
+            mk().append_prepared_disjoint(&stale, q(0), 0),
+            Err(Error::Timeout)
+        ));
+        // Overlapping patches are not disjoint: identical to the sequential path.
+        let overlapping = [
+            access(bytes(0, 128), 0, read(), vk::ImageLayout::UNDEFINED, 0),
+            access(bytes(64, 64), 1, read(), vk::ImageLayout::UNDEFINED, 0),
+        ];
+        let (mut a, mut b) = (mk(), mk());
+        a.append_prepared(&overlapping, q(0), 0).unwrap();
+        b.append_prepared_disjoint(&overlapping, q(0), 0).unwrap();
+        let sorted = |t: &RangeStateTable| {
+            let mut cells: Vec<_> = t.prepared_cells().collect();
+            cells.sort_by_key(|c| key(c.range));
+            cells
+        };
+        assert_eq!(sorted(&a), sorted(&b));
+    }
     fn assert_incremental_matches_replay(
         domain: NativeRange,
         initial: NativeState,
