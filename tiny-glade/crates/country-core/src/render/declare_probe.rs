@@ -19,6 +19,7 @@ static REC_RESOURCES_NS: AtomicU64 = AtomicU64::new(0);
 static REC_PREPARE_NS: AtomicU64 = AtomicU64::new(0);
 static REC_BIND_NS: AtomicU64 = AtomicU64::new(0);
 static REC_DRAW_NS: AtomicU64 = AtomicU64::new(0);
+static SUB_NS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
 static STAGE_NS: [AtomicU64; 6] = [const { AtomicU64::new(0) }; 6];
 
 /// Totals accumulated since the previous [`take`].
@@ -48,6 +49,10 @@ pub struct DeclareProbe {
     /// `submit_raster_pass` stages: 0 pipeline resolve, 1 imports, 2 intents and
     /// ranges, 3 texture table, 4 draw accesses (also counted above), 5 rest.
     pub stage_ns: [u64; 6],
+    /// `ShaderBindingSnapshot::prepare` phases (summed over threads): requirements,
+    /// globals page, sampler page, reserve+new, sampler write, globals write,
+    /// resource writes, finish+commit.
+    pub sub_ns: [u64; 8],
 }
 
 fn enabled() -> bool {
@@ -100,6 +105,9 @@ pub fn rec_draw_call(started: Option<Instant>) {
     add(&REC_DRAW_NS, started);
 }
 
+pub fn sub(index: usize, started: Option<Instant>) {
+    add(&SUB_NS[index], started);
+}
 pub fn stage_count(index: usize) {
     STAGE_NS[index].fetch_add(1, Relaxed);
 }
@@ -123,5 +131,6 @@ pub fn take() -> DeclareProbe {
         rec_bind_ns: REC_BIND_NS.swap(0, Relaxed),
         rec_draw_ns: REC_DRAW_NS.swap(0, Relaxed),
         stage_ns: std::array::from_fn(|i| STAGE_NS[i].swap(0, Relaxed)),
+        sub_ns: std::array::from_fn(|i| SUB_NS[i].swap(0, Relaxed)),
     }
 }

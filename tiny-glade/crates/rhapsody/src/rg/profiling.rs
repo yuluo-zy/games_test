@@ -491,8 +491,10 @@ pub(crate) enum RecordPhase {
     CounterUpdate,
     Finish,
     WithPush,
+    FinishConstants,
+    FinishLease,
 }
-const RECORD_PHASES: usize = 15;
+const RECORD_PHASES: usize = 17;
 const RECORD_PHASE_NAMES: [&str; RECORD_PHASES] = [
     "Requirements",
     "CompleteGroup",
@@ -509,6 +511,8 @@ const RECORD_PHASE_NAMES: [&str; RECORD_PHASES] = [
     "CounterUpdate",
     "Finish",
     "WithPush",
+    "FinishConstants",
+    "FinishLease",
 ];
 #[derive(Clone, Copy)]
 #[repr(usize)]

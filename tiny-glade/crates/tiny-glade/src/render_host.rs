@@ -1478,6 +1478,7 @@ impl ShaderBindingSnapshot {
                 "shader push parameter size does not match its ABI",
             ));
         }
+        let t = country_core::render::declare_probe::start();
         let mut local = BindlessParameters::resource_requirements(
             &self.abi,
             resources
@@ -1489,6 +1490,7 @@ impl ShaderBindingSnapshot {
             .clone()
             .filter(|(_, _, _, declared)| *declared)
             .count();
+        country_core::render::declare_probe::sub(0, t);
         cursor
             .prepare(|group| {
                 if let Some(previous) =
@@ -1499,12 +1501,17 @@ impl ShaderBindingSnapshot {
                         .with_push(push, &mut constants.lock())
                         .map_err(Into::into);
                 }
+                let t = country_core::render::declare_probe::start();
                 let globals = self
                     .globals
                     .as_ref()
                     .map(|globals| globals.prepare_page(&self.abi, group.heap()))
                     .transpose()?;
+                country_core::render::declare_probe::sub(1, t);
+                let t = country_core::render::declare_probe::start();
                 let mut samplers = self.sampler_pages.prepare(group.heap(), &self.samplers)?;
+                country_core::render::declare_probe::sub(2, t);
+                let t = country_core::render::declare_probe::start();
                 let mut required = local;
                 required[3] += samplers.missing();
                 if let Some(globals) = &globals {
@@ -1515,12 +1522,18 @@ impl ShaderBindingSnapshot {
                 group.require_slots(required)?;
                 let mut parameters =
                     BindlessParameters::new(group.heap().clone(), self.abi.clone(), push)?;
+                country_core::render::declare_probe::sub(3, t);
+                let t = country_core::render::declare_probe::start();
                 samplers.write(&self.samplers, &mut parameters)?;
+                country_core::render::declare_probe::sub(4, t);
+                let t = country_core::render::declare_probe::start();
                 let publication = globals
                     .as_ref()
                     .zip(self.globals.as_ref())
                     .map(|(pending, globals)| pending.write_to(globals, &mut parameters))
                     .transpose()?;
+                country_core::render::declare_probe::sub(5, t);
+                let t = country_core::render::declare_probe::start();
                 for (location, element, resource, declared) in resources.clone() {
                     if declared {
                         let BindlessResource::Buffer {
@@ -1542,6 +1555,8 @@ impl ShaderBindingSnapshot {
                         parameters.write(location, element, resource.clone())?;
                     }
                 }
+                country_core::render::declare_probe::sub(6, t);
+                let t = country_core::render::declare_probe::start();
                 let prepared = parameters.finish(&mut constants.lock())?;
                 samplers.try_catalog_extras(|required| group.require_slots(required))?;
                 // 实际组和可选目录准备均已完成；不发布半个绑定组或半个目录。
@@ -1549,6 +1564,7 @@ impl ShaderBindingSnapshot {
                     publication.commit();
                 }
                 samplers.commit();
+                country_core::render::declare_probe::sub(7, t);
                 Ok(prepared)
             })
             .map_err(|error| {

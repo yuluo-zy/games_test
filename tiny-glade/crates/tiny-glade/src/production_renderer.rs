@@ -1333,6 +1333,9 @@ impl GameRenderHostFactory for ProductionRenderer {
                 "raster_stage gameplay_n={} pipeline_ms={:.3} imports_ms={:.3} intents_ms={:.3} table_ms={:.3} session_import_ms={:.3} session_imports={}; stages of submit_raster_pass (declaration side)",
                 t.frame, d.stage_ns[0] as f64 / 1e6, d.stage_ns[1] as f64 / 1e6, d.stage_ns[2] as f64 / 1e6, d.stage_ns[3] as f64 / 1e6, d.stage_ns[4] as f64 / 1e6, d.stage_ns[5]);
             log::info!(target: "tiny_glade::frame_timing",
+                "prepare_sub gameplay_n={} requirements_ms={:.3} globals_page_ms={:.3} sampler_page_ms={:.3} reserve_new_ms={:.3} sampler_write_ms={:.3} globals_write_ms={:.3} resource_write_ms={:.3} finish_ms={:.3}; summed over recording threads",
+                t.frame, d.sub_ns[0] as f64 / 1e6, d.sub_ns[1] as f64 / 1e6, d.sub_ns[2] as f64 / 1e6, d.sub_ns[3] as f64 / 1e6, d.sub_ns[4] as f64 / 1e6, d.sub_ns[5] as f64 / 1e6, d.sub_ns[6] as f64 / 1e6, d.sub_ns[7] as f64 / 1e6);
+            log::info!(target: "tiny_glade::frame_timing",
                 "record_split gameplay_n={} draws={} pipeline_ms={:.3} resources_ms={:.3} prepare_ms={:.3} bind_ms={:.3} draw_ms={:.3}; summed over recording threads",
                 t.frame, d.rec_draws, d.rec_pipeline_ns as f64 / 1e6, d.rec_resources_ns as f64 / 1e6, d.rec_prepare_ns as f64 / 1e6, d.rec_bind_ns as f64 / 1e6, d.rec_draw_ns as f64 / 1e6);
             if let Some(vao) = vao {

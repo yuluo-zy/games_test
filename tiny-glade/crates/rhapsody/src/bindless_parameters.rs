@@ -430,7 +430,10 @@ impl BindlessParameters {
         self.leases
             .try_reserve(1)
             .map_err(|_| Error::OutOfHostMemory)?;
+        let span = RecordSpan::new(RecordPhase::FinishConstants);
         let chunk = constants.allocate_with_data(&self.bytes)?;
+        drop(span);
+        let _span = RecordSpan::new(RecordPhase::FinishLease);
         let lease = self.heap.parameter_buffer(&chunk)?;
         let parameter_index = lease.index.index;
         let resource_lease_count = self.leases.len();
