@@ -10,7 +10,7 @@
 //! 也不分配堆内存。
 
 use crate::sync::{CompletedValues, MAX_QUEUES, QueueId, SyncPoint, SyncSet};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 /// The precise Vulkan range whose release/acquire barriers must match.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -39,6 +39,9 @@ pub struct SyncCell {
     /// `values[queue.index()]` 记录该队列上最后一次登记的时间线值（0 = 从未使用）。
     values: [AtomicU64; MAX_QUEUES],
     native_state: parking_lot::Mutex<Option<super::range_state::RangeStateTable>>,
+    /// The bound frame plan alone synchronizes this graph-private resource: no
+    /// native state is kept or patched while set (see `enter_plan_private`).
+    plan_private: AtomicBool,
     _cpu_memory: Option<SyncCellStorage>,
 }
 pub(crate) struct SyncCellStorage(crate::raw::allocator::CpuMemoryReservation);
@@ -76,6 +79,7 @@ impl SyncCell {
             generation: crate::device::DeviceGeneration::INVALID,
             values: std::array::from_fn(|_| AtomicU64::new(0)),
             native_state: parking_lot::Mutex::new(None),
+            plan_private: AtomicBool::new(false),
             _cpu_memory: None,
         }
     }
@@ -213,6 +217,25 @@ impl SyncCell {
         }
     }
 
+    /// A graph `Create` resource that is neither exported nor shared across
+    /// queues is synchronized entirely by its frame plan, which starts from
+    /// discarded contents. Its native table is dropped instead of being patched
+    /// for every access; a later tracked use rebuilds it conservatively from
+    /// the completion points (`ensure_range_state_locked`).
+    pub(crate) fn enter_plan_private(&self) {
+        self.plan_private.store(true, Ordering::Relaxed);
+        if self.native_state.lock().is_some() {
+            let _gate = self.lock_submission();
+            *self.native_state.lock() = None;
+        }
+    }
+    pub(crate) fn leave_plan_private(&self) {
+        self.plan_private.store(false, Ordering::Relaxed);
+    }
+    pub(crate) fn is_plan_private(&self) -> bool {
+        self.plan_private.load(Ordering::Relaxed)
+    }
+
     pub(crate) fn lock_submission(&self) -> parking_lot::MutexGuard<'_, ()> {
         self.submission_gate.lock()
     }
@@ -297,33 +320,6 @@ impl SyncCell {
             .expect("initialized native state")
             .prepare(patches, queue, family)
     }
-    /// 同一次提交的已准备前缀增量；调用者必须持续持有此资源的提交 gate。
-    pub(crate) fn append_prepared_range_state(
-        &self,
-        patches: &[super::range_state::StatePatch],
-        queue: QueueId,
-        family: u32,
-    ) -> crate::Result<()> {
-        let mut table = self.native_state.lock();
-        table
-            .as_mut()
-            .ok_or_else(|| crate::Error::invalid_usage("native range append has no prepared state"))?
-            .append_prepared(patches, queue, family)
-    }
-    /// [`Self::append_prepared_range_state`] for many pairwise-disjoint buffer
-    /// reads at once; falls back to the sequential path when they are not.
-    pub(crate) fn append_prepared_range_state_disjoint(
-        &self,
-        patches: &[super::range_state::StatePatch],
-        queue: QueueId,
-        family: u32,
-    ) -> crate::Result<()> {
-        let mut table = self.native_state.lock();
-        table
-            .as_mut()
-            .ok_or_else(|| crate::Error::invalid_usage("native range append has no prepared state"))?
-            .append_prepared_disjoint(patches, queue, family)
-    }
     pub(crate) fn publish_range_state(&self, point: SyncPoint) {
         self.native_state
             .lock()
@@ -337,14 +333,6 @@ impl SyncCell {
             .as_ref()
             .expect("prepared native state")
             .prepared_staged_dependencies()
-    }
-    /// Caller holds this resource's submission gate and has prepared a prefix.
-    pub(crate) fn with_prepared_range_state<R>(
-        &self,
-        run: impl FnOnce(&super::range_state::RangeStateTable) -> crate::Result<R>,
-    ) -> crate::Result<R> {
-        let table = self.native_state.lock();
-        run(table.as_ref().expect("native state prefix was prepared"))
     }
     /// Drop the native state of a resource whose contents are discarded, once
     /// `completed` proves every recorded GPU use finished. Returns `false`

@@ -521,31 +521,19 @@ fn partial_submit_does_not_publish_an_unreached_alias_initial_layout() {
         *session.backend.resources.iter().find(|(_,resource)|matches!(resource,GpuResource::Image(actual) if actual.raw_handle()==image)).unwrap().0
     };
     let (a, b) = (token_for(a), token_for(b));
-    session
-        .backend
-        .resource_native_state(a, |cells| {
-            assert!(
-                cells
-                    .iter()
-                    .all(|cell| cell.state.layout == vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
-            );
-        })
-        .unwrap();
-    session
-        .backend
-        .resource_native_state(b, |cells| {
-            assert!(
-                cells
-                    .iter()
-                    .all(|cell| cell.state.layout == vk::ImageLayout::UNDEFINED),
-                "unsubmitted first-use barrier cannot publish B's scheduled layout"
-            );
-            assert!(
-                cells.iter().all(|cell| cell.state.writer.points.is_empty()
-                    && cell.state.readers.points.is_empty())
-            );
-        })
-        .unwrap();
+    // Graph-private transients are synchronized by the bound plan alone: no
+    // native state exists, so a partial submission cannot publish any layout
+    // (the next frame starts both from discarded contents again).
+    for token in [a, b] {
+        assert_eq!(
+            session
+                .backend
+                .resource_native_state(token, |_| ())
+                .unwrap_err()
+                .kind(),
+            rhapsody::ErrorKind::InvalidUsage
+        );
+    }
     session.wait_submits_done(TIMEOUT).unwrap();
 }
 

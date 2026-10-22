@@ -19,6 +19,8 @@ pub(super) struct QueueRuntime {
     pub multi_queue: bool,
     planner: Arc<SynchronizationPlanner>,
     tokens: Storage<Option<u64>>,
+    /// Logical resources synchronized by the plan alone this frame (P3).
+    private: Vec<bool>,
     points: Storage<Option<SyncPoint>>,
     cursor: usize,
     active_batch: Option<usize>,
@@ -56,6 +58,7 @@ impl QueueRuntime {
             multi_queue: false,
             planner: SynchronizationPlanner::new_shared(stats.clone(), Default::default())?,
             tokens: Storage::new(0, stats)?,
+            private: Vec::new(),
             points: Storage::new(0, stats)?,
             cursor: 0,
             active_batch: None,
@@ -226,6 +229,32 @@ impl VulkanGraphBackend {
             stats,
         )?;
         runtime.tokens.values.resize(count, None);
+        // P3: a graph-created resource that leaves the graph neither through an
+        // export nor through another queue has no state worth carrying across
+        // frames. The plan starts it from discarded contents behind a full
+        // write barrier, and its accesses are never re-derived at submission.
+        let home = compiled.plan.definition.context.queue_index;
+        let single_queue = compiled
+            .plan
+            .range_program
+            .batches
+            .iter()
+            .all(|batch| batch.domain.queue_index == home);
+        runtime.private.clear();
+        runtime.private.resize(count, false);
+        if single_queue {
+            for (logical, declaration) in compiled.declarations.resources.iter().enumerate() {
+                runtime.private[logical] =
+                    matches!(declaration.source, graph::OriginSource::Create);
+            }
+            for export in &compiled.declarations.exports {
+                if let Some(private) = runtime.private.get_mut(export.resource_index as usize) {
+                    *private = false;
+                }
+            }
+        }
+        let home_queue = crate::sync::QueueId::new(home as usize)
+            .ok_or_else(|| crate::Error::invalid_usage("plan home queue is absent"))?;
         for (logical, mapping) in compiled.snapshot.physical_mapping.iter().enumerate() {
             let Some(token) = mapping.token else {
                 continue;
@@ -234,6 +263,32 @@ impl VulkanGraphBackend {
             let object = self.resources.get(&token).ok_or_else(|| {
                 crate::Error::invalid_usage("native resource disappeared during binding")
             })?;
+            let cell = object.owner_cell();
+            if runtime.private[logical]
+                && cell
+                    .snapshot()
+                    .points()
+                    .all(|point| point.queue == home_queue)
+                && let Some(range) = cell.ownership_range()
+            {
+                cell.enter_plan_private();
+                let mut state = crate::resource::range_state::NativeState {
+                    owner: RangeOwner::Unclaimed,
+                    ..Default::default()
+                };
+                state.writer.add(
+                    home_queue,
+                    crate::resource::range_state::AccessScope {
+                        stages: vk::PipelineStageFlags::ALL_COMMANDS,
+                        access: vk::AccessFlags::MEMORY_WRITE,
+                        write: true,
+                    },
+                );
+                planner.add_initial(logical as u32, &[RangeCell { range, state }])?;
+                continue;
+            }
+            runtime.private[logical] = false;
+            cell.leave_plan_private();
             let (scope, mut layout) = graph::AccessDependency::native_semantics(
                 &mut self.accesses,
                 mapping.initial_access,
@@ -267,8 +322,7 @@ impl VulkanGraphBackend {
                     RangeOwner::Owned(family)
                 },
             );
-            object
-                .owner_cell()
+            cell
                 .with_range_state(initial, stats, |table| {
                     planner.add_initial(logical as u32, table.cells())
                 })?;
@@ -390,6 +444,9 @@ impl VulkanGraphBackend {
             .get_mut(last)
             .ok_or_else(|| crate::Error::invalid_usage("native state command is missing"))?;
         for patch in runtime.planner.bound().patches_for(batch) {
+            if runtime.private.get(patch.resource as usize) == Some(&true) {
+                continue;
+            }
             let token = runtime.tokens.values[patch.resource as usize]
                 .ok_or_else(|| crate::Error::invalid_usage("native patch has no physical token"))?;
             let cell = self

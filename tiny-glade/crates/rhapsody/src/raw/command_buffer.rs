@@ -301,7 +301,6 @@ impl VulkanCommandPool {
         let owners = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         let mut uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         uses.add(self.last_use.clone())?;
-        let upload_reads = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         self.live_commands.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanCommandBuffer {
             handle,
@@ -317,7 +316,6 @@ impl VulkanCommandPool {
             },
             owner_set: Default::default(),
             uses,
-            upload_reads,
             range_uses,
             state_patches,
             range_failure: None,
@@ -441,7 +439,6 @@ pub struct VulkanCommandBuffer {
     range_uses: super::temp_list::TempList<RecordedOpaqueUse>,
     state_patches: super::temp_list::TempList<RecordedStatePatch>,
     range_failure: Option<MetadataFailure>,
-    upload_reads: super::temp_list::TempList<UploadRead>,
     last_use: crate::sync::SyncSet,
 }
 
@@ -505,12 +502,6 @@ impl MetadataFailure {
             Self::Vulkan(error) => crate::Error::Vulkan(error),
         }
     }
-}
-struct UploadRead {
-    buffer: Arc<super::buffer::Buffer>,
-    offset: u64,
-    size: u64,
-    scope: crate::resource::range_state::AccessScope,
 }
 struct RecordedOpaqueUse {
     cell: Arc<crate::resource::SyncCell>,
@@ -658,15 +649,13 @@ pub(crate) unsafe fn prepare_submission_states(
                 .map(|command| command.range_uses.as_slice().len())
                 .sum(),
         );
-        trace.count(
-            "private_upload_reads",
-            commands
-                .iter()
-                .map(|command| command.upload_reads.as_slice().len())
-                .sum(),
-        );
     }
-    let physical = uses.iter().filter(|cell| cell.ownership_range().is_some());
+    // Plan-private graph resources carry no native state (P3): their
+    // completion is still published through `uses`, their barriers came from
+    // the bound plan.
+    let physical = uses
+        .iter()
+        .filter(|cell| cell.ownership_range().is_some() && !cell.is_plan_private());
     let cells = super::submit::SubmitScratch::try_collect(
         physical.clone().count(),
         stats,
@@ -712,11 +701,6 @@ pub(crate) unsafe fn prepare_submission_states(
                 recorded.push((slot, 1, command_index, entry_index));
             }
         }
-        for (entry_index, read) in command.upload_reads.as_slice().iter().enumerate() {
-            if let Some(&slot) = slot_of.get(&(Arc::as_ptr(&read.buffer.last_use) as usize)) {
-                recorded.push((slot, 2, command_index, entry_index));
-            }
-        }
     }
     recorded.sort_by_key(|item| item.0);
     for index in 0..prepared.cells.len() {
@@ -725,134 +709,33 @@ pub(crate) unsafe fn prepare_submission_states(
         let start = recorded.partition_point(|item| item.0 < index);
         let end = recorded.partition_point(|item| item.0 <= index);
         let own = &recorded[start..end];
-        let count = own.iter().filter(|item| item.1 < 2).count();
-        let has_upload = own.iter().any(|item| item.1 == 2);
-        let fallback = count == 0 && !has_upload;
+        let count = own.len();
+        let fallback = count == 0;
         scratch.with_entries(|patches|->crate::Result<()> {
             patches.reserve(count.max(usize::from(fallback)))?;
-            for &(_, kind, command_index, entry_index) in own.iter().filter(|item| item.1 < 2) {
+            for &(_, kind, command_index, entry_index) in own {
                 if kind == 0 {
                     patches.add(commands[command_index].state_patches.as_slice()[entry_index].patch)?;
                 } else {
                     let entry = &commands[command_index].range_uses.as_slice()[entry_index];
-                    {
-                        let range=match entry.range {OpaqueUseRange::Whole=>domain,OpaqueUseRange::Bytes {offset,size}=>crate::resource::OwnershipRange::Buffer {offset,size}};
-                        patches.add(StatePatch {range,expected_revision:u64::MAX,action:PatchAction::Unknown {queue,family}})?;
-                    }
-                }
-            }
-            if fallback {patches.add(StatePatch {range:domain,expected_revision:u64::MAX,action:PatchAction::Unknown {queue,family}})?;}
-            let declared=patches.as_slice().len();
-            // A bindless parameter page records one private read per bind (hundreds
-            // on one buffer). Preparing each read incrementally rescans every cell
-            // the earlier reads split off: O(reads^2). When the reads are pairwise
-            // disjoint they cannot affect one another, so generate every patch
-            // from the state after the declared accesses and apply them in one
-            // sweep; the end state is identical to the one-by-one path below.
-            let batched_reads: smallvec::SmallVec<[&UploadRead; 16]> = own
-                .iter()
-                .filter(|item| item.1 == 2)
-                .map(|&(_, _, command_index, entry_index)| {
-                    &commands[command_index].upload_reads.as_slice()[entry_index]
-                })
-                .collect();
-            if batched_reads.len() >= 4
-                && let Some(merged) = merge_upload_reads(&batched_reads)
-            {
-                for &(offset, end, _) in &merged {
-                    let range = crate::resource::OwnershipRange::Buffer { offset, size: end - offset };
-                    if patches.as_slice()[..declared].iter().any(|patch| crate::resource::range_state::intersection(patch.range, range).is_some()) {
-                        return Err(crate::Error::unsupported("private upload read overlaps a declared or opaque native access"));
-                    }
-                }
-                cell.prepare_range_state(patches.as_slice(), queue, family, stats)?;
-                cell.with_prepared_range_state(|table| {
-                    for &(offset, end, scope) in &merged {
-                        let wanted = crate::resource::OwnershipRange::Buffer { offset, size: end - offset };
-                        for current in table.prepared_cells() {
-                            let Some(range) = crate::resource::range_state::intersection(current.range, wanted) else { continue; };
-                            if !current.state.writer.points.is_empty() || current.state.writer.scopes.iter().any(|scope| !scope.is_empty()) {
-                                return Err(crate::Error::unsupported("private upload read has a GPU producer; a declared native access is required"));
-                            }
-                            patches.add(StatePatch { range, expected_revision: current.state.revision, action: PatchAction::Access { scope, layout: vk::ImageLayout::UNDEFINED, queue, family } })?;
+                    let range = match entry.range {
+                        OpaqueUseRange::Whole => domain,
+                        OpaqueUseRange::Bytes { offset, size } => {
+                            crate::resource::OwnershipRange::Buffer { offset, size }
                         }
-                    }
-                    Ok(())
-                })?;
-                cell.append_prepared_range_state_disjoint(&patches.as_slice()[declared..], queue, family)?;
-                prepared.dependencies.merge(&cell.prepared_range_staged_dependencies());
-                return Ok(());
-            }
-            let mut prepared_prefix = None;
-            for read in own.iter().filter(|item|item.1==2).map(|&(_,_,command_index,entry_index)|&commands[command_index].upload_reads.as_slice()[entry_index]) {
-                let range=crate::resource::OwnershipRange::Buffer {offset:read.offset,size:read.size};
-                if patches.as_slice()[..declared].iter().any(|patch|crate::resource::range_state::intersection(patch.range,range).is_some()) {
-                    return Err(crate::Error::unsupported("private upload read overlaps a declared or opaque native access"));
+                    };
+                    patches.add(StatePatch { range, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
                 }
-                // 先检查当前 read 重叠，再准备前一 read 的新增补丁，保持首错误顺序。
-                match prepared_prefix {
-                    Some(end) => cell.append_prepared_range_state(&patches.as_slice()[end..], queue, family)?,
-                    None => cell.prepare_range_state(patches.as_slice(), queue, family, stats)?,
-                }
-                prepared_prefix = Some(patches.as_slice().len());
-                cell.with_prepared_range_state(|table| {
-                    for current in table.prepared_cells() {
-                        let Some(range)=crate::resource::range_state::intersection(current.range,range) else {continue;};
-                        if !current.state.writer.points.is_empty() || current.state.writer.scopes.iter().any(|scope|!scope.is_empty()) {
-                            return Err(crate::Error::unsupported("private upload read has a GPU producer; a declared native access is required"));
-                        }
-                        patches.add(StatePatch {range,expected_revision:current.state.revision,action:PatchAction::Access {scope:read.scope,layout:vk::ImageLayout::UNDEFINED,queue,family}})?;
-                    }
-                    Ok(())
-                })?;
             }
-            if let Some(end) = prepared_prefix {
-                cell.append_prepared_range_state(&patches.as_slice()[end..], queue, family)?;
-                prepared.dependencies.merge(&cell.prepared_range_staged_dependencies());
-                Ok(())
-            } else {
-                prepared.prepare_cell(index,patches.as_slice(),family,stats)
+            if fallback {
+                patches.add(StatePatch { range: domain, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
             }
+            prepared.prepare_cell(index, patches.as_slice(), family, stats)
         })?;
     }
     trace.mark("prepare_all_cells");
     trace.count("physical_cells", prepared.cells.len());
     Ok(prepared)
-}
-
-/// Unions private upload reads into disjoint byte spans `(start, end, scope)`.
-/// Duplicates, overlaps and touching spans with the same scope become one span;
-/// the bytes covered and the scope applied to each byte are exactly those of the
-/// original reads. `None` when a span is empty or overflows, or when reads with
-/// different scopes overlap (the one-by-one path then decides the outcome).
-fn merge_upload_reads(reads: &[&UploadRead]) -> Option<MergedReads> {
-    let mut spans = MergedReads::new();
-    for read in reads {
-        spans.push((read.offset, read.offset.checked_add(read.size)?, read.scope));
-        if read.size == 0 {
-            return None;
-        }
-    }
-    merge_read_spans(spans)
-}
-type MergedReads =
-    smallvec::SmallVec<[(u64, u64, crate::resource::range_state::AccessScope); 16]>;
-fn merge_read_spans(mut spans: MergedReads) -> Option<MergedReads> {
-    spans.sort_unstable_by_key(|span| (span.0, span.1));
-    let mut merged = MergedReads::new();
-    for span in spans {
-        match merged.last_mut() {
-            Some(last) if span.0 < last.1 => {
-                if span.2 != last.2 {
-                    return None;
-                }
-                last.1 = last.1.max(span.1);
-            }
-            Some(last) if span.0 == last.1 && span.2 == last.2 => last.1 = span.1,
-            _ => merged.push(span),
-        }
-    }
-    Some(merged)
 }
 
 pub(crate) fn validate_submission_commands(commands: &[&VulkanCommandBuffer]) -> crate::Result<()> {
@@ -900,7 +783,6 @@ impl VulkanCommandBuffer {
         self.use_set.clear();
         self.range_uses.clear();
         self.state_patches.clear();
-        self.upload_reads.clear();
         self.range_failure = None;
         self.uses
             .add(self.pool.last_use.clone())
@@ -1357,8 +1239,10 @@ impl VulkanCommandBuffer {
         self.remember_metadata_error(&result);
         result
     }
-    /// Only immutable, flushed formal constants-ring ranges use this role.
-    /// No GPU producer may be hidden behind this submission-time host read.
+    /// Only immutable, flushed formal constants-ring ranges use this role. The
+    /// ring hands out bytes of a page only before its first submission, so the
+    /// host write precedes the GPU read by queue-submit order alone; the page is
+    /// retained for its completion point and carries no per-read native state.
     pub(crate) fn retain_upload_read(
         &mut self,
         buffer: Arc<super::buffer::Buffer>,
@@ -1384,12 +1268,6 @@ impl VulkanCommandBuffer {
                 .last_use
                 .validate_device(self.pool.device.generation())?;
             self.visit_resource(buffer.as_ref(), RetainMode::Recorded)?;
-            self.upload_reads.add(UploadRead {
-                buffer,
-                offset,
-                size,
-                scope,
-            })?;
             Ok(())
         })();
         self.remember_metadata_error(&result);
@@ -1430,7 +1308,6 @@ impl VulkanCommandBuffer {
         self.use_set.clear();
         self.range_uses.clear();
         self.state_patches.clear();
-        self.upload_reads.clear();
         self.range_failure = None;
         self.uses
             .add(self.pool.last_use.clone())
@@ -1917,100 +1794,5 @@ mod native_state_submission_tests {
             .unwrap();
             assert!(cell.snapshot().is_empty());
         }
-    }
-    #[test]
-    fn incremental_append_failure_cancels_all_cells_and_retry_publishes_once() {
-        let stats = Arc::new(super::super::allocator::AllocatorStats::default());
-        let first = cell(&stats);
-        let second = cell(&stats);
-        let cells = [first.clone(), second.clone()];
-        {
-            let _a = first.lock_submission();
-            let _b = second.lock_submission();
-            let mut prepared = guard(&cells, &stats);
-            prepared.prepare_cell(0, &[], 2, &stats).unwrap();
-            first
-                .append_prepared_range_state(&[access(range(0, 32), 0, 2)], queue(), 2)
-                .unwrap();
-            prepared.prepare_cell(1, &[], 2, &stats).unwrap();
-            assert!(matches!(
-                second.append_prepared_range_state(&[access(range(0, 32), 9, 2)], queue(), 2),
-                Err(crate::Error::Timeout)
-            ));
-        }
-        for cell in &cells {
-            cell.with_range_state(NativeState::default(), &stats, |table| {
-                assert_eq!(table.cells()[0].state.revision, 0);
-                assert_eq!(table.prepared_cells().count(), 0);
-                Ok(())
-            })
-            .unwrap();
-            assert!(cell.snapshot().is_empty());
-        }
-        {
-            let _gate = first.lock_submission();
-            let mut prepared = guard(&[first.clone()], &stats);
-            prepared.prepare_cell(0, &[], 2, &stats).unwrap();
-            first
-                .append_prepared_range_state(&[access(range(0, 32), 0, 2)], queue(), 2)
-                .unwrap();
-            first
-                .append_prepared_range_state(&[access(range(0, 32), 1, 2)], queue(), 2)
-                .unwrap();
-            prepared
-                .dependencies
-                .merge(&first.prepared_range_staged_dependencies());
-            let point = SyncPoint {
-                queue: queue(),
-                value: 12,
-            };
-            prepared.publish(point);
-            record_command_uses(&[first.clone()], point);
-        }
-        first
-            .with_range_state(NativeState::default(), &stats, |table| {
-                let changed = table
-                    .cells()
-                    .iter()
-                    .find(|cell| cell.range == range(0, 32))
-                    .unwrap();
-                assert_eq!(changed.state.revision, 2);
-                assert_eq!(changed.state.writer.points.get(queue()), 12);
-                assert_eq!(table.prepared_cells().count(), 0);
-                Ok(())
-            })
-            .unwrap();
-    }
-}
-
-#[cfg(test)]
-mod merge_read_tests {
-    use super::*;
-    use crate::resource::range_state::AccessScope;
-    fn scope(write: bool) -> AccessScope {
-        AccessScope {
-            stages: vk::PipelineStageFlags::VERTEX_SHADER,
-            access: vk::AccessFlags::SHADER_READ,
-            write,
-        }
-    }
-    fn merge(spans: &[(u64, u64, AccessScope)]) -> Option<Vec<(u64, u64)>> {
-        merge_read_spans(spans.iter().copied().collect())
-            .map(|merged| merged.iter().map(|span| (span.0, span.1)).collect())
-    }
-    #[test]
-    fn duplicates_overlaps_and_touching_spans_union() {
-        let s = scope(false);
-        assert_eq!(
-            merge(&[(256, 512, s), (0, 256, s), (256, 512, s), (400, 700, s), (900, 950, s)]),
-            Some(vec![(0, 700), (900, 950)])
-        );
-        assert_eq!(merge(&[]), Some(vec![]));
-    }
-    #[test]
-    fn different_scopes_may_touch_but_not_overlap() {
-        let (a, b) = (scope(false), scope(true));
-        assert_eq!(merge(&[(0, 10, a), (10, 20, b)]), Some(vec![(0, 10), (10, 20)]));
-        assert_eq!(merge(&[(0, 10, a), (5, 20, b)]), None);
     }
 }
