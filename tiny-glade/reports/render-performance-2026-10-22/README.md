@@ -44,6 +44,29 @@ The GPU is now the limiting domain: GPU busy time and end-to-end wall time are
 almost equal. Before optimization, GPU time was already about 105 ms, while CPU
 record p50 was 140.2 ms, update was 106.8 ms, and submit was 62.9 ms.
 
+## GPU pass hotspots
+
+The latest 300-frame run enables `pass_spans: true`. It produced 48,607 pass
+spans across 110 pass names, plus 2,659 whole-command spans.
+
+Steady-frame GPU pass ranking by mean grouped duration:
+
+| Pass | Mean ms | p50 ms | p95 ms | p99 ms |
+| --- | ---: | ---: | ---: | ---: |
+| G-buffer | 27.06 | 26.22 | 33.28 | 37.21 |
+| G-buffer OC/2 | 16.58 | 15.69 | 20.99 | 23.79 |
+| Depth of field | 12.40 | 11.81 | 16.64 | 19.32 |
+| Shadows, 3 instances | 10.53 | 9.90 | 15.15 | 17.05 |
+| Apply deferred lighting | 5.02 | 4.82 | 6.46 | 7.08 |
+| Volumetrics | 3.88 | 3.32 | 6.71 | 11.30 |
+| Blur buildings mask, 2 instances | 3.04 | 2.66 | 4.79 | 7.05 |
+| Apply screen shadows | 2.94 | 2.58 | 4.80 | 8.08 |
+| Trace GI candidates | 2.66 | 2.29 | 4.44 | 6.71 |
+| TAA | 2.50 | 2.10 | 4.35 | 6.16 |
+
+Rows with multiple instances contain the sum of that named pass's instances in
+one frame. Pass spans overlap whole-command spans and must not be added to them.
+
 ## Multi-thread result
 
 `ecs-multithreaded` with 2, 4, or 8 workers did not improve this scene. The
@@ -75,6 +98,11 @@ pipelined present path and are not additive.
   declare, compile, record, submit, execute, GPU command count, GPU busy and
   largest GPU command span.
 - `latest-300-gpu-command-spans.csv`: all 2,658 timestamped GPU command spans.
+- `latest-300-gpu-pass-spans.csv`: all 48,607 GPU pass spans.
+- `latest-300-gpu-pass-per-frame.csv`: per-frame grouped duration and instance
+  count for each GPU pass.
+- `latest-gpu-pass-summary.csv`: all steady-state GPU pass percentiles.
+- `gpu-pass-summary.json`: top GPU passes and collection metadata.
 - `window-300-render-stages.csv`: all 300 visible-window frames with draw lists,
   declare, compile, record/submit, throttle, acquire/present and completion-wall
   timings.
@@ -86,6 +114,6 @@ pipelined present path and are not additive.
 - `window-default-mt/stdout.log`: raw complete window timing log.
 - `latest-gpu-hotspot-300/run.log`: raw complete offscreen timing log.
 
-`pass-record-last-frame.txt` records CPU graph-recording duration per pass. It is
-not GPU pass timing. GPU per-pass spans were not enabled in this run; GPU files
-contain per-command spans grouped by frame receipt.
+`pass-record-last-frame.txt` records CPU graph-recording duration per pass and is
+separate from GPU pass timing. The newer `latest-gpu-pass-*` files contain actual
+GPU timestamp spans grouped by frame receipt and pass name.

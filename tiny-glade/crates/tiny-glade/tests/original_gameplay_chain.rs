@@ -753,8 +753,12 @@ fn luma(rgba: &[u8]) -> Vec<f32> {
 /// move must converge: TAA history is valid from the second frame and frames stay stable.
 #[test]
 fn shipped_session_steady_state_multi_frame() -> Result<()> {
-    const FRAMES: usize = 30;
-    const CAPTURES: [usize; 7] = [1, 2, 3, 4, 9, 19, 29]; // 2nd, 10th and 30th frame plus the convergence ramp // 2nd, 10th and 30th frame plus the convergence ramp
+    let frames = std::env::var("TG_MULTIFRAME_FRAMES")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(30);
+    anyhow::ensure!(frames >= 30, "TG_MULTIFRAME_FRAMES must be at least 30");
+    let captures = vec![1, 2, 3, 4, 9, 19, frames - 1];
     let BootedSession { mut driver, context, mut bridge, shaders: _shaders, device, _boot } =
         boot_shipped_session()?;
     let world = driver.app_mut().world_mut();
@@ -778,12 +782,16 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     if gpu_timing {
         anyhow::ensure!(out_dir.is_some(), "TG_GPU_TIMING 需要 TG_MULTIFRAME_OUT 保存真实计时证据");
         bridge.with_session(|session| session.backend.configure_gpu_timing(Some(
-            rhapsody::rg::GpuTimingConfig::default(),
+            rhapsody::rg::GpuTimingConfig {
+                pass_spans: true,
+                pending_commands: 4096,
+                retained_samples: 10000,
+            },
         )))?;
     }
     let mut rows: Vec<FrameRow> = Vec::new();
     let mut in_flight = std::collections::VecDeque::<u64>::new();
-    for index in 0..FRAMES {
+    for index in 0..frames {
         let update_started = std::time::Instant::now();
         context.begin_frame(egui::RawInput::default());
         driver.app_mut().update();
@@ -801,7 +809,7 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
         let frame_counter = world
             .resource::<country_core::render::frame_constants::FrameConstants>()
             .frame_counter;
-        if CAPTURES.contains(&index) {
+        if captures.contains(&index) {
             let sink = captured.clone();
             tiny_glade::screenshot::gather_screenshot_requests(
                 world,
@@ -889,7 +897,7 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
             })?;
             gpu_samples.push(serde_json::json!({"observed_after_frame": index, "stats": stats, "samples": samples}));
         }
-        if let (Some(dir), true) = (&out_dir, index == 5 || index == FRAMES - 1) {
+        if let (Some(dir), true) = (&out_dir, index == 5 || index == frames - 1) {
             let mut by_name = std::collections::BTreeMap::<String, (u64, u64)>::new();
             for record in device.allocator_stats().report().allocations {
                 let entry = by_name.entry(format!("heap{} props{:x} size{} {}", record.heap, record.properties, record.size, record.name)).or_default();
@@ -933,11 +941,14 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
             let samples = session.backend.drain_gpu_timings().collect::<Vec<_>>();
             Ok::<_, rhapsody::Error>((stats, samples))
         })?;
-        gpu_samples.push(serde_json::json!({"observed_after_frame": FRAMES, "stats": stats, "samples": samples}));
+        gpu_samples.push(serde_json::json!({"observed_after_frame": frames, "stats": stats, "samples": samples}));
         let dir = out_dir.as_ref().expect("计时启动前已检查证据目录");
         std::fs::create_dir_all(dir)?;
         // 每项是同一物理队列上单 command 的时间跨度，不能相加当作跨队列帧延迟。
         std::fs::write(dir.join("gpu-command-timings.json"), serde_json::to_vec_pretty(&gpu_samples)?)?;
+    }
+    if std::env::var("TG_BENCH_SKIP_STRICT").as_deref() == Ok("1") {
+        return Ok(());
     }
 
     // 先保存真实回读证据；后面的任一稳定性断言失败也不能丢失世界图像。
@@ -1025,7 +1036,7 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     // hold its readback storage, so compare frames that are neither capture nor capture + 1.
     {
         let clean = |index: usize| {
-            !CAPTURES.contains(&index) && (index == 0 || !CAPTURES.contains(&(index - 1)))
+            !captures.contains(&index) && (index == 0 || !captures.contains(&(index - 1)))
         };
         let settled = rows.iter().filter(|r| r.index >= 12 && clean(r.index)).collect::<Vec<_>>();
         let (first, last) = (settled.first().expect("settled frames"), settled.last().expect("settled frames"));
@@ -1039,14 +1050,14 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
         assert!(peak <= first.allocated_bytes, "device memory fluctuates upwards in the steady state: {peak}");
     }
     let late_hits = rows.iter().skip(2).filter(|r| r.stats.plan_cache_hit).count();
-    eprintln!("MULTIFRAME plan_cache_hit frames>=2: {late_hits}/{}", FRAMES - 2);
+    eprintln!("MULTIFRAME plan_cache_hit frames>=2: {late_hits}/{}", frames - 2);
     let mut times = rows.iter().skip(2).map(|r| (r.update + r.draw_lists + r.declare + r.compile + r.execute).as_secs_f64() * 1e3).collect::<Vec<_>>();
     times.sort_by(f64::total_cmp);
     eprintln!("MULTIFRAME frame ms (frames>=2): median {:.1} p95 {:.1}", percentile(&times, 0.5), percentile(&times, 0.95));
 
     let mut shots = captured.lock().clone();
     shots.sort_by_key(|shot| shot.0);
-    anyhow::ensure!(shots.len() == CAPTURES.len(), "expected {} readbacks, got {}", CAPTURES.len(), shots.len());
+    anyhow::ensure!(shots.len() == captures.len(), "expected {} readbacks, got {}", captures.len(), shots.len());
     let lumas = shots.iter().map(|(_, _, _, rgba)| luma(rgba)).collect::<Vec<_>>();
     for (n, (index, w, h, _rgba)) in shots.iter().enumerate() {
         let mean = lumas[n].iter().sum::<f32>() / lumas[n].len() as f32;

@@ -517,6 +517,7 @@ pub fn run_game_thread(
     app.init_resource::<ActionSetStates>();
     let demo = app.world().resource::<GameConfig>().dev.demo;
     app.insert_resource(country_core::startup::init_photomode_state::PhotomodeState::new(demo));
+    app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
     app.init_resource::<country_core::resources::gui::PhotomodeScreen>();
     app.add_event::<country_core::resources::photo_mode::PhotoModeCmd>();
     app.add_event::<country_core::systems::backend::photomode::PhotoModeAudioParameter>();
