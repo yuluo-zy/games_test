@@ -150,8 +150,8 @@ pub enum BindlessResource {
     StorageImage(Arc<TextureView>),
     Sampler(Arc<Sampler>),
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum ResourceKey {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum ResourceKey {
     Buffer(u64, u64, u64, bool),
     SampledImage(u64, i32),
     StorageImage(u64),
@@ -369,7 +369,15 @@ impl BindlessParameters {
                 self.cache
                     .try_reserve(1)
                     .map_err(|_| Error::OutOfHostMemory)?;
-                let lease = resource.allocate(&self.heap, uniform_upload)?;
+                // Per-draw constant uploads change every draw; every other
+                // descriptor stays resident in its page across draws and frames.
+                let lease = if uniform_upload {
+                    resource.allocate(&self.heap, true)?
+                } else {
+                    let heap = self.heap.clone();
+                    self.heap
+                        .resident_lease(key, || resource.allocate(&heap, false))?
+                };
                 self.cache.push((key, lease.clone()));
                 lease
             }

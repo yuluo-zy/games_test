@@ -483,8 +483,34 @@ pub struct BindlessHeap {
     set: Arc<VulkanDescriptorSet>,
     device: Arc<Device>,
     slots: Mutex<Slots>,
+    /// Hot descriptor cache of a pool page (`None` outside a page pool): the
+    /// lease of a resource is written once and reused by every later draw and
+    /// frame while something besides the cache keeps the resource alive.
+    resident: Mutex<Option<ResidentLeases>>,
     // Declared after slots: release credit only after the actual CPU buffers.
     _slot_memory: crate::raw::allocator::CpuMemoryReservation,
+}
+#[derive(Default)]
+struct ResidentLeases {
+    leases: std::collections::HashMap<parameters::ResourceKey, Arc<BindlessLease>>,
+    inserts_since_trim: usize,
+}
+/// Inserts between two sweeps that drop leases whose resource only the cache
+/// still references.
+const RESIDENT_TRIM_INTERVAL: usize = 512;
+impl ResidentLeases {
+    fn trim(&mut self) -> Vec<Arc<BindlessLease>> {
+        self.inserts_since_trim = 0;
+        let mut dropped = Vec::new();
+        self.leases.retain(|_, lease| {
+            let alive = Arc::strong_count(lease) > 1 || lease.owner.referenced_elsewhere();
+            if !alive {
+                dropped.push(lease.clone());
+            }
+            alive
+        });
+        dropped
+    }
 }
 enum Owner {
     Buffer {
@@ -498,6 +524,16 @@ enum Owner {
         layout: vk::ImageLayout,
     },
     Sampler(Arc<Sampler>),
+}
+impl Owner {
+    /// Something other than its lease holds the bound object.
+    fn referenced_elsewhere(&self) -> bool {
+        match self {
+            Self::Buffer { buffer, .. } => Arc::strong_count(buffer) > 1,
+            Self::View { view, .. } => Arc::strong_count(view) > 1,
+            Self::Sampler(sampler) => Arc::strong_count(sampler) > 1,
+        }
+    }
 }
 impl GpuUse for Owner {
     fn visit_uses(&self, visit: &mut crate::resource::UseVisitor<'_>) -> Result<()> {
@@ -660,6 +696,7 @@ impl BindlessHeap {
             set,
             device,
             slots: Mutex::new(slots),
+            resident: Mutex::new(None),
             _slot_memory: slot_memory,
         }))
     }
@@ -722,6 +759,7 @@ impl BindlessHeap {
             set,
             device: self.device.clone(),
             slots: Mutex::new(slots),
+            resident: Mutex::new(None),
             _slot_memory: slot_memory,
         }))
     }
@@ -742,11 +780,54 @@ impl BindlessHeap {
     pub fn stats(&self) -> BindlessStats {
         self.slots.lock().statistics()
     }
+    /// The resident lease for `key`, created by `make` on first use.
+    pub(crate) fn resident_lease(
+        &self,
+        key: parameters::ResourceKey,
+        make: impl FnOnce() -> Result<Arc<BindlessLease>>,
+    ) -> Result<Arc<BindlessLease>> {
+        let mut resident = self.resident.lock();
+        let Some(cache) = resident.as_mut() else {
+            drop(resident);
+            return make();
+        };
+        if let Some(lease) = cache.leases.get(&key) {
+            record_count(RecordCount::LocalCacheHits, 1);
+            return Ok(lease.clone());
+        }
+        let dropped = (cache.inserts_since_trim >= RESIDENT_TRIM_INTERVAL).then(|| cache.trim());
+        drop(resident);
+        // Dropping a lease takes the slot lock; never under the cache lock.
+        drop(dropped);
+        let lease = make()?;
+        if let Some(cache) = self.resident.lock().as_mut() {
+            cache
+                .leases
+                .try_reserve(1)
+                .map_err(|_| Error::OutOfHostMemory)?;
+            cache.leases.insert(key, lease.clone());
+            cache.inserts_since_trim += 1;
+        }
+        Ok(lease)
+    }
+    fn set_residency(&self, enabled: bool) {
+        let old = std::mem::replace(
+            &mut *self.resident.lock(),
+            enabled.then(ResidentLeases::default),
+        );
+        drop(old);
+    }
+    /// Drop resident leases whose resource only the cache still references.
+    fn trim_resident(&self) {
+        let dropped = self.resident.lock().as_mut().map(ResidentLeases::trim);
+        drop(dropped);
+    }
     fn reserve(self: &Arc<Self>, kind: DescriptorKind, owner: Owner) -> Result<Arc<BindlessLease>> {
         let _trace = RecordSpan::new(RecordPhase::DescriptorReserve);
         record_count(RecordCount::DescriptorReserveCalls, 1);
 
         if !self.slots.lock().has_free(kind) {
+            self.trim_resident();
             self.collect()?;
         }
         let memory = self.device.memory.stats.reserve_cpu_bytes(
@@ -1342,6 +1423,7 @@ impl BindlessPagePool {
         }))
     }
     fn page(heap: Arc<BindlessHeap>) -> Result<Arc<BindlessPage>> {
+        heap.set_residency(true);
         let memory = crate::raw::allocator::reserve_shared_cpu_metadata::<BindlessPage>(
             &heap.device.memory.stats,
             0,
@@ -1396,6 +1478,8 @@ impl Drop for BindlessPagePool {
     fn drop(&mut self) {
         // 最后一个 pool Arc 消失后没有 cursor；此处不持 manager 锁获取 Slots。
         for page in self.pages.get_mut().as_slice() {
+            // Resident leases hold their heap: break the cycle with the pool.
+            page.heap.set_residency(false);
             page.heap.slots.lock().unwatch_pool(&self.counters);
         }
     }
