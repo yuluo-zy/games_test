@@ -3,25 +3,38 @@
 // replace_interaction or seeded clicked/used bit exists anywhere in this test.
 #[cfg(test)]
 mod real_input_chain {
+    use super::super::ui_update;
     use super::*;
     use crate::{
-        input::action_set::{DigitalActionPhase, DigitalActionState},
+        input::action_set::{ActionSetStates, DigitalActionPhase, DigitalActionState},
         resources::{
             cursor_terrain_raycast::CursorTerrainRaycast,
+            events::EscapeMenuJustOpened,
+            events::ShutdownGameCmd,
             history::{History, MaybePendingSnapshotId},
+            mouse_capture::OsCursorVisibilityCmd,
             mouse_terrain_raycast::CursorPositionSS,
             read_mouse_depth_value::MouseDepthValue,
-            window::WindowSize,
+            window::{WindowFocusEvent, WindowSize},
         },
         systems::{
+            brush_preview::OverwriteBrushPreview,
             camera_rig::MainCamera,
             history::recording::{
                 history_finish_recording_system, history_start_recording, register_recording_events,
             },
-            ui::hover_intersection::hover_intersection,
+            ui::{
+                hover_intersection::hover_intersection,
+                resources::{
+                    ui_state::{UiState, WidgetId},
+                    widget_params::{PlayUiSound, WidgetGeometry, WidgetParams},
+                },
+            },
         },
     };
+    use bevy_ecs::prelude::*;
     use glam::{Mat4, Vec2};
+    use std::sync::Arc;
     fn register_target(world: &World) {
         let mut p = WidgetParams::default()
             .geometry(WidgetGeometry::ScreenAabb {

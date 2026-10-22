@@ -956,6 +956,24 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     let ui = country_core::systems::ui::resources::ui_state::UiState::at_startup();
     app.insert_resource(mode_manager::ModeManagerUiContext::from_ui_state(&ui));
     app.insert_resource(ui);
+    // Original set6 input arbitration: hover_intersection produces this frame's
+    // sorted real intersections, then ui_update consumes physical action slot0,
+    // emits sounds/brush/cursor effects and clears the frame registrations.
+    // The picker builds its own ray from the camera matrices, so it must stay
+    // after set5 input translation and before the set10 camera update; never
+    // move a ray producer ahead of it.
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::systems::ui::hover_intersection::hover_intersection,
+            country_core::systems::ui::ui_update::ui_update,
+        )
+            .chain_ignore_deferred()
+            .in_set(GameSystemSet(6)),
+    );
+    // Original app-lifetime startup value, inserted beside the photomode state
+    // owner; it does not reset across glade reload.
+    app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
     app.insert_resource(country_core::resources::toolbar::Toolbar::new(demo));
     app.add_event::<history::history_process::NewReplayCommandEvent>();
     app.add_event::<history::history_process::DebugHistoryMsg>();
