@@ -62,16 +62,34 @@
 
 ## B 层进展(2026-10-22)
 
-| 项 | 状态 | 实测 / 说明 |
+端到端实测(真游戏 `tiny-glade-host`,X11 + llvmpipe,debug,480×270,同机顺序各跑一次,`TG_FRAME_TIMING=1`):
+
+| 阶段(gameplay 帧,ms) | B 层之前(A 层末) | B 层之后 |
+|---|---|---|
+| record_submit | 934–970 | 368–407 |
+| declare | 143–173 | 126–129 |
+| compile | ~15 | ~13–15 |
+
+画面平均每通道差 2.6/255(两次停在不同动画帧),无破损。llvmpipe 的 `collect_ms`(软件光栅)约 2 s 占主导,**不代表真 GPU**;这组数字只说明 CPU 侧录制/提交确实变少,不能推出真机帧率。
+
+| 项 | 状态 | 说明与实测 |
 |---|---|---|
 | B0 基准 | 完成(bind 部分) | `bind.rs` 内 ignored 测试 `bind_scaling_baseline`(release,合成 U=3040 / S=2679):改动前 bind 中位数 **75.3 ms** |
-| B1(a) shadow 按资源索引 | 完成 `37e962110` | 同基准降到 **1.24 ms**;`synthetic_binding_output_is_stable` 用单/双队列三组合成图的输出指纹证明与旧实现逐字节一致 |
-| B2 提交不重放 | **部分**:只做 `prepare_submission_states` 的补丁分桶 | 原来每个物理 cell 对全部补丁做两遍 `Arc::ptr_eq`(O(M×P)),改为一次分桶 + 二分取段;分桶缓冲用线程本地复用,`gpu_frame_allocations` 的 `framework_execute` 仍为 0 次分配(首版用局部 Vec 曾变成 5 次,已修)。**未做**:规划器直出最终 cell(`FinalCell`/`publish_final`)、Create 资源不持表、`SubmissionCapture` 策略、删第二次 `validate_submission_commands`。这些改动让状态机"双实现"变"单实现+校验器",风险高,等真机数据证明 submit 仍是瓶颈再做 |
-| B1(b) 模板缓存、B3、B4、B5、B6、B7 | 未开始 | |
+| B1(a) shadow 按资源索引 | 完成 | bind 降到 **1.24 ms**;`synthetic_binding_output_is_stable` 用单/双队列三组合成图的输出指纹证明与旧实现逐字节一致 |
+| B1(b) bind 模板缓存 | 完成(受限版) | 仅"无所有权转移、无跨队列等待"时存模板;键 = 导入初始状态的帧无关部分(范围/布局/所有者/访问域/各队列有无点的掩码)+ 别名边;模板用 `Arc<CompiledPlan>` 钉住地址;命中只重定基各补丁 `expected_revision`。命中 bind **1.33 → 0.19 ms**(含 200 资源 add_initial)。`RHAPSODY_BIND_SHADOW=1` 时命中后再跑全量 bind 并断言一致;真实会话回归(p0_stability 1996 次命中等)全程通过。存在所有权转移的多队列路径永远走全量 bind |
+| B2 提交不重放 | **部分** | 只做 `prepare_submission_states` 补丁分桶(O(M×P)→O(P),线程本地缓冲,`framework_execute` 仍 0 次分配)。**未做**:规划器直出最终 cell、Create 资源不持表、`SubmissionCapture` 策略、删第二次 `validate_submission_commands`——会把状态机"双实现"变"单实现+校验器",错了会产生错误屏障;提交阶段没有规模化基准,等真机数据 |
+| B3 索引化 | 完成 | bind 末尾稳定计数排序建 (批次,阶段) 索引;recorder/prelude/patch/wait 取切片;任何无法定槽的项回退线性过滤。`phase_index_matches_linear_filter` 证明内容与顺序一致;真实会话 `valid=true` |
+| B4 去字符串 | **未做** | 要改 `ResourceDeclaration.name`、`PassDeclaration.name`、`pass_order`、`PassPgoNameId` 等公开类型并引入 `ustr`;收益是每帧约 M(~200) 次 String 分配/比较,量级远小于已解决项 |
+| B5 计划缓存查找 | **评估后不改** | 稳态命中已是"LRU 新→旧 + 结构不等 O(1) 早退 + 一次完整比较";声明指纹本身也是 O(M+N+U),不会更省。miss 路径的 128 次原因分类只是诊断,相对编译开销可忽略。是否每帧 miss 需真机日志(`plan_cache_hit`) |
+| B6 动态常量页 | 完成(简化版) | 页上无未完成 GPU 使用时,chunk 宿主写直接拷贝并记延迟 flush,不走 3 把锁的范围表事务;否则回落原路径。lavapipe 下 900 次写 debug 5.5→3.0 ms。没有按设计文档做"整页租约"(会改 `RangeStateTable` prepare/publish 配对语义) |
+| B7(1) validate_graph 重复 | 完成 | 会话校验后置 `declaration_prevalidated`,`prepare_declaration` 跳过一次 |
+| B7(3) finish_frame BTreeSet | 完成 | 改排序 Vec + 二分 |
+| B7(7) 描述符 | 部分 | 只把计数器 `SeqCst`→`Relaxed`;批量 `vkUpdateDescriptorSets` 会改变逐 binding 写入/回滚语义且测试按次数断言,未做 |
+| B7(8) 附件视图查找 | 完成 | 游标命中(从上次命中位置起找),稳态 O(1);保持原淘汰顺序 |
+| B7(2)(4)(6)(9)(10)(11) | **未做** | (2) 仅在有退役 named 资源时发生;(4)(6) 每帧 ≤数十微秒;(9) 管线表需改泛型键与锁结构;(10)(11) 需 BTreeMap→哈希的大面积替换。均无实测证明是瓶颈 |
+| B7(5) | A 层已做 | `refresh_memory_budget_if_due` |
 
-B2 的收益**没有单独量化**(没有提交路径的规模化基准,真实命令缓冲构造成本高)。分桶只消除了确定的二次复杂度,不要把它当作已验证的帧时间收益。
-
-基线上已存在的失败(与 B 层无关):`host_buffer_ranges::metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_point`(录制阶段 `retain_opaque_buffer_range` 未返回 OutOfHostMemory);`native_ranges` 2 项与 `multi_queue_graph` 5 项(lavapipe 无独立计算队列)。
+**测试说明(纠正一次误读)**:`cargo test` 不带 `--no-fail-fast` 时,第一个失败的测试文件之后的文件不会运行,单次输出只会显示一行 FAILED。完整失败集用 `--no-fail-fast` 取得:rhapsody 共 11 项,B 层之前(`aee24c5d2`)与现在逐项相同:`multi_queue_graph` 5、`native_ranges` 2(lavapipe 无独立计算队列)、`setup_context` 2、`command_retention::descriptor_owner_row_oom_precedes_native_update_and_preserves_retry`、`host_buffer_ranges::metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_point`。
 
 ## 本机构建环境(Linux,无 sudo)
 
