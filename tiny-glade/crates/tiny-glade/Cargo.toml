@@ -26,6 +26,7 @@ path = "tests/original_loading_present.rs"
 harness = false
 
 [dependencies]
+mimalloc = { version = "0.1", default-features = false, optional = true }
 glam.workspace = true
 tg-terrain.workspace = true
 tg-history.workspace = true
@@ -89,6 +90,13 @@ backtrace = { version = "=0.3.71", features = ["serialize-serde"] }
 sentry-types = "=0.31.7"
 
 [features]
+# mimalloc as the process-wide allocator of the shipped binaries. The default
+# system allocator (the Windows heap in particular) serializes the many small
+# per-frame allocations of the ECS, declaration and recording paths. Library
+# crates and their tests keep the system allocator; disable with
+# `--no-default-features`.
+default = ["mimalloc"]
+mimalloc = ["dep:mimalloc"]
 # FMOD-backed audio. Always on for Windows (original target); other hosts opt in
 # when libfmod/libfmodstudio are available to link.
 native-audio = ["country-core/native-audio"]

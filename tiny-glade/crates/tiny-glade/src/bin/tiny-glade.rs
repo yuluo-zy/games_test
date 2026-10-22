@@ -1,3 +1,7 @@
+#[cfg(feature = "mimalloc")]
+#[global_allocator]
+static GLOBAL_ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() -> anyhow::Result<()> {
     // SAFETY: process-entry setup precedes CLI, Steam, logging, task-pool,
     // event-loop and renderer initialization. No application thread exists.
