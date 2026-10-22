@@ -42,10 +42,7 @@ pub(crate) enum PhysicalIdentity {
     Image(usize),
 }
 struct Entry {
-    graph: GraphId,
-    identity: PhysicalIdentity,
     token: u64,
-    handle: ResourceHandle,
     // Destroy the final Weak before returning the Arc allocation's CPU credit.
     marker: Weak<LeaseMarker>,
     _memory: Arc<LeaseMemory>,
@@ -104,10 +101,7 @@ impl FrameImports {
         lease: ImportLease,
     ) -> Result<()> {
         self.entries.add(Entry {
-            graph: handle.graph_id(),
-            identity,
             token,
-            handle,
             marker: Arc::downgrade(&lease.marker),
             _memory: lease.memory,
         })?;

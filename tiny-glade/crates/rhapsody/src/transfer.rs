@@ -102,7 +102,6 @@ pub struct TransferManager {
     staging: Arc<parking_lot::Mutex<Staging>>,
     capacity_stalls: u64,
     queued: UploadQueue<Buffer>,
-    scratch: Scratch,
 }
 
 /// A successful GPU upload; its completion point is never published on failure.
@@ -283,7 +282,6 @@ impl TransferManager {
             .as_ref()
             .filter(|target| target.family() != graphics.family())
             .map(|target| [graphics.family(), target.family()]);
-        let scratch = Scratch::new(&device, config.chunk_bytes)?;
         let staging = Arc::new(parking_lot::Mutex::new(Staging::new(
             device.clone(),
             staging_families,
@@ -308,7 +306,6 @@ impl TransferManager {
             transfer,
             transfer_images,
             config,
-            scratch,
             staging,
             capacity_stalls: 0,
             queued,
@@ -438,7 +435,6 @@ impl TransferManager {
                 transfer: self.transfer.as_ref(),
                 staging: &mut staging,
                 stalls: &mut self.capacity_stalls,
-                scratch: &mut self.scratch,
             };
             match uploader.submit(
                 &job.target,
@@ -676,9 +672,12 @@ impl TransferManager {
         };
         let staging = match resident {
             Some(buffer) => {
-                let bytes = self.scratch.buffer(total as usize)?;
-                texture::pack_all(&pairs, &bases, total, bytes)?;
-                buffer.write_bytes_unsynchronized(0, bytes)?;
+                // Pack each region directly into the mapped staging buffer.
+                buffer.write_with_unsynchronized(0, total, |dst| {
+                    for ((plan, regions), base) in pairs.iter().zip(&bases) {
+                        texture::pack_regions(dst, *base, plan, regions);
+                    }
+                })?;
                 buffer
             }
             None => {
@@ -864,54 +863,6 @@ fn defer_on_exhaustion(error: crate::Error) -> crate::Error {
     }
 }
 
-/// Reusable host packing buffer for multi-segment jobs, charged to the budget.
-struct Scratch {
-    bytes: Vec<u8>,
-    limit: usize,
-    memory: crate::raw::allocator::CpuMemoryReservation,
-}
-impl Scratch {
-    fn new(device: &Device, limit: u64) -> crate::Result<Self> {
-        Ok(Self {
-            bytes: Vec::new(),
-            limit: usize::try_from(limit).map_err(|_| crate::Error::OutOfHostMemory)?,
-            memory: device
-                .memory
-                .stats
-                .reserve_cpu_bytes(0, crate::device::BudgetCategory::Live)?,
-        })
-    }
-    /// An empty vector with capacity for `total` bytes (at most one chunk).
-    fn buffer(&mut self, total: usize) -> crate::Result<&mut Vec<u8>> {
-        if total > self.limit {
-            return Err(crate::Error::invalid_usage(
-                "upload exceeds admitted staging capacity",
-            ));
-        }
-        self.bytes.clear();
-        if self.bytes.capacity() < total {
-            let target = total.next_power_of_two().min(self.limit);
-            self.memory.resize(target as u64)?;
-            self.bytes
-                .try_reserve_exact(target)
-                .map_err(|_| crate::Error::OutOfHostMemory)?;
-        }
-        Ok(&mut self.bytes)
-    }
-    /// Pack `segments` contiguously and return the packed bytes.
-    fn pack<'a>(
-        &mut self,
-        segments: impl Iterator<Item = &'a [u8]>,
-        total: usize,
-    ) -> crate::Result<&[u8]> {
-        let bytes = self.buffer(total)?;
-        for segment in segments {
-            bytes.extend_from_slice(segment);
-        }
-        Ok(bytes)
-    }
-}
-
 /// Disjoint borrows of the manager used by one upload submission.
 struct Uploader<'a> {
     device: &'a Arc<Device>,
@@ -919,7 +870,6 @@ struct Uploader<'a> {
     transfer: Option<&'a QueueTarget>,
     staging: &'a mut Staging,
     stalls: &'a mut u64,
-    scratch: &'a mut Scratch,
 }
 impl TransferManager {
     fn with_uploader<R>(&mut self, run: impl FnOnce(&mut Uploader<'_>) -> R) -> R {
@@ -930,7 +880,6 @@ impl TransferManager {
             transfer: self.transfer.as_ref(),
             staging: &mut staging,
             stalls: &mut self.capacity_stalls,
-            scratch: &mut self.scratch,
         })
     }
 }
@@ -1023,10 +972,15 @@ impl Uploader<'_> {
             let (_, bytes) = segments.clone().next().expect("one segment");
             buffer.write_bytes_unsynchronized(0, bytes)?;
         } else {
-            let bytes = self
-                .scratch
-                .pack(segments.map(|(_, bytes)| bytes), packed as usize)?;
-            buffer.write_bytes_unsynchronized(0, bytes)?;
+            // Straight into mapped staging memory: one copy per segment, no
+            // intermediate packed Vec.
+            buffer.write_with_unsynchronized(0, packed, |dst| {
+                let mut at = 0;
+                for (_, bytes) in segments {
+                    dst[at..at + bytes.len()].copy_from_slice(bytes);
+                    at += bytes.len();
+                }
+            })?;
         }
         let route = route(self.graphics, self.transfer, destination, copies);
         let target = match route {

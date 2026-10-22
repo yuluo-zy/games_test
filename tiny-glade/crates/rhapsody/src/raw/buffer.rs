@@ -964,6 +964,26 @@ impl Buffer {
     pub fn write_bytes_unsynchronized(&self, offset: u64, bytes: &[u8]) -> Result<()> {
         self.write_impl(offset, bytes, None)
     }
+    /// Fill `[offset, offset + len)` of a mapped buffer in place, with the same
+    /// synchronization and flush as [`Self::write_bytes_unsynchronized`].
+    /// Callers that assemble data from several slices write each slice straight
+    /// into mapped memory instead of packing them into a temporary first.
+    pub(crate) fn write_with_unsynchronized(
+        &self,
+        offset: u64,
+        len: u64,
+        fill: impl FnOnce(&mut [u8]),
+    ) -> Result<()> {
+        let count = usize::try_from(len)
+            .map_err(|_| Error::invalid_usage("映射长度超过主机地址范围"))?;
+        let start = usize::try_from(offset)
+            .map_err(|_| Error::invalid_usage("映射偏移超过主机地址范围"))?;
+        self.host_access(offset, len, true, None, |base| {
+            // SAFETY: host_access validated the range, the mapping, and that no
+            // unfinished GPU access overlaps it; the slice is exclusively ours.
+            fill(unsafe { std::slice::from_raw_parts_mut(base.add(start), count) })
+        })
+    }
     /// [`Self::write_bytes_unsynchronized`] whose non-coherent flush is
     /// deferred to the device's next queue submit (one call for all queued
     /// ranges). Only for persistently mapped dynamic-constants pages.

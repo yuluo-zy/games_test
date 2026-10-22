@@ -206,6 +206,20 @@ impl Payload {
             _memory: memory,
         })
     }
+    /// A payload holding a copy of `bytes`, written once: no zero-fill pass
+    /// before the copy that overwrites it.
+    fn from_slice(local: &Arc<LocalBudget>, bytes: &[u8]) -> Result<Self> {
+        let mut memory = Reservation::new(local, bytes.len())?;
+        let mut data = Vec::new();
+        data.try_reserve_exact(bytes.len())
+            .map_err(|_| Error::OutOfHostMemory)?;
+        memory.resize(data.capacity())?;
+        data.extend_from_slice(bytes);
+        Ok(Self {
+            data,
+            _memory: memory,
+        })
+    }
 }
 pub(super) struct Segment {
     pub offset: u64,
@@ -461,8 +475,7 @@ impl<T> UploadQueue<T> {
             .sequence
             .checked_add(1)
             .ok_or_else(|| Error::invalid_usage("upload FIFO exhausted"))?;
-        let mut payload = Payload::new(&self.local, bytes.len())?;
-        payload.data.copy_from_slice(bytes);
+        let payload = Payload::from_slice(&self.local, bytes)?;
         let mut memory = Reservation::new(
             &self.local,
             self.config.max_regions_per_job * size_of::<Segment>(),
