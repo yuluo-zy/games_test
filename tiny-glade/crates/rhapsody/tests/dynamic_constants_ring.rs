@@ -204,3 +204,37 @@ fn held_properties(device: &Arc<Device>) -> bool {
     page.memory_properties()
         .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
 }
+
+/// A page of many small chunks is written without per-write range-table work;
+/// every chunk must still read back exactly what was written.
+#[test]
+fn many_chunk_writes_on_one_idle_page_are_exact_and_cheap() {
+    let Some(device) = gpu_test_support::initialize(
+        "dynamic constants many writes",
+        Device::new_headless(&DeviceConfig {
+            validation: true,
+            ..DeviceConfig::headless()
+        }),
+    ) else {
+        return;
+    };
+    let mut constants = DynamicConstants::with_config(device, config()).unwrap();
+    let mut chunks = Vec::new();
+    for index in 0_u32..900 {
+        chunks.push((index, constants.allocate(256).unwrap()));
+    }
+    let page = chunks[0].1.buffer.raw_handle();
+    assert!(chunks.iter().all(|(_, c)| c.buffer.raw_handle() == page));
+    let start = std::time::Instant::now();
+    for (index, chunk) in &chunks {
+        let bytes: Vec<u8> = (0..256).map(|b| (*index as u8).wrapping_add(b as u8)).collect();
+        chunk.write_bytes(&bytes).unwrap();
+    }
+    eprintln!("900 constant writes: {:?}", start.elapsed());
+    for (index, chunk) in &chunks {
+        let mut out = vec![0u8; 256];
+        chunk.buffer.read_bytes(chunk.offset, &mut out).unwrap();
+        let expected: Vec<u8> = (0..256).map(|b| (*index as u8).wrapping_add(b as u8)).collect();
+        assert_eq!(out, expected, "chunk {index}");
+    }
+}

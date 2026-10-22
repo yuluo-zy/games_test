@@ -968,6 +968,9 @@ impl Buffer {
     /// deferred to the device's next queue submit (one call for all queued
     /// ranges). Only for persistently mapped dynamic-constants pages.
     pub(crate) fn write_bytes_deferred_flush(&self, offset: u64, bytes: &[u8]) -> Result<()> {
+        if self.write_idle_constants_page(offset, bytes)? {
+            return Ok(());
+        }
         self.host_access_with(
             offset,
             bytes.len() as u64,
@@ -983,6 +986,65 @@ impl Buffer {
                 )
             },
         )
+    }
+    /// Fast path for a dynamic-constants page with no unfinished GPU use:
+    /// the bytes a chunk covers were handed out by the page cursor after that
+    /// was established, so no GPU access can overlap them and
+    /// `vkQueueSubmit` makes the host write visible. Skips the per-write range
+    /// table transaction (three locks, an O(cells) copy and a sort), which made
+    /// a page of K chunks cost O(K^2). Returns `false` to use the exact path.
+    fn write_idle_constants_page(&self, offset: u64, bytes: &[u8]) -> Result<bool> {
+        if bytes.is_empty() || self.device.is_device_lost() {
+            return Ok(false);
+        }
+        if offset
+            .checked_add(bytes.len() as u64)
+            .is_none_or(|end| end > self.size)
+        {
+            return Ok(false);
+        }
+        let Some(pointer) = self
+            .allocation
+            .host_ptr()
+            .or(self.mapped_ptr.map(|a| a as *mut u8))
+        else {
+            return Ok(false);
+        };
+        if !self.last_use.is_reached(&self.device.completed()) {
+            return Ok(false);
+        }
+        let coherent = self
+            .allocation
+            .properties
+            .contains(vk::MemoryPropertyFlags::HOST_COHERENT);
+        let host_range = self.allocation.host_subrange(
+            self.size,
+            offset,
+            bytes.len() as u64,
+            if coherent {
+                1
+            } else {
+                self.device.limits().non_coherent_atom_size.max(1)
+            },
+        )?;
+        // SAFETY: the range is inside the persistent mapping (checked above)
+        // and, per the page invariant, covered by no GPU access.
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                pointer.cast::<u8>().add(offset as usize),
+                bytes.len(),
+            )
+        };
+        if !coherent {
+            self.device.queues.host_flush.record(
+                self.allocation.accounting_id(),
+                self.allocation.handle,
+                host_range.memory_offset,
+                host_range.memory_size,
+            )?;
+        }
+        Ok(true)
     }
     /// 在已确认本缓冲 GPU 操作完成后读回，保留非 coherent 内存失效处理，不做整设备等待。
     ///

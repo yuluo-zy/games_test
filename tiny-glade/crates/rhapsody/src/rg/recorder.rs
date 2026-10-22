@@ -34,10 +34,8 @@ impl Recorder {
     fn phase(&self, phase: BarrierPhase) -> impl Iterator<Item = BoundTransition> + '_ {
         self.synchronization
             .bound()
-            .transitions()
-            .iter()
+            .transitions_for(self.batch, phase)
             .copied()
-            .filter(move |transition| transition.batch == self.batch && transition.phase == phase)
     }
     fn emit(
         &self,

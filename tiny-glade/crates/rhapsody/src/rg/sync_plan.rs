@@ -184,8 +184,193 @@ pub struct BoundSynchronization {
     pub(crate) transitions: crate::resource::range_state::Storage<BoundTransition>,
     pub(crate) patches: crate::resource::range_state::Storage<BoundPatch>,
     pub(crate) waits: crate::resource::range_state::Storage<BoundWait>,
+    pub(crate) index: PhaseIndex,
+}
+/// Stable counting-sort buckets over the flat output tables, so the recorder
+/// reads one (batch, phase) slice instead of filtering every transition per
+/// pass. Items keep their original relative order inside a bucket, so a slice
+/// equals what `iter().filter(..)` yielded. `valid == false` (any item that
+/// cannot be slotted) makes every accessor fall back to the linear filter.
+#[derive(Default)]
+pub(crate) struct PhaseIndex {
+    valid: bool,
+    /// First slot of each batch: Initial, one per pass, Export.
+    slot_base: Vec<u32>,
+    transition_ranges: Vec<(u32, u32)>,
+    transition_order: Vec<u32>,
+    patch_ranges: Vec<(u32, u32)>,
+    patch_order: Vec<u32>,
+    wait_ranges: Vec<(u32, u32)>,
+    wait_order: Vec<u32>,
+    counts: Vec<u32>,
+}
+/// Fills `ranges` (len `slots`) and `order` from per-item slot keys.
+/// Returns false if any key is out of range.
+fn bucket_by(
+    keys: impl Iterator<Item = Option<usize>> + Clone,
+    slots: usize,
+    counts: &mut Vec<u32>,
+    ranges: &mut Vec<(u32, u32)>,
+    order: &mut Vec<u32>,
+) -> bool {
+    counts.clear();
+    counts.resize(slots + 1, 0);
+    let mut total = 0usize;
+    for key in keys.clone() {
+        match key {
+            Some(slot) if slot < slots => counts[slot + 1] += 1,
+            _ => return false,
+        }
+        total += 1;
+    }
+    for slot in 0..slots {
+        counts[slot + 1] += counts[slot];
+    }
+    ranges.clear();
+    ranges.extend((0..slots).map(|slot| (counts[slot], counts[slot + 1])));
+    order.clear();
+    order.resize(total, 0);
+    for (item, key) in keys.enumerate() {
+        let slot = key.expect("validated above");
+        let at = counts[slot] as usize;
+        order[at] = item as u32;
+        counts[slot] += 1;
+    }
+    true
 }
 impl BoundSynchronization {
+    pub(crate) fn invalidate_index(&mut self) {
+        self.index.valid = false;
+    }
+    /// Builds the (batch, phase) buckets. O(T + P + W + N).
+    pub(crate) fn finish_index(&mut self) {
+        let index = &mut self.index;
+        index.valid = false;
+        index.slot_base.clear();
+        let mut next = 0u32;
+        for batch in &self.batches.values {
+            index.slot_base.push(next);
+            next += match &batch.kind {
+                BoundBatchKind::Graph { passes, .. } => passes.len() as u32 + 2,
+                BoundBatchKind::OwnershipPrelude => 1,
+            };
+        }
+        let slots = next as usize;
+        let batches = &self.batches.values;
+        let base = &index.slot_base;
+        let slot_of = |batch: usize, phase: BarrierPhase| -> Option<usize> {
+            let first = *base.get(batch)? as usize;
+            match (&batches.get(batch)?.kind, phase) {
+                (_, BarrierPhase::Initial) => Some(first),
+                (BoundBatchKind::Graph { passes, .. }, BarrierPhase::BeforePass(pass)) => {
+                    // Pass ids are scheduled positions; anything else falls back.
+                    let offset = pass.checked_sub(passes.start)?;
+                    (offset < passes.len()).then_some(first + 1 + offset)
+                }
+                (BoundBatchKind::Graph { passes, .. }, BarrierPhase::Export) => {
+                    Some(first + 1 + passes.len())
+                }
+                _ => None,
+            }
+        };
+        let ok = bucket_by(
+            self.transitions
+                .values
+                .iter()
+                .map(|t| slot_of(t.batch, t.phase)),
+            slots,
+            &mut index.counts,
+            &mut index.transition_ranges,
+            &mut index.transition_order,
+        ) && bucket_by(
+            self.patches.values.iter().map(|p| Some(p.batch)),
+            batches.len(),
+            &mut index.counts,
+            &mut index.patch_ranges,
+            &mut index.patch_order,
+        ) && bucket_by(
+            self.waits.values.iter().map(|w| Some(w.batch)),
+            batches.len(),
+            &mut index.counts,
+            &mut index.wait_ranges,
+            &mut index.wait_order,
+        );
+        index.valid = ok;
+    }
+    fn slot(&self, batch: usize, phase: BarrierPhase) -> Option<(u32, u32)> {
+        let batches = &self.batches.values;
+        let first = *self.index.slot_base.get(batch)? as usize;
+        let slot = match (&batches.get(batch)?.kind, phase) {
+            (_, BarrierPhase::Initial) => first,
+            (BoundBatchKind::Graph { passes, .. }, BarrierPhase::BeforePass(pass)) => {
+                let offset = pass.checked_sub(passes.start)?;
+                if offset >= passes.len() {
+                    return None;
+                }
+                first + 1 + offset
+            }
+            (BoundBatchKind::Graph { passes, .. }, BarrierPhase::Export) => {
+                first + 1 + passes.len()
+            }
+            _ => return None,
+        };
+        self.index.transition_ranges.get(slot).copied()
+    }
+    /// Transitions of one batch phase, in bind order.
+    pub fn transitions_for(
+        &self,
+        batch: usize,
+        phase: BarrierPhase,
+    ) -> impl Iterator<Item = &BoundTransition> + '_ {
+        let indexed = self
+            .index
+            .valid
+            .then(|| self.slot(batch, phase))
+            .flatten();
+        let slice = indexed
+            .map(|(s, e)| &self.index.transition_order[s as usize..e as usize])
+            .unwrap_or(&[]);
+        let all = &self.transitions.values;
+        let use_filter = indexed.is_none();
+        slice.iter().map(move |&i| &all[i as usize]).chain(
+            all.iter()
+                .filter(move |t| use_filter && t.batch == batch && t.phase == phase),
+        )
+    }
+    /// Patches of one batch, in bind order.
+    pub fn patches_for(&self, batch: usize) -> impl Iterator<Item = &BoundPatch> + '_ {
+        let indexed = self
+            .index
+            .valid
+            .then(|| self.index.patch_ranges.get(batch).copied())
+            .flatten();
+        let slice = indexed
+            .map(|(s, e)| &self.index.patch_order[s as usize..e as usize])
+            .unwrap_or(&[]);
+        let all = &self.patches.values;
+        let use_filter = indexed.is_none();
+        slice
+            .iter()
+            .map(move |&i| &all[i as usize])
+            .chain(all.iter().filter(move |p| use_filter && p.batch == batch))
+    }
+    /// Waits of one batch, in bind order.
+    pub fn waits_for(&self, batch: usize) -> impl Iterator<Item = &BoundWait> + '_ {
+        let indexed = self
+            .index
+            .valid
+            .then(|| self.index.wait_ranges.get(batch).copied())
+            .flatten();
+        let slice = indexed
+            .map(|(s, e)| &self.index.wait_order[s as usize..e as usize])
+            .unwrap_or(&[]);
+        let all = &self.waits.values;
+        let use_filter = indexed.is_none();
+        slice
+            .iter()
+            .map(move |&i| &all[i as usize])
+            .chain(all.iter().filter(move |w| use_filter && w.batch == batch))
+    }
     pub fn initial_inputs(&self) -> &[InitialState] {
         &self.initial.values
     }

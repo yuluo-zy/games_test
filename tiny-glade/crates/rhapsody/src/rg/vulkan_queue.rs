@@ -355,11 +355,10 @@ impl VulkanGraphBackend {
         prelude: QueuePrelude,
     ) -> crate::Result<()> {
         let planner = self.queue_runtime.planner.clone();
+        // An ownership prelude only has Initial transitions (see bind).
         for transition in planner
             .bound()
-            .transitions()
-            .iter()
-            .filter(|transition| transition.batch == prelude.tag as usize)
+            .transitions_for(prelude.tag as usize, crate::rg::sync_plan::BarrierPhase::Initial)
         {
             let token = self.queue_runtime.tokens.values[transition.resource as usize].ok_or_else(
                 || crate::Error::invalid_usage("ownership transition has no physical token"),
@@ -385,13 +384,7 @@ impl VulkanGraphBackend {
             .commands
             .get_mut(last)
             .ok_or_else(|| crate::Error::invalid_usage("native state command is missing"))?;
-        for patch in runtime
-            .planner
-            .bound()
-            .patches()
-            .iter()
-            .filter(|patch| patch.batch == batch)
-        {
+        for patch in runtime.planner.bound().patches_for(batch) {
             let token = runtime.tokens.values[patch.resource as usize]
                 .ok_or_else(|| crate::Error::invalid_usage("native patch has no physical token"))?;
             let cell = self
@@ -415,14 +408,7 @@ impl VulkanGraphBackend {
         let Some(batch) = self.queue_runtime.active_batch else {
             return Ok(result);
         };
-        for wait in self
-            .queue_runtime
-            .planner
-            .bound()
-            .waits()
-            .iter()
-            .filter(|wait| wait.batch == batch)
-        {
+        for wait in self.queue_runtime.planner.bound().waits_for(batch) {
             let point = match wait.dependency {
                 DependencyRef::Point(point) => point,
                 DependencyRef::Batch(source) => self

@@ -178,6 +178,7 @@ impl SynchronizationPlanner {
                 transitions: Storage::new(0, &budget)?,
                 patches: Storage::new(0, &budget)?,
                 waits: Storage::new(0, &budget)?,
+                index: Default::default(),
             },
             shadow: Storage::new(0, &budget)?,
             by_resource: Vec::new(),
@@ -218,6 +219,7 @@ impl SynchronizationPlanner {
         self.bound.transitions.values.clear();
         self.bound.patches.values.clear();
         self.bound.waits.values.clear();
+        self.bound.invalidate_index();
         self.shadow.values.clear();
         for entry in &mut self.by_resource {
             entry.cells.clear();
@@ -316,6 +318,7 @@ impl SynchronizationPlanner {
         for &(from, to) in &program.dependencies {
             self.static_dependency(program, from, to)?;
         }
+        self.bound.finish_index();
         Ok(())
     }
     /// A scheduled batch dependency. Resource hazards already produced exact
@@ -1413,6 +1416,46 @@ mod tests {
         }
         eprintln!("FINGERPRINTS {prints:?}");
         assert_eq!(prints, EXPECTED_FINGERPRINTS);
+    }
+    /// The bucketed accessors must equal the linear filters they replace, in
+    /// content and order, for every batch and phase.
+    #[test]
+    fn phase_index_matches_linear_filter() {
+        let one = [queue(0, 0)];
+        let two = [queue(0, 0), queue(1, 1)];
+        for (domains, resources, passes, per_pass) in
+            [(&one[..], 40, 60, 6), (&two[..], 24, 48, 5), (&two[..], 120, 160, 12)]
+        {
+            let (program, initial) = synthetic(resources, passes, per_pass, domains);
+            let planner = bind_synthetic(&program, &initial);
+            let bound = planner.bound();
+            assert!(bound.index.valid, "synthetic program must index");
+            let mut seen = 0;
+            for (batch, entry) in bound.batches().iter().enumerate() {
+                let mut phases = vec![BarrierPhase::Initial, BarrierPhase::Export];
+                if let BoundBatchKind::Graph { passes, .. } = &entry.kind {
+                    phases.extend(passes.clone().map(BarrierPhase::BeforePass));
+                }
+                for phase in phases {
+                    let fast: Vec<_> = bound.transitions_for(batch, phase).copied().collect();
+                    let slow: Vec<_> = bound
+                        .transitions()
+                        .iter()
+                        .copied()
+                        .filter(|t| t.batch == batch && t.phase == phase)
+                        .collect();
+                    seen += fast.len();
+                    assert_eq!(fast, slow, "transitions batch {batch} {phase:?}");
+                }
+                let fast: Vec<_> = bound.patches_for(batch).copied().collect();
+                let slow: Vec<_> = bound.patches().iter().copied().filter(|p| p.batch == batch).collect();
+                assert_eq!(fast, slow, "patches batch {batch}");
+                let fast: Vec<_> = bound.waits_for(batch).copied().collect();
+                let slow: Vec<_> = bound.waits().iter().copied().filter(|w| w.batch == batch).collect();
+                assert_eq!(fast, slow, "waits batch {batch}");
+            }
+            assert_eq!(seen, bound.transitions().len(), "every transition has a slot");
+        }
     }
     const EXPECTED_FINGERPRINTS: [u64; 3] = [
         15114495150305685386,
