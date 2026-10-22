@@ -1,6 +1,20 @@
 //! Integration checks through the public core/rhapsody frame bridge.
 //! Set RHAPSODY_REQUIRE_VULKAN=1 to make unavailable GPU execution a failure.
-use std::{cell::Cell, rc::Rc, sync::Arc};
+use std::{cell::Cell, sync::{Arc, Mutex}};
+
+/// A `Cell` that retire callbacks (which must be `Send`) can share.
+struct SyncCell<T>(Mutex<T>);
+impl<T: Copy> SyncCell<T> {
+    fn new(value: T) -> Self {
+        Self(Mutex::new(value))
+    }
+    fn get(&self) -> T {
+        *self.0.lock().unwrap()
+    }
+    fn set(&self, value: T) {
+        *self.0.lock().unwrap() = value;
+    }
+}
 
 use country_core::{
     asset_libraries::shader_library::AssetShaderLibrary,
@@ -74,7 +88,7 @@ fn core_staging_upload_imports_and_retires_through_one_session() {
     )
     .unwrap();
     assert!(buffers.managed_buffer(&target).is_some());
-    let retired = Rc::new(Cell::new(false));
+    let retired = Arc::new(SyncCell::new(false));
     let flag = retired.clone();
     bridge
         .render_frame(|frame| {
@@ -180,7 +194,7 @@ fn library_ssbo_lazy_import_inside_compute_uses_the_same_frame_and_reimports_nex
 #[test]
 fn failed_ignored_and_unwound_builders_retire_without_submission() {
     let Some(mut bridge) = bridge() else { return };
-    let retired = Rc::new(Cell::new(0));
+    let retired = Arc::new(SyncCell::new(0));
     let flag = retired.clone();
     let error = bridge
         .render_frame::<()>(|frame| {
@@ -225,7 +239,7 @@ fn failed_ignored_and_unwound_builders_retire_without_submission() {
 #[test]
 fn built_graph_lease_survives_rejected_rebuild_and_releases_on_compiled_drop() {
     let Some(mut bridge) = bridge() else { return };
-    let retired = Rc::new(Cell::new(0));
+    let retired = Arc::new(SyncCell::new(0));
     let flag = retired.clone();
     let (_, built) = bridge
         .build_frame(|frame| {
@@ -274,7 +288,7 @@ fn built_graph_lease_survives_rejected_rebuild_and_releases_on_compiled_drop() {
 fn foreign_built_graph_retires_the_originating_lease_without_submitting() {
     let Some(mut origin) = bridge() else { return };
     let mut other = CoreRenderBridge::from_owners(origin.warmup_owners().unwrap()).unwrap();
-    let retired = Rc::new(Cell::new(false));
+    let retired = Arc::new(SyncCell::new(false));
     let flag = retired.clone();
     let (_, foreign) = origin
         .build_frame(|frame| {
@@ -310,7 +324,7 @@ fn dropped_uncompiled_graph_cancels_imports_and_leaves_the_session_reusable() {
     let target = buffers
         .create_buffer(&BufferDesc::new(8, 0x22, 2), "abandoned declaration", None)
         .unwrap();
-    let retired = Rc::new(Cell::new(0));
+    let retired = Arc::new(SyncCell::new(0));
     let flag = retired.clone();
     let (_, built) = bridge
         .build_frame(|frame| {
@@ -421,7 +435,7 @@ fn completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks()
     let target = GraphicsDevice::create_buffer(
         canonical.device(), &BufferDesc::new(8, 0x22, 2), "compiled maintenance target", None,
     ).unwrap();
-    let first_retired = Rc::new(Cell::new(false));
+    let first_retired = Arc::new(SyncCell::new(false));
     let first_flag = first_retired.clone();
     let (_, first) = bridge.render_frame(|frame| {
         let id = frame.import_buffer(&target, 0)?;
@@ -445,7 +459,7 @@ fn completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks()
     assert!(!first_retired.get());
     assert_eq!(bridge.with_session(|session| session.pending_frame_count()), 1);
 
-    let second_retired = Rc::new(Cell::new(false));
+    let second_retired = Arc::new(SyncCell::new(false));
     let second_flag = second_retired.clone();
     let (_, built) = bridge.build_frame(|frame| {
         let id = frame.import_buffer(&target, 0)?;

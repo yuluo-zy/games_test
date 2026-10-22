@@ -19,7 +19,7 @@ use country_core::resources::window::{AvailableMonitor, AvailableMonitors};
 use winit::event_loop::EventLoopWindowTarget;
 
 use crate::egui_backend::EguiBackend;
-use crate::render_loop::{FramePacer, RenderHost, RenderMode};
+use crate::render_loop::RenderMode;
 use crate::setup::FromWinit;
 
 /// Only an unwinding host can return a panic here. The normal launch installs
@@ -107,25 +107,6 @@ impl LoopLifecycle {
     fn renderer_stopped(&self) {
         self.phase.set(LoopPhase::Stopped);
     }
-}
-
-/// Builds the existing core RenderHost against the world *after* App::update.
-/// The host can borrow that exact World and the EguiBackend for this frame.
-/// Implementations must supply the actual frame/pass/WSI adapter; this trait
-/// does not declare the missing production adapter implemented.
-pub trait GameRenderHostFactory {
-    type Host<'a>: RenderHost<CompileError = rhapsody::Error>
-    where
-        Self: 'a;
-
-    fn host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> Self::Host<'a>;
-
-    /// Return an actual host-side error before the frame's temporal/log/limiter
-    /// effects. Graph errors retain their typed cause through `render`.
-    fn finish_render(&mut self) -> anyhow::Result<()>;
-    fn last_frame_submitted(&self) -> bool;
-    /// A successfully queued present is not a proof of scanout completion.
-    fn last_frame_present_queued(&self) -> bool;
 }
 
 /// Opt-in wall-clock attribution only. Disabled runs do not sample Instant or
@@ -217,7 +198,11 @@ pub struct FrameProgress {
 pub struct GameFrameDriver {
     app: App,
     egui: EguiBackend,
-    pacer: FramePacer,
+    /// Whether the frame now on the render thread is a gameplay frame; its
+    /// submission/present counts arrive with the next hand-over.
+    in_flight_gameplay: bool,
+    /// Latched at hand-overs, so the event loop never waits on the render thread.
+    any_present_successful: bool,
     limiter: crate::fps_limiter::FpsLimiter,
     progress: FrameProgress,
     /// Opt-in evidence through the existing post-UI screenshot owner. Never
@@ -288,7 +273,8 @@ impl GameFrameDriver {
         Self {
             app,
             egui: EguiBackend::new(context),
-            pacer: FramePacer::default(),
+            in_flight_gameplay: false,
+            any_present_successful: false,
             limiter: crate::fps_limiter::FpsLimiter::new(),
             progress: FrameProgress::default(),
             startup_ui_capture: std::env::var_os("TG_STARTUP_UI_CAPTURE")
@@ -307,8 +293,43 @@ impl GameFrameDriver {
         &mut self.app
     }
 
+    /// A native present has succeeded, as of the last settled frame.
+    pub fn any_present_successful(&self) -> bool {
+        self.any_present_successful
+    }
+
     pub fn progress(&self) -> FrameProgress {
         self.progress
+    }
+
+    /// Wait for the frame on the render thread (if any) and apply its results
+    /// to the game world: screenshot bookkeeping, progress counts, errors.
+    pub fn settle_render(
+        &mut self,
+        render: &mut crate::production_renderer::ProductionRenderThread,
+    ) -> anyhow::Result<()> {
+        let renderer = &mut render.reclaim().renderer;
+        let settled = renderer.settle_back_frame(self.app.world_mut());
+        self.any_present_successful |= renderer.any_present_successful();
+        let feedback = render.apply_feedback(self.app.world_mut());
+        if let Some(error) = feedback.error {
+            if let Err(secondary) = settled {
+                log::error!(target: crate::render_loop::LOG_TARGET, "screenshot settle after a failed frame: {secondary:#}");
+            }
+            return Err(error);
+        }
+        settled?;
+        if feedback.rendered && self.in_flight_gameplay {
+            if feedback.submitted {
+                self.progress.gameplay_submissions =
+                    self.progress.gameplay_submissions.wrapping_add(1);
+            }
+            if feedback.present_queued {
+                self.progress.gameplay_presents_queued =
+                    self.progress.gameplay_presents_queued.wrapping_add(1);
+            }
+        }
+        Ok(())
     }
 
     fn update_before_render(
@@ -342,13 +363,14 @@ impl GameFrameDriver {
     /// input=None follows the original no-egui branch: update/render still run,
     /// without a begin/end pair or a platform message. OS events and Steam
     /// callbacks must be resolved by the full host loop.
-    pub fn frame<F: GameRenderHostFactory>(
+    pub fn frame(
         &mut self,
         input: Option<egui::RawInput>,
-        factory: &mut F,
+        render: &mut crate::production_renderer::ProductionRenderThread,
         publish_platform_output: impl FnOnce(egui::PlatformOutput),
     ) -> anyhow::Result<()> {
         let timing_start = frame_timing_enabled().then(std::time::Instant::now);
+        // Runs while the render thread executes and presents the previous frame.
         self.update_before_render(input, publish_platform_output)?;
         let update_time = timing_start.map(|start| start.elapsed());
         let mode = frame_render_mode(self.app.world());
@@ -394,30 +416,19 @@ impl GameFrameDriver {
                 },
             ])?;
         }
-        let render_start = timing_start.map(|_| std::time::Instant::now());
-        let render_result = {
-            let mut host = factory.host(self.app.world_mut(), &mut self.egui);
-            crate::render_loop::render(&mut host, &mut self.pacer, mode)
-        };
-        let render_time = render_start.map(|start| start.elapsed());
-        // Drain the adapter even when the graph returns an error, preserving the
-        // graph's original cause while still completing host-side error cleanup.
-        let finish_start = timing_start.map(|_| std::time::Instant::now());
-        let host_result = factory.finish_render();
-        let finish_time = finish_start.map(|start| start.elapsed());
-        render_result?;
-        host_result?;
+        // Hand-over: wait for the previous frame's back half, settle its
+        // results on the game world, then compile this frame (front half).
+        let handover_start = timing_start.map(|_| std::time::Instant::now());
+        self.settle_render(render)?;
+        let handover_time = handover_start.map(|start| start.elapsed());
+        let front_start = timing_start.map(|_| std::time::Instant::now());
+        render.reclaim().renderer.render_front(self.app.world_mut(), &mut self.egui, mode)?;
+        let front_time = front_start.map(|start| start.elapsed());
+        self.in_flight_gameplay = gameplay_frame;
+        render.start();
         self.progress.completed_frames = self.progress.completed_frames.wrapping_add(1);
         if gameplay_frame {
             self.progress.gameplay_frames = self.progress.gameplay_frames.wrapping_add(1);
-            if factory.last_frame_submitted() {
-                self.progress.gameplay_submissions =
-                    self.progress.gameplay_submissions.wrapping_add(1);
-            }
-            if factory.last_frame_present_queued() {
-                self.progress.gameplay_presents_queued =
-                    self.progress.gameplay_presents_queued.wrapping_add(1);
-            }
         }
         // Original @1404de63a increments only after render returns. The
         // independent loading World intentionally has no gameplay temporal.
@@ -438,11 +449,11 @@ impl GameFrameDriver {
             let n = if gameplay_frame { self.progress.gameplay_frames } else { self.progress.completed_frames };
             if n <= 3 || n % 30 == 0 || total.as_secs_f64() >= 1.0 {
                 log::info!(target: "tiny_glade::frame_timing",
-                    "frame n={n} gameplay={gameplay_frame} completed={} update_ms={:.3} render_ms={:.3} finish_ms={:.3} limiter_ms={:.3} total_ms={:.3} target_fps={target_fps}",
+                    "frame n={n} gameplay={gameplay_frame} completed={} update_ms={:.3} handover_wait_ms={:.3} front_ms={:.3} limiter_ms={:.3} total_ms={:.3} target_fps={target_fps}",
                     self.progress.completed_frames,
                     update_time.expect("timing enabled").as_secs_f64() * 1000.0,
-                    render_time.expect("timing enabled").as_secs_f64() * 1000.0,
-                    finish_time.expect("timing enabled").as_secs_f64() * 1000.0,
+                    handover_time.expect("timing enabled").as_secs_f64() * 1000.0,
+                    front_time.expect("timing enabled").as_secs_f64() * 1000.0,
                     limiter_time.as_secs_f64() * 1000.0, total.as_secs_f64() * 1000.0);
             }
         }
@@ -488,7 +499,9 @@ pub struct GameLoop {
     pub(crate) driver: GameFrameDriver,
     pub(crate) window: std::sync::Arc<winit::window::Window>,
     pub(crate) egui_io: crate::event_loop::EguiEventIo,
-    pub(crate) renderer: crate::production_renderer::ProductionRenderer,
+    /// The renderer lives on the render thread; game-thread access reclaims it
+    /// (waiting for the frame in flight).
+    pub(crate) render: crate::production_renderer::ProductionRenderThread,
     pub(crate) options: GameLoopOptions,
     pub(crate) modifiers: winit::keyboard::ModifiersState,
     pub(crate) cursor_requests: CursorRequestClient,
@@ -703,7 +716,7 @@ impl GameLoop {
             driver: GameFrameDriver::new(app, context),
             window,
             egui_io,
-            renderer,
+            render: renderer.into_render_thread().context("spawn render thread")?,
             options,
             modifiers: Default::default(),
             cursor_requests: Default::default(),
@@ -742,20 +755,20 @@ impl GameLoop {
     }
 
     pub fn frame_observation(
-        &self,
+        &mut self,
     ) -> Option<&crate::production_renderer::ProductionFrameObservation> {
-        self.renderer.frame_observation()
+        self.render.reclaim().renderer.frame_observation()
     }
 
     /// Nonblocking query of the exact current present ticket. None is unknown,
     /// including a ticket already reclaimed by normal frame maintenance.
-    pub fn frame_present_complete(&self) -> rhapsody::Result<Option<bool>> {
-        self.renderer.frame_present_complete()
+    pub fn frame_present_complete(&mut self) -> rhapsody::Result<Option<bool>> {
+        self.render.reclaim().renderer.frame_present_complete()
     }
 
     /// 原生 present 结果映射前的成功次数；可恢复的过期结果不计入。
-    pub fn native_present_success_count(&self) -> u64 {
-        self.renderer.native_present_success_count()
+    pub fn native_present_success_count(&mut self) -> u64 {
+        self.render.reclaim().renderer.native_present_success_count()
     }
 
     pub fn gameplay_preparation_pending(&self) -> bool {
@@ -845,7 +858,7 @@ impl GameLoop {
 
     /// The startup event carries only a pointer; the actual long-lived owner is
     /// the canonical App library plus this same BufferHost's managed lease.
-    fn resolve_custom_cursor_buffer(&self) -> anyhow::Result<rhapsody::resource::ManagedBuffer> {
+    fn resolve_custom_cursor_buffer(&mut self) -> anyhow::Result<rhapsody::resource::ManagedBuffer> {
         use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
         use country_core::systems::render_loop::draw_passes::custom_cursor_pass::CustomCursorSsbo;
         let core_buffer = self
@@ -856,7 +869,7 @@ impl GameLoop {
             .get_buffer::<CustomCursorSsbo>()
             .ok_or_else(|| anyhow::anyhow!("CustomCursor has no canonical buffer in its World"))?;
         let lease = self
-            .renderer
+            .render.reclaim().renderer
             .bridge()
             .hosts()
             .buffers
@@ -1012,6 +1025,11 @@ impl GameLoop {
         if let Some(preparation) = &mut self.preparation {
             preparation.poll_completion()?;
         }
+        if self.preparation.is_some() && !background_pending {
+            // A poll may swap Apps: settle the frame in flight against the
+            // World that declared it first.
+            self.driver.settle_render(&mut self.render)?;
+        }
         if let Some(preparation) = &mut self.preparation
             && !background_pending
         {
@@ -1022,7 +1040,7 @@ impl GameLoop {
             if preparation.poll(self.driver.app_mut())? {
                 drop(old_cursor_lease);
                 self.reset_world_event_cursors();
-                self.renderer
+                self.render.reclaim().renderer
                     .activate_application(self.driver.app().world())?;
                 // The worker may have run more than two updates after PreStartup,
                 // so its one-shot Created event can already have expired. Rejoin
@@ -1096,7 +1114,7 @@ impl GameLoop {
         let window = &self.window;
         let previous_completed = self.driver.progress().completed_frames;
         self.driver
-            .frame(input, &mut self.renderer, |output| {
+            .frame(input, &mut self.render, |output| {
                 egui_io.handle_platform_output(window, output);
             })?;
         // 本帧消费完成后清除按下和释放边沿，保留仍按住的按钮。
@@ -1140,7 +1158,7 @@ impl GameLoop {
                 .resource::<country_core::game_config::GameConfig>()
                 .video;
             if flags & 2 != 0 {
-                self.renderer.set_vsync(config.vsync_enable)?;
+                self.render.reclaim().renderer.set_vsync(config.vsync_enable)?;
             }
             if flags & 5 != 0 {
                 crate::event_loop::apply_display_config(&self.window, &config.display)?;
@@ -1239,7 +1257,15 @@ impl GameLoop {
                 }
             }
         }
-        match catch_host_callback("GPU shutdown", || self.renderer.shutdown()) {
+        // Settle the last frame first: its error, screenshots and counts.
+        if let Err(error) = catch_host_callback("final frame", || self.driver.settle_render(&mut self.render)) {
+            if failure.is_some() {
+                log::error!("Additional final frame failure: {error:#}");
+            } else {
+                failure = Some(error);
+            }
+        }
+        match catch_host_callback("GPU shutdown", || self.render.reclaim().renderer.shutdown()) {
             Ok(()) => self.lifecycle.renderer_stopped(),
             Err(error) => {
                 if failure.is_some() {

@@ -265,9 +265,44 @@ pub fn out_of_video_memory(info: Option<&SwapchainInfo>) -> String {
     format!("{}{info:?}", msgs::OUT_OF_VRAM)
 }
 
-/// `tiny_glade::render_loop::render`（0x1404e8010）。
-pub fn render<H: RenderHost>(
-    host: &mut H, pacer: &mut FramePacer, mode: RenderMode,
+/// A frame whose world/loading graph is compiled and ready to execute. The
+/// front half (`render_front`) produces it on the game thread; the back half
+/// (`render_back`) consumes it on the render thread.
+pub struct PreparedFrame<C> {
+    compiled: C,
+    /// Only a successful primary compile with a swapchain is presented
+    /// (`!primary_ok || swapchain.is_none()` skips acquire/presentation).
+    present: bool,
+}
+impl<C> PreparedFrame<C> {
+    pub fn compiled(&self) -> &C {
+        &self.compiled
+    }
+}
+
+/// `tiny_glade::render_loop::render`（0x1404e8010），前半段：设备/配置检查、
+/// 绘制列表、主图编译（含 OOM 降分辨率重试）。读取游戏 World，在游戏线程执行。
+pub fn render_front<H: RenderHost>(
+    host: &mut H, mode: RenderMode,
+) -> Result<PreparedFrame<H::Compiled>, H::CompileError> {
+    let scopes_on = host.puffin_scopes_on();
+    if scopes_on {
+        host.scope_begin(SCOPE_NAME);
+    }
+    let result = render_front_inner(host, mode);
+    if result.is_err() {
+        host.abort_frame();
+    }
+    if scopes_on {
+        host.scope_end();
+    }
+    result
+}
+
+/// 后半段：执行主图、取交换链图像、呈现图、present、截图收尾、统计与 GPU 帧节奏。
+/// 只使用渲染器自身状态，在渲染线程执行。
+pub fn render_back<H: RenderHost>(
+    host: &mut H, pacer: &mut FramePacer, mode: RenderMode, frame: PreparedFrame<H::Compiled>,
 ) -> Result<(), H::CompileError> {
     let scopes_on = host.puffin_scopes_on();
     if scopes_on {
@@ -275,7 +310,30 @@ pub fn render<H: RenderHost>(
     }
     // Commit pacing history only after all fallible frame operations succeed.
     let mut next_pacer = *pacer;
-    let result = render_inner(host, &mut next_pacer, mode, scopes_on);
+    let result = render_back_inner(host, &mut next_pacer, mode, scopes_on, frame);
+    if result.is_err() {
+        host.abort_frame();
+    } else {
+        *pacer = next_pacer;
+    }
+    if scopes_on {
+        host.scope_end();
+    }
+    result
+}
+
+/// Both halves on one host, in order (unit tests of the frame orchestration).
+#[cfg(test)]
+fn render<H: RenderHost>(
+    host: &mut H, pacer: &mut FramePacer, mode: RenderMode,
+) -> Result<(), H::CompileError> {
+    let scopes_on = host.puffin_scopes_on();
+    if scopes_on {
+        host.scope_begin(SCOPE_NAME);
+    }
+    let mut next_pacer = *pacer;
+    let result = render_front_inner(host, mode)
+        .and_then(|frame| render_back_inner(host, &mut next_pacer, mode, scopes_on, frame));
     if result.is_err() {
         host.abort_frame();
     } else {
@@ -294,9 +352,9 @@ fn check_host_error<H: RenderHost>(host: &mut H) -> Result<(), H::CompileError> 
     }
 }
 
-fn render_inner<H: RenderHost>(
-    host: &mut H, pacer: &mut FramePacer, mode: RenderMode, scopes_on: bool,
-) -> Result<(), H::CompileError> {
+fn render_front_inner<H: RenderHost>(
+    host: &mut H, mode: RenderMode,
+) -> Result<PreparedFrame<H::Compiled>, H::CompileError> {
     // 0x1404e82c3..e8c..：设备（unwrap，行 642）、GameConfig（expect，行 650）
     let device_ready = host.device_ready();
     check_host_error(host)?;
@@ -324,7 +382,17 @@ fn render_inner<H: RenderHost>(
             Err(error) => return Err(error),
         }
     };
+    Ok(PreparedFrame {
+        compiled,
+        present: primary_ok && swapchain.is_some(),
+    })
+}
 
+fn render_back_inner<H: RenderHost>(
+    host: &mut H, pacer: &mut FramePacer, mode: RenderMode, scopes_on: bool,
+    frame: PreparedFrame<H::Compiled>,
+) -> Result<(), H::CompileError> {
+    let PreparedFrame { compiled, present: presentable } = frame;
     // 0x1404e954f：上一帧结束到现在的间隔（`None` → 0）
     let since_prev_frame = pacer
         .last_frame_end
@@ -343,7 +411,7 @@ fn render_inner<H: RenderHost>(
 
     // 0x1404e9bc2：只有主编译成功且有 swapchain 才取图像/展示（`!primary_ok || swapchain.is_none()` → 跳过）
     let mut present = false;
-    if primary_ok && swapchain.is_some() {
+    if presentable {
         let acquired = host.acquire_swapchain_image();
         check_host_error(host)?;
         if acquired == Acquire::Image {

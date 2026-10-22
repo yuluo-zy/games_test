@@ -33,7 +33,6 @@ use rhapsody::{
 use crate::{
     egui_backend::EguiBackend,
     egui_gpu::EguiGpu,
-    game_loop::GameRenderHostFactory,
     render_bridge::{CompiledCoreGraph, CoreGraphFrame, CoreRenderBridge},
 };
 
@@ -251,6 +250,14 @@ struct StartupVisualKey {
     debug_freeze: Option<bool>,
     ui_visible: Option<bool>,
     menu_tag: Option<u32>,
+}
+
+/// Game-world inputs of one main-export trace line (see `trace_world_inputs`).
+struct MainTraceWorld {
+    targets: Option<StartupVisualTargets>,
+    /// The trace key without the export extent, which only the back half knows.
+    key: StartupVisualKey,
+    details: String,
 }
 
 #[derive(Default)]
@@ -772,6 +779,37 @@ pub struct ProductionRenderer {
     /// Draw lists handed to each frame's host and taken back afterwards, so
     /// their 21 vectors keep their capacity from frame to frame.
     spare_lists: DrawLists,
+    /// GPU frame pacing history, committed by the back half.
+    pacer: crate::render_loop::FramePacer,
+    /// The frame compiled by the front half, waiting for the back half.
+    handoff: Option<FrameHandoff>,
+    /// Screenshot bookkeeping of the back half. The render thread never
+    /// touches the game world; `settle_back_frame` applies these to it.
+    deferred_captures: Vec<DeferredCapture>,
+    finish_capture_pending: bool,
+}
+
+/// What the back half needs from the front half besides the compiled graph.
+pub(crate) struct BackInputs {
+    video: Option<VideoSettings>,
+    input_lag_reduction: bool,
+    lists: DrawLists,
+    /// The game world the frame was declared from (frame observation identity).
+    world: bevy_ecs::world::WorldId,
+    capture_installed: bool,
+    elapsed: Duration,
+    trace: Option<MainTraceWorld>,
+}
+
+struct FrameHandoff {
+    prepared: crate::render_loop::PreparedFrame<CompiledGameGraph>,
+    mode: crate::render_loop::RenderMode,
+    inputs: BackInputs,
+}
+
+enum DeferredCapture {
+    Submitted(rhapsody::rg::GraphId, SessionFrameReceipt),
+    Cancelled(rhapsody::rg::GraphId),
 }
 
 impl ProductionRenderer {
@@ -893,16 +931,18 @@ impl ProductionRenderer {
             platform,
             window,
             spare_lists: DrawLists::new(),
+            pacer: Default::default(),
+            handoff: None,
+            deferred_captures: Vec::new(),
+            finish_capture_pending: false,
         })
     }
 
-    fn trace_main_export(
-        &mut self, world: &World, graph: rhapsody::rg::GraphId,
-        receipt: &SessionFrameReceipt, kind: ProductionGraphKind,
-        output: &rhapsody::resource::Texture, lists: &DrawLists,
-    ) {
+    /// Front half: read the game-world inputs of the startup visual trace, so
+    /// the back half logs the export without touching the game world.
+    fn trace_world_inputs(&self, world: &World, graph: rhapsody::rg::GraphId, kind: ProductionGraphKind) -> Option<MainTraceWorld> {
         use country_core::systems::render_loop::vermeer::{VermeerState, VermeerDebugControl};
-        let Some(trace) = self.visual_trace.as_mut() else { return; };
+        self.visual_trace.as_ref()?;
         let targets = world.get_resource::<StartupVisualTargets>().copied()
             .filter(|targets| targets.graph == graph);
         let ui = world.get_resource::<crate::world_postprocess::StartupUiVisualTrace>().copied()
@@ -911,7 +951,7 @@ impl ProductionRenderer {
         let key = StartupVisualKey {
             kind,
             extents: targets.map(|targets| targets.declared),
-            output: [output.desc.width, output.desc.height],
+            output: [0; 2],
             phase: vermeer.map(|state| state.phase),
             hold: vermeer.map(|state| state.hold),
             freeze: vermeer.map(|state| state.freeze_camera),
@@ -919,6 +959,35 @@ impl ProductionRenderer {
             ui_visible: if kind == ProductionGraphKind::Loading { Some(true) } else { ui.map(|ui| ui.ui_visible) },
             menu_tag: world.get_resource::<country_core::resources::gui::EscMenuState>().map(|menu| menu.view().tag),
         };
+        let mei_available = world.get_resource::<crate::loading_graph::LoadingGpuResources>()
+            .and_then(|gpu| gpu.mei.output()).map(|text| text.prim_count);
+        let mei_drawn = if kind == ProductionGraphKind::Loading { mei_available }
+            else { ui.and_then(|ui| ui.mei_drawn_prims) };
+        let dt = world.get_resource::<bevy_time::Time>().map(|time| time.delta_secs());
+        let config = world.get_resource::<country_core::render::render_config::FrameRenderConfig>();
+        let details = format!(
+            "window={:?} config_extents={:?} scale={:?} game_scale={:?} tgsr_scale={:?} ui_visible={:?} ui_elements={:?} mei_available={mei_available:?} mei_drawn={mei_drawn:?} vermeer_phase={:?} hold={:?} freeze_camera={:?} debug_freeze={:?} vermeer_frame={:?} progress={:?} dt={dt:?} capped_dt={:?} menu={:?} logo={:?}",
+            world.get_resource::<country_core::resources::window::WindowSize>().map(|window| window.as_dims()),
+            config.map(|config| [config.extent_0, config.extent_8, config.extent_10]),
+            config.map(|config| config.world_resolution_scale),
+            world.get_resource::<GameConfig>().map(|config| config.video.world_resolution_scale),
+            config.map(|config| config.tgsr_resolution_scale),
+            key.ui_visible, ui.and_then(|ui| ui.ui_elements), key.phase, key.hold, key.freeze, key.debug_freeze,
+            vermeer.map(|state| state.frame_count), vermeer.map(|state| state.progress),
+            dt.map(|dt| if dt < 1.0 / 30.0 { dt } else { 1.0 / 30.0 }), key.menu_tag,
+            world.get_resource::<country_core::resources::logo_animation::LogoAnimation>().map(|logo| logo.progress));
+        Some(MainTraceWorld { targets, key, details })
+    }
+
+    /// Back half: log the main export with the inputs the front half read.
+    fn trace_main_export(
+        &mut self, inputs: Option<&MainTraceWorld>, graph: rhapsody::rg::GraphId,
+        receipt: &SessionFrameReceipt, kind: ProductionGraphKind,
+        output: &rhapsody::resource::Texture, lists: &DrawLists,
+    ) {
+        let (Some(trace), Some(inputs)) = (self.visual_trace.as_mut(), inputs) else { return; };
+        let targets = inputs.targets;
+        let key = StartupVisualKey { output: [output.desc.width, output.desc.height], ..inputs.key };
         let count = if kind == ProductionGraphKind::Loading {
             trace.loading_frames = trace.loading_frames.saturating_add(1);
             trace.loading_frames
@@ -942,25 +1011,10 @@ impl ProductionRenderer {
                 }
             })
         }));
-        let mei_available = world.get_resource::<crate::loading_graph::LoadingGpuResources>()
-            .and_then(|gpu| gpu.mei.output()).map(|text| text.prim_count);
-        let mei_drawn = if kind == ProductionGraphKind::Loading { mei_available }
-            else { ui.and_then(|ui| ui.mei_drawn_prims) };
-        let dt = world.get_resource::<bevy_time::Time>().map(|time| time.delta_secs());
-        let config = world.get_resource::<country_core::render::render_config::FrameRenderConfig>();
         log::info!(target: "tiny_glade::startup_visual",
-            "main-export n={count} receipt={} graph={graph:?} kind={kind:?} actual_main_depth_taa={physical:?} declared={:?} actual_tail={:?}/samples{} window={:?} config_extents={:?} scale={:?} game_scale={:?} tgsr_scale={:?} ui_visible={:?} ui_elements={:?} mei_available={mei_available:?} mei_drawn={mei_drawn:?} vermeer_phase={:?} hold={:?} freeze_camera={:?} debug_freeze={:?} vermeer_frame={:?} progress={:?} dt={dt:?} capped_dt={:?} menu={:?} logo={:?} lists={:?}",
+            "main-export n={count} receipt={} graph={graph:?} kind={kind:?} actual_main_depth_taa={physical:?} declared={:?} actual_tail={:?}/samples{} {} lists={:?}",
             receipt.frame, targets.map(|targets| targets.declared), key.output, output.desc.sample_count,
-            world.get_resource::<country_core::resources::window::WindowSize>().map(|window| window.as_dims()),
-            config.map(|config| [config.extent_0, config.extent_8, config.extent_10]),
-            config.map(|config| config.world_resolution_scale),
-            world.get_resource::<GameConfig>().map(|config| config.video.world_resolution_scale),
-            config.map(|config| config.tgsr_resolution_scale),
-            key.ui_visible, ui.and_then(|ui| ui.ui_elements), key.phase, key.hold, key.freeze, key.debug_freeze,
-            vermeer.map(|state| state.frame_count), vermeer.map(|state| state.progress),
-            dt.map(|dt| if dt < 1.0 / 30.0 { dt } else { 1.0 / 30.0 }), key.menu_tag,
-            world.get_resource::<country_core::resources::logo_animation::LogoAnimation>().map(|logo| logo.progress),
-            std::array::from_fn::<_, 21, _>(|i| lists.list(i).len()));
+            inputs.details, std::array::from_fn::<_, 21, _>(|i| lists.list(i).len()));
     }
 
     pub fn device(&self) -> &Arc<rhapsody::device::Device> {
@@ -1280,17 +1334,130 @@ pub struct CompiledGameGraph {
     expected: ExportExpectation,
 }
 
+/// The production renderer on its own thread (reports/render-thread-2026-10-22).
+pub type ProductionRenderThread = crate::render_thread::RenderThread<ProductionRenderer>;
+
+impl ProductionRenderer {
+    pub fn into_render_thread(self) -> std::io::Result<ProductionRenderThread> {
+        let side = crate::render_thread::RenderSide {
+            world: World::new(),
+            renderer: self,
+            feedback: Default::default(),
+        };
+        // SAFETY: the renderer's Rc/RefCell graph (session, declarer, compiled
+        // frames, other Apps' bridges) is created, used and dropped only through
+        // the renderer. The game world holds Send + Sync resources only, so no
+        // clone of that graph lives outside the side handed between threads.
+        unsafe { crate::render_thread::RenderThread::spawn(side, render_back_frame) }
+    }
+}
+
+/// The render thread's frame: the back half of the frame handed over.
+fn render_back_frame(side: &mut crate::render_thread::RenderSide<ProductionRenderer>) {
+    let renderer = &mut side.renderer;
+    side.feedback.rendered = renderer.handoff.is_some();
+    let result = renderer.render_back(&mut side.world);
+    side.feedback.submitted = renderer.frame_submitted;
+    side.feedback.present_queued = renderer.frame_present_queued;
+    side.feedback.error = result.err();
+}
+
+/// One half of a frame. The front host borrows the game world and egui on the
+/// game thread; the back host borrows only the render thread's scratch world.
 pub struct ProductionRenderHost<'a> {
     renderer: &'a mut ProductionRenderer,
     world: &'a mut World,
-    egui: &'a mut EguiBackend,
+    egui: Option<&'a mut EguiBackend>,
     video: Option<VideoSettings>,
     input_lag_reduction: bool,
     lists: DrawLists,
+    back: Option<BackContext>,
 }
 
-impl GameRenderHostFactory for ProductionRenderer {
-    type Host<'a> = ProductionRenderHost<'a>;
+/// Front-half facts the back half reads instead of the game world.
+struct BackContext {
+    world: bevy_ecs::world::WorldId,
+    capture_installed: bool,
+    elapsed: Duration,
+    trace: Option<MainTraceWorld>,
+}
+
+impl ProductionRenderer {
+    /// Game thread: draw lists and graph compilation (`render_front`). On
+    /// success the compiled frame is kept for the back half; on failure the
+    /// frame is closed here and its error returned.
+    pub(crate) fn render_front(
+        &mut self, world: &mut World, egui: &mut EguiBackend, mode: crate::render_loop::RenderMode,
+    ) -> anyhow::Result<()> {
+        anyhow::ensure!(self.handoff.is_none(), "the previous frame was compiled but never handed to the render thread");
+        let result = {
+            let mut host = self.front_host(world, egui);
+            crate::render_loop::render_front(&mut host, mode).map(|prepared| {
+                let graph = prepared.compiled();
+                let inputs = host.take_back_inputs(graph.capture_graph_id, graph.kind);
+                (prepared, inputs)
+            })
+        };
+        match result {
+            Ok((prepared, inputs)) => {
+                self.handoff = Some(FrameHandoff { prepared, mode, inputs });
+                Ok(())
+            }
+            Err(error) => {
+                // Keep the graph's typed cause; the host error is secondary.
+                if let Err(host) = self.finish_render() {
+                    log::error!(target: crate::render_loop::LOG_TARGET, "frame close after a failed compile: {host:#}");
+                }
+                Err(error.into())
+            }
+        }
+    }
+
+    /// Render thread: execute, acquire, present and collect the frame the front
+    /// half compiled (`render_back`), then close it.
+    pub(crate) fn render_back(&mut self, scratch: &mut World) -> anyhow::Result<()> {
+        let Some(FrameHandoff { prepared, mode, inputs }) = self.handoff.take() else {
+            return Ok(());
+        };
+        let mut pacer = self.pacer;
+        let result = {
+            let mut host = self.back_host(scratch, inputs);
+            crate::render_loop::render_back(&mut host, &mut pacer, mode, prepared)
+        };
+        self.pacer = pacer;
+        let host_result = self.finish_render();
+        result?;
+        host_result
+    }
+
+    /// Game thread, at the hand-over: apply the back half's screenshot
+    /// bookkeeping to the game world that declared the frame.
+    pub(crate) fn settle_back_frame(&mut self, world: &mut World) -> anyhow::Result<()> {
+        let mut first_error = None;
+        for capture in std::mem::take(&mut self.deferred_captures) {
+            match capture {
+                DeferredCapture::Submitted(graph, receipt) => {
+                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
+                        world, &mut self.bridge, graph, &receipt,
+                    ) {
+                        first_error.get_or_insert(error);
+                    }
+                }
+                DeferredCapture::Cancelled(graph) => {
+                    crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, graph);
+                }
+            }
+        }
+        if std::mem::take(&mut self.finish_capture_pending)
+            && crate::screenshot::shared_texture_capture::installed(world)
+        {
+            if let Err(error) = crate::screenshot::finish_screenshot_capture(world) {
+                first_error.get_or_insert(error);
+            }
+        }
+        first_error.map_or(Ok(()), |error| Err(error.into()))
+    }
+
     fn finish_render(&mut self) -> anyhow::Result<()> {
         // Close the display frame on every path, including failed frames.
         self.bridge.end_display_frame();
@@ -1359,9 +1526,19 @@ impl GameRenderHostFactory for ProductionRenderer {
         }
         self.take_error().map_or(Ok(()), Err)
     }
-    fn last_frame_submitted(&self) -> bool { self.frame_submitted }
-    fn last_frame_present_queued(&self) -> bool { self.frame_present_queued }
-    fn host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> Self::Host<'a> {
+    fn back_host<'a>(&'a mut self, scratch: &'a mut World, inputs: BackInputs) -> ProductionRenderHost<'a> {
+        let BackInputs { video, input_lag_reduction, lists, world, capture_installed, elapsed, trace } = inputs;
+        ProductionRenderHost {
+            renderer: self,
+            world: scratch,
+            egui: None,
+            video,
+            input_lag_reduction,
+            lists,
+            back: Some(BackContext { world, capture_installed, elapsed, trace }),
+        }
+    }
+    fn front_host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> ProductionRenderHost<'a> {
         self.timing = if crate::game_loop::frame_timing_enabled() && world.contains_resource::<crate::run_game::GameplayApplication>() {
             self.timing_gameplay_count += 1;
             Some(RenderStageTiming { frame: self.timing_gameplay_count, ..Default::default() })
@@ -1400,10 +1577,11 @@ impl GameRenderHostFactory for ProductionRenderer {
         ProductionRenderHost {
             renderer: self,
             world,
-            egui,
+            egui: Some(egui),
             video: None,
             input_lag_reduction: false,
             lists,
+            back: None,
         }
     }
 }
@@ -1417,6 +1595,23 @@ impl Drop for ProductionRenderHost<'_> {
 }
 
 impl ProductionRenderHost<'_> {
+    /// Front half done: move what the back half needs out of this host.
+    fn take_back_inputs(&mut self, graph: rhapsody::rg::GraphId, kind: ProductionGraphKind) -> BackInputs {
+        let trace = self.renderer.trace_world_inputs(self.world, graph, kind);
+        BackInputs {
+            video: self.video.take(),
+            input_lag_reduction: self.input_lag_reduction,
+            lists: std::mem::take(&mut self.lists),
+            world: self.world.id(),
+            capture_installed: crate::screenshot::shared_texture_capture::installed(self.world),
+            elapsed: self.world.get_resource::<bevy_time::Time>().map(|time| time.elapsed()).unwrap_or_default(),
+            trace,
+        }
+    }
+    fn back(&self) -> &BackContext {
+        self.back.as_ref().expect("back-half operation on the front host")
+    }
+
     /// The resolve graph imports the acquired image as its presentation
     /// target; the session owns the acquisition from the import on.
     fn execute_presentation_graph_inner(&mut self) -> rhapsody::Result<()> {
@@ -1432,6 +1627,7 @@ impl ProductionRenderHost<'_> {
             .as_ref()
             .is_some_and(|video| video.render_upside_down);
         let visual_trace = self.renderer.visual_trace.as_ref().and_then(|trace| trace.pending_presentation);
+        let elapsed = self.back().elapsed;
         let world = &mut *self.world;
         let (target, graph) = self.renderer.bridge.build_frame(|frame| {
             let target = frame.import_swapchain_image(acquired)?;
@@ -1443,7 +1639,7 @@ impl ProductionRenderHost<'_> {
                     output.desc.width, output.desc.height, output.desc.sample_count,
                     [source.desc.width, source.desc.height] == [output.desc.width, output.desc.height]);
             }
-            resolve::build(frame, world, &shaders, source, &target, flag)?;
+            resolve::build(frame, world, &shaders, elapsed, source, &target, flag)?;
             Ok(target)
         })?;
         if let Err(error) = self
@@ -1602,7 +1798,8 @@ impl RenderHost for ProductionRenderHost<'_> {
         let extent = world_extent(self.world, swapchain, min_extent)?;
         match missing_main_producer(self.world) {
             None => {
-                compile_full_world_graph(self.renderer, self.world, &self.lists, extent, self.egui)
+                let egui = self.egui.as_deref_mut().expect("world compilation on the back host");
+                compile_full_world_graph(self.renderer, self.world, &self.lists, extent, egui)
             }
             Some(missing) => {
                 if minimal_world_frame_allowed() {
@@ -1704,10 +1901,8 @@ impl RenderHost for ProductionRenderHost<'_> {
                 // or export validation below subsequently fails. Abort must
                 // preserve that fact rather than report an unsubmitted frame.
                 self.renderer.frame_submitted = !receipt.receipts.is_empty();
-                if crate::screenshot::shared_texture_capture::installed(self.world) {
-                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
-                        self.world, &mut self.renderer.bridge, capture_graph_id, &receipt,
-                    ) { self.renderer.record_error(error); return; }
+                if self.back().capture_installed {
+                    self.renderer.deferred_captures.push(DeferredCapture::Submitted(capture_graph_id, receipt.clone()));
                 }
                 match self
                 .renderer
@@ -1732,9 +1927,10 @@ impl RenderHost for ProductionRenderHost<'_> {
                     }
                     let mut submitted = rhapsody::sync::SyncSet::EMPTY;
                     for point in &receipt.receipts { submitted.insert(*point); }
-                    self.renderer.trace_main_export(self.world, capture_graph_id, &receipt, kind, &texture, &self.lists);
+                    let back = self.back.as_ref().expect("back-half operation on the front host");
+                    self.renderer.trace_main_export(back.trace.as_ref(), capture_graph_id, &receipt, kind, &texture, &self.lists);
                     self.renderer.frame_observation = Some(ProductionFrameObservation {
-                        world: self.world.id(),
+                        world: back.world,
                         application_shader_owner: Arc::as_ptr(&self.renderer.shaders) as usize,
                         graph: capture_graph_id,
                         kind,
@@ -1753,7 +1949,7 @@ impl RenderHost for ProductionRenderHost<'_> {
                 }
             }
             Err(error) => {
-                crate::screenshot::shared_texture_capture::cancel_unsubmitted(self.world, capture_graph_id);
+                self.renderer.deferred_captures.push(DeferredCapture::Cancelled(capture_graph_id));
                 self.renderer.record_error(error);
             }
         }
@@ -1842,10 +2038,9 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn finish_screenshot_capture(&mut self) {
-        if crate::screenshot::shared_texture_capture::installed(self.world) {
-            if let Err(error) = crate::screenshot::finish_screenshot_capture(self.world) {
-                self.renderer.record_error(error);
-            }
+        // Readback and delivery run on the game thread at the hand-over.
+        if self.back().capture_installed {
+            self.renderer.finish_capture_pending = true;
         }
     }
     fn snapshot_render_stats(&mut self) {

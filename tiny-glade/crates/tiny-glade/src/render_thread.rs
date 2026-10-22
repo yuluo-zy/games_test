@@ -88,6 +88,8 @@ pub struct RenderThread<R: 'static> {
     /// The side while the game thread holds it (between reclaim and submit).
     idle: Option<Exclusive<RenderSide<R>>>,
     handle: Option<JoinHandle<()>>,
+    /// The render thread panicked; its side was lost with the frame.
+    poisoned: bool,
 }
 
 impl<R: 'static> RenderThread<R> {
@@ -101,11 +103,12 @@ impl<R: 'static> RenderThread<R> {
             .spawn(move || {
                 while let Ok(Message::Frame(mut side)) = inbox.recv() {
                     let result = catch_unwind(AssertUnwindSafe(|| render(side.get())));
-                    let returned = match result {
-                        Ok(()) => Returned::Side(side),
-                        Err(payload) => Returned::Panicked(payload),
+                    let (returned, panicked) = match result {
+                        Ok(()) => (Returned::Side(side), false),
+                        Err(payload) => (Returned::Panicked(payload), true),
                     };
-                    if outbox.send(returned).is_err() {
+                    // A side that panicked mid-frame is gone; so is the thread.
+                    if outbox.send(returned).is_err() || panicked {
                         break;
                     }
                 }
@@ -116,6 +119,7 @@ impl<R: 'static> RenderThread<R> {
             // SAFETY: forwarded from the caller.
             idle: Some(unsafe { Exclusive::new(side) }),
             handle: Some(handle),
+            poisoned: false,
         })
     }
 
@@ -127,11 +131,20 @@ impl<R: 'static> RenderThread<R> {
     /// Wait for the frame in flight (if any) and borrow the side. A panic on
     /// the render thread resumes on the game thread with its payload.
     pub fn reclaim(&mut self) -> &mut RenderSide<R> {
+        if self.poisoned {
+            panic!("the render thread panicked earlier; the renderer is gone");
+        }
         if self.idle.is_none() {
             match self.done.recv() {
                 Ok(Returned::Side(side)) => self.idle = Some(side),
-                Ok(Returned::Panicked(payload)) => resume_unwind(payload),
-                Err(_) => panic!("render thread exited while a frame was in flight"),
+                Ok(Returned::Panicked(payload)) => {
+                    self.poisoned = true;
+                    resume_unwind(payload)
+                }
+                Err(_) => {
+                    self.poisoned = true;
+                    panic!("render thread exited while a frame was in flight")
+                }
             }
         }
         self.idle.as_mut().expect("reclaimed side").get()
@@ -141,6 +154,12 @@ impl<R: 'static> RenderThread<R> {
     pub fn submit_frame(&mut self, game: &mut World, extract: &mut ExtractSet) {
         let side = self.reclaim();
         extract.run(game, &mut side.world);
+        self.start();
+    }
+
+    /// Start rendering with the side as the game thread left it.
+    pub fn start(&mut self) {
+        self.reclaim();
         let side = self.idle.take().expect("reclaimed side");
         if self.jobs.send(Message::Frame(side)).is_err() {
             panic!("render thread is gone");
@@ -172,7 +191,7 @@ impl<R: 'static> RenderThread<R> {
 impl<R: 'static> Drop for RenderThread<R> {
     fn drop(&mut self) {
         if self.handle.is_some() {
-            if self.idle.is_none() {
+            if self.idle.is_none() && !self.poisoned {
                 let _ = self.done.recv();
             }
             let _ = self.jobs.send(Message::Shutdown);
@@ -290,6 +309,11 @@ mod tests {
             thread.reclaim();
         }));
         assert!(result.is_err());
-        std::mem::forget(thread);
+        // Later reclaims report the lost renderer instead of blocking.
+        assert!(catch_unwind(AssertUnwindSafe(|| {
+            thread.reclaim();
+        }))
+        .is_err());
+        drop(thread);
     }
 }

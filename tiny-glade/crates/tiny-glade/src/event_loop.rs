@@ -363,7 +363,7 @@ impl crate::game_loop::GameLoop {
                     if !self.suspended {
                         let previous_frame_count = self.frame_count;
                         let running = self.frame(target)?;
-                        if self.renderer.any_present_successful() || self.frame_count > 1 {
+                        if self.driver.any_present_successful() || self.frame_count > 1 {
                             self.window.set_visible(true);
                         }
                         if self.frame_count != previous_frame_count && self.frame_count % 30 == 0 {
@@ -520,10 +520,10 @@ impl crate::game_loop::GameLoop {
             Event::Suspended => {
                 // Platform notification, not a reconstructed B gameplay event.
                 self.suspended = true;
-                self.renderer.suspend()?;
+                self.render.reclaim().renderer.suspend()?;
             }
             Event::Resumed => {
-                self.renderer.resume()?;
+                self.render.reclaim().renderer.resume()?;
                 self.suspended = false;
                 self.window.request_redraw();
             }
@@ -590,7 +590,7 @@ impl crate::game_loop::GameLoop {
                     frame.extent_8 = [width, height];
                     frame.extent_10 = [width, height];
                 }
-                self.renderer.resize([width, height])?;
+                self.render.reclaim().renderer.resize([width, height])?;
             }
             OsWindowEvent::Resized(_) => {}
             OsWindowEvent::MonitorChanged => {
@@ -623,7 +623,7 @@ impl crate::game_loop::GameLoop {
             }
             OsWindowEvent::SurfaceStale => {
                 let size = self.window.inner_size();
-                self.renderer.resize([size.width, size.height])?;
+                self.render.reclaim().renderer.resize([size.width, size.height])?;
             }
             OsWindowEvent::CloseRequested => {
                 self.app_mut()
@@ -646,7 +646,7 @@ impl crate::game_loop::GameLoop {
                     .unwrap() |= 1;
             }
             OsWindowEvent::Focused(focused) => {
-                self.renderer.set_focused(focused)?;
+                self.render.reclaim().renderer.set_focused(focused)?;
                 self.app_mut()
                     .world_mut()
                     .send_event(WindowFocusEvent(u8::from(focused)));

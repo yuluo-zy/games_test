@@ -101,6 +101,7 @@ fn main() -> Result<()> {
     // bounded loading fixture, and flush its MEI output after asset maintenance.
     app.add_systems(bevy_app::Last, loading_graph::flush_mei_frame);
     let mut driver = GameFrameDriver::new(app, egui::Context::default());
+    let mut render = renderer.into_render_thread()?;
     let mut frames = 0;
     let result = Rc::new(RefCell::new(None::<Result<()>>));
     let observed = result.clone();
@@ -110,7 +111,10 @@ fn main() -> Result<()> {
             Event::AboutToWait => (|| -> Result<()> {
                 driver.app_mut().world_mut().resource_mut::<bevy_time::Time<()>>()
                     .advance_by(Duration::from_secs_f64(1.0 / 60.0));
-                driver.frame(Some(egui::RawInput::default()), &mut renderer, |_| {})?;
+                driver.frame(Some(egui::RawInput::default()), &mut render, |_| {})?;
+                // The back half runs on the render thread; settle it to observe it.
+                driver.settle_render(&mut render)?;
+                let renderer = &mut render.reclaim().renderer;
                 if let Some(error) = renderer.take_error() { return Err(error); }
                 frames += 1;
                 if frames == 3 {
@@ -129,7 +133,7 @@ fn main() -> Result<()> {
             }
             Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
                 driver.app_mut().world_mut().insert_resource(WindowSize::new(size.width, size.height));
-                renderer.resize([size.width, size.height])
+                render.reclaim().renderer.resize([size.width, size.height])
             }
             _ => Ok(()),
         };

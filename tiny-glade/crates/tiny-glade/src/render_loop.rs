@@ -23,7 +23,8 @@
 //! 编排 trait 或单元测试通过不代表生产图、资源 producer 与 present 已闭合。
 
 pub use country_core::systems::render_loop::render_frame::{
-    handle_screenshot_error, render, FramePacer, RenderHost, RenderMode, Ring4, SwapchainInfo,
+    handle_screenshot_error, render_back, render_front, FramePacer, PreparedFrame, RenderHost,
+    RenderMode, Ring4, SwapchainInfo,
 };
 pub use country_core::systems::render_loop::render_world::{
     render_world, FramePasses, RenderWorldArgs, RenderWorldOutputs, TextureDesc,
