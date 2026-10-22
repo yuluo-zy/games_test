@@ -351,6 +351,7 @@ pub(crate) fn create_candidate(
             .iter()
             .any(|name| name == "VK_EXT_surface_maintenance1");
     let mut maintenance = vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT::default();
+    let mut v11 = vk::PhysicalDeviceVulkan11Features::default();
     let mut v12 = vk::PhysicalDeviceVulkan12Features::default();
     let mut sync2 = vk::PhysicalDeviceSynchronization2Features::default();
     let mut dynamic = vk::PhysicalDeviceDynamicRenderingFeatures::default();
@@ -361,7 +362,9 @@ pub(crate) fn create_candidate(
     let mut mesh = vk::PhysicalDeviceMeshShaderFeaturesEXT::default();
     let mut present_id = vk::PhysicalDevicePresentIdFeaturesKHR::default();
     let mut present_wait = vk::PhysicalDevicePresentWaitFeaturesKHR::default();
-    let mut features = vk::PhysicalDeviceFeatures2::default().push_next(&mut v12);
+    let mut features = vk::PhysicalDeviceFeatures2::default()
+        .push_next(&mut v11)
+        .push_next(&mut v12);
     if has_maintenance {
         features = features.push_next(&mut maintenance);
     }
@@ -399,6 +402,9 @@ pub(crate) fn create_candidate(
     };
     let core = features.features;
     let mut supported = core_features(&core, &v12);
+    if v11.shader_draw_parameters != 0 {
+        supported = supported.with(Feature::ShaderDrawParameters);
+    }
     if sync2.synchronization2 != 0 {
         supported = supported.with(Feature::Synchronization2);
     }
@@ -551,6 +557,8 @@ pub(crate) fn create_candidate(
         .dual_src_blend(core.dual_src_blend != 0)
         .fragment_stores_and_atomics(core.fragment_stores_and_atomics != 0)
         .vertex_pipeline_stores_and_atomics(core.vertex_pipeline_stores_and_atomics != 0);
+    let mut enabled11 = vk::PhysicalDeviceVulkan11Features::default()
+        .shader_draw_parameters(v11.shader_draw_parameters != 0);
     let mut enabled12 = vk::PhysicalDeviceVulkan12Features::default()
         .timeline_semaphore(true)
         .draw_indirect_count(v12.draw_indirect_count != 0)
@@ -585,6 +593,9 @@ pub(crate) fn create_candidate(
             v12.descriptor_binding_update_unused_while_pending != 0,
         );
     let mut enabled = core_features(&enabled_core, &enabled12);
+    if enabled11.shader_draw_parameters != 0 {
+        enabled = enabled.with(Feature::ShaderDrawParameters);
+    }
     if use_sync2 {
         enabled = enabled.with(Feature::Synchronization2);
     }
@@ -611,6 +622,7 @@ pub(crate) fn create_candidate(
         .queue_create_infos(&queues)
         .enabled_extension_names(&extensions)
         .enabled_features(&enabled_core)
+        .push_next(&mut enabled11)
         .push_next(&mut enabled12);
     if maintenance.swapchain_maintenance1 != 0 {
         info = info.push_next(&mut maintenance);

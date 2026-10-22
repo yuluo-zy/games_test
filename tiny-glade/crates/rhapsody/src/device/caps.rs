@@ -85,6 +85,10 @@ pub enum Feature {
     /// (`VK_EXT_shader_demote_to_helper_invocation`)：着色器可声明
     /// `DemoteToHelperInvocation` 能力（HLSL `discard` 经 DXC 产生 `OpDemoteToHelperInvocation`）。
     ShaderDemoteToHelperInvocation = 32,
+    /// Vulkan 1.1 `shaderDrawParameters`: shaders may read the `DrawIndex`
+    /// built-in (SPIR-V `DrawParameters`), which GPU-driven draws use to
+    /// fetch per-draw parameters.
+    ShaderDrawParameters = 33,
 }
 
 impl Feature {
@@ -94,7 +98,7 @@ impl Feature {
     }
 
     /// 全部已建模能力。位下标必须与 `repr(u8)` 判别值一一对应。
-    pub const ALL: [Feature; 33] = [
+    pub const ALL: [Feature; 34] = [
         Self::TimelineSemaphore,
         Self::Synchronization2,
         Self::DynamicRendering,
@@ -128,6 +132,7 @@ impl Feature {
         Self::DrawIndirectCount,
         Self::SeparateDepthStencilLayouts,
         Self::ShaderDemoteToHelperInvocation,
+        Self::ShaderDrawParameters,
     ];
 }
 

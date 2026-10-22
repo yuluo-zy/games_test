@@ -589,3 +589,109 @@ fn hot_reload_rejects_a_changed_logical_abi_even_when_lowered_spirv_is_identical
         rhapsody::Error::InvalidUsage { .. }
     ));
 }
+
+/// GPU-driven draws read per-draw parameters through the `DrawIndex` built-in.
+/// Lowering rewrites descriptor access only; it must keep the `DrawParameters`
+/// capability and the `BuiltIn DrawIndex` decoration intact.
+#[test]
+fn lowering_keeps_the_draw_index_builtin_and_its_capability() {
+    use rspirv::{
+        binary::Assemble,
+        dr::{Builder, Operand},
+        spirv::*,
+    };
+    let mut b = Builder::new();
+    b.set_version(1, 3);
+    b.capability(Capability::Shader);
+    b.capability(Capability::DrawParameters);
+    b.memory_model(AddressingModel::Logical, MemoryModel::GLSL450);
+    let void = b.type_void();
+    let function = b.type_function(void, []);
+    let uint = b.type_int(32, 0);
+    let float = b.type_float(32);
+    let vec4 = b.type_vector(float, 4);
+    let zero = b.constant_u32(uint, 0);
+    let block = b.type_struct([uint]);
+    b.decorate(block, Decoration::Block, []);
+    b.member_decorate(block, 0, Decoration::Offset, [Operand::LiteralInt32(0)]);
+    let array = b.type_runtime_array(block);
+    b.decorate(array, Decoration::ArrayStride, [Operand::LiteralInt32(4)]);
+    let params_block = b.type_struct([array]);
+    b.decorate(params_block, Decoration::Block, []);
+    b.member_decorate(
+        params_block,
+        0,
+        Decoration::Offset,
+        [Operand::LiteralInt32(0)],
+    );
+    let params_pointer = b.type_pointer(None, StorageClass::StorageBuffer, params_block);
+    let params = b.variable(params_pointer, None, StorageClass::StorageBuffer, None);
+    b.name(params, "draw_params");
+    b.name(block, "DrawParams");
+    b.member_name(block, 0, "value");
+    b.name(params_block, "DrawParamsBuffer");
+    b.member_name(params_block, 0, "items");
+    b.decorate(params, Decoration::DescriptorSet, [Operand::LiteralInt32(0)]);
+    b.decorate(params, Decoration::Binding, [Operand::LiteralInt32(30)]);
+    let input_uint = b.type_pointer(None, StorageClass::Input, uint);
+    let draw_index = b.variable(input_uint, None, StorageClass::Input, None);
+    b.decorate(
+        draw_index,
+        Decoration::BuiltIn,
+        [Operand::BuiltIn(BuiltIn::DrawIndex)],
+    );
+    b.decorate(draw_index, Decoration::Flat, []);
+    let output_vec4 = b.type_pointer(None, StorageClass::Output, vec4);
+    let position = b.variable(output_vec4, None, StorageClass::Output, None);
+    b.decorate(
+        position,
+        Decoration::BuiltIn,
+        [Operand::BuiltIn(BuiltIn::Position)],
+    );
+    let storage_uint = b.type_pointer(None, StorageClass::StorageBuffer, uint);
+    let main = b
+        .begin_function(void, None, FunctionControl::NONE, function)
+        .unwrap();
+    b.begin_block(None).unwrap();
+    let id = b.load(uint, None, draw_index, None, []).unwrap();
+    let field = b
+        .access_chain(storage_uint, None, params, [zero, id, zero])
+        .unwrap();
+    let value = b.load(uint, None, field, None, []).unwrap();
+    let value = b.convert_u_to_f(float, None, value).unwrap();
+    let vector = b
+        .composite_construct(vec4, None, [value, value, value, value])
+        .unwrap();
+    b.store(position, vector, None, []).unwrap();
+    b.ret().unwrap();
+    b.end_function().unwrap();
+    b.entry_point(
+        ExecutionModel::Vertex,
+        main,
+        "main",
+        [draw_index, position],
+    );
+    let stage = CompiledShaderStage {
+        stage: ShaderStage::Vertex,
+        entry_point: "main".into(),
+        spirv: b.module().assemble(),
+    };
+    let reflection =
+        shader_compiler::reflect::generate_reflection(std::slice::from_ref(&stage)).unwrap();
+    let input = CompiledShaderPipeline {
+        stages: vec![stage],
+        reflection,
+        source_dependencies: vec![],
+        trailing_bytes: vec![],
+    };
+    let (_, stages) = shader_compiler::bindless::lower_pipeline(&input).unwrap();
+    let lowered = rspirv::dr::load_words(&stages[0].spirv).unwrap();
+    assert!(lowered
+        .capabilities
+        .iter()
+        .any(|inst| inst.operands == [Operand::Capability(Capability::DrawParameters)]));
+    assert!(lowered.annotations.iter().any(|inst| {
+        inst.operands.get(1) == Some(&Operand::Decoration(Decoration::BuiltIn))
+            && inst.operands.get(2) == Some(&Operand::BuiltIn(BuiltIn::DrawIndex))
+    }));
+}
