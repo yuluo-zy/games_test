@@ -310,12 +310,34 @@ struct ActiveAlias {
     edges: Arc<[(u32, u32)]>,
 }
 
+/// Pending barrier scopes of the commands being recorded. At most a handful of
+/// commands are open at once, so a short vector beats a `BTreeMap` whose
+/// ~600-byte values forced a node allocation each time a command got its first
+/// barrier.
+#[derive(Default)]
+struct CommandBarriers(Vec<(u64, crate::raw::barrier::SynchronizationScope)>);
+impl CommandBarriers {
+    fn entry(&mut self, command: u64) -> &mut crate::raw::barrier::SynchronizationScope {
+        let at = match self.0.iter().position(|(handle, _)| *handle == command) {
+            Some(at) => at,
+            None => {
+                self.0.push((command, Default::default()));
+                self.0.len() - 1
+            }
+        };
+        &mut self.0[at].1
+    }
+    fn remove(&mut self, command: u64) -> Option<crate::raw::barrier::SynchronizationScope> {
+        let at = self.0.iter().position(|(handle, _)| *handle == command)?;
+        Some(self.0.swap_remove(at).1)
+    }
+}
 pub struct VulkanGraphBackend {
     pub(crate) device: Arc<Device>,
     pub timeline: Arc<TimelineSemaphore>,
     pub resources: super::token_map::TokenMap<GpuResource>,
     pub accesses: AccessTable,
-    pub submissions: Vec<GpuSubmissionCapture>,
+    pub submissions: std::collections::VecDeque<GpuSubmissionCapture>,
     /// Set by the session right after it validated the declaration, so the
     /// trait's `prepare_declaration` does not validate the same graph twice.
     declaration_prevalidated: bool,
@@ -352,8 +374,8 @@ pub struct VulkanGraphBackend {
     gpu_timing: Option<super::profiling::GpuTimingRing>,
     queue_runtime: queue_runtime::QueueRuntime,
     queue_timelines: Vec<Arc<TimelineSemaphore>>,
-    import_families: BTreeMap<u64, u32>,
-    history_validity: BTreeMap<u64, bool>,
+    import_families: super::token_map::TokenMap<u32>,
+    history_validity: super::token_map::TokenMap<bool>,
     synchronization: BTreeMap<usize, OwnedBatchSync>,
     graph_waits: Vec<TimelineWait>,
     graph_signals: Vec<TimelineSignal>,
@@ -365,7 +387,7 @@ pub struct VulkanGraphBackend {
     command_slot: BTreeMap<u64, FramePoolKey>,
     pub stores: ManagedResources,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
-    barriers: BTreeMap<u64, crate::raw::barrier::SynchronizationScope>,
+    barriers: CommandBarriers,
     /// Tokens already retained by `retained_command` in this recording; a
     /// resource touched by many transitions is retained (and its use cell
     /// scanned for) once. Sorted, capacity kept across frames.
@@ -680,7 +702,7 @@ impl VulkanGraphBackend {
             display_frames: false,
             device,
             accesses,
-            submissions: vec![],
+            submissions: Default::default(),
             declaration_prevalidated: false,
             recording_error: None,
             resources: Default::default(),
@@ -697,8 +719,8 @@ impl VulkanGraphBackend {
             queue,
             family,
             queue_timelines,
-            import_families: BTreeMap::new(),
-            history_validity: BTreeMap::new(),
+            import_families: Default::default(),
+            history_validity: Default::default(),
             synchronization: BTreeMap::new(),
             graph_waits: vec![],
             graph_signals: vec![],
@@ -707,7 +729,7 @@ impl VulkanGraphBackend {
             command_slot: BTreeMap::new(),
             stores,
             barrier_dispatch,
-            barriers: BTreeMap::new(),
+            barriers: CommandBarriers::default(),
             retained_command: 0,
             retained_tokens: Vec::new(),
         })
@@ -1694,7 +1716,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         if let Some(ring) = &mut self.gpu_timing {
             ring.abandon(handle);
         }
-        self.barriers.remove(&handle);
+        self.barriers.remove(handle);
         let Some(command) = self.commands.get_mut(&handle) else {
             return;
         };
@@ -1809,7 +1831,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         }
     }
     fn flush_barriers(&mut self, handle: u64) -> bool {
-        let Some(scope) = self.barriers.remove(&handle) else {
+        let Some(scope) = self.barriers.remove(handle) else {
             return true;
         };
         if !self.commands.contains_key(&handle) {
@@ -1872,7 +1894,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         }
         let present = self.present_patch();
         match add_transition(
-            self.barriers.entry(command).or_default(),
+            self.barriers.entry(command),
             &self.resources,
             token,
             transition,
@@ -2029,9 +2051,9 @@ impl ExecutionBackend for VulkanGraphBackend {
             Err(_) => vk::Result::ERROR_UNKNOWN.as_raw(),
         };
         if self.submissions.len() >= SUBMISSION_CAPTURE_LIMIT {
-            self.submissions.remove(0);
+            self.submissions.pop_front();
         }
-        self.submissions.push(capture);
+        self.submissions.push_back(capture);
         result
     }
 }

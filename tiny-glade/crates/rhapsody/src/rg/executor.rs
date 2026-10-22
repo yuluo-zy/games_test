@@ -2051,6 +2051,7 @@ impl ExecutionChain {
 
 /// Owned full-content PGO identity. Cloning a declaration's name shares the
 /// existing allocation, and names disappear with the last plan or observation.
+type TokenHashBuilder = std::hash::BuildHasherDefault<crate::rg::token_map::TokenHasher>;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PassPgoNameId(crate::resource::ResourceName);
 impl PassPgoNameId {
@@ -2092,8 +2093,10 @@ impl PassPgoDuration {
 /// include every recorded invocation. Reset releases names while reusing backing.
 #[derive(Clone, Debug, Default)]
 pub struct PassPgoStats {
-    counts: std::collections::HashMap<PassPgoNameId, u64>,
-    durations: std::collections::HashMap<PassPgoNameId, u64>,
+    // An interned name hashes as one precomputed u64; SipHash on top of that
+    // was pure overhead on every pass of every frame.
+    counts: std::collections::HashMap<PassPgoNameId, u64, TokenHashBuilder>,
+    durations: std::collections::HashMap<PassPgoNameId, u64, TokenHashBuilder>,
     total_ns: u64,
     max_ns: u64,
 }

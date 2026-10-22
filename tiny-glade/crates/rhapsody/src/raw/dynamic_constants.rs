@@ -216,6 +216,25 @@ impl<B: ConstantPage> PageRing<B> {
             && page.buffer.use_cell().is_reached(&self.completed)
             && allocation_offset(page.cursor, size, alignment, device_alignment)?.is_some())
     }
+    /// Place the chunk in the current page when that page is still idle and has
+    /// room: one check, no allocation of a page.
+    fn try_append(
+        &mut self,
+        size: u64,
+        alignment: Option<u64>,
+        device_alignment: u64,
+    ) -> Result<Option<(Arc<B>, u64)>> {
+        if !self.can_append(size, alignment, device_alignment)? {
+            return Ok(None);
+        }
+        let index = self.current.expect("appendable current page");
+        let offset = allocation_offset(self.pages[index].cursor, size, alignment, device_alignment)?
+            .expect("checked placement");
+        self.pages[index].cursor = offset + size;
+        self.pages[index].allocations += 1;
+        self.stats.allocations += 1;
+        Ok(Some((self.pages[index].buffer.clone(), offset)))
+    }
     fn allocate(
         &mut self,
         size: u64,
@@ -224,15 +243,8 @@ impl<B: ConstantPage> PageRing<B> {
         create: impl FnOnce() -> Result<B>,
     ) -> Result<(Arc<B>, u64)> {
         allocation_offset(0, size, alignment, device_alignment)?;
-        if self.can_append(size, alignment, device_alignment)? {
-            let index = self.current.expect("appendable current page");
-            let offset =
-                allocation_offset(self.pages[index].cursor, size, alignment, device_alignment)?
-                    .expect("checked placement");
-            self.pages[index].cursor = offset + size;
-            self.pages[index].allocations += 1;
-            self.stats.allocations += 1;
-            return Ok((self.pages[index].buffer.clone(), offset));
+        if let Some(appended) = self.try_append(size, alignment, device_alignment)? {
+            return Ok(appended);
         }
         for (index, page) in self.pages.iter_mut().enumerate() {
             let cell = page.buffer.use_cell().clone();
@@ -424,13 +436,21 @@ impl DynamicConstants {
         }
         let pressure =
             self.device.memory.stats.budget_action() == crate::device::BudgetAction::EvictCache;
-        if pressure
-            || !self
-                .ring
-                .can_append(size, alignment, self.device_alignment)?
+        // Steady state: the page is idle and has room. Appending touches no
+        // statistics lock and trims nothing (the page was marked live when it
+        // became current, and trimming only reacts to pages going idle).
+        if !pressure
+            && let Some((buffer, offset)) =
+                self.ring
+                    .try_append(size, alignment, self.device_alignment)?
         {
-            self.refresh()?;
+            return Ok(DynamicConstantsChunk {
+                buffer,
+                offset,
+                size,
+            });
         }
+        self.refresh()?;
         let device = self.device.clone();
         let device_alignment = self.device_alignment;
         let sharing = self.sharing;

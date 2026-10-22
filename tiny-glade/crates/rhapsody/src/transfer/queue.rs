@@ -621,6 +621,11 @@ impl<T> UploadQueue<T> {
     pub fn defer(&mut self) {
         self.counters.deferred_pumps += 1;
     }
+    /// Number of queued jobs. `stats()` also sums every segment's bytes, which
+    /// callers that only ask "is anything queued?" do not need.
+    pub fn queued_jobs(&self) -> usize {
+        self.jobs.len()
+    }
     pub fn stats(&self) -> UploadQueueStats {
         UploadQueueStats {
             queued_jobs: self.jobs.len(),

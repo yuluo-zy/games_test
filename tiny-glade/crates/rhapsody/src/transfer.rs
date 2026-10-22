@@ -415,7 +415,7 @@ impl TransferManager {
         if self.device.memory.stats.budget_action() != crate::device::BudgetAction::None {
             self.queued.trim_idle();
         }
-        if max_submits != 0 && self.queued.stats().queued_jobs != 0 {
+        if max_submits != 0 && self.queued.queued_jobs() != 0 {
             // Poll first: device-level pressure processing can evict idle native
             // allocator blocks before deciding to defer low-priority payloads.
             if let Err(error) = self.device.poll() {
@@ -462,7 +462,7 @@ impl TransferManager {
                 }
             }
         }
-        result.remaining_jobs = self.queued.stats().queued_jobs;
+        result.remaining_jobs = self.queued.queued_jobs();
         Ok(result)
     }
     /// Immediate compatibility entry. Accepted queued writes to the same target
@@ -541,7 +541,7 @@ impl TransferManager {
                 },
             )?;
         }
-        if self.queued.stats().queued_jobs != 0 {
+        if self.queued.queued_jobs() != 0 {
             return Err(crate::Error::Timeout);
         }
         let chunk =
