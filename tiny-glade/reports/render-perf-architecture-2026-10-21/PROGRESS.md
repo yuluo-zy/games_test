@@ -60,6 +60,19 @@
 - `hang_watchdog::tick` 在两种模式下都没有被调用(原有问题)。
 - 若 `plan_cache` 关闭或计划被淘汰,计划地址每帧变化,PGO 槽永远为空,主图不会并行录制;"命中时指针稳定"没有被断言测试覆盖。
 
+## B 层进展(2026-10-22)
+
+| 项 | 状态 | 实测 / 说明 |
+|---|---|---|
+| B0 基准 | 完成(bind 部分) | `bind.rs` 内 ignored 测试 `bind_scaling_baseline`(release,合成 U=3040 / S=2679):改动前 bind 中位数 **75.3 ms** |
+| B1(a) shadow 按资源索引 | 完成 `37e962110` | 同基准降到 **1.24 ms**;`synthetic_binding_output_is_stable` 用单/双队列三组合成图的输出指纹证明与旧实现逐字节一致 |
+| B2 提交不重放 | **部分**:只做 `prepare_submission_states` 的补丁分桶 | 原来每个物理 cell 对全部补丁做两遍 `Arc::ptr_eq`(O(M×P)),改为一次分桶 + 二分取段;分桶缓冲用线程本地复用,`gpu_frame_allocations` 的 `framework_execute` 仍为 0 次分配(首版用局部 Vec 曾变成 5 次,已修)。**未做**:规划器直出最终 cell(`FinalCell`/`publish_final`)、Create 资源不持表、`SubmissionCapture` 策略、删第二次 `validate_submission_commands`。这些改动让状态机"双实现"变"单实现+校验器",风险高,等真机数据证明 submit 仍是瓶颈再做 |
+| B1(b) 模板缓存、B3、B4、B5、B6、B7 | 未开始 | |
+
+B2 的收益**没有单独量化**(没有提交路径的规模化基准,真实命令缓冲构造成本高)。分桶只消除了确定的二次复杂度,不要把它当作已验证的帧时间收益。
+
+基线上已存在的失败(与 B 层无关):`host_buffer_ranges::metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_point`(录制阶段 `retain_opaque_buffer_range` 未返回 OutOfHostMemory);`native_ranges` 2 项与 `multi_queue_graph` 5 项(lavapipe 无独立计算队列)。
+
 ## 本机构建环境(Linux,无 sudo)
 
 - 依赖镜像:`cargo ... --config /tmp/ustc.toml --locked`(去掉 `--offline`,上游新增了 `lcms2`)。

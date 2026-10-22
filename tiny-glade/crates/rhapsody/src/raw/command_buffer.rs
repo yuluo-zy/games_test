@@ -579,6 +579,45 @@ impl Drop for PreparedResourceStates {
         }
     }
 }
+/// Reusable index scratch for `prepare_submission_states`; keeps capacity per
+/// thread so steady-state submission does not allocate.
+#[derive(Default)]
+struct BucketScratch {
+    slot_of: std::collections::HashMap<usize, usize>,
+    /// (cell slot, is_opaque_use, command index, entry index)
+    recorded: Vec<(usize, bool, usize, usize)>,
+}
+thread_local! {
+    static BUCKET_SCRATCH: std::cell::Cell<Option<BucketScratch>> =
+        const { std::cell::Cell::new(None) };
+}
+impl BucketScratch {
+    fn take() -> BucketGuard {
+        let mut scratch = BUCKET_SCRATCH.with(|slot| slot.take()).unwrap_or_default();
+        scratch.slot_of.clear();
+        scratch.recorded.clear();
+        BucketGuard(Some(scratch))
+    }
+}
+struct BucketGuard(Option<BucketScratch>);
+impl std::ops::Deref for BucketGuard {
+    type Target = BucketScratch;
+    fn deref(&self) -> &BucketScratch {
+        self.0.as_ref().unwrap()
+    }
+}
+impl std::ops::DerefMut for BucketGuard {
+    fn deref_mut(&mut self) -> &mut BucketScratch {
+        self.0.as_mut().unwrap()
+    }
+}
+impl Drop for BucketGuard {
+    fn drop(&mut self) {
+        if let Some(scratch) = self.0.take() {
+            BUCKET_SCRATCH.with(|slot| slot.set(Some(scratch)));
+        }
+    }
+}
 /// # Safety
 /// The submission gates for all `uses` must remain held until this guard is
 /// published or dropped. `commands` are in actual native execution order.
@@ -637,27 +676,40 @@ pub(crate) unsafe fn prepare_submission_states(
         return Ok(prepared);
     };
     let mut scratch = first.pool.cpu_state_patches.lock();
+    // One pass buckets every recorded patch by physical cell (command order,
+    // explicit before opaque inside a command), instead of re-filtering all
+    // patches once per cell.
+    let mut bucket = BucketScratch::take();
+    let BucketScratch {
+        slot_of,
+        recorded,
+    } = &mut *bucket;
+    for (index, cell) in prepared.cells.iter().enumerate() {
+        assert!(
+            slot_of.insert(Arc::as_ptr(cell) as usize, index).is_none(),
+            "submission uses must name each physical cell once"
+        );
+    }
+    for (command_index, command) in commands.iter().enumerate() {
+        for (entry_index, entry) in command.state_patches.as_slice().iter().enumerate() {
+            if let Some(&slot) = slot_of.get(&(Arc::as_ptr(&entry.cell) as usize)) {
+                recorded.push((slot, false, command_index, entry_index));
+            }
+        }
+        for (entry_index, entry) in command.range_uses.as_slice().iter().enumerate() {
+            if let Some(&slot) = slot_of.get(&(Arc::as_ptr(&entry.cell) as usize)) {
+                recorded.push((slot, true, command_index, entry_index));
+            }
+        }
+    }
+    recorded.sort_by_key(|item| item.0);
     for index in 0..prepared.cells.len() {
         let cell = prepared.cells[index].clone();
         let domain = cell.ownership_range().expect("filtered native domain");
-        let count = commands.iter().try_fold(0usize, |total, command| {
-            let explicit = command
-                .state_patches
-                .as_slice()
-                .iter()
-                .filter(|entry| Arc::ptr_eq(&entry.cell, &cell))
-                .count();
-            let opaque = command
-                .range_uses
-                .as_slice()
-                .iter()
-                .filter(|entry| Arc::ptr_eq(&entry.cell, &cell))
-                .count();
-            total
-                .checked_add(explicit)
-                .and_then(|n| n.checked_add(opaque))
-                .ok_or_else(|| crate::Error::invalid_usage("native state patch count overflows"))
-        })?;
+        let start = recorded.partition_point(|item| item.0 < index);
+        let end = recorded.partition_point(|item| item.0 <= index);
+        let own = &recorded[start..end];
+        let count = own.len();
         let has_upload = commands.iter().any(|command| {
             command
                 .upload_reads
@@ -668,11 +720,15 @@ pub(crate) unsafe fn prepare_submission_states(
         let fallback = count == 0 && !has_upload;
         scratch.with_entries(|patches|->crate::Result<()> {
             patches.reserve(count.max(usize::from(fallback)))?;
-            for command in commands {
-                for entry in command.state_patches.as_slice().iter().filter(|entry|Arc::ptr_eq(&entry.cell,&cell)) {patches.add(entry.patch)?;}
-                for entry in command.range_uses.as_slice().iter().filter(|entry|Arc::ptr_eq(&entry.cell,&cell)) {
-                    let range=match entry.range {OpaqueUseRange::Whole=>domain,OpaqueUseRange::Bytes {offset,size}=>crate::resource::OwnershipRange::Buffer {offset,size}};
-                    patches.add(StatePatch {range,expected_revision:u64::MAX,action:PatchAction::Unknown {queue,family}})?;
+            for &(_, opaque, command_index, entry_index) in own {
+                if !opaque {
+                    patches.add(commands[command_index].state_patches.as_slice()[entry_index].patch)?;
+                } else {
+                    let entry = &commands[command_index].range_uses.as_slice()[entry_index];
+                    {
+                        let range=match entry.range {OpaqueUseRange::Whole=>domain,OpaqueUseRange::Bytes {offset,size}=>crate::resource::OwnershipRange::Buffer {offset,size}};
+                        patches.add(StatePatch {range,expected_revision:u64::MAX,action:PatchAction::Unknown {queue,family}})?;
+                    }
                 }
             }
             if fallback {patches.add(StatePatch {range:domain,expected_revision:u64::MAX,action:PatchAction::Unknown {queue,family}})?;}
