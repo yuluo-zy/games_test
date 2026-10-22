@@ -420,7 +420,15 @@ impl DynamicConstants {
     }
     pub fn trim_idle(&mut self, keep_pages: usize) -> Result<usize> {
         self.refresh()?;
-        Ok(self.ring.trim_idle(keep_pages, false))
+        let removed = self.ring.trim_idle(keep_pages, false);
+        // `refresh` classifies every idle page as cached, the current one
+        // included. Appending to it later skips `mark_live`, so restore its
+        // live classification here.
+        if let Some(index) = self.ring.current {
+            let id = self.ring.pages[index].buffer.allocation_id();
+            self.device.memory.stats.mark_live(id, &self.ring.completed);
+        }
+        Ok(removed)
     }
     pub fn allocate(&mut self, size: u64) -> Result<DynamicConstantsChunk> {
         self.allocate_aligned(size, None)

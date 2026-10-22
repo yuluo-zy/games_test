@@ -1528,6 +1528,13 @@ impl PassHost for RasterPassHost {
             if let Some((cached, reads)) = shared.table_reads.lock().as_ref()
                 && *cached == graph_id
             {
+                // Frame globals are set once per frame, before the graph is
+                // built, so every pass of a graph sees the same table.
+                debug_assert_eq!(
+                    reads.len(),
+                    first.entry.bindings.frame_sampled_table().len(),
+                    "texture table changed within one graph"
+                );
                 return Ok(reads.clone());
             }
             let declarer = &self

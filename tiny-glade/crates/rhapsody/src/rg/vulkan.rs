@@ -3120,7 +3120,6 @@ impl VulkanGraphSession {
                 self.backend.device.generation().value(),
             )?;
             self.backend.validate_graph(&declaration)?;
-            self.backend.declaration_prevalidated = true;
             self.pending.reserve_frame()?;
             if self.receipt_storage.is_none() {
                 self.receipt_storage = Some(super::receipt_storage::ReceiptStorage::new(
@@ -3129,6 +3128,10 @@ impl VulkanGraphSession {
                 )?);
             }
             let mut access = self.backend.accesses.clone();
+            // Set only now: nothing between here and the reset below can return
+            // early, so the flag cannot outlive this graph and skip validation
+            // of a later one.
+            self.backend.declaration_prevalidated = true;
             let prepared = self
                 .chain
                 .compile_graph(

@@ -261,6 +261,23 @@ impl SynchronizationPlanner {
     pub fn known_cpu_bytes(&self) -> usize {
         self.owner_bytes + self.bound.bytes() + self.shadow.bytes()
     }
+    /// Approximate bytes held by cached templates (at most `MAX_TEMPLATES`),
+    /// kept out of `known_cpu_bytes` because they are reusable cache, not
+    /// per-frame working storage, but reported so the bound is visible.
+    pub fn template_cpu_bytes(&self) -> usize {
+        self.templates
+            .iter()
+            .map(|template| {
+                template.key.len() * size_of::<InitKey>()
+                    + template.aliases.len() * size_of::<AliasEdge>()
+                    + template.patches.len() * size_of::<BoundPatch>()
+                    + template.bases.len() * size_of::<(u32, u64)>()
+                    + template.shared.transitions.len() * size_of::<BoundTransition>()
+                    + template.shared.batches.len() * size_of::<BoundBatch>()
+                    + template.shared.order.len() * size_of::<usize>()
+            })
+            .sum()
+    }
     pub fn begin(&mut self) {
         self.bound.initial.values.clear();
         self.bound.aliases.values.clear();
@@ -278,6 +295,15 @@ impl SynchronizationPlanner {
             entry.alias_previous.clear();
         }
     }
+    /// The per-resource index is sized by resource number before `bind`
+    /// validates it against the program; refuse numbers no graph can have
+    /// instead of allocating a table for them.
+    fn check_resource(&self, resource: u32) -> Result<()> {
+        if resource as usize >= self.config.max_cells {
+            return Err(Error::invalid_usage("native initial resource is absent"));
+        }
+        Ok(())
+    }
     fn resource_shadow(&mut self, resource: u32) -> &mut ResourceShadow {
         let index = resource as usize;
         if self.by_resource.len() <= index {
@@ -286,6 +312,7 @@ impl SynchronizationPlanner {
         &mut self.by_resource[index]
     }
     pub fn add_initial(&mut self, resource: u32, cells: &[RangeCell]) -> Result<()> {
+        self.check_resource(resource)?;
         for &cell in cells {
             let slot = self.bound.initial.values.len() as u32;
             self.push_initial(InitialState { resource, cell })?;
@@ -299,6 +326,8 @@ impl SynchronizationPlanner {
         if previous == next {
             return Err(Error::invalid_usage("a resource cannot alias itself"));
         }
+        self.check_resource(previous)?;
+        self.check_resource(next)?;
         self.push_alias(AliasEdge { previous, next })?;
         self.resource_shadow(next).alias_flags |= 1;
         self.resource_shadow(next).alias_previous.push(previous);
@@ -501,7 +530,9 @@ impl SynchronizationPlanner {
                 .state
                 .revision
                 .checked_add(delta)
-                .filter(|revision| *revision != u64::MAX);
+                // The patch's own increment must also stay below the reserved
+                // maximum, exactly as `ShadowCell::increment` requires.
+                .filter(|revision| revision.checked_add(1).is_some_and(|next| next != u64::MAX));
             let Some(revision) = revision else {
                 rebased = false;
                 break;
@@ -1881,6 +1912,50 @@ mod tests {
             samples[samples.len() / 2],
             samples[samples.len() * 95 / 100]
         );
+    }
+    /// A resource number beyond any possible graph is refused up front rather
+    /// than sizing the per-resource index for it.
+    #[test]
+    fn absurd_resource_numbers_are_rejected_without_allocating_an_index() {
+        let mut planner =
+            SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default())
+                .unwrap();
+        let cell = RangeCell {
+            range: buffer(0, 16),
+            state: NativeState::default(),
+        };
+        assert!(planner.add_initial(u32::MAX, &[cell]).is_err());
+        assert!(planner.add_alias(0, u32::MAX).is_err());
+        assert!(planner.by_resource.is_empty());
+    }
+    /// A template must not be applied when the patch's own revision increment
+    /// would exhaust the counter; a full bind rejects that frame.
+    #[test]
+    fn rebase_that_would_exhaust_a_revision_falls_back_to_the_full_bind_error() {
+        let one = [queue(0, 0)];
+        let (program, _) = synthetic(4, 6, 3, &one);
+        let mut planner =
+            SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default())
+                .unwrap();
+        bind_with(&mut planner, &program, &imported(1, 1, true), true);
+        bind_with(&mut planner, &program, &imported(2, 2, true), true);
+        assert_eq!(planner.template_hits(), 1);
+        let hits = planner.template_hits();
+        planner.begin();
+        for resource in 0..program.resources.len() as u32 {
+            planner
+                .add_initial(resource, &imported(u64::MAX - 2, 3, true))
+                .unwrap();
+        }
+        let pin: Arc<dyn std::any::Any + Send + Sync> = Arc::new(());
+        let result = planner.bind_cached(
+            &program,
+            &program as *const _ as usize,
+            pin,
+            |family| Ok(queue(family, family)),
+        );
+        assert!(result.is_err(), "exhausted revision must be an error");
+        assert_eq!(planner.template_hits(), hits, "no template served it");
     }
     const EXPECTED_FINGERPRINTS: [u64; 3] = [
         15114495150305685386,

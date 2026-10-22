@@ -144,7 +144,9 @@ pub(crate) fn layout<'a>(plans: impl Iterator<Item = &'a TexturePlan>) -> Result
     Ok((bases, cursor))
 }
 
-/// Write each region at `base + copy.buffer_offset` (padding stays zero).
+/// Write each region at `base + copy.buffer_offset`. Padding between regions is
+/// not written: when `staging` is mapped memory it keeps whatever it held, and
+/// no copy reads it.
 /// `staging` must be at least `base + plan.total` long.
 pub(crate) fn pack_regions(
     staging: &mut [u8],

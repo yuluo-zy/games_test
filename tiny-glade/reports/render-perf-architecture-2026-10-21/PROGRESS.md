@@ -127,6 +127,24 @@
 
 **测试说明**:rhapsody 全量(含 `RHAPSODY_BIND_SHADOW=1`)失败集与最初提交逐项相同(11 项);tiny-glade 集成测试失败集与改动前逐项相同(32 项,均为既有)。
 
+## 独立复审与修复(2026-10-22)
+
+三路只读复审(同步规划/状态机、rg/raw/transfer、宿主)覆盖 `aee24c5d2..HEAD`。结论:无高严重度缺陷;已修复的问题:
+
+| 来源 | 问题 | 修复 |
+|---|---|---|
+| rg/raw | `declaration_prevalidated` 置位后到 `compile_graph` 之间有两个 `?` 提前返回,标志会泄漏并让下一个 graph 跳过校验 | 置位移到紧挨 `compile_graph` 之前,窗口内无提前返回 |
+| rg/raw | 公开 `trim_idle` 经 `refresh` 把当前常量页标成 Cache,之后 append 快路径不再 `mark_live` | `trim_idle` 之后重新 `mark_live` 当前页 |
+| rg/raw | `pack_regions` 注释仍写"padding 为零" | 改为"padding 未写入,无拷贝读取它" |
+| 同步规划 | 模板 rebase 只检查 `revision+delta`,漏了该 patch 自身的 increment 溢出边界 | 同时要求 `+1` 不到保留最大值;新增测试 |
+| 同步规划 | `resource_shadow` 对未校验的 resource 编号无界扩容(`u32::MAX` 会尝试分配数十 GB) | `add_initial`/`add_alias` 先做上界检查;新增测试 |
+| 同步规划 | 模板内存不可见 | 新增 `template_cpu_bytes()`(上界为 4 个模板) |
+| 宿主 | 纹理表缓存假设同 graph 内表不变 | 命中时 debug 断言表长度一致 |
+
+接受不改:模板钉住旧 plan 的 Arc(最多 4 个,LRU 挤出后释放);单槽 `table_reads`/`frame_constants` 缓存在两个 graph 交错声明时只退化为重新计算;`default = ["mimalloc"]` 让库构建也编译 libmimalloc-sys(需要 C 编译器),macOS/Windows/iOS 需在 CI 各验证一次。
+
+复核后的测试:rhapsody lib 424 通过;全量失败集与最初提交逐项相同(11 项,均为既有);`framework_execute` 仍为 0 次分配;tiny-glade 集成测试失败集与改动前逐项相同。
+
 ## 本机构建环境(Linux,无 sudo)
 
 - 依赖镜像:`cargo ... --config /tmp/ustc.toml --locked`(去掉 `--offline`,上游新增了 `lcms2`)。
