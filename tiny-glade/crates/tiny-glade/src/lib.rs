@@ -10,6 +10,8 @@ pub mod raster_host;
 pub mod render_host;
 pub mod compute_frame;
 pub mod render_bridge;
+pub mod render_thread;
+pub mod render_extract;
 pub mod frame_world;
 pub mod frame_setup;
 pub mod egui_gpu;
