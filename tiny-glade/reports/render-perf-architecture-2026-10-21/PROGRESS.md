@@ -91,6 +91,42 @@
 
 **测试说明(纠正一次误读)**:`cargo test` 不带 `--no-fail-fast` 时,第一个失败的测试文件之后的文件不会运行,单次输出只会显示一行 FAILED。完整失败集用 `--no-fail-fast` 取得:rhapsody 共 11 项,B 层之前(`aee24c5d2`)与现在逐项相同:`multi_queue_graph` 5、`native_ranges` 2(lavapipe 无独立计算队列)、`setup_context` 2、`command_retention::descriptor_owner_row_oom_precedes_native_update_and_preserves_retry`、`host_buffer_ranges::metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_point`。
 
+## 全框架拷贝/零拷贝/常规优化审计(2026-10-22)
+
+三路只读审计(rg 层、raw/device/transfer 层、宿主层)+ 逐项核实后实施。耗时估算来自代码结构推导,真机仍需 `TG_FRAME_TIMING=1` 复测。
+
+| 类别 | 项 | 结果 |
+|---|---|---|
+| declare | 全局纹理表每 raster pass 重复导入 + O(R) 线性去重 | 已改:`FrameImports` 增 (graph,identity) 哈希索引;纹理表读声明按 graph 缓存 |
+| declare | 每 draw 重复导入帧常量缓冲;每 draw 克隆 `VaoSnapshot`;u64 键 SipHash 表;`DrawLists` 每帧新建 | 已改:每 graph 一次;`Arc<VaoSnapshot>`;`IdMap`;跨帧复用 |
+| declare | 分发表线性比字符串、`select_lists` 堆分配、每 uniform 先 `Vec::new`、SSBO 命中仍建 `RenderGraph`、重名标签 O(k²)、compute accesses 克隆 | 已改(country-core 单测 draw_lists 29 / draw_builder 54 / draw_stream 18 通过) |
+| 提交 | `validate_submission_commands` 无人读取的 O(U²) 去重(每次提交两次);`add_use_cell`/owners 线性扫描;`upload_reads` 对每个 cell 扫全部命令 | 已改:删除冗余;指针集合;并入分桶 |
+| 零拷贝 | 缓冲/纹理上传先打包到临时 Vec 再写映射内存;`Payload` 先清零再覆盖 | 已改:`Buffer::write_with_unsynchronized` 直写映射 staging;`Payload::from_slice`;删除 `Scratch` |
+| 零拷贝 | 状态回放拷贝 300–480 字节 cell;模板命中复制 transitions/batches/order | 已改:原地修改(−33%);`Arc<SharedBound>` 共享 |
+| 杂项 | 动态常量 append 路径每次 `mark_live`+`trim_idle`;`barriers` BTreeMap;`submissions` `remove(0)`;PGO/`import_families`/`history_validity` 用 SipHash/BTree;`export_temporal` 深克隆声明;`resource_access::steps` 的 `TempList` | 已改 |
+| 分配器 | 发布二进制用系统分配器 | 已改:`mimalloc`(feature,默认开,仅 bin;库与测试不变) |
+
+**评估后不做(附证据)**
+
+- **F3 补丁链索引**:图路径的补丁在批次末尾才挂到命令上,录制回调期间 `state_patches` 只有 helper 的寥寥几条,审计假设的 P≈1000 不成立。
+- **F5 `coalesce` 预判有序**:实现后在合成基准上无收益(p95 略差),已撤销。
+- **F12 `poll` 缓存**:新增 `Timelines::poll_stats`,真游戏每帧 `poll` ≈ 37 次,真正的驱动查询 ≈ 9 次(已有缓存),估计 < 20 µs/帧。
+- **H9/H10**(`texture_slots`、`frame_setup::begin` 重建):涉及的表只有几十个元素,合计远小于 20 µs,且失效条件有风险。
+- **H7 常量暂存**:`DynamicConstantsBinding.data` 是 country-core `PassHost` 的契约,改成直写映射要动整个 trait 与 DrawBuilder 单测;只做了 uniform 暂存复用。
+- **R2**:`add_recorded` 只是一次 Arc 克隆,下游 `retain` 重复已被指针集挡掉。
+
+**真游戏端到端(debug + llvmpipe,同机顺序运行)**
+
+| 阶段 | A 层末 | 现在 |
+|---|---|---|
+| declare | 143–173 ms | 44–48 ms |
+| record_submit | 934–970 ms | 225–252 ms |
+| compile | ~15 ms | ~12.5–14 ms |
+
+整帧仍被 llvmpipe 软件光栅(约 1.8 s)占主导,2.1–2.4 s 的整帧波动主要来自场景帧不同,不能据此推 FPS。**这是 CPU 侧阶段耗时下降,不是真机帧率。**
+
+**测试说明**:rhapsody 全量(含 `RHAPSODY_BIND_SHADOW=1`)失败集与最初提交逐项相同(11 项);tiny-glade 集成测试失败集与改动前逐项相同(32 项,均为既有)。
+
 ## 本机构建环境(Linux,无 sudo)
 
 - 依赖镜像:`cargo ... --config /tmp/ustc.toml --locked`(去掉 `--offline`,上游新增了 `lcms2`)。
