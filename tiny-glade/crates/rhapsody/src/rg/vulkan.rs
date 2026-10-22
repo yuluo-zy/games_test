@@ -2324,6 +2324,46 @@ impl VulkanGraphSession {
     ) -> crate::Result<super::resource::ResourceHandle> {
         self.import_frame_resource(graph, GpuResource::Image(texture), initial_access, true)
     }
+    /// `Some(result)` when declaration `index` already is this physical resource.
+    fn existing_import(
+        &self,
+        graph: &graph::RenderGraph,
+        index: usize,
+        resource: &GpuResource,
+        owned: bool,
+        sharing: crate::resource::ResourceSharing,
+    ) -> Option<crate::Result<super::resource::ResourceHandle>> {
+        let declaration = graph.declaration.resources.get(index)?;
+        let token = match declaration.source {
+            graph::OriginSource::ImportOwned { token, .. }
+            | graph::OriginSource::ImportUnowned { token, .. } => token,
+            graph::OriginSource::Create => return None,
+        };
+        let matches = match (self.backend.resources.get(&token), resource) {
+            (Some(GpuResource::Buffer(existing)), GpuResource::Buffer(buffer)) => {
+                Arc::ptr_eq(existing, buffer)
+            }
+            (Some(GpuResource::Image(existing)), GpuResource::Image(image)) => {
+                Arc::ptr_eq(existing, image)
+            }
+            _ => false,
+        };
+        if !matches {
+            return None;
+        }
+        Some((|| {
+            if owned != matches!(declaration.source, graph::OriginSource::ImportOwned { .. }) {
+                return Err(crate::Error::invalid_usage(
+                    "frame import ownership differs from its existing declaration",
+                ));
+            }
+            validate_import_descriptor(declaration.descriptor, resource.descriptor())?;
+            if declaration.sharing != sharing {
+                return Err(crate::Error::invalid_usage("frame import sharing mismatch"));
+            }
+            graph.resource_handle(index as u32).map_err(Into::into)
+        })())
+    }
     fn import_frame_resource(
         &mut self,
         graph: &mut graph::RenderGraph,
@@ -2352,34 +2392,22 @@ impl VulkanGraphSession {
         if self.is_poisoned() {
             return Err(crate::Error::DeviceLost);
         }
+        // Fast path: this graph already imported this physical resource through
+        // a frame import (one hash lookup instead of scanning every declaration).
+        if let Some(existing) = self
+            .frame_imports
+            .as_ref()
+            .and_then(|imports| imports.find(graph.graph_id(), identity))
+            && let Some(found) =
+                self.existing_import(graph, existing.raw() as usize, &resource, owned, sharing)
+        {
+            return found;
+        }
         // Other typed hosts may already have imported the same physical resource.
         // A second logical declaration would split its dependency history.
-        for (index, declaration) in graph.declaration.resources.iter().enumerate() {
-            let token = match declaration.source {
-                graph::OriginSource::ImportOwned { token, .. }
-                | graph::OriginSource::ImportUnowned { token, .. } => token,
-                graph::OriginSource::Create => continue,
-            };
-            let matches = match (self.backend.resources.get(&token), &resource) {
-                (Some(GpuResource::Buffer(existing)), GpuResource::Buffer(buffer)) => {
-                    Arc::ptr_eq(existing, buffer)
-                }
-                (Some(GpuResource::Image(existing)), GpuResource::Image(image)) => {
-                    Arc::ptr_eq(existing, image)
-                }
-                _ => false,
-            };
-            if matches {
-                if owned != matches!(declaration.source, graph::OriginSource::ImportOwned { .. }) {
-                    return Err(crate::Error::invalid_usage(
-                        "frame import ownership differs from its existing declaration",
-                    ));
-                }
-                validate_import_descriptor(declaration.descriptor, resource.descriptor())?;
-                if declaration.sharing != sharing {
-                    return Err(crate::Error::invalid_usage("frame import sharing mismatch"));
-                }
-                return graph.resource_handle(index as u32).map_err(Into::into);
+        for index in 0..graph.declaration.resources.len() {
+            if let Some(found) = self.existing_import(graph, index, &resource, owned, sharing) {
+                return found;
             }
         }
         self.collect_frame_imports();

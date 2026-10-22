@@ -36,7 +36,7 @@ impl ImportLease {
         self.marker.clone()
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum PhysicalIdentity {
     Buffer(usize),
     Image(usize),
@@ -52,6 +52,10 @@ struct Entry {
 }
 pub(crate) struct FrameImports {
     entries: TempList<Entry>,
+    /// (graph, physical identity) -> declared handle. `find` used to scan every
+    /// entry of every in-flight graph; a graph imports the same texture table
+    /// once per pass, so that scan ran thousands of times per frame.
+    index: std::collections::HashMap<(GraphId, PhysicalIdentity), (ResourceHandle, Weak<LeaseMarker>)>,
     budget: Arc<AllocatorStats>,
 }
 impl FrameImports {
@@ -61,6 +65,7 @@ impl FrameImports {
         }
         Ok(Self {
             entries: TempList::new(config.max_imports, budget.clone())?,
+            index: Default::default(),
             budget,
         })
     }
@@ -69,10 +74,8 @@ impl FrameImports {
         graph: GraphId,
         identity: PhysicalIdentity,
     ) -> Option<ResourceHandle> {
-        self.entries.as_slice().iter().find_map(|entry| {
-            (entry.graph == graph && entry.identity == identity && entry.marker.strong_count() != 0)
-                .then_some(entry.handle)
-        })
+        let (handle, marker) = self.index.get(&(graph, identity))?;
+        (marker.strong_count() != 0).then_some(*handle)
     }
     pub(crate) fn reserve(&mut self) -> Result<ImportLease> {
         self.entries.reserve(self.entries.as_slice().len() + 1)?;
@@ -108,9 +111,16 @@ impl FrameImports {
             marker: Arc::downgrade(&lease.marker),
             _memory: lease.memory,
         })?;
+        self.index.insert(
+            (handle.graph_id(), identity),
+            (handle, Arc::downgrade(&lease.marker)),
+        );
         Ok(())
     }
     pub(crate) fn collect(&mut self, mut remove: impl FnMut(u64)) {
+        // Drop the index's Weak first: the entry's Weak must be the last one
+        // alive when its CPU credit is returned.
+        self.index.retain(|_, (_, marker)| marker.strong_count() != 0);
         self.entries.retain(|entry| {
             if entry.marker.strong_count() != 0 {
                 return true;

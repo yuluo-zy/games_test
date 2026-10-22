@@ -323,6 +323,10 @@ pub struct RasterShared {
     vao_refresh_timing: Mutex<VaoRefreshTiming>,
     /// Bumped every time the VAO snapshot table is replaced.
     vao_table_revision: std::sync::atomic::AtomicU64,
+    /// The global texture table's (resource, range) reads for the graph being
+    /// declared. Every raster pass of one graph reads the same table, so it is
+    /// imported and range-declared once per graph instead of once per pass.
+    table_reads: Mutex<Option<(rhapsody::rg::GraphId, Arc<[(ResourceHandle, rhapsody::rg::AccessRange)]>)>>,
     /// Open while one synchronous world-graph declaration reuses a single full snapshot.
     vao_scope: Mutex<Option<VaoScopeState>>,
     dynamic: Arc<Mutex<DynamicConstants>>,
@@ -656,6 +660,7 @@ impl RasterShared {
             reflections: Mutex::new(HashMap::new()),
             vao_refresh_timing: Mutex::new(VaoRefreshTiming::default()),
             vao_table_revision: std::sync::atomic::AtomicU64::new(0),
+            table_reads: Mutex::new(None),
             vao_scope: Mutex::new(None),
             assets: Mutex::new(AssetTables::default()),
         }))
@@ -1483,8 +1488,9 @@ impl PassHost for RasterPassHost {
         // The global texture array (set 2/b0) is indexed dynamically by the shader, so every
         // table texture is a potential read of every pass that binds it; the original keeps them
         // all in SHADER_READ_ONLY. Declare each exact view range once per pass.
-        let table_reads = (|| -> rhapsody::Result<Vec<_>> {
+        let table_reads = (|| -> rhapsody::Result<Arc<[(ResourceHandle, rhapsody::rg::AccessRange)]>> {
             let mut reads = Vec::new();
+            // Only a pass that binds the table reads it.
             let Some(first) = prepared.iter().find(|draw| {
                 draw.entry
                     .bindings
@@ -1492,8 +1498,14 @@ impl PassHost for RasterPassHost {
                     .slot(BindingLocation { set: 2, binding: 0 })
                     .is_some()
             }) else {
-                return Ok(reads);
+                return Ok(Arc::from(reads));
             };
+            let graph_id = graph.graph_id();
+            if let Some((cached, reads)) = shared.table_reads.lock().as_ref()
+                && *cached == graph_id
+            {
+                return Ok(reads.clone());
+            }
             let declarer = &self
                 .rg
                 .as_ref()
@@ -1516,6 +1528,8 @@ impl PassHost for RasterPassHost {
                     },
                 ));
             }
+            let reads: Arc<[_]> = Arc::from(reads);
+            *shared.table_reads.lock() = Some((graph_id, reads.clone()));
             Ok(reads)
         })();
         let table_reads = match table_reads {
@@ -1528,7 +1542,7 @@ impl PassHost for RasterPassHost {
             }
         };
         let mut declared = graph.add_pass(name);
-        for (resource, range) in &table_reads {
+        for (resource, range) in table_reads.iter() {
             if let Err(error) = declared.add_resource_access_range(*resource, 0x1d, 0, *range) {
                 declared.side_effect();
                 declared.render_with_result_context(move |_| Err(error.into()));

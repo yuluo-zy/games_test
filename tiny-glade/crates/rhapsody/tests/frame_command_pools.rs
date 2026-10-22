@@ -125,9 +125,10 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
     let point = pending.point;
     drop(pending);
     // CPU validation has ended even though the actual GPU wait is blocked.
-    // Its cached Vec may be returned without proving GPU pool completion.
-    assert!(pool.cpu_scratch_capacity_bytes() > 0);
-    assert_eq!(pool.cpu_scratch_growth_count(), 1);
+    // Submission validation no longer builds a scratch list, so it leaves no
+    // cached CPU storage behind; trimming is still allowed without GPU proof.
+    assert_eq!(pool.cpu_scratch_capacity_bytes(), 0);
+    assert_eq!(pool.cpu_scratch_growth_count(), 0);
     pool.trim_cpu_scratch();
     assert_eq!(pool.cpu_scratch_capacity_bytes(), 0);
     assert_eq!(pool.live_command_count(), 0);
