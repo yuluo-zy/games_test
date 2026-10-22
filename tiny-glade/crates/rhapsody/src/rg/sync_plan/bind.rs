@@ -135,9 +135,21 @@ impl ShadowCell {
 /// bounded owner. GPU completion never extends this CPU lease: commands copy
 /// only their admitted StatePatches and retain the physical raw resources.
 /// An outstanding diagnostic borrow prevents a caller from beginning a frame.
+/// Per-resource view of the flat shadow array, so a use only visits the cells
+/// of its own resource instead of every cell of the frame.
+#[derive(Default)]
+struct ResourceShadow {
+    /// Indices into `shadow.values`, ascending (the order the flat scan used).
+    cells: smallvec::SmallVec<[u32; 4]>,
+    /// bit0: some alias edge has this resource as `next`; bit1: as `previous`.
+    alias_flags: u8,
+    /// Every `previous` of an alias edge whose `next` is this resource.
+    alias_previous: smallvec::SmallVec<[u32; 2]>,
+}
 pub struct SynchronizationPlanner {
     bound: BoundSynchronization,
     shadow: Storage<ShadowCell>,
+    by_resource: Vec<ResourceShadow>,
     budget: Arc<AllocatorStats>,
     config: SynchronizationConfig,
     next_pair: u64,
@@ -168,6 +180,7 @@ impl SynchronizationPlanner {
                 waits: Storage::new(0, &budget)?,
             },
             shadow: Storage::new(0, &budget)?,
+            by_resource: Vec::new(),
             budget,
             config,
             next_pair: 1,
@@ -206,6 +219,18 @@ impl SynchronizationPlanner {
         self.bound.patches.values.clear();
         self.bound.waits.values.clear();
         self.shadow.values.clear();
+        for entry in &mut self.by_resource {
+            entry.cells.clear();
+            entry.alias_flags = 0;
+            entry.alias_previous.clear();
+        }
+    }
+    fn resource_shadow(&mut self, resource: u32) -> &mut ResourceShadow {
+        let index = resource as usize;
+        if self.by_resource.len() <= index {
+            self.by_resource.resize_with(index + 1, Default::default);
+        }
+        &mut self.by_resource[index]
     }
     pub fn add_initial(&mut self, resource: u32, cells: &[RangeCell]) -> Result<()> {
         for &cell in cells {
@@ -220,7 +245,11 @@ impl SynchronizationPlanner {
         if previous == next {
             return Err(Error::invalid_usage("a resource cannot alias itself"));
         }
-        self.push_alias(AliasEdge { previous, next })
+        self.push_alias(AliasEdge { previous, next })?;
+        self.resource_shadow(next).alias_flags |= 1;
+        self.resource_shadow(next).alias_previous.push(previous);
+        self.resource_shadow(previous).alias_flags |= 2;
+        Ok(())
     }
     pub fn bind(
         &mut self,
@@ -369,21 +398,16 @@ impl SynchronizationPlanner {
         let later = |a, b| Self::later(order, a, b);
         let mut writer = current.writer;
         writer.merge(current.readers, later);
-        for edge in self
-            .bound
-            .aliases
-            .values
-            .iter()
-            .filter(|edge| edge.next == current.resource)
-        {
-            for cell in self
-                .shadow
-                .values
-                .iter()
-                .filter(|cell| cell.resource == edge.previous)
-            {
-                writer.merge(cell.writer, later);
-                writer.merge(cell.readers, later);
+        if let Some(entry) = self.by_resource.get(current.resource as usize) {
+            for &previous in &entry.alias_previous {
+                let Some(other) = self.by_resource.get(previous as usize) else {
+                    continue;
+                };
+                for &index in &other.cells {
+                    let cell = &self.shadow.values[index as usize];
+                    writer.merge(cell.writer, later);
+                    writer.merge(cell.readers, later);
+                }
             }
         }
         current.writer = writer;
@@ -408,13 +432,14 @@ impl SynchronizationPlanner {
                 "native use family absent from sharing list",
             ));
         }
-        let before = self.shadow.values.len();
+        let alias_flags = self.resource_shadow(access.resource).alias_flags;
+        // Fragments split off below are appended past `visit`; like the old
+        // flat scan, this use does not revisit them.
+        let visit = self.by_resource[access.resource as usize].cells.len();
         let mut covered = false;
-        for index in 0..before {
+        for slot in 0..visit {
+            let index = self.by_resource[access.resource as usize].cells[slot] as usize;
             let mut current = self.shadow.values[index];
-            if current.resource != access.resource {
-                continue;
-            }
             let Some(overlap) = range_state::intersection(current.range, access.range) else {
                 continue;
             };
@@ -428,12 +453,7 @@ impl SynchronizationPlanner {
             // frame; its set returns it only when idle with the state reset
             // (AliasCache::give_back). Never acquire a stale release for it.
             if current.fresh
-                && self
-                    .bound
-                    .aliases
-                    .values
-                    .iter()
-                    .any(|edge| edge.next == access.resource || edge.previous == access.resource)
+                && alias_flags != 0
                 && (matches!(current.owner, PendingOwner::Released { .. })
                     || !sharing.is_concurrent()
                         && matches!(current.owner, PendingOwner::Owned(owner) if owner != domain.family))
@@ -556,13 +576,7 @@ impl SynchronizationPlanner {
             // first access of an alias member then discards the contents.
             if current.fresh {
                 current.fresh = false;
-                if self
-                    .bound
-                    .aliases
-                    .values
-                    .iter()
-                    .any(|edge| edge.next == access.resource)
-                {
+                if alias_flags & 1 != 0 {
                     current = self.discard_alias_contents(current);
                 }
             }
@@ -835,7 +849,10 @@ impl SynchronizationPlanner {
         if needed > target.values.capacity() {
             target.grow(capacity, total - target.bytes(), config, &self.budget)?;
         }
+        let index = target.values.len() as u32;
+        let resource = value.resource;
         target.values.push(value);
+        self.resource_shadow(resource).cells.push(index);
         Ok(())
     }
 }
@@ -1291,5 +1308,146 @@ mod tests {
         }
         drop(planner);
         assert_eq!(stats.cpu_memory_usage().total(), 0);
+    }
+
+    /// Deterministic synthetic program: `resources` buffers, `passes` passes
+    /// of `per_pass` sub-range uses each, spread over `domains` batches.
+    fn synthetic(
+        resources: u32,
+        passes: usize,
+        per_pass: usize,
+        domains: &[QueueDomain],
+    ) -> (RangeProgram, Vec<RangeCell>) {
+        const SIZE: u64 = 4096;
+        let mut seed = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        let mut uses = Vec::new();
+        let mut program_passes = Vec::new();
+        for pass in 0..passes {
+            let first = uses.len();
+            for _ in 0..per_pass {
+                let resource = (next() % resources as u64) as u32;
+                let offset = (next() % 16) * 256;
+                let size = (1 + next() % 4) * 256;
+                let mut item = usage(buffer(offset, size.min(SIZE - offset)), next() % 3 == 0);
+                item.resource = resource;
+                uses.push(item);
+            }
+            program_passes.push(ProgramPass {
+                pass,
+                uses: first..uses.len(),
+            });
+        }
+        let per_batch = passes.div_ceil(domains.len().max(1)).max(1);
+        let batches = (0..passes.div_ceil(per_batch))
+            .map(|batch| ProgramBatch {
+                domain: domains[batch % domains.len()],
+                passes: batch * per_batch..((batch + 1) * per_batch).min(passes),
+            })
+            .collect();
+        let program = RangeProgram {
+            resources: (0..resources)
+                .map(|_| ResourceDomain {
+                    range: buffer(0, SIZE),
+                    sharing: ResourceSharing::Exclusive,
+                })
+                .collect(),
+            uses,
+            passes: program_passes,
+            batches,
+            ..Default::default()
+        };
+        let initial = vec![
+            RangeCell {
+                range: buffer(0, SIZE),
+                state: NativeState::default(),
+            };
+            1
+        ];
+        (program, initial)
+    }
+    fn bind_synthetic(program: &RangeProgram, initial: &[RangeCell]) -> SynchronizationPlanner {
+        let mut planner =
+            SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default())
+                .unwrap();
+        for resource in 0..program.resources.len() as u32 {
+            planner.add_initial(resource, initial).unwrap();
+        }
+        planner
+            .bind(program, |family| Ok(queue(family, family)))
+            .unwrap();
+        planner
+    }
+    fn fingerprint(bound: &BoundSynchronization) -> u64 {
+        let text = format!(
+            "{:?}|{:?}|{:?}|{:?}|{:?}",
+            bound.execution_order(),
+            bound.transitions(),
+            bound.patches(),
+            bound.waits(),
+            bound.batches()
+        );
+        text.bytes().fold(0xcbf2_9ce4_8422_2325u64, |hash, byte| {
+            (hash ^ byte as u64).wrapping_mul(0x0100_0000_01b3)
+        })
+    }
+    /// The planner output for a fixed synthetic program must not change when
+    /// the lookup structure changes. Values recorded from the scan-everything
+    /// implementation.
+    #[test]
+    fn synthetic_binding_output_is_stable() {
+        let one = [queue(0, 0)];
+        let two = [queue(0, 0), queue(1, 1)];
+        let cases: [(&[QueueDomain], u32, usize, usize); 3] =
+            [(&one, 40, 60, 6), (&two, 24, 48, 5), (&two, 120, 160, 12)];
+        let mut prints = Vec::new();
+        for (domains, resources, passes, per_pass) in cases {
+            let (program, initial) = synthetic(resources, passes, per_pass, domains);
+            let planner = bind_synthetic(&program, &initial);
+            prints.push(fingerprint(planner.bound()));
+        }
+        eprintln!("FINGERPRINTS {prints:?}");
+        assert_eq!(prints, EXPECTED_FINGERPRINTS);
+    }
+    const EXPECTED_FINGERPRINTS: [u64; 3] = [
+        15114495150305685386,
+        7488788626014099824,
+        8713088647009251552,
+    ];
+    /// `cargo test -p rhapsody --release --lib bind_scaling -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn bind_scaling_baseline() {
+        let one = [queue(0, 0)];
+        let (program, initial) = synthetic(200, 160, 19, &one);
+        let mut planner =
+            SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default())
+                .unwrap();
+        let mut samples = Vec::new();
+        for _ in 0..30 {
+            let start = std::time::Instant::now();
+            planner.begin();
+            for resource in 0..program.resources.len() as u32 {
+                planner.add_initial(resource, &initial).unwrap();
+            }
+            planner
+                .bind(&program, |family| Ok(queue(family, family)))
+                .unwrap();
+            samples.push(start.elapsed());
+        }
+        samples.sort();
+        eprintln!(
+            "bind U={} S={} transitions={} median={:?} p95={:?}",
+            program.uses.len(),
+            planner.shadow.values.len(),
+            planner.bound().transitions().len(),
+            samples[samples.len() / 2],
+            samples[samples.len() * 95 / 100]
+        );
     }
 }
