@@ -55,6 +55,7 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
         managed: None,
         owners: &owners,
         errors: &errors,
+        coverage: Default::default(),
     };
     assert!(callbacks[0](context()));
     assert!(!callbacks[0](context()));

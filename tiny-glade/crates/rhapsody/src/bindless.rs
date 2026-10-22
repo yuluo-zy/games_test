@@ -2,7 +2,7 @@
 //! changing a resource allocates a different slot. Its slot returns to the free
 //! list only after every registered GPU use completes. See the Vulkan
 //! [descriptor binding rules](https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html).
-use crate::rg::profiling::{RecordCount, RecordPhase, RecordSpan, RecordTally, record_count};
+use crate::rg::profiling::{RecordCount, RecordPhase, RecordSpan, record_count};
 use crate::{
     Error, Result,
     device::{Device, FeatureSet},
@@ -1150,6 +1150,43 @@ impl BindlessHeap {
             write: false,
         }
     }
+    /// Every declared access of the pass that a shader may read through a
+    /// bindless descriptor: its native scope is a shader memory access and the
+    /// logical resource resolves to a physical one. Stable-sorted by physical
+    /// resource so one lease only visits its own accesses.
+    fn build_coverage(
+        context: &crate::rg::executor::PassContext<'_>,
+        managed: &crate::rg::pass_bindings::ManagedPassResources,
+        pass: &crate::rg::graph::PassDeclaration,
+    ) -> Vec<crate::rg::executor::CoverageEntry> {
+        use crate::rg::executor::CoverageEntry;
+        let semantics = &context.compiled.plan.definition.access_semantics;
+        let mut entries = Vec::with_capacity(pass.accesses.len());
+        for access in &pass.accesses {
+            let Some(native) = semantics.iter().find(|entry| entry.code == access.access_code)
+            else {
+                continue;
+            };
+            if !Self::is_shader_memory_access(native.scope.access) {
+                continue;
+            }
+            if let Ok(buffer) = managed.buffer_for(access.resource_index) {
+                entries.push(CoverageEntry {
+                    resource: buffer.resource() as *const _ as usize,
+                    layout: None,
+                    range: access.range,
+                });
+            } else if let Ok(texture) = managed.texture_for(access.resource_index) {
+                entries.push(CoverageEntry {
+                    resource: texture.resource() as *const _ as usize,
+                    layout: Some(native.layout),
+                    range: access.range,
+                });
+            }
+        }
+        entries.sort_by_key(|entry| entry.resource);
+        entries
+    }
     fn validate_pass_lease(
         context: &crate::rg::executor::PassContext<'_>,
         lease: &BindlessLease,
@@ -1197,42 +1234,20 @@ impl BindlessHeap {
             .passes
             .get(context.pass_index)
             .ok_or_else(|| Error::invalid_usage("bindless pass index is invalid"))?;
-        let semantics = &context.compiled.plan.definition.access_semantics;
-        let coverage = RecordTally::new([
-            RecordCount::CoverageAccesses,
-            RecordCount::CoverageSemantics,
-        ]);
-        let ranges =
-            pass.accesses
-                .iter()
-                .filter(|access| {
-                    coverage.add(0);
-                    let Some(native) = semantics
-                        .iter()
-                        .find(|entry| {
-                            coverage.add(1);
-                            entry.code == access.access_code
-                        })
-                    else {
-                        return false;
-                    };
-                    if !Self::is_shader_memory_access(native.scope.access) {
-                        return false;
-                    }
-                    match &lease.owner {
-                        Owner::Buffer { buffer, .. } => managed
-                            .buffer_for(access.resource_index)
-                            .is_ok_and(|candidate| std::ptr::eq(candidate.resource(), &**buffer)),
-                        Owner::View { view, layout } => {
-                            native.layout == *layout
-                                && managed.texture_for(access.resource_index).is_ok_and(
-                                    |candidate| std::ptr::eq(candidate.resource(), &*view.texture),
-                                )
-                        }
-                        Owner::Sampler(_) => false,
-                    }
-                })
-                .map(|access| access.range);
+        let entries = context.coverage.entries(|| Self::build_coverage(context, managed, pass));
+        // Entries are sorted by resource address; only this resource's accesses matter.
+        let (key, layout) = match &lease.owner {
+            Owner::Buffer { buffer, .. } => (Arc::as_ptr(buffer) as usize, None),
+            Owner::View { view, layout } => (Arc::as_ptr(&view.texture) as usize, Some(*layout)),
+            Owner::Sampler(_) => return Ok(()),
+        };
+        let first = entries.partition_point(|entry| entry.resource < key);
+        record_count(RecordCount::CoverageAccesses, entries.len());
+        let ranges = entries[first..]
+            .iter()
+            .take_while(|entry| entry.resource == key)
+            .filter(|entry| entry.layout == layout)
+            .map(|entry| entry.range);
         if !crate::rg::resource_contracts::covers_iter(ranges, range, descriptor)
             .map_err(|_| Error::invalid_usage("bindless lease range is invalid"))?
         {

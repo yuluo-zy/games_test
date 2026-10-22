@@ -517,6 +517,29 @@ pub struct PassContext<'a> {
     /// 由 recorder 收集并交给同一命令拥有者，callback 返回后仍需保活。
     pub owners: &'a std::cell::RefCell<super::owner_storage::ResourceOwners>,
     pub errors: &'a std::cell::RefCell<Option<crate::Error>>,
+    /// Shader-visible declared accesses of this pass indexed by physical
+    /// resource, built on the first bindless lease check of the callback.
+    pub coverage: PassCoverage,
+}
+
+/// Lazily built per-callback index used to validate bindless leases against the
+/// pass's declared accesses without rescanning every declaration per lease.
+#[derive(Default)]
+pub struct PassCoverage {
+    entries: std::cell::OnceCell<Vec<CoverageEntry>>,
+}
+#[derive(Clone, Copy)]
+pub(crate) struct CoverageEntry {
+    /// Address of the physical `Buffer`/`Texture`, stable while the pass records.
+    pub(crate) resource: usize,
+    /// `None` for buffers; the declared native layout for images.
+    pub(crate) layout: Option<vk::ImageLayout>,
+    pub(crate) range: crate::rg::resource::AccessRange,
+}
+impl PassCoverage {
+    pub(crate) fn entries(&self, build: impl FnOnce() -> Vec<CoverageEntry>) -> &[CoverageEntry] {
+        self.entries.get_or_init(build)
+    }
 }
 impl PassContext<'_> {
     /// Native layout of this exact image range in the current scheduled pass.
@@ -1403,6 +1426,7 @@ impl ExecutionChain {
                                 managed: managed.as_deref(),
                                 owners: &owners,
                                 errors: &errors,
+                                coverage: Default::default(),
                             });
                             if let Some(pair) = gpu {
                                 // SAFETY: the same command and reserved pair remain exclusively owned.
@@ -1921,6 +1945,7 @@ impl ExecutionChain {
                         managed: managed.map(|m| &**m),
                         owners: &owners,
                         errors: &errors,
+                        coverage: Default::default(),
                     });
                     if let Some(pair) = gpu {
                         // SAFETY: the callback has returned on the same exclusive worker command.
