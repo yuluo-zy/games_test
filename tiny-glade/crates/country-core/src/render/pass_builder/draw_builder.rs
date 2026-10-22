@@ -180,6 +180,20 @@ impl<T> NoDropOnlyTake<T> {
 // uniform 值
 // ------------------------------------------------------------------------------------------
 
+thread_local! {
+    static UNIFORM_SCRATCH: std::cell::Cell<Vec<u8>> = const { std::cell::Cell::new(Vec::new()) };
+}
+/// An empty byte vector with warm capacity: every uniform of every draw used to
+/// allocate its own, even when its name matched nothing and the bytes were dropped.
+fn take_uniform_scratch() -> Vec<u8> {
+    let mut bytes = UNIFORM_SCRATCH.with(std::cell::Cell::take);
+    bytes.clear();
+    bytes
+}
+fn give_back_uniform_scratch(bytes: Vec<u8>) {
+    UNIFORM_SCRATCH.with(|slot| slot.set(bytes));
+}
+
 /// 写入动态常量块的值（按小端写出，大小 = 原函数 `movups`/`mov` 的字节数）。
 pub trait UniformValue {
     fn write_bytes(&self, out: &mut Vec<u8>);
@@ -467,18 +481,20 @@ impl<'p> DrawBuilder<'p> {
     /// `[w, h]` 维度 uniform（`write_optional_uniform<_, [u32; 2]>`，名字 = `with_suffix_dims(name)`）。
     fn write_dims(&mut self, name_hash: u64, extent: (u32, u32)) {
         let hash = self.pass.host.with_suffix_dims(name_hash);
-        let mut b = Vec::new();
+        let mut b = take_uniform_scratch();
         [extent.0, extent.1].write_bytes(&mut b);
         self.write_uniform_bytes(hash, &b);
+        give_back_uniform_scratch(b);
     }
 
     // ---------------------------------------------------------------- uniform
 
     /// `optional_uniform<T>`（0x141629a20 / 0x141629b90 / 0x141629d20）。
     pub fn optional_uniform<T: UniformValue>(mut self, name_hash: u64, value: T) -> Self {
-        let mut b = Vec::new();
+        let mut b = take_uniform_scratch();
         value.write_bytes(&mut b);
         self.write_uniform_bytes(name_hash, &b);
+        give_back_uniform_scratch(b);
         self
     }
 

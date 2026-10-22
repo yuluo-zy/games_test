@@ -216,7 +216,20 @@ pub const NO_SHADER_NAME: &str = "Oops! This shader handle doesn't have a named 
 
 /// 按名字查分发表。
 pub fn lookup(name: &str) -> Option<&'static ShaderDispatch> {
-    DISPATCH.iter().find(|d| d.name == name)
+    // Called once per drawable entity per frame; a linear scan compared up to 82
+    // strings each time. The first row of a duplicated name wins, as `find` did.
+    static INDEX: std::sync::OnceLock<std::collections::HashMap<&'static str, &'static ShaderDispatch>> =
+        std::sync::OnceLock::new();
+    INDEX
+        .get_or_init(|| {
+            let mut index = std::collections::HashMap::with_capacity(DISPATCH.len());
+            for row in DISPATCH.iter() {
+                index.entry(row.name).or_insert(row);
+            }
+            index
+        })
+        .get(name)
+        .copied()
 }
 
 /// 一个实体的 pass 标记（`Option<&C>` 查询项的存在性）。
@@ -231,6 +244,32 @@ pub struct PassFlags {
 
 /// 目标列表与模板参考值（O：`0x1409bc717..0x1409bcd14` + `0x1409bc7fd` 跳转表）。
 pub fn select_lists(d: &ShaderDispatch, f: &PassFlags) -> (Vec<usize>, Option<u8>) {
+    let (targets, stencil) = select_targets(d, f);
+    (targets.as_slice().to_vec(), stencil)
+}
+
+/// At most three target lists (main, shadow, occlusion-culled variant), without
+/// a heap allocation per entity.
+#[derive(Clone, Copy)]
+pub struct Targets {
+    items: [usize; 3],
+    len: usize,
+}
+impl Targets {
+    fn one(index: usize) -> Self {
+        Self { items: [index, 0, 0], len: 1 }
+    }
+    fn push(&mut self, index: usize) {
+        self.items[self.len] = index;
+        self.len += 1;
+    }
+    pub fn as_slice(&self) -> &[usize] {
+        &self.items[..self.len]
+    }
+}
+
+/// [`select_lists`] without allocating.
+pub fn select_targets(d: &ShaderDispatch, f: &PassFlags) -> (Targets, Option<u8>) {
     let v = d.variant;
     let stencil = match d.kind {
         PassKind::NoMainPass | PassKind::VelocityOnly => None,
@@ -239,15 +278,15 @@ pub fn select_lists(d: &ShaderDispatch, f: &PassFlags) -> (Vec<usize>, Option<u8
         PassKind::LateForward => Some(4),
     };
     if let Some(n) = f.designated {
-        return (vec![n as usize], stencil);
+        return (Targets::one(n as usize), stencil);
     }
     if f.ui {
-        return (vec![list::UI], stencil);
+        return (Targets::one(list::UI), stencil);
     }
     if f.wireframe {
-        return (vec![list::WIREFRAME], stencil);
+        return (Targets::one(list::WIREFRAME), stencil);
     }
-    let mut lists = Vec::with_capacity(3);
+    let mut lists = Targets { items: [0; 3], len: 0 };
     let main = match d.kind {
         PassKind::NoMainPass => panic!("{}", NO_MATERIAL_ID),
         PassKind::Opaque => match v {
@@ -327,7 +366,7 @@ pub fn draw_transform(t: &Transform) -> DrawTransform {
 /// 逐行入列（`0x1409bb2f5..0x1409bc9ea` 的循环体）。`name` = 该行着色器的 `debug_raster_get_name`。
 pub fn push_row(lists: &mut DrawLists, row: &DrawRow, name: &'static str) {
     let d = lookup(name).unwrap_or_else(|| panic!("{name} doesn't have a draw function"));
-    let (targets, stencil_ref) = select_lists(d, &row.flags);
+    let (targets, stencil_ref) = select_targets(d, &row.flags);
     let item = DrawItem {
         params: EntityDrawParams {
             topology: row.topology,
@@ -341,7 +380,7 @@ pub fn push_row(lists: &mut DrawLists, row: &DrawRow, name: &'static str) {
         stencil_ref,
     };
     let func = d.func.func();
-    for idx in targets {
+    for &idx in targets.as_slice() {
         // O：`cmp rax, 0x14; ja panic_bounds_check`。
         lists.list_mut(idx).push((item, func));
     }

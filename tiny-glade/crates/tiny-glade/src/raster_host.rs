@@ -916,12 +916,23 @@ impl PassHost for RasterPassHost {
             };
             leases.get(&hash)?.clone()
         };
-        let mut graph = self
-            .resource_graph_factory
-            .as_ref()
-            .expect("real raster SSBO lookup requires the enclosing frame resource graph")(
-        );
-        let imported = lease.get_rg_buffer(&mut graph, expected_type);
+        // A lease already imported into this frame's graph needs no graph at
+        // all; building a RenderGraph (backend box, Rc clones, two locks) per
+        // lookup was pure overhead on the cache-hit path.
+        let imported = match lease.rg_handle() {
+            Some(imported) => {
+                assert_eq!(lease.canonical_type_name, expected_type);
+                imported
+            }
+            None => {
+                let mut graph = self
+                    .resource_graph_factory
+                    .as_ref()
+                    .expect("real raster SSBO lookup requires the enclosing frame resource graph")(
+                );
+                lease.get_rg_buffer(&mut graph, expected_type)
+            }
+        };
         assert_eq!(
             imported.generation,
             self.graph.borrow().graph_id().raw(),
