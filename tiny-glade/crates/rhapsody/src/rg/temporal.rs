@@ -591,7 +591,12 @@ impl TemporalRenderGraphState {
         // creation; preserve that actual producer independently of history.
         // Replay other invalid members as logical Create resources while
         // preserving their physical imports.
-        let mut logical = graph.declaration.clone();
+        // Only resource origins differ in the replayed declaration, so rewrite
+        // them in place and restore them afterwards instead of deep-cloning every
+        // pass (and its access list) of the graph on each frame.
+        let mut overridden: smallvec::SmallVec<[(usize, super::graph::OriginSource); 8]> =
+            smallvec::SmallVec::new();
+        let mut checked = Ok(());
         for key in &self.frame_requested {
             let record = &self.resources[key];
             let handle = match record.state {
@@ -599,17 +604,31 @@ impl TemporalRenderGraphState {
                 | TemporalRecordState::RawBuffer(handle) => handle,
                 TemporalRecordState::Exported => self.frame_exports[key],
             };
-            graph.check_handle(handle).map_err(TemporalError::Backend)?;
+            if let Err(error) = graph.check_handle(handle) {
+                checked = Err(TemporalError::Backend(error));
+                break;
+            }
             if record.history_invalid && !record.allocation_contents_defined {
-                logical.resources[handle.raw() as usize].source =
-                    super::graph::OriginSource::Create;
+                let index = handle.raw() as usize;
+                let original = std::mem::replace(
+                    &mut graph.declaration.resources[index].source,
+                    super::graph::OriginSource::Create,
+                );
+                overridden.push((index, original));
             }
         }
-        let initialized = super::resource_contracts::initialized_resources(
-            &logical,
-            crate::raw::access_table::is_write,
-        )
-        .map_err(TemporalError::Backend)?;
+        let initialized = checked.and_then(|()| {
+            super::resource_contracts::initialized_resources(
+                &graph.declaration,
+                crate::raw::access_table::is_write,
+            )
+            .map_err(TemporalError::Backend)
+        });
+        // Restore in reverse so a resource named twice ends with its true origin.
+        for (index, original) in overridden.into_iter().rev() {
+            graph.declaration.resources[index].source = original;
+        }
+        let initialized = initialized?;
         for (key, record) in &mut self.resources {
             let handle = match record.state {
                 TemporalRecordState::RawTexture(h) | TemporalRecordState::RawBuffer(h) => h,

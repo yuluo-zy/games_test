@@ -1309,6 +1309,12 @@ impl GameRenderHostFactory for ProductionRenderer {
                 "frame_counters gameplay_n={} upload_wait_n={} upload_wait_ms={:.3} upload_wait_bytes={} upload_capacity_waits={} prewarm_calls={} prewarm_tickets={} prewarm_ms={:.3}",
                 t.frame, c.upload_wait_calls, c.upload_wait_ns as f64 / 1_000_000.0, c.upload_wait_bytes, c.upload_capacity_waits,
                 c.prewarm_calls, c.prewarm_tickets, c.prewarm_ns as f64 / 1_000_000.0);
+            // Completion polls since the previous logged frame: how often the
+            // frame asks the driver about GPU progress.
+            let (polls, queries) = self.device.timeline_poll_stats();
+            log::info!(target: "tiny_glade::frame_timing",
+                "timeline_polls gameplay_n={} poll_calls_total={} driver_queries_total={}",
+                t.frame, polls, queries);
             // Compare only the exact App's RasterShared, after adoption. Never
             // subtract counters from another App's same-numbered VAO table.
             let raster = self.bridge.raster_resources();

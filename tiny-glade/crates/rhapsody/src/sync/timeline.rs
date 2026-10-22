@@ -106,6 +106,9 @@ pub struct Timelines<A> {
     device_lost: AtomicBool,
     /// Lock wait statistics cost two clock reads per queue lock; opt-in only.
     lock_statistics: AtomicBool,
+    /// `poll` calls and the driver queries they issued (diagnostics; Relaxed).
+    poll_calls: AtomicU64,
+    driver_queries: AtomicU64,
 }
 
 impl<A: TimelineApi> Timelines<A> {
@@ -133,6 +136,8 @@ impl<A: TimelineApi> Timelines<A> {
                 .collect(),
             device_lost: AtomicBool::new(false),
             lock_statistics: AtomicBool::new(false),
+            poll_calls: AtomicU64::new(0),
+            driver_queries: AtomicU64::new(0),
         })
     }
 
@@ -269,6 +274,13 @@ impl<A: TimelineApi> Timelines<A> {
         }
         completed
     }
+    /// `(poll calls, driver queries)` since creation.
+    pub fn poll_stats(&self) -> (u64, u64) {
+        (
+            self.poll_calls.load(Ordering::Relaxed),
+            self.driver_queries.load(Ordering::Relaxed),
+        )
+    }
     /// Query the device once and update the cached snapshot; same as [`Self::poll`].
     pub fn refresh(&self) -> Result<CompletedValues> {
         self.poll()
@@ -277,6 +289,7 @@ impl<A: TimelineApi> Timelines<A> {
     /// 非阻塞查询各队列完成值。只对仍有未完成提交的队列发起设备查询。
     pub fn poll(&self) -> Result<CompletedValues> {
         self.check_alive()?;
+        self.poll_calls.fetch_add(1, Ordering::Relaxed);
         let mut completed = CompletedValues::default();
         for (index, timeline) in self.queues.iter().enumerate() {
             let queue = QueueId::new(index).expect("队列数已在构造时限制");
@@ -284,6 +297,7 @@ impl<A: TimelineApi> Timelines<A> {
             let value = if cached >= timeline.submitted.load(Ordering::Acquire) {
                 cached
             } else {
+                self.driver_queries.fetch_add(1, Ordering::Relaxed);
                 let value = self.observe(self.api.counter_value(timeline.semaphore))?;
                 timeline.completed.fetch_max(value, Ordering::AcqRel);
                 value.max(cached)

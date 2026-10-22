@@ -44,6 +44,12 @@ impl Device {
         Ok(completed)
     }
 
+    /// `(poll calls, driver queries)` issued so far; diagnostics for how often
+    /// callers ask the driver about completion.
+    pub fn timeline_poll_stats(&self) -> (u64, u64) {
+        self.queues.timelines.poll_stats()
+    }
+
     /// Last observed completion values without a device query. Stale values
     /// are conservative (work may look pending, never complete early); use
     /// [`Self::poll`] when progress must be observed.

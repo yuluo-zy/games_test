@@ -4,7 +4,6 @@ use super::{
     barrier::{BarrierTarget, RangeBarrier, SynchronizationScope},
     buffer::Buffer,
     command_buffer::VulkanCommandBuffer,
-    temp_list::TempList,
     texture::Texture,
 };
 use crate::{
@@ -122,7 +121,7 @@ fn steps(
     cell: &Arc<SyncCell>,
     sharing: ResourceSharing,
     request: AccessRequest,
-) -> Result<TempList<AccessStep>> {
+) -> Result<smallvec::SmallVec<[AccessStep; 4]>> {
     let AccessRequest {
         queue,
         range,
@@ -141,7 +140,11 @@ fn steps(
             "explicit native access follows an opaque use in the same command",
         ));
     }
-    let mut result = TempList::new(65_536, command.pool.device.memory.stats.clone())?;
+    // Almost every access touches one to a few cells: keep them inline instead
+    // of allocating a budgeted list per access. The old 65,536-step bound and
+    // OOM reporting are preserved explicitly.
+    const MAX_STEPS: usize = 65_536;
+    let mut result: smallvec::SmallVec<[AccessStep; 4]> = smallvec::SmallVec::new();
     command.with_recorded_state(cell, NativeState::default(), queue, |table| {
         if !crate::resource::range_state::contains(table.domain(), range) {
             return Err(Error::invalid_usage(
@@ -150,7 +153,11 @@ fn steps(
         }
         for cell in table.prepared_cells() {
             if let Some(overlap) = crate::resource::range_state::intersection(cell.range, range) {
-                result.add(step(
+                if result.len() >= MAX_STEPS {
+                    return Err(Error::Timeout);
+                }
+                result.try_reserve(1).map_err(|_| Error::OutOfHostMemory)?;
+                result.push(step(
                     RangeCell {
                         range: overlap,
                         ..cell
@@ -161,7 +168,7 @@ fn steps(
                     scope,
                     layout,
                     expected_layout,
-                )?)?;
+                )?);
             }
         }
         Ok(())

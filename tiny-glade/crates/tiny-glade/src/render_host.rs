@@ -2496,12 +2496,34 @@ fn declare_label_unique(
     spec: rhapsody::rg::ResourceSpec,
 ) -> Result<rhapsody::rg::ResourceHandle, rhapsody::rg::BuildError> {
     use rhapsody::rg::BuildError;
-    let mut attempt = 1u32;
+    // The original declares many resources under one name (every Nani subset has
+    // a "Dispatch args"). Retrying from `#2` each time made k duplicates cost
+    // k(k+1)/2 declarations, so remember, per graph, where each name stopped.
+    thread_local! {
+        static NEXT_ATTEMPT: std::cell::RefCell<(Option<rhapsody::rg::GraphId>, std::collections::HashMap<String, u32>)> =
+            std::cell::RefCell::new((None, std::collections::HashMap::new()));
+    }
+    let graph_id = graph.graph_id();
+    let mut attempt = NEXT_ATTEMPT.with(|state| {
+        let mut state = state.borrow_mut();
+        if state.0 != Some(graph_id) {
+            state.0 = Some(graph_id);
+            state.1.clear();
+        }
+        state.1.get(name).copied().unwrap_or(1)
+    });
     loop {
         let label = if attempt == 1 { name.to_owned() } else { format!("{name}#{attempt}") };
         match backend.declare(graph, &label, spec.clone()) {
             Err(BuildError::DuplicateResourceName(_)) => attempt += 1,
-            other => return other,
+            other => {
+                if other.is_ok() {
+                    NEXT_ATTEMPT.with(|state| {
+                        state.borrow_mut().1.insert(name.to_owned(), attempt + 1);
+                    });
+                }
+                return other;
+            }
         }
     }
 }
@@ -3418,8 +3440,12 @@ impl GraphPasses<'_> {
             dispatch,
             ..
         } = pass;
-        let accesses = builder.accesses.clone();
-        drop(builder);
+        // The builder is dropped right after this; move its accesses out
+        // instead of cloning the whole vector per compute pass.
+        let accesses = {
+            let mut builder = builder;
+            std::mem::take(&mut builder.accesses)
+        };
 
         let device = self.device.clone();
         let dynamic = self.dynamic.clone();
