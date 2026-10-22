@@ -396,6 +396,75 @@ impl RenderGraph {
     pub fn batch_per_pass(&mut self, enabled: bool) {
         self.declaration.batch_per_pass = enabled;
     }
+
+    /// Retained-graph replay: declare the planned `Create` resource at the next
+    /// logical index. Imports and named resources are declared by the session
+    /// APIs in the same order, so every index matches the plan.
+    pub fn declare_planned_create(
+        &mut self,
+        definition: &super::plan::ResourceDefinition,
+    ) -> Result<super::resource::ResourceHandle, BuildError> {
+        if definition.origin != super::plan::ResourceOriginKind::Create {
+            return Err(BuildError::InvalidHandle(self.declaration.resources.len() as u32));
+        }
+        let handle = self.create_raw_resource(
+            definition.name.clone(),
+            super::resource::ResourceOrigin {
+                descriptor: definition.descriptor,
+                source: OriginSource::Create,
+            },
+        )?;
+        self.declaration.resources[handle.raw() as usize].sharing = definition.sharing;
+        Ok(handle)
+    }
+
+    /// Retained-graph replay: take the plan's pass structure (and its recorders)
+    /// instead of declaring each pass. Every resource must already have been
+    /// replayed in plan order with the planned name, descriptor, sharing and
+    /// origin kind, so the result equals a freshly declared frame; a mismatch
+    /// leaves the graph untouched and tells the host to rebuild.
+    pub fn adopt_planned_passes(
+        &mut self,
+        definition: &super::plan::GraphDefinition,
+        callbacks: Vec<RenderCallback>,
+    ) -> Result<(), BuildError> {
+        use super::plan::ResourceOriginKind;
+        let resources = &self.declaration.resources;
+        let matches = self.declaration.passes.is_empty()
+            && self.callbacks.is_empty()
+            && callbacks.len() == definition.passes.len()
+            && resources.len() == definition.resources.len()
+            && resources.iter().zip(&definition.resources).all(|(declared, planned)| {
+                declared.name == planned.name
+                    && declared.descriptor == planned.descriptor
+                    && declared.sharing == planned.sharing
+                    && match declared.source {
+                        OriginSource::Create => planned.origin == ResourceOriginKind::Create,
+                        OriginSource::ImportOwned { .. } => {
+                            planned.origin == ResourceOriginKind::ImportOwned
+                        }
+                        OriginSource::ImportUnowned { .. } => {
+                            planned.origin == ResourceOriginKind::ImportUnowned
+                        }
+                    }
+            });
+        if !matches {
+            return Err(BuildError::InvalidHandle(u32::MAX));
+        }
+        self.declaration.subgraphs = definition.subgraphs.clone();
+        self.declaration.passes = definition.passes.clone();
+        for pass in &mut self.declaration.passes {
+            pass.graph_id = Some(self.graph_id);
+        }
+        self.declaration.batch_per_pass = definition.batch_per_pass;
+        for &index in &definition.gated_resources {
+            if let Err(at) = self.declaration.gated_resources.binary_search(&index) {
+                self.declaration.gated_resources.insert(at, index);
+            }
+        }
+        self.callbacks = callbacks;
+        Ok(())
+    }
     /// Begin a new batch immediately before the first pass that uses
     /// `resource` (a no-op when it is already used by the first pass). Passes
     /// ahead of it then do not share a batch with the resource's first use, so
