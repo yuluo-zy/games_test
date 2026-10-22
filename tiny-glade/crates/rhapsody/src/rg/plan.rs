@@ -2,7 +2,10 @@
 //! physical objects, import states, callbacks and completion points belong to a frame.
 use super::{
     compiled::{Batch, BatchCompiler},
-    graph::{AccessDependency, Descriptor, GraphDeclaration, OriginSource, PassDeclaration},
+    graph::{
+        AccessDependency, Descriptor, GraphDeclaration, OriginSource, PassDeclaration,
+        ResourceDeclaration,
+    },
     resource::{AccessRange, AccessVersion},
     resource_info::{
         AccessDeclaration, ExportDeclaration, OriginKind, ResourceInfo, entry_content_resources,
@@ -302,6 +305,77 @@ impl GraphDefinition {
             .iter()
             .any(|s| s.code == code && s.scope.write)
     }
+
+    /// The declaration a frame that produced this definition would have
+    /// declared, rebuilt without running any declaration code. Created
+    /// resources stay created; `imports` must name every imported resource once
+    /// with the source kind the definition recorded (identity and boundary
+    /// state are the per-frame parameters). Pass accesses are the resolved ones;
+    /// instantiation overwrites them from the plan either way.
+    pub fn declaration_for_frame(
+        &self,
+        graph_id: Option<super::resource::GraphId>,
+        imports: &[ImportBinding],
+    ) -> crate::Result<GraphDeclaration> {
+        let mut sources: Vec<Option<OriginSource>> = vec![None; self.resources.len()];
+        for import in imports {
+            let slot = sources
+                .get_mut(import.logical as usize)
+                .ok_or_else(|| crate::Error::invalid_usage("retained import index is out of range"))?;
+            let definition = &self.resources[import.logical as usize];
+            let kind = match import.source {
+                OriginSource::Create => ResourceOriginKind::Create,
+                OriginSource::ImportOwned { .. } => ResourceOriginKind::ImportOwned,
+                OriginSource::ImportUnowned { .. } => ResourceOriginKind::ImportUnowned,
+            };
+            if slot.is_some() || kind == ResourceOriginKind::Create || kind != definition.origin {
+                return Err(crate::Error::invalid_usage(
+                    "retained import is duplicated or differs from the planned origin",
+                ));
+            }
+            *slot = Some(import.source);
+        }
+        let mut resources = Vec::with_capacity(self.resources.len());
+        for (definition, source) in self.resources.iter().zip(sources) {
+            let source = match (definition.origin, source) {
+                (ResourceOriginKind::Create, None) => OriginSource::Create,
+                (ResourceOriginKind::Create, Some(_)) => unreachable!("create origin rejected above"),
+                (_, Some(source)) => source,
+                (_, None) => {
+                    return Err(crate::Error::invalid_usage(
+                        "retained frame misses an imported resource",
+                    ));
+                }
+            };
+            resources.push(ResourceDeclaration {
+                sharing: definition.sharing,
+                name: definition.name.clone(),
+                descriptor: definition.descriptor,
+                source,
+            });
+        }
+        let mut passes = self.passes.clone();
+        for pass in &mut passes {
+            pass.graph_id = graph_id;
+        }
+        Ok(GraphDeclaration {
+            subgraphs: self.subgraphs.clone(),
+            resources,
+            passes,
+            exports: self.exports.clone(),
+            batch_per_pass: self.batch_per_pass,
+            gated_resources: self.gated_resources.clone(),
+        })
+    }
+}
+
+/// One imported resource bound for a frame of a retained plan.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ImportBinding {
+    /// Logical resource index in the planned declaration order.
+    pub logical: u32,
+    /// Must be `ImportOwned`/`ImportUnowned`, matching the planned origin.
+    pub source: OriginSource,
 }
 
 #[derive(Clone, Debug)]
