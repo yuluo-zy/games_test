@@ -79,6 +79,7 @@ pub use vulkan::{
 };
 
 mod graph_caches;
+pub mod token_map;
 mod transient_resources;
 pub use graph_caches::GraphCacheStats;
 

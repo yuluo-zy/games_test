@@ -313,7 +313,7 @@ struct ActiveAlias {
 pub struct VulkanGraphBackend {
     pub(crate) device: Arc<Device>,
     pub timeline: Arc<TimelineSemaphore>,
-    pub resources: BTreeMap<u64, GpuResource>,
+    pub resources: super::token_map::TokenMap<GpuResource>,
     pub accesses: AccessTable,
     pub submissions: Vec<GpuSubmissionCapture>,
     /// Set by the session right after it validated the declaration, so the
@@ -482,7 +482,7 @@ struct OwnedBatchSync {
 /// Emit exactly the native range chosen by the bound synchronization program.
 fn add_transition(
     scope: &mut crate::raw::barrier::SynchronizationScope,
-    resources: &BTreeMap<u64, GpuResource>,
+    resources: &super::token_map::TokenMap<GpuResource>,
     token: u64,
     transition: &super::sync_plan::BoundTransition,
     present: Option<presentation::PresentPatch>,
@@ -521,7 +521,7 @@ struct VulkanChunkView<'a> {
     present_patch: Option<presentation::PresentPatch>,
     barrier_device: &'a Device,
     barrier_dispatch: crate::raw::barrier::BarrierDispatch,
-    resources: &'a BTreeMap<u64, GpuResource>,
+    resources: &'a super::token_map::TokenMap<GpuResource>,
     cpu_arenas: &'a crate::command::CpuArenaPool,
     owner_pool: &'a crate::raw::temp_list_pool::TempListPool<crate::raw::binding::RetainedResource>,
 }
@@ -683,7 +683,7 @@ impl VulkanGraphBackend {
             submissions: vec![],
             declaration_prevalidated: false,
             recording_error: None,
-            resources: BTreeMap::new(),
+            resources: Default::default(),
             specifications: BTreeMap::new(),
             transient_aliasing: true,
             prepared_transients: Default::default(),
