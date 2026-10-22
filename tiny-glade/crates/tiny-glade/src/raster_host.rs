@@ -1806,6 +1806,8 @@ impl PassHost for RasterPassHost {
             let frozen_globals = shared.shaders.frame_globals_snapshot();
             let count_form = plain_indirect_needs_count_form(&device);
             for (draw, pipeline) in prepared.iter().zip(&pipelines) {
+                country_core::render::declare_probe::rec_draw();
+                let probe = country_core::render::declare_probe::start();
                 // SAFETY: 管线属于本设备，命令缓冲在录制中。
                 unsafe {
                     device.raw_device().cmd_bind_pipeline(
@@ -1814,6 +1816,7 @@ impl PassHost for RasterPassHost {
                         pipeline.raw_handle(),
                     )
                 };
+                country_core::render::declare_probe::rec_pipeline(probe);
                 let parameters = match bindless_parameters(
                     &shared,
                     &ctx,
@@ -1829,11 +1832,13 @@ impl PassHost for RasterPassHost {
                         return false;
                     }
                 };
+                let probe_bind = country_core::render::declare_probe::start();
                 // SAFETY: the original pass bindings and graph accesses describe these resources.
                 if let Err(error) = unsafe { parameters.bind_pass(&ctx, pipeline.clone()) } {
                     ctx.report_error(error);
                     return false;
                 }
+                country_core::render::declare_probe::rec_bind(probe_bind);
                 // O 0x141698690..0x141698742 (per draw, after push_constants): when the state's
                 // stencil test bit is set (byte1 bit0) the packet's +0xb1 byte is the stencil
                 // reference (deferred material id); line topologies / LINE polygon mode take
@@ -1847,10 +1852,12 @@ impl PassHost for RasterPassHost {
                     1 | 2 => api.set_line_width(draw.packet.blend),
                     _ => {}
                 }
+                let probe_draw = country_core::render::declare_probe::start();
                 if let Err(error) = record_draw(&mut api, draw, managed, count_form) {
                     ctx.report_error(error);
                     return false;
                 }
+                country_core::render::declare_probe::rec_draw_call(probe_draw);
             }
             api.end_render_pass();
             true
@@ -2292,6 +2299,7 @@ fn bindless_parameters(
     cursor: &mut rhapsody::bindless::BindlessPageCursor,
     globals: Option<Arc<crate::frame_setup::FrameGlobals>>,
 ) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
+    let probe_resources = country_core::render::declare_probe::start();
     let mut resources = Vec::new();
     for (binding, owned) in &draw.packet.bindings {
         if owned.state != country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED {
@@ -2390,8 +2398,10 @@ fn bindless_parameters(
     // B EguiBackend::draw 0x1400def7e..0x1400defd0 stores the 8-byte
     // screen-size push payload in DrawPacket's byte Vec. Other shaders may use
     // an empty push block; ABI validation retains that distinction.
+    country_core::render::declare_probe::rec_resources(probe_resources);
+    let probe_prepare = country_core::render::declare_probe::start();
     let snapshot = draw.entry.bindings.snapshot_with_globals(globals);
-    snapshot.prepare(
+    let prepared = snapshot.prepare(
         cursor,
         &draw.packet.unknown_bytes,
         resources.iter().map(|(binding, resource)| {
@@ -2407,7 +2417,9 @@ fn bindless_parameters(
         }),
         None,
         &shared.dynamic,
-    )
+    );
+    country_core::render::declare_probe::rec_prepare(probe_prepare);
+    prepared
 }
 
 #[cfg(test)]

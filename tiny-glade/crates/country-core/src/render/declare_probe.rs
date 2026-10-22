@@ -13,6 +13,12 @@ static RENDER_NS: AtomicU64 = AtomicU64::new(0);
 static TABLE_READS: AtomicU64 = AtomicU64::new(0);
 static TABLE_NS: AtomicU64 = AtomicU64::new(0);
 static DRAW_ACCESS_NS: AtomicU64 = AtomicU64::new(0);
+static REC_DRAWS: AtomicU64 = AtomicU64::new(0);
+static REC_PIPELINE_NS: AtomicU64 = AtomicU64::new(0);
+static REC_RESOURCES_NS: AtomicU64 = AtomicU64::new(0);
+static REC_PREPARE_NS: AtomicU64 = AtomicU64::new(0);
+static REC_BIND_NS: AtomicU64 = AtomicU64::new(0);
+static REC_DRAW_NS: AtomicU64 = AtomicU64::new(0);
 
 /// Totals accumulated since the previous [`take`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -29,6 +35,15 @@ pub struct DeclareProbe {
     pub table_ns: u64,
     /// Per-draw indirect/index/vertex/external access declarations.
     pub draw_access_ns: u64,
+    /// Record-side per-draw split of the list raster passes (summed over
+    /// recording threads, so it can exceed wall time): draws, pipeline bind,
+    /// resource gathering, `snapshot.prepare`, `bind_pass` + push, draw call.
+    pub rec_draws: u64,
+    pub rec_pipeline_ns: u64,
+    pub rec_resources_ns: u64,
+    pub rec_prepare_ns: u64,
+    pub rec_bind_ns: u64,
+    pub rec_draw_ns: u64,
 }
 
 fn enabled() -> bool {
@@ -62,6 +77,25 @@ pub fn draw_access(started: Option<Instant>) {
     add(&DRAW_ACCESS_NS, started);
 }
 
+pub fn rec_draw() {
+    REC_DRAWS.fetch_add(1, Relaxed);
+}
+pub fn rec_pipeline(started: Option<Instant>) {
+    add(&REC_PIPELINE_NS, started);
+}
+pub fn rec_resources(started: Option<Instant>) {
+    add(&REC_RESOURCES_NS, started);
+}
+pub fn rec_prepare(started: Option<Instant>) {
+    add(&REC_PREPARE_NS, started);
+}
+pub fn rec_bind(started: Option<Instant>) {
+    add(&REC_BIND_NS, started);
+}
+pub fn rec_draw_call(started: Option<Instant>) {
+    add(&REC_DRAW_NS, started);
+}
+
 pub fn take() -> DeclareProbe {
     DeclareProbe {
         list_passes: LIST_PASSES.swap(0, Relaxed),
@@ -71,5 +105,11 @@ pub fn take() -> DeclareProbe {
         table_reads: TABLE_READS.swap(0, Relaxed),
         table_ns: TABLE_NS.swap(0, Relaxed),
         draw_access_ns: DRAW_ACCESS_NS.swap(0, Relaxed),
+        rec_draws: REC_DRAWS.swap(0, Relaxed),
+        rec_pipeline_ns: REC_PIPELINE_NS.swap(0, Relaxed),
+        rec_resources_ns: REC_RESOURCES_NS.swap(0, Relaxed),
+        rec_prepare_ns: REC_PREPARE_NS.swap(0, Relaxed),
+        rec_bind_ns: REC_BIND_NS.swap(0, Relaxed),
+        rec_draw_ns: REC_DRAW_NS.swap(0, Relaxed),
     }
 }

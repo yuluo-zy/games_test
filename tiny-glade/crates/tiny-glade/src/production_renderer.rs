@@ -1329,6 +1329,9 @@ impl GameRenderHostFactory for ProductionRenderer {
                 "declare_split gameplay_n={} declare_ms={:.3} list_passes={} list_draws={} list_loop_ms={:.3} raster_render_ms={:.3} table_reads={} table_ms={:.3} draw_access_ms={:.3}; list_loop and raster_render are disjoint, table_ms and draw_access_ms are inside raster_render",
                 t.frame, ms(t.declare), d.list_passes, d.list_draws, d.list_loop_ns as f64 / 1e6, d.render_ns as f64 / 1e6,
                 d.table_reads, d.table_ns as f64 / 1e6, d.draw_access_ns as f64 / 1e6);
+            log::info!(target: "tiny_glade::frame_timing",
+                "record_split gameplay_n={} draws={} pipeline_ms={:.3} resources_ms={:.3} prepare_ms={:.3} bind_ms={:.3} draw_ms={:.3}; summed over recording threads",
+                t.frame, d.rec_draws, d.rec_pipeline_ns as f64 / 1e6, d.rec_resources_ns as f64 / 1e6, d.rec_prepare_ns as f64 / 1e6, d.rec_bind_ns as f64 / 1e6, d.rec_draw_ns as f64 / 1e6);
             if let Some(vao) = vao {
                 log::info!(target: "tiny_glade::frame_timing",
                     "vao_full_refresh gameplay_n={} graph={:?} receipt={:?} calls={} list_entries={} queried_entities={} unique_vaos={} cpu_wall_ms={:.3}; included inside frame phases, not GPU time",
