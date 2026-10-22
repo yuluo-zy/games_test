@@ -3990,16 +3990,16 @@ mod import_contract_tests {
 #[cfg(test)]
 mod retire_callback_tests {
     use super::*;
-    use std::{cell::RefCell, rc::Rc};
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn a_panicking_retire_callback_does_not_discard_later_cleanup() {
-        let calls = Rc::new(RefCell::new(Vec::new()));
+        let calls = Arc::new(Mutex::new(Vec::new()));
         let callbacks: Vec<graph::RetireCallback> = (0..3)
             .map(|index| {
                 let calls = calls.clone();
                 Box::new(move || {
-                    calls.borrow_mut().push(index);
+                    calls.lock().unwrap().push(index);
                     if index == 1 {
                         panic!("injected cleanup failure");
                     }
@@ -4010,7 +4010,7 @@ mod retire_callback_tests {
             run_retire_callbacks(callbacks).unwrap_err().kind(),
             crate::ErrorKind::InvalidUsage
         );
-        assert_eq!(*calls.borrow(), [0, 1, 2]);
+        assert_eq!(*calls.lock().unwrap(), [0, 1, 2]);
     }
 }
 
@@ -4127,3 +4127,9 @@ mod enabled_access_stage_tests {
         }
     }
 }
+/// A session and its compiled frames may move to a dedicated render thread.
+const _: fn() = || {
+    fn send<T: Send>() {}
+    send::<VulkanGraphSession>();
+    send::<PreparedSessionFrame>();
+};

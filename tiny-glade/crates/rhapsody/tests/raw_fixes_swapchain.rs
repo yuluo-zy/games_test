@@ -284,7 +284,7 @@ fn strict_frame_loop_with(
 fn side_effect_graph(
     frame_loop: &mut FrameLoop,
     recorded: &Arc<AtomicBool>,
-    retired: &std::rc::Rc<std::cell::Cell<usize>>,
+    retired: &std::sync::Arc<RetireCount>,
 ) -> BuiltGraph {
     let mut graph = frame_loop.begin_frame().expect("begin frame");
     let recorded = recorded.clone();
@@ -397,7 +397,7 @@ fn present_step_by_step(
     build: impl FnOnce(&mut RenderGraph, &PresentTarget),
 ) -> InjectedSync {
     let recorded = Arc::new(AtomicBool::new(false));
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let main = side_effect_graph(frame_loop, &recorded, &retired);
     frame_loop.execute_graph(main).expect("main graph");
     let lease = frame_loop.acquire().expect("acquire").expect("image");
@@ -490,7 +490,7 @@ fn multi_batch_presentation_graph_waits_on_first_use_and_signals_from_last_use()
     // The convenience path presents multi-batch graphs too.
     for _ in 0..3 {
         let recorded = Arc::new(AtomicBool::new(false));
-        let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+        let retired = std::sync::Arc::new(RetireCount::new(0));
         let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
         let calls = calls.clone();
         let outcome = frame_loop
@@ -522,7 +522,7 @@ fn independent_passes_before_the_image_are_not_blocked_by_the_acquire_wait() {
     let prologue = Arc::new(AtomicUsize::new(0));
     for frame in 0..4 {
         let recorded = Arc::new(AtomicBool::new(false));
-        let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+        let retired = std::sync::Arc::new(RetireCount::new(0));
         let main = side_effect_graph(&mut frame_loop, &recorded, &retired);
         frame_loop.execute_graph(main).expect("main graph");
         let lease = frame_loop.acquire().expect("acquire").expect("image");
@@ -577,7 +577,7 @@ fn strict_frame_loop_presents_through_the_presentation_graph() {
         return;
     };
     let recorded = Arc::new(AtomicBool::new(false));
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let displays = Arc::new(AtomicUsize::new(0));
     let generation = frame_loop.generation();
     for frame in 0..6 {
@@ -603,7 +603,7 @@ fn skipped_presentation_still_executes_and_retires_the_graph() {
         eprintln!("SKIP: strict headless presentation unavailable");
         return;
     };
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let displays = Arc::new(AtomicUsize::new(0));
     frame_loop.resize(vk::Extent2D::default()).unwrap();
     for _ in 0..3 {
@@ -659,7 +659,7 @@ fn windowed_focus_loss_keeps_presenting() {
     };
     frame_loop.set_focused(false).unwrap();
     let recorded = Arc::new(AtomicBool::new(false));
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let displays = Arc::new(AtomicUsize::new(0));
     for _ in 0..3 {
         let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
@@ -682,7 +682,7 @@ fn presentation_graph_failure_after_acquire_returns_the_image_and_recovers() {
         eprintln!("SKIP: strict headless presentation unavailable");
         return;
     };
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let displays = Arc::new(AtomicUsize::new(0));
     for _ in 0..8 {
         let recorded = Arc::new(AtomicBool::new(false));
@@ -736,7 +736,7 @@ fn presentation_build_failure_returns_the_image_and_recovers() {
         eprintln!("SKIP: strict headless presentation unavailable");
         return;
     };
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let displays = Arc::new(AtomicUsize::new(0));
     // Fail more often than there are images: each failure must return its
     // acquisition, otherwise acquire would eventually run out of images.
@@ -777,7 +777,7 @@ const TRANSFER_READ: u8 = 0x25;
 fn read_back_image(frame_loop: &mut FrameLoop, wanted: u32) -> [u8; 4] {
     frame_loop.set_swapchain_contents(SwapchainContents::Preserve);
     let device = frame_loop.device().clone();
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let calls = Arc::new(AtomicUsize::new(0));
     for _ in 0..16 {
         let recorded = Arc::new(AtomicBool::new(false));
@@ -872,7 +872,7 @@ fn near(actual: [u8; 4], expected: [f32; 4]) {
 /// Fail a presentation graph after its first batch consumed the acquire and
 /// return the index of the abandoned image.
 fn fail_after_first_batch(frame_loop: &mut FrameLoop, abandoned: &mut Option<u32>) {
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let calls = Arc::new(AtomicUsize::new(0));
     let recorded = Arc::new(AtomicBool::new(false));
     let built = side_effect_graph(frame_loop, &recorded, &retired);
@@ -952,7 +952,7 @@ fn skip_present_never_presents_undefined_content_and_next_frames_present() {
         fail_after_first_batch(&mut frame_loop, &mut abandoned);
     }
     let displays = Arc::new(AtomicUsize::new(0));
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     for _ in 0..3 {
         let recorded = Arc::new(AtomicBool::new(false));
         let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
@@ -1016,7 +1016,7 @@ fn clear_policy_without_transfer_dst_degrades_to_skip_present() {
     frame_loop
         .set_on_failure(rhapsody::rg::PresentPolicy::ClearTo([1.0; 4]))
         .unwrap();
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     for _ in 0..6 {
         let recorded = Arc::new(AtomicBool::new(false));
         let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
@@ -1038,7 +1038,7 @@ fn replacing_the_surface_starts_a_new_generation() {
         return;
     };
     let recorded = Arc::new(AtomicBool::new(false));
-    let retired = std::rc::Rc::new(std::cell::Cell::new(0));
+    let retired = std::sync::Arc::new(RetireCount::new(0));
     let displays = Arc::new(AtomicUsize::new(0));
     let built = side_effect_graph(&mut frame_loop, &recorded, &retired);
     frame_loop
@@ -1059,4 +1059,18 @@ fn replacing_the_surface_starts_a_new_generation() {
     }
     frame_loop.wait_idle(TIMEOUT).unwrap();
     frame_loop.shutdown(TIMEOUT).unwrap();
+}
+
+/// `Cell<usize>`-like counter that retire callbacks (now `Send`) may capture.
+struct RetireCount(std::sync::atomic::AtomicUsize);
+impl RetireCount {
+    fn new(value: usize) -> Self {
+        Self(std::sync::atomic::AtomicUsize::new(value))
+    }
+    fn get(&self) -> usize {
+        self.0.load(std::sync::atomic::Ordering::Relaxed)
+    }
+    fn set(&self, value: usize) {
+        self.0.store(value, std::sync::atomic::Ordering::Relaxed)
+    }
 }

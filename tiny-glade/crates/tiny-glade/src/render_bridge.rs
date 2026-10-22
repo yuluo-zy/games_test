@@ -235,6 +235,10 @@ impl CoreRenderBridge {
     pub fn raster_resources(&self) -> &Arc<RasterShared> {
         &self.raster
     }
+    /// Cumulative frame-plan cache statistics of the shared session.
+    pub fn plan_cache_stats(&self) -> rhapsody::rg::CacheStats {
+        self.session.borrow().chain.plan_cache_stats()
+    }
 
     /// Build core consumers and execute only after every construction phase succeeds.
     /// The caller must declare exports/side effects; rhapsody controls culling and

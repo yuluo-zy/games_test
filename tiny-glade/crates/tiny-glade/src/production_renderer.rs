@@ -1311,6 +1311,18 @@ impl GameRenderHostFactory for ProductionRenderer {
                 c.prewarm_calls, c.prewarm_tickets, c.prewarm_ns as f64 / 1_000_000.0);
             // Completion polls since the previous logged frame: how often the
             // frame asks the driver about GPU progress.
+            let plans = self.bridge.plan_cache_stats();
+            let reasons = rhapsody::rg::CacheReason::ALL
+                .iter()
+                .filter_map(|reason| {
+                    let count = plans.diagnostics.misses(*reason);
+                    (count != 0).then(|| format!("{reason:?}:{count}"))
+                })
+                .collect::<Vec<_>>()
+                .join(",");
+            log::info!(target: "tiny_glade::frame_timing",
+                "plan_cache gameplay_n={} hits_total={} misses_total={} miss_reasons=[{}]",
+                t.frame, plans.hits, plans.misses, reasons);
             let (polls, queries) = self.device.timeline_poll_stats();
             log::info!(target: "tiny_glade::frame_timing",
                 "timeline_polls gameplay_n={} poll_calls_total={} driver_queries_total={}",

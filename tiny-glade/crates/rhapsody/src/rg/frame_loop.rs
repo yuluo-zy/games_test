@@ -759,7 +759,20 @@ mod device_loss_tests {
             }
         }
     }
-    fn graph_with_retire(calls: &std::rc::Rc<std::cell::Cell<usize>>) -> BuiltGraph {
+    /// `Cell<usize>`-like counter that retire callbacks (now `Send`) may capture.
+    struct RetireCount(std::sync::atomic::AtomicUsize);
+    impl RetireCount {
+        fn new(value: usize) -> Self {
+            Self(std::sync::atomic::AtomicUsize::new(value))
+        }
+        fn get(&self) -> usize {
+            self.0.load(std::sync::atomic::Ordering::Relaxed)
+        }
+        fn set(&self, value: usize) {
+            self.0.store(value, std::sync::atomic::Ordering::Relaxed)
+        }
+    }
+    fn graph_with_retire(calls: &std::sync::Arc<RetireCount>) -> BuiltGraph {
         let mut graph = super::super::graph::RenderGraph::new();
         let calls = calls.clone();
         graph.on_retire(move || calls.set(calls.get() + 1));
@@ -774,7 +787,7 @@ mod device_loss_tests {
 
     #[test]
     fn graph_is_submitted_before_acquire_and_survives_skipped_presentation() {
-        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let calls = std::sync::Arc::new(RetireCount::new(0));
         let mut operations = ScriptedOperations::new(Failure::NoImage);
         let output = execute_frame_protocol(&mut operations, graph_with_retire(&calls)).unwrap();
         assert!(matches!(output.presentation, Ok(None)));
@@ -805,7 +818,7 @@ mod device_loss_tests {
             Failure::PresentationPanic,
             Failure::Present,
         ] {
-            let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+            let calls = std::sync::Arc::new(RetireCount::new(0));
             let mut operations = ScriptedOperations::new(failure);
             let output = execute_frame_protocol(&mut operations, graph_with_retire(&calls));
             let graph_failed = matches!(
@@ -873,7 +886,7 @@ mod device_loss_tests {
             Failure::PresentationGraph,
             Failure::Present,
         ] {
-            let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+            let calls = std::sync::Arc::new(RetireCount::new(0));
             let mut operations = ScriptedOperations::new(failure);
             operations.inject_device_loss = true;
             assert!(
@@ -900,7 +913,7 @@ mod device_loss_tests {
 
     #[test]
     fn device_loss_keeps_its_error_even_when_an_unsubmitted_retire_callback_panics() {
-        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let calls = std::sync::Arc::new(RetireCount::new(0));
         let mut graph = super::super::graph::RenderGraph::new();
         graph.on_retire(|| panic!("injected unsubmitted retirement panic"));
         let retired = calls.clone();

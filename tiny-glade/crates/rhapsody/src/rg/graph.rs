@@ -195,7 +195,7 @@ pub trait AccessDependency {
 
 /// 渲染回调须为 `Send`：并行录制时不同块的回调在任务池线程上执行。
 pub type RenderCallback = Box<dyn for<'a> FnMut(super::executor::PassContext<'a>) -> bool + Send>;
-pub type RetireCallback = Box<dyn FnOnce()>;
+pub type RetireCallback = Box<dyn FnOnce() + Send>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BuildError {
@@ -493,7 +493,7 @@ impl RenderGraph {
         }
         Ok(())
     }
-    pub fn on_retire(&mut self, callback: impl FnOnce() + 'static) {
+    pub fn on_retire(&mut self, callback: impl FnOnce() + Send + 'static) {
         self.retire_callbacks.push(Box::new(callback));
     }
     pub(crate) fn reserve_retirement_callback(&mut self) -> crate::Result<()> {

@@ -49,7 +49,7 @@ pub use attachments::{
         RenderPassKey,
     },
 };
-pub use cache::CacheReason;
+pub use cache::{CacheReason, CacheStats};
 pub use executor::{
     Error as ExecutionError, ExecutionBackend, ExecutionChain, ExecutionStats, GraphExecution,
     PassContext,
