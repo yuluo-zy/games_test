@@ -5,8 +5,7 @@
 use crate::{
     input::action_set::ActionSetStates,
     resources::{
-        events::ShutdownGameCmd,
-        gui::EscapeMenuJustOpened,
+        events::{EscapeMenuJustOpened, ShutdownGameCmd},
         mouse_capture::{OsCursorVisibilityCmd, OsCursorVisibilityCmdOrigin},
         window::WindowFocusEvent,
     },

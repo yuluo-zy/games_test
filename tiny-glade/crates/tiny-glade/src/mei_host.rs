@@ -67,7 +67,9 @@ pub fn install_mei_frame_systems(app: &mut bevy_app::App) {
     app.init_resource::<country_core::systems::ui::resources::widget_params::UiNavState>();
     app.add_event::<country_core::systems::audio::PlayMenuUiSound>();
     app.add_systems(bevy_app::Update,
-        toolbar::mei::systems::mei_pre_update.in_set(GameSystemSet(6)));
+        toolbar::mei::systems::mei_pre_update
+            .in_set(GameSystemSet(6))
+            .after(country_core::systems::ui::ui_update::ui_update));
     app.add_systems(bevy_app::Update,
         update_text_renderer_scale.in_set(GameSystemSet(7)));
     app.add_systems(bevy_app::Update, (
