@@ -120,6 +120,14 @@ impl DrawLists {
         DrawLists::default()
     }
 
+    /// Empty every list but keep its capacity, so a long-lived `DrawLists`
+    /// does not regrow 21 vectors of 0x78-byte entries every frame.
+    pub fn clear(&mut self) {
+        for list in &mut self.lists {
+            list.clear();
+        }
+    }
+
     /// 第 `idx` 个列表（越界 panic，同原版数组边界）。
     pub fn list(&self, idx: usize) -> &[DrawEntry] {
         &self.lists[idx]

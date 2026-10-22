@@ -366,7 +366,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
         tables.presets.clear();
         tables.textures_by_name.clear();
         tables.rg_buffers.clear();
-        tables.ssbo_leases = Some(std::collections::HashMap::new());
+        tables.ssbo_leases = Some(Default::default());
         tables.ssbo_instance_counts.clear();
         for preset in 0..PRESET_COUNT {
             let t = library.get_rg_texture(TexturePreset(preset));

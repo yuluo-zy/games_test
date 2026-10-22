@@ -45,6 +45,14 @@ use country_core::{
     rhapsody_types::TextureDesc as CoreTextureDesc,
 };
 use hashbrown::HashMap as HbMap;
+
+/// `u64`-keyed table for ids that are already well-mixed hashes or counters
+/// (xxh3 name hashes, handle keys): no SipHash on the per-draw lookups.
+pub type IdMap<V> = std::collections::HashMap<
+    u64,
+    V,
+    std::hash::BuildHasherDefault<rhapsody::rg::token_map::TokenHasher>,
+>;
 use parking_lot::Mutex;
 use rhapsody::bindless::BindlessResource;
 use rhapsody::{
@@ -271,21 +279,22 @@ impl RgResources for GraphRgResources {
 #[derive(Default)]
 pub struct AssetTables {
     /// `SsboId`（`xxh3_64(NAME)`）→ 图里的缓冲资源下标。
-    pub rg_buffers: HashMap<u64, u32>,
+    pub rg_buffers: IdMap<u32>,
     /// Metadata only: actual canonical entries and their original shared lazy
     /// import cache. A snapshot never imports the whole SSBO library.
     pub ssbo_leases:
-        Option<HashMap<u64, country_core::asset_libraries::ssbo_library::SsboGraphLease>>,
+        Option<IdMap<country_core::asset_libraries::ssbo_library::SsboGraphLease>>,
     /// Same-frame InstanceBuffer counts for original RT uniforms. These are
     /// CPU counts, never Vulkan or asset buffer identifiers.
-    pub ssbo_instance_counts: HashMap<u64, u32>,
+    pub ssbo_instance_counts: IdMap<u32>,
     /// `GlobalId` → (缓冲句柄, flag)。
-    pub placement: HashMap<u64, (ManagedHandle, u32)>,
+    pub placement: IdMap<(ManagedHandle, u32)>,
     /// `TextureFromDisk` 文件键 → (纹理句柄, 描述)。
-    pub textures_by_name: HashMap<u64, (ManagedHandle, AttachmentTexture)>,
+    pub textures_by_name: IdMap<(ManagedHandle, AttachmentTexture)>,
     /// `TexturePreset` → RG 纹理。
     pub presets: HashMap<u8, AttachmentTexture>,
-    vaos: HashMap<u64, VaoSnapshot>,
+    /// Shared, so a draw takes one Arc instead of cloning the binding vector.
+    vaos: IdMap<Arc<VaoSnapshot>>,
 }
 #[derive(Clone)]
 struct VaoSnapshot {
@@ -327,6 +336,9 @@ pub struct RasterShared {
     /// declared. Every raster pass of one graph reads the same table, so it is
     /// imported and range-declared once per graph instead of once per pass.
     table_reads: Mutex<Option<(rhapsody::rg::GraphId, Arc<[(ResourceHandle, rhapsody::rg::AccessRange)]>)>>,
+    /// The frame-constants block's import for the graph being declared; every
+    /// draw of a graph reads the same block, so it is imported once per graph.
+    frame_constants: Mutex<Option<(rhapsody::rg::GraphId, (ResourceHandle, rhapsody::rg::AccessRange))>>,
     /// Open while one synchronous world-graph declaration reuses a single full snapshot.
     vao_scope: Mutex<Option<VaoScopeState>>,
     dynamic: Arc<Mutex<DynamicConstants>>,
@@ -479,7 +491,7 @@ impl RasterShared {
         let vaos = world.get_resource::<AssetVAOLibrary>().ok_or_else(|| {
             rhapsody::Error::invalid_usage("AssetVAOLibrary producer has not run")
         })?;
-        let mut snapshots = HashMap::new();
+        let mut snapshots = IdMap::default();
         for handle in handles {
             let id = handle.id().raw();
             let entry = vaos.get_by_handle(*handle).ok_or_else(|| {
@@ -519,11 +531,11 @@ impl RasterShared {
                 .collect::<rhapsody::Result<Vec<_>>>()?;
             snapshots.insert(
                 id,
-                VaoSnapshot {
+                Arc::new(VaoSnapshot {
                     index,
                     index_count,
                     bindings,
-                },
+                }),
             );
         }
         self.assets.lock().vaos = snapshots;
@@ -661,6 +673,7 @@ impl RasterShared {
             vao_refresh_timing: Mutex::new(VaoRefreshTiming::default()),
             vao_table_revision: std::sync::atomic::AtomicU64::new(0),
             table_reads: Mutex::new(None),
+            frame_constants: Mutex::new(None),
             vao_scope: Mutex::new(None),
             assets: Mutex::new(AssetTables::default()),
         }))
@@ -1122,7 +1135,7 @@ impl PassHost for RasterPassHost {
                             )
                         })?
                         .declarer;
-                    import_frame_constants(draw, declarer.as_ref(), &mut graph)?;
+                    import_frame_constants(&shared, draw, declarer.as_ref(), &mut graph)?;
                 }
                 if matches!(
                     draw.packet.kind,
@@ -1285,7 +1298,7 @@ impl PassHost for RasterPassHost {
                             )
                         })?
                         .declarer;
-                    draw.index = Some(declarer.import_buffer(&mut graph, vao.index, 0)?);
+                    draw.index = Some(declarer.import_buffer(&mut graph, vao.index.clone(), 0)?);
                     draw.index_count = Some(vao.index_count);
                     for (name, location, stride) in &draw.entry.vertex_inputs {
                         let (buffer, size) = match vao
@@ -2100,6 +2113,7 @@ fn record_draw<B: rhapsody::rg::CommandBackend>(
 /// declares set 1/b1 imports the exact frame constants range as a graphics-stage shader read
 /// (same contract as the compute host's `frame_storage_view` import).
 fn import_frame_constants(
+    shared: &RasterShared,
     draw: &mut PreparedDraw,
     declarer: &dyn GraphDeclarer,
     graph: &mut RhGraph,
@@ -2110,9 +2124,18 @@ fn import_frame_constants(
     {
         return Ok(());
     }
+    let graph_id = graph.graph_id();
+    if let Some((cached, constants)) = *shared.frame_constants.lock()
+        && cached == graph_id
+    {
+        draw.frame_constants = Some(constants);
+        return Ok(());
+    }
     let (buffer, offset, size) = draw.entry.bindings.frame_storage_view()?;
     let resource = declarer.import_buffer(graph, buffer, 0x1f)?;
-    draw.frame_constants = Some((resource, rhapsody::rg::AccessRange::Buffer { offset, size }));
+    let constants = (resource, rhapsody::rg::AccessRange::Buffer { offset, size });
+    *shared.frame_constants.lock() = Some((graph_id, constants));
+    draw.frame_constants = Some(constants);
     Ok(())
 }
 

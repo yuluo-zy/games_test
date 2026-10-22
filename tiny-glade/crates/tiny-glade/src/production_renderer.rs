@@ -769,6 +769,9 @@ pub struct ProductionRenderer {
     // The native window and platform backing outlive every Vulkan surface owner.
     platform: PlatformSurface,
     window: Arc<winit::window::Window>,
+    /// Draw lists handed to each frame's host and taken back afterwards, so
+    /// their 21 vectors keep their capacity from frame to frame.
+    spare_lists: DrawLists,
 }
 
 impl ProductionRenderer {
@@ -889,6 +892,7 @@ impl ProductionRenderer {
             last_stats: Default::default(),
             platform,
             window,
+            spare_lists: DrawLists::new(),
         })
     }
 
@@ -1359,14 +1363,24 @@ impl GameRenderHostFactory for ProductionRenderer {
             self.record_error(rhapsody::Error::invalid_usage(
                 "gameplay rendering attempted before actual base shader initialization and warmup publication"));
         }
+        let mut lists = std::mem::take(&mut self.spare_lists);
+        lists.clear();
         ProductionRenderHost {
             renderer: self,
             world,
             egui,
             video: None,
             input_lag_reduction: false,
-            lists: DrawLists::new(),
+            lists,
         }
+    }
+}
+
+impl Drop for ProductionRenderHost<'_> {
+    fn drop(&mut self) {
+        // Return the lists (emptied, capacity kept) for the next frame.
+        self.lists.clear();
+        std::mem::swap(&mut self.renderer.spare_lists, &mut self.lists);
     }
 }
 
