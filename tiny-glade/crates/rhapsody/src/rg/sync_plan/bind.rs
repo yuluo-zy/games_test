@@ -110,9 +110,8 @@ struct Template {
     _pin: Arc<dyn std::any::Any + Send + Sync>,
     key: Vec<InitKey>,
     aliases: Vec<AliasEdge>,
-    transitions: Vec<BoundTransition>,
-    batches: Vec<BoundBatch>,
-    order: Vec<usize>,
+    /// Frame-independent tables, handed to the planner by reference.
+    shared: Arc<SharedBound>,
     patches: Vec<BoundPatch>,
     /// (initial row, revision delta) per patch.
     bases: Vec<(u32, u64)>,
@@ -222,6 +221,7 @@ impl SynchronizationPlanner {
                 patches: Storage::new(0, &budget)?,
                 waits: Storage::new(0, &budget)?,
                 index: Default::default(),
+                shared: None,
             },
             shadow: Storage::new(0, &budget)?,
             by_resource: Vec::new(),
@@ -333,6 +333,7 @@ impl SynchronizationPlanner {
                 if self.load_template(index)? {
                     if shadow_bind_check() {
                         let produced = self.bound_fingerprint();
+                        self.bound.shared = None;
                         self.bound.batches.values.clear();
                         self.bound.order.values.clear();
                         self.bound.transitions.values.clear();
@@ -359,11 +360,11 @@ impl SynchronizationPlanner {
     fn bound_fingerprint(&self) -> u64 {
         let text = format!(
             "{:?}|{:?}|{:?}|{:?}|{:?}",
-            self.bound.order.values,
-            self.bound.transitions.values,
+            self.bound.execution_order(),
+            self.bound.transitions(),
             self.bound.patches.values,
             self.bound.waits.values,
-            self.bound.batches.values
+            self.bound.batches()
         );
         text.bytes().fold(0xcbf2_9ce4_8422_2325u64, |hash, byte| {
             (hash ^ byte as u64).wrapping_mul(0x0100_0000_01b3)
@@ -438,9 +439,12 @@ impl SynchronizationPlanner {
             _pin: pin,
             key,
             aliases: bound.aliases.values.to_vec(),
-            transitions: bound.transitions.values.to_vec(),
-            batches: bound.batches.values.to_vec(),
-            order: bound.order.values.to_vec(),
+            shared: Arc::new(SharedBound {
+                transitions: bound.transitions.values.to_vec(),
+                batches: bound.batches.values.to_vec(),
+                order: bound.order.values.to_vec(),
+                index: bound.index.clone(),
+            }),
             patches: bound.patches.values.to_vec(),
             bases,
             used: self.template_clock,
@@ -491,35 +495,11 @@ impl SynchronizationPlanner {
             self.bound.patches.values.clear();
             return Ok(false);
         }
-        let (transitions, batches, order) = {
-            let template = &mut self.templates[index];
-            (
-                std::mem::take(&mut template.transitions),
-                std::mem::take(&mut template.batches),
-                std::mem::take(&mut template.order),
-            )
-        };
-        let loaded = (|| -> Result<()> {
-            for value in &batches {
-                self.push_batch(value.clone())?;
-            }
-            for &value in &order {
-                self.push_order(value)?;
-            }
-            for &value in &transitions {
-                self.push_transition(value)?;
-            }
-            Ok(())
-        })();
-        let template = &mut self.templates[index];
-        template.transitions = transitions;
-        template.batches = batches;
-        template.order = order;
-        loaded?;
+        // Shared by reference: no copy of transitions, batches, order or index.
+        self.bound.shared = Some(self.templates[index].shared.clone());
         self.template_clock += 1;
         self.templates[index].used = self.template_clock;
         self.template_hits += 1;
-        self.bound.finish_index();
         Ok(true)
     }
     pub fn bind(
@@ -1814,6 +1794,70 @@ mod tests {
         }
         // Two families with exclusive resources produce ownership transfers.
         assert_eq!(planner.template_hits(), 0);
+    }
+    /// Cost of the submission-time replay for the synthetic program: every
+    /// resource's table prepares and publishes that resource's patches.
+    #[test]
+    #[ignore]
+    fn replay_cost_baseline() {
+        use crate::resource::range_state::{RangeStateTable, StatePatch};
+        let one = [queue(0, 0)];
+        let (program, initial) = synthetic(200, 160, 19, &one);
+        let planner = bind_synthetic(&program, &initial);
+        let bound = planner.bound();
+        let q0 = crate::sync::QueueId::new(0).unwrap();
+        let mut per_resource: Vec<Vec<StatePatch>> = vec![Vec::new(); program.resources.len()];
+        for patch in bound.patches() {
+            per_resource[patch.resource as usize].push(patch.resolve(|_| None).unwrap());
+        }
+        let stats = Arc::new(AllocatorStats::default());
+        let (mut prepare_ns, mut publish_ns) = (0u128, 0u128);
+        let mut samples = Vec::new();
+        let rounds: usize = std::env::var("REPLAY_ROUNDS").ok().and_then(|v| v.parse().ok()).unwrap_or(30);
+        for _ in 0..rounds {
+            let mut tables: Vec<_> = (0..program.resources.len())
+                .map(|_| {
+                    RangeStateTable::new(
+                        buffer(0, 4096),
+                        ResourceSharing::Exclusive,
+                        NativeState::default(),
+                        Default::default(),
+                        stats.clone(),
+                    )
+                    .unwrap()
+                })
+                .collect();
+            // Production tables are long-lived with warm capacity.
+            for (table, patches) in tables.iter_mut().zip(&per_resource) {
+                if !patches.is_empty() {
+                    table.prepare(patches, q0, 0).unwrap();
+                    table.cancel_prepared();
+                }
+            }
+            let start = std::time::Instant::now();
+            prepare_ns = 0;
+            publish_ns = 0;
+            for (table, patches) in tables.iter_mut().zip(&per_resource) {
+                if patches.is_empty() {
+                    continue;
+                }
+                let t0 = std::time::Instant::now();
+                table.prepare(patches, q0, 0).unwrap();
+                let t1 = std::time::Instant::now();
+                table.publish(crate::sync::SyncPoint { queue: q0, value: 1 });
+                prepare_ns += (t1 - t0).as_nanos();
+                publish_ns += t1.elapsed().as_nanos();
+            }
+            samples.push(start.elapsed());
+        }
+        eprintln!("last round: prepare={prepare_ns}ns publish={publish_ns}ns");
+        samples.sort();
+        eprintln!(
+            "replay patches={} median={:?} p95={:?}",
+            bound.patches().len(),
+            samples[samples.len() / 2],
+            samples[samples.len() * 95 / 100]
+        );
     }
     const EXPECTED_FINGERPRINTS: [u64; 3] = [
         15114495150305685386,

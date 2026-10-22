@@ -501,20 +501,23 @@ impl RangeStateTable {
             // can be visited by this patch, so no cell is incremented twice.
             let mut visited = 0;
             while visited < before {
-                let current = self.scratch.values[index];
-                visited += 1;
-                let Some(overlap) = intersection(current.cell.range, patch.range) else {
+                // Test overlap on the borrowed range; copying the whole cell
+                // (two frontiers) for every non-overlapping neighbour dominated
+                // the replay.
+                let Some(overlap) = intersection(self.scratch.values[index].cell.range, patch.range)
+                else {
+                    visited += 1;
                     index += 1;
                     continue;
                 };
+                visited += 1;
+                let current = &self.scratch.values[index];
                 if current.cell.state.revision != patch.expected_revision
                     && !(patch.expected_revision == u64::MAX
                         && matches!(patch.action, PatchAction::Unknown { .. }))
                 {
                     return Err(Error::Timeout);
                 }
-                let mut changed = current;
-                changed.cell.range = overlap;
                 // Declared accesses know the first stage that touches the
                 // range on this queue; opaque uses and releases do not.
                 let (dependencies, stages) = match patch.action {
@@ -539,15 +542,20 @@ impl RangeStateTable {
                     ),
                 };
                 self.prepared_dependencies.merge_set(&dependencies, stages);
-                apply_preview(&mut changed, patch.action, self.sharing, queue, family)?;
-                changed.cell.state.revision = current
+                let outside = difference(current.cell.range, overlap);
+                // Only a split needs the pre-patch cell again; otherwise the
+                // cell is updated in place with no copy at all.
+                let original = (!outside.is_empty()).then(|| *current);
+                let changed = &mut self.scratch.values[index];
+                changed.cell.range = overlap;
+                apply_preview(changed, patch.action, self.sharing, queue, family)?;
+                changed.cell.state.revision = changed
                     .cell
                     .state
                     .revision
                     .checked_add(1)
                     .filter(|revision| *revision != u64::MAX)
                     .ok_or_else(|| Error::unsupported("native range revision exhausted"))?;
-                let outside = difference(current.cell.range, overlap);
                 let wanted = self
                     .scratch
                     .values
@@ -556,17 +564,18 @@ impl RangeStateTable {
                     .ok_or(Error::OutOfHostMemory)?;
                 self.scratch
                     .grow(wanted, self.cells.bytes(), self.config, &self.budget)?;
-                // Keep the intersection in-place; outside pieces are not revisited.
-                self.scratch.values[index] = changed;
-                self.scratch
-                    .values
-                    .extend(outside.into_iter().map(|range| PreparedCell {
-                        cell: RangeCell {
-                            range,
-                            state: current.cell.state,
-                        },
-                        ..current
-                    }));
+                // Outside pieces keep the pre-patch state and are not revisited.
+                if let Some(original) = original {
+                    self.scratch
+                        .values
+                        .extend(outside.into_iter().map(|range| PreparedCell {
+                            cell: RangeCell {
+                                range,
+                                state: original.cell.state,
+                            },
+                            ..original
+                        }));
+                }
                 index += 1;
             }
         }
