@@ -1324,6 +1324,11 @@ impl GameRenderHostFactory for ProductionRenderer {
                 "render_stages gameplay_n={} graph={:?} receipt={:?} draw_lists_ms={:.3} declare_ms={:.3} prewarm_ms={:.3} compile_ms={:.3} record_submit_ms={:.3} collect_ms={:.3} present_ticket_wait_ms={:.3} acquire_ms={:.3} resolve_inclusive_ms={:.3} present_ms={:.3} frame_throttle_ms={:.3} queue_trim_actual_ms={:.3} queue_trim_budget_ms={:.3} observed_completion_wall_ms={:.3} submitted={} present_queued={} error={}; GPU top-level timestamp span unavailable",
                 t.frame, t.graph, t.receipt, ms(t.draw_lists), ms(t.declare), ms(t.prewarm), ms(t.compile), ms(t.execute), ms(t.collect), ms(t.present_wait), ms(t.acquire), ms(t.resolve), ms(t.present), ms(t.frame_throttle), ms(t.queue_trim), ms(t.queue_budget), t.observed_completion_wall_ns as f64 / 1_000_000.0,
                 self.frame_submitted, self.frame_present_queued, self.first_error.is_some());
+            let d = country_core::render::declare_probe::take();
+            log::info!(target: "tiny_glade::frame_timing",
+                "declare_split gameplay_n={} declare_ms={:.3} list_passes={} list_draws={} list_loop_ms={:.3} raster_render_ms={:.3} table_reads={} table_ms={:.3} draw_access_ms={:.3}; list_loop and raster_render are disjoint, table_ms and draw_access_ms are inside raster_render",
+                t.frame, ms(t.declare), d.list_passes, d.list_draws, d.list_loop_ns as f64 / 1e6, d.render_ns as f64 / 1e6,
+                d.table_reads, d.table_ns as f64 / 1e6, d.draw_access_ns as f64 / 1e6);
             if let Some(vao) = vao {
                 log::info!(target: "tiny_glade::frame_timing",
                     "vao_full_refresh gameplay_n={} graph={:?} receipt={:?} calls={} list_entries={} queried_entities={} unique_vaos={} cpu_wall_ms={:.3}; included inside frame phases, not GPU time",

@@ -261,6 +261,7 @@ pub fn run_list_pass(ctx: &mut DrawPassCtx<'_>, spec: &ListPass<'_>, items: &[Dr
     if let ItemMode::Shadow { flag } = spec.mode {
         params.flag = CommonDrawFlag::from_byte(flag).expect("shadow cascade flag out of range");
     }
+    let loop_started = crate::render::declare_probe::start();
     for (item, func) in items {
         let mut state = pass.host.default_raster_state();
         if spec.mode == ItemMode::Velocity {
@@ -304,5 +305,6 @@ pub fn run_list_pass(ctx: &mut DrawPassCtx<'_>, spec: &ListPass<'_>, items: &[Dr
         }
         func(builder, &item.params, &mut *ctx.world);
     }
+    crate::render::declare_probe::list_loop(loop_started, items.len());
     pass.render();
 }

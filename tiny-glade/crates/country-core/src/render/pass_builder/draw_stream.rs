@@ -704,6 +704,7 @@ impl RasterPass {
     /// （命中 → 克隆句柄；未命中 → `create_render_pass` 后插入再克隆）；把全部 pass 状态交给
     /// `PassBuilder::render`。
     pub fn render(mut self) {
+        let probe_started = crate::render::declare_probe::start();
         self.rendered.0 = true;
         let desc = self.build_render_pass_desc();
         let render_pass = match self.host.render_pass_cache().get(&desc) {
@@ -728,6 +729,7 @@ impl RasterPass {
             viewport: self.viewport,
         };
         self.host.submit_raster_pass(submission);
+        crate::render::declare_probe::render(probe_started);
     }
 }
 

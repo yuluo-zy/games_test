@@ -1573,6 +1573,7 @@ impl PassHost for RasterPassHost {
             }
         };
         let mut declared = graph.add_pass(name);
+        let table_started = country_core::render::declare_probe::start();
         for (resource, range) in table_reads.iter() {
             if let Err(error) = declared.add_resource_access_range(*resource, 0x1d, 0, *range) {
                 declared.side_effect();
@@ -1580,6 +1581,8 @@ impl PassHost for RasterPassHost {
                 return;
             }
         }
+        country_core::render::declare_probe::table(table_started, table_reads.len());
+        let draw_access_started = country_core::render::declare_probe::start();
         for draw in &prepared {
             // Native DrawBuilder also records these as access 2/group 1.
             // Register them here as a final owner/access invariant, including
@@ -1676,6 +1679,7 @@ impl PassHost for RasterPassHost {
             };
             result.expect("add_resource_access: resource does not belong to this graph");
         }
+        country_core::render::declare_probe::draw_access(draw_access_started);
         declared.render_with_context(move |ctx| {
             let managed = ctx
                 .managed

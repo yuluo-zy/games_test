@@ -1,4 +1,5 @@
 //! 第 0 层文件的挂载点（相对路径指向真实源文件，不拷贝）。
+pub mod declare_probe;
 pub mod device;
 pub mod dirty_index_range;
 pub mod frame_constants;
