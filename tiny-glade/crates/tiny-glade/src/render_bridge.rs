@@ -282,6 +282,7 @@ impl CoreRenderBridge {
                 active: Cell::new(true),
                 graph: graph.graph_id(),
             },
+            imported: Default::default(),
         });
         let mut frame = CoreGraphFrame {
             bridge: self,
@@ -931,6 +932,10 @@ impl FrameScope {
 struct FrameDeclarer {
     session: Rc<RefCell<VulkanGraphSession>>,
     scope: FrameScope,
+    /// Frame imports already made by this graph, by physical object (`true` =
+    /// image). The session returns the same handle for a repeat import, and the
+    /// graph keeps the object alive, so the address stays unique for the frame.
+    imported: RefCell<std::collections::HashMap<(usize, bool), ResourceHandle>>,
 }
 /// Native get_rg_buffer remains a lazy library operation. This facade binds
 /// its historical u64 handle projection to the same physical host tables,
@@ -1011,9 +1016,19 @@ impl GraphDeclarer for FrameDeclarer {
         access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.scope.validate(graph)?;
-        self.session
+        let key = (Arc::as_ptr(&buffer) as usize, false);
+        if let Some(handle) = self.imported.borrow().get(&key) {
+            return Ok(*handle);
+        }
+        let probe = country_core::render::declare_probe::start();
+        let handle = self
+            .session
             .borrow_mut()
-            .import_frame_buffer(graph, buffer, access)
+            .import_frame_buffer(graph, buffer, access)?;
+        country_core::render::declare_probe::stage(4, probe);
+        country_core::render::declare_probe::stage_count(5);
+        self.imported.borrow_mut().insert(key, handle);
+        Ok(handle)
     }
     fn import_texture(
         &self,
@@ -1022,9 +1037,19 @@ impl GraphDeclarer for FrameDeclarer {
         access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         self.scope.validate(graph)?;
-        self.session
+        let key = (Arc::as_ptr(&texture) as usize, true);
+        if let Some(handle) = self.imported.borrow().get(&key) {
+            return Ok(*handle);
+        }
+        let probe = country_core::render::declare_probe::start();
+        let handle = self
+            .session
             .borrow_mut()
-            .import_frame_texture(graph, texture, access)
+            .import_frame_texture(graph, texture, access)?;
+        country_core::render::declare_probe::stage(4, probe);
+        country_core::render::declare_probe::stage_count(5);
+        self.imported.borrow_mut().insert(key, handle);
+        Ok(handle)
     }
     fn declare(
         &self,

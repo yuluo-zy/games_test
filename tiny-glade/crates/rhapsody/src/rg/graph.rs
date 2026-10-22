@@ -239,6 +239,10 @@ pub struct RenderGraph {
     pub(crate) declaration: GraphDeclaration,
     pub(crate) callbacks: Vec<RenderCallback>,
     retire_callbacks: Vec<RetireCallback>,
+    /// Logical indices of imports declared outside `import_frame_resource`
+    /// (named/temporal/swapchain); frame imports are found through the session's
+    /// identity map, so only these need a physical-identity scan.
+    pub(crate) foreign_imports: Vec<u32>,
 }
 
 impl Default for RenderGraph {
@@ -248,6 +252,7 @@ impl Default for RenderGraph {
             declaration: GraphDeclaration::default(),
             callbacks: Vec::new(),
             retire_callbacks: Vec::new(),
+            foreign_imports: Vec::new(),
         }
     }
 }
@@ -277,6 +282,9 @@ impl RenderGraph {
             self.graph_id,
             self.declaration.resources.len() as u32,
         );
+        if origin.source != OriginSource::Create {
+            self.foreign_imports.push(handle.raw());
+        }
         self.declaration.resources.push(ResourceDeclaration {
             sharing: crate::resource::ResourceSharing::Exclusive,
             name: name.into(),
@@ -510,6 +518,7 @@ impl BuiltGraph {
             declaration: self.declaration,
             callbacks: self.callbacks,
             retire_callbacks: self.retire_callbacks,
+            foreign_imports: Vec::new(),
         }
     }
 

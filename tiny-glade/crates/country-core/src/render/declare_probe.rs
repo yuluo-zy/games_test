@@ -19,6 +19,7 @@ static REC_RESOURCES_NS: AtomicU64 = AtomicU64::new(0);
 static REC_PREPARE_NS: AtomicU64 = AtomicU64::new(0);
 static REC_BIND_NS: AtomicU64 = AtomicU64::new(0);
 static REC_DRAW_NS: AtomicU64 = AtomicU64::new(0);
+static STAGE_NS: [AtomicU64; 6] = [const { AtomicU64::new(0) }; 6];
 
 /// Totals accumulated since the previous [`take`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -44,6 +45,9 @@ pub struct DeclareProbe {
     pub rec_prepare_ns: u64,
     pub rec_bind_ns: u64,
     pub rec_draw_ns: u64,
+    /// `submit_raster_pass` stages: 0 pipeline resolve, 1 imports, 2 intents and
+    /// ranges, 3 texture table, 4 draw accesses (also counted above), 5 rest.
+    pub stage_ns: [u64; 6],
 }
 
 fn enabled() -> bool {
@@ -96,6 +100,13 @@ pub fn rec_draw_call(started: Option<Instant>) {
     add(&REC_DRAW_NS, started);
 }
 
+pub fn stage_count(index: usize) {
+    STAGE_NS[index].fetch_add(1, Relaxed);
+}
+pub fn stage(index: usize, started: Option<Instant>) {
+    add(&STAGE_NS[index], started);
+}
+
 pub fn take() -> DeclareProbe {
     DeclareProbe {
         list_passes: LIST_PASSES.swap(0, Relaxed),
@@ -111,5 +122,6 @@ pub fn take() -> DeclareProbe {
         rec_prepare_ns: REC_PREPARE_NS.swap(0, Relaxed),
         rec_bind_ns: REC_BIND_NS.swap(0, Relaxed),
         rec_draw_ns: REC_DRAW_NS.swap(0, Relaxed),
+        stage_ns: std::array::from_fn(|i| STAGE_NS[i].swap(0, Relaxed)),
     }
 }

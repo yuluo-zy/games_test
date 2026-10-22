@@ -1054,6 +1054,7 @@ impl PassHost for RasterPassHost {
             ..
         } = submission;
 
+        let stage_started = country_core::render::declare_probe::start();
         // 声明期解析每个 draw 的管线（失败 = 原版 `Result::unwrap` panic，见 `get_or_generate`）。
         let prepared: rhapsody::Result<Vec<PreparedDraw>> = draws
             .into_iter()
@@ -1108,6 +1109,7 @@ impl PassHost for RasterPassHost {
             })
             .collect();
 
+        country_core::render::declare_probe::stage(0, stage_started);
         let mut graph = self.graph.borrow_mut();
         let mut prepared = match (constants_error, prepared) {
             (None, Ok(prepared)) => prepared,
@@ -1118,6 +1120,7 @@ impl PassHost for RasterPassHost {
                 return;
             }
         };
+        let stage_started = country_core::render::declare_probe::start();
         let index_imports = (|| -> rhapsody::Result<()> {
             for draw in &mut prepared {
                 if draw.packet.bindings.values().any(|owned| {
@@ -1406,6 +1409,8 @@ impl PassHost for RasterPassHost {
             }
             Ok(())
         })();
+        country_core::render::declare_probe::stage(1, stage_started);
+        let stage_started = country_core::render::declare_probe::start();
         if let Err(error) = index_imports {
             let mut declared = graph.add_pass(name);
             declared.side_effect();
@@ -1509,9 +1514,11 @@ impl PassHost for RasterPassHost {
                     )
             })
             .collect::<Vec<_>>();
+        country_core::render::declare_probe::stage(2, stage_started);
         // The global texture array (set 2/b0) is indexed dynamically by the shader, so every
         // table texture is a potential read of every pass that binds it; the original keeps them
         // all in SHADER_READ_ONLY. Declare each exact view range once per pass.
+        let stage_started = country_core::render::declare_probe::start();
         let table_reads = (|| -> rhapsody::Result<Arc<[(ResourceHandle, rhapsody::rg::AccessRange)]>> {
             let mut reads = Vec::new();
             // Only a pass that binds the table reads it.
@@ -1572,6 +1579,7 @@ impl PassHost for RasterPassHost {
                 return;
             }
         };
+        country_core::render::declare_probe::stage(3, stage_started);
         let mut declared = graph.add_pass(name);
         let table_started = country_core::render::declare_probe::start();
         for (resource, range) in table_reads.iter() {

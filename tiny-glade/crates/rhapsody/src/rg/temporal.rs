@@ -565,6 +565,7 @@ impl TemporalRenderGraphState {
                     owner.release_temporal(token);
                 }
                 graph.declaration.resources.truncate(resources_len);
+                graph.foreign_imports.retain(|index| (*index as usize) < resources_len);
                 return Err(error);
             }
         };

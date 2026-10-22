@@ -2427,28 +2427,52 @@ impl VulkanGraphSession {
         }
         // Other typed hosts may already have imported the same physical resource.
         // A second logical declaration would split its dependency history.
-        for index in 0..graph.declaration.resources.len() {
-            if let Some(found) = self.existing_import(graph, index, &resource, owned, sharing) {
+        for &index in &graph.foreign_imports {
+            if let Some(found) =
+                self.existing_import(graph, index as usize, &resource, owned, sharing)
+            {
                 return found;
             }
         }
-        self.collect_frame_imports();
         if self.frame_imports.is_none() {
             self.frame_imports = Some(super::frame_imports::FrameImports::new(
                 self.frame_import_config,
                 self.backend.device.memory.stats.clone(),
             )?);
         }
-        let imports = self
+        if self
             .frame_imports
-            .as_mut()
-            .expect("frame imports initialized");
-        if imports.find(graph.graph_id(), identity).is_some() {
+            .as_ref()
+            .expect("frame imports initialized")
+            .find(graph.graph_id(), identity)
+            .is_some()
+        {
             return Err(crate::Error::invalid_usage(
                 "frame import was invalidated before graph execution",
             ));
         }
-        let lease = imports.reserve()?;
+        // Collection walks every live import, so run it only when the registry
+        // is full (a per-import collect made a frame's imports quadratic).
+        let reserved = self
+            .frame_imports
+            .as_mut()
+            .expect("frame imports initialized")
+            .reserve();
+        let lease = match reserved {
+            Ok(lease) => lease,
+            Err(crate::Error::Timeout) => {
+                self.collect_frame_imports();
+                self.frame_imports
+                    .as_mut()
+                    .expect("frame imports initialized")
+                    .reserve()?
+            }
+            Err(error) => return Err(error),
+        };
+        let imports = self
+            .frame_imports
+            .as_mut()
+            .expect("frame imports initialized");
         graph.reserve_retirement_callback()?;
         let marker = lease.marker();
         let token = self.backend.bind_import(resource)?;
@@ -2470,7 +2494,11 @@ impl VulkanGraphSession {
             )
         };
         let handle = match imported {
-            Ok(handle) => handle,
+            Ok(handle) => {
+                // Found through `frame_imports` from now on, not by the foreign scan.
+                graph.foreign_imports.pop();
+                handle
+            }
             Err(error) => {
                 self.backend.resources.remove(&token);
                 self.backend.import_families.remove(&token);
