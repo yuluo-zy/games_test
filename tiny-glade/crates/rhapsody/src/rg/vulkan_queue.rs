@@ -289,7 +289,11 @@ impl VulkanGraphBackend {
                 }
             }
         }
-        planner.bind(&compiled.plan.range_program, |family| {
+        planner.bind_cached(
+            &compiled.plan.range_program,
+            Arc::as_ptr(&compiled.plan) as *const () as usize,
+            compiled.plan.clone(),
+            |family| {
             domains
                 .iter()
                 .flatten()
@@ -300,7 +304,8 @@ impl VulkanGraphBackend {
                         "exclusive native owner family has no configured device queue",
                     )
                 })
-        })?;
+            },
+        )?;
         runtime.points.grow(
             planner.bound().batches().len(),
             runtime.tokens.bytes(),

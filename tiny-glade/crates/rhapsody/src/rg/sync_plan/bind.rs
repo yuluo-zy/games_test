@@ -87,6 +87,41 @@ enum PendingOwner {
         release: DependencyRef,
     },
 }
+const MAX_TEMPLATES: usize = 4;
+/// Frame-independent view of one imported initial cell. Timeline points are
+/// reduced to a per-queue mask: their values only matter for cross-queue waits,
+/// and a template is stored only when there are none.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct InitKey {
+    resource: u32,
+    range: NativeRange,
+    layout: vk::ImageLayout,
+    layout_known: bool,
+    owner: Option<u32>,
+    writer_scopes: [AccessScope; MAX_QUEUES],
+    writer_host: AccessScope,
+    writer_queues: u8,
+    readers_scopes: [AccessScope; MAX_QUEUES],
+    readers_host: AccessScope,
+    readers_queues: u8,
+}
+struct Template {
+    id: usize,
+    _pin: Arc<dyn std::any::Any + Send + Sync>,
+    key: Vec<InitKey>,
+    aliases: Vec<AliasEdge>,
+    transitions: Vec<BoundTransition>,
+    batches: Vec<BoundBatch>,
+    order: Vec<usize>,
+    patches: Vec<BoundPatch>,
+    /// (initial row, revision delta) per patch.
+    bases: Vec<(u32, u64)>,
+    used: u64,
+}
+fn shadow_bind_check() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("RHAPSODY_BIND_SHADOW").is_some_and(|v| v == "1"))
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct ShadowCell {
     resource: u32,
@@ -99,9 +134,11 @@ struct ShadowCell {
     revision: u64,
     /// Not yet touched by this binding; alias edges apply on the first touch.
     fresh: bool,
+    /// Index of the `initial` row this cell (or its ancestor) came from.
+    initial_slot: u32,
 }
 impl ShadowCell {
-    fn new(resource: u32, cell: RangeCell) -> Self {
+    fn new(resource: u32, cell: RangeCell, initial_slot: u32) -> Self {
         let state = cell.state;
         Self {
             resource,
@@ -120,6 +157,7 @@ impl ShadowCell {
             },
             revision: state.revision,
             fresh: true,
+            initial_slot,
         }
     }
     fn increment(&mut self) -> Result<()> {
@@ -150,6 +188,11 @@ pub struct SynchronizationPlanner {
     bound: BoundSynchronization,
     shadow: Storage<ShadowCell>,
     by_resource: Vec<ResourceShadow>,
+    /// `initial` row of each pushed patch (parallel to `bound.patches`).
+    patch_slots: Vec<u32>,
+    templates: Vec<Template>,
+    template_clock: u64,
+    template_hits: u64,
     budget: Arc<AllocatorStats>,
     config: SynchronizationConfig,
     next_pair: u64,
@@ -182,6 +225,10 @@ impl SynchronizationPlanner {
             },
             shadow: Storage::new(0, &budget)?,
             by_resource: Vec::new(),
+            patch_slots: Vec::new(),
+            templates: Vec::new(),
+            template_clock: 0,
+            template_hits: 0,
             budget,
             config,
             next_pair: 1,
@@ -220,6 +267,7 @@ impl SynchronizationPlanner {
         self.bound.patches.values.clear();
         self.bound.waits.values.clear();
         self.bound.invalidate_index();
+        self.patch_slots.clear();
         self.shadow.values.clear();
         for entry in &mut self.by_resource {
             entry.cells.clear();
@@ -236,8 +284,9 @@ impl SynchronizationPlanner {
     }
     pub fn add_initial(&mut self, resource: u32, cells: &[RangeCell]) -> Result<()> {
         for &cell in cells {
+            let slot = self.bound.initial.values.len() as u32;
             self.push_initial(InitialState { resource, cell })?;
-            self.push_shadow(ShadowCell::new(resource, cell))?;
+            self.push_shadow(ShadowCell::new(resource, cell, slot))?;
         }
         Ok(())
     }
@@ -253,7 +302,234 @@ impl SynchronizationPlanner {
         self.resource_shadow(previous).alias_flags |= 2;
         Ok(())
     }
+    /// Number of bindings served from a cached template (diagnostics/tests).
+    pub fn template_hits(&self) -> u64 {
+        self.template_hits
+    }
+    /// [`Self::bind`] with a per-program template cache. `id` identifies the
+    /// program and `pin` keeps its allocation alive, so an address can never be
+    /// reused by a different program while a template for it exists.
+    ///
+    /// A template is stored only when the binding is independent of timeline
+    /// values: no ownership transfer, no cross-queue wait. A later frame whose
+    /// imported state differs from the template only in revision numbers and
+    /// timeline points then gets the identical output, with every patch's
+    /// `expected_revision` rebased onto its own initial state.
+    pub fn bind_cached(
+        &mut self,
+        program: &RangeProgram,
+        id: usize,
+        pin: Arc<dyn std::any::Any + Send + Sync>,
+        family_domain: impl FnMut(u32) -> Result<QueueDomain>,
+    ) -> Result<()> {
+        let key = self.template_key();
+        if let Some(key) = &key {
+            let found = self.templates.iter().position(|template| {
+                template.id == id
+                    && template.key == *key
+                    && template.aliases == self.bound.aliases.values[..]
+            });
+            if let Some(index) = found {
+                if self.load_template(index)? {
+                    if shadow_bind_check() {
+                        let produced = self.bound_fingerprint();
+                        self.bound.batches.values.clear();
+                        self.bound.order.values.clear();
+                        self.bound.transitions.values.clear();
+                        self.bound.patches.values.clear();
+                        self.bound.waits.values.clear();
+                        self.patch_slots.clear();
+                        self.bind_full(program, family_domain)?;
+                        assert_eq!(
+                            produced,
+                            self.bound_fingerprint(),
+                            "bind template differs from a full bind"
+                        );
+                    }
+                    return Ok(());
+                }
+            }
+        }
+        self.bind_full(program, family_domain)?;
+        if let Some(key) = key {
+            self.save_template(id, pin, key);
+        }
+        Ok(())
+    }
+    fn bound_fingerprint(&self) -> u64 {
+        let text = format!(
+            "{:?}|{:?}|{:?}|{:?}|{:?}",
+            self.bound.order.values,
+            self.bound.transitions.values,
+            self.bound.patches.values,
+            self.bound.waits.values,
+            self.bound.batches.values
+        );
+        text.bytes().fold(0xcbf2_9ce4_8422_2325u64, |hash, byte| {
+            (hash ^ byte as u64).wrapping_mul(0x0100_0000_01b3)
+        })
+    }
+    /// Frame-independent projection of the initial state; `None` when a
+    /// released ownership makes the binding depend on a pending transfer.
+    fn template_key(&self) -> Option<Vec<InitKey>> {
+        let mut key = Vec::with_capacity(self.bound.initial.values.len());
+        for initial in &self.bound.initial.values {
+            let state = initial.cell.state;
+            let owner = match state.owner {
+                RangeOwner::Unclaimed => None,
+                RangeOwner::Owned(family) => Some(family),
+                RangeOwner::Released { .. } => return None,
+            };
+            let mask = |frontier: &Frontier| {
+                frontier
+                    .points
+                    .points()
+                    .fold(0u8, |mask, point| mask | 1 << point.queue.index())
+            };
+            key.push(InitKey {
+                resource: initial.resource,
+                range: initial.cell.range,
+                layout: state.layout,
+                layout_known: state.layout_known,
+                owner,
+                writer_scopes: state.writer.scopes,
+                writer_host: state.writer.host,
+                writer_queues: mask(&state.writer),
+                readers_scopes: state.readers.scopes,
+                readers_host: state.readers.host,
+                readers_queues: mask(&state.readers),
+            });
+        }
+        Some(key)
+    }
+    fn save_template(&mut self, id: usize, pin: Arc<dyn std::any::Any + Send + Sync>, key: Vec<InitKey>) {
+        let bound = &self.bound;
+        let single_queue = bound
+            .batches
+            .values
+            .iter()
+            .all(|batch| matches!(batch.kind, BoundBatchKind::Graph { .. }));
+        let access_only = bound
+            .patches
+            .values
+            .iter()
+            .all(|patch| matches!(patch.action, BoundPatchAction::Access { .. }));
+        if !single_queue
+            || !access_only
+            || !bound.waits.values.is_empty()
+            || self.patch_slots.len() != bound.patches.values.len()
+        {
+            return;
+        }
+        let mut bases = Vec::with_capacity(bound.patches.values.len());
+        for (patch, &slot) in bound.patches.values.iter().zip(&self.patch_slots) {
+            let Some(initial) = bound.initial.values.get(slot as usize) else {
+                return;
+            };
+            let Some(delta) = patch.expected_revision.checked_sub(initial.cell.state.revision)
+            else {
+                return;
+            };
+            bases.push((slot, delta));
+        }
+        self.template_clock += 1;
+        let template = Template {
+            id,
+            _pin: pin,
+            key,
+            aliases: bound.aliases.values.to_vec(),
+            transitions: bound.transitions.values.to_vec(),
+            batches: bound.batches.values.to_vec(),
+            order: bound.order.values.to_vec(),
+            patches: bound.patches.values.to_vec(),
+            bases,
+            used: self.template_clock,
+        };
+        if let Some(existing) = self
+            .templates
+            .iter_mut()
+            .find(|old| old.id == id && old.key == template.key && old.aliases == template.aliases)
+        {
+            *existing = template;
+        } else if self.templates.len() < MAX_TEMPLATES {
+            self.templates.push(template);
+        } else if let Some(oldest) = self.templates.iter_mut().min_by_key(|old| old.used) {
+            *oldest = template;
+        }
+    }
+    /// Fills the bound tables from template `index`, rebasing revisions.
+    /// Returns false (leaving the tables empty) if a revision would overflow.
+    fn load_template(&mut self, index: usize) -> Result<bool> {
+        let template = std::mem::take(&mut self.templates[index].patches);
+        let result = self.load_template_rows(index, &template);
+        self.templates[index].patches = template;
+        result
+    }
+    fn load_template_rows(&mut self, index: usize, patches: &[BoundPatch]) -> Result<bool> {
+        let bases = std::mem::take(&mut self.templates[index].bases);
+        let mut rebased = true;
+        for (patch, &(slot, delta)) in patches.iter().zip(&bases) {
+            let revision = self.bound.initial.values[slot as usize]
+                .cell
+                .state
+                .revision
+                .checked_add(delta)
+                .filter(|revision| *revision != u64::MAX);
+            let Some(revision) = revision else {
+                rebased = false;
+                break;
+            };
+            let mut row = *patch;
+            row.expected_revision = revision;
+            if let Err(error) = self.push_patch(row) {
+                self.templates[index].bases = bases;
+                return Err(error);
+            }
+        }
+        self.templates[index].bases = bases;
+        if !rebased {
+            self.bound.patches.values.clear();
+            return Ok(false);
+        }
+        let (transitions, batches, order) = {
+            let template = &mut self.templates[index];
+            (
+                std::mem::take(&mut template.transitions),
+                std::mem::take(&mut template.batches),
+                std::mem::take(&mut template.order),
+            )
+        };
+        let loaded = (|| -> Result<()> {
+            for value in &batches {
+                self.push_batch(value.clone())?;
+            }
+            for &value in &order {
+                self.push_order(value)?;
+            }
+            for &value in &transitions {
+                self.push_transition(value)?;
+            }
+            Ok(())
+        })();
+        let template = &mut self.templates[index];
+        template.transitions = transitions;
+        template.batches = batches;
+        template.order = order;
+        loaded?;
+        self.template_clock += 1;
+        self.templates[index].used = self.template_clock;
+        self.template_hits += 1;
+        self.bound.finish_index();
+        Ok(true)
+    }
     pub fn bind(
+        &mut self,
+        program: &RangeProgram,
+        family_domain: impl FnMut(u32) -> Result<QueueDomain>,
+    ) -> Result<()> {
+        self.bind_full(program, family_domain)
+    }
+    fn bind_full(
         &mut self,
         program: &RangeProgram,
         mut family_domain: impl FnMut(u32) -> Result<QueueDomain>,
@@ -547,7 +823,7 @@ impl SynchronizationPlanner {
                                 pair: transfer.pair,
                             },
                         })?;
-                        self.push_patch(BoundPatch {
+                        self.push_patch_slot(current.initial_slot, BoundPatch {
                             batch: auxiliary,
                             phase: BarrierPhase::Initial,
                             resource: access.resource,
@@ -617,7 +893,7 @@ impl SynchronizationPlanner {
                     kind: BarrierKind::Memory,
                 })?;
             }
-            self.push_patch(BoundPatch {
+            self.push_patch_slot(current.initial_slot, BoundPatch {
                 batch,
                 phase,
                 resource: access.resource,
@@ -684,7 +960,7 @@ impl SynchronizationPlanner {
                 pair: transfer.pair,
             },
         })?;
-        self.push_patch(BoundPatch {
+        self.push_patch_slot(current.initial_slot, BoundPatch {
             batch,
             phase,
             resource: current.resource,
@@ -793,7 +1069,6 @@ impl BoundSynchronization {
 macro_rules! push {
     ($name:ident,$field:ident,$ty:ty,$limit:ident) => {
         fn $name(&mut self, value: $ty) -> Result<()> {
-            let total = self.known_cpu_bytes();
             let target = &mut self.bound.$field;
             let config = RangeStateConfig {
                 max_cells: self.config.$limit,
@@ -811,9 +1086,12 @@ macro_rules! push {
                 return Err(Error::Timeout);
             }
             if needed > target.values.capacity() {
-                target.grow(capacity, total - target.bytes(), config, &self.budget)?;
+                let own = target.bytes();
+                let total = self.known_cpu_bytes();
+                let target = &mut self.bound.$field;
+                target.grow(capacity, total - own, config, &self.budget)?;
             }
-            target.values.push(value);
+            self.bound.$field.values.push(value);
             Ok(())
         }
     };
@@ -831,8 +1109,12 @@ impl SynchronizationPlanner {
     push!(push_transition, transitions, BoundTransition, max_rows);
     push!(push_patch, patches, BoundPatch, max_rows);
     push!(push_wait, waits, BoundWait, max_rows);
+    fn push_patch_slot(&mut self, slot: u32, value: BoundPatch) -> Result<()> {
+        self.push_patch(value)?;
+        self.patch_slots.push(slot);
+        Ok(())
+    }
     fn push_shadow(&mut self, value: ShadowCell) -> Result<()> {
-        let total = self.known_cpu_bytes();
         let target = &mut self.shadow;
         let config = RangeStateConfig {
             max_cells: self.config.max_cells,
@@ -850,8 +1132,12 @@ impl SynchronizationPlanner {
             .max(target.values.capacity().saturating_mul(2))
             .min(config.max_cells);
         if needed > target.values.capacity() {
-            target.grow(capacity, total - target.bytes(), config, &self.budget)?;
+            let own = target.bytes();
+            let total = self.known_cpu_bytes();
+            self.shadow
+                .grow(capacity, total - own, config, &self.budget)?;
         }
+        let target = &mut self.shadow;
         let index = target.values.len() as u32;
         let resource = value.resource;
         target.values.push(value);
@@ -1457,6 +1743,78 @@ mod tests {
             assert_eq!(seen, bound.transitions().len(), "every transition has a slot");
         }
     }
+    fn imported(revision: u64, point: u64, layout_known: bool) -> Vec<RangeCell> {
+        let mut state = NativeState {
+            revision,
+            layout_known,
+            ..NativeState::default()
+        };
+        let mut writer = Frontier::EMPTY;
+        writer.points.insert(crate::sync::SyncPoint {
+            queue: crate::sync::QueueId::new(0).unwrap(),
+            value: point,
+        });
+        state.writer = writer;
+        vec![RangeCell {
+            range: buffer(0, 4096),
+            state,
+        }]
+    }
+    fn bind_with(
+        planner: &mut SynchronizationPlanner,
+        program: &RangeProgram,
+        initial: &[RangeCell],
+        cached: bool,
+    ) {
+        planner.begin();
+        for resource in 0..program.resources.len() as u32 {
+            planner.add_initial(resource, initial).unwrap();
+        }
+        let family = |family| Ok(queue(family, family));
+        if cached {
+            let pin: Arc<dyn std::any::Any + Send + Sync> = Arc::new(());
+            planner
+                .bind_cached(program, program as *const _ as usize, pin, family)
+                .unwrap();
+        } else {
+            planner.bind(program, family).unwrap();
+        }
+    }
+    /// A frame that differs only in revisions and timeline points must reuse
+    /// the template and produce exactly what a full bind produces.
+    #[test]
+    fn rebased_template_equals_full_binding_across_frames() {
+        let one = [queue(0, 0)];
+        let (program, _) = synthetic(40, 60, 6, &one);
+        let mut cached = SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default()).unwrap();
+        let mut fresh = SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default()).unwrap();
+        for frame in 0..5u64 {
+            let initial = imported(10 * frame + 3, frame + 1, true);
+            bind_with(&mut cached, &program, &initial, true);
+            bind_with(&mut fresh, &program, &initial, false);
+            assert_eq!(fingerprint(cached.bound()), fingerprint(fresh.bound()), "frame {frame}");
+            assert_eq!(cached.template_hits(), frame, "frame {frame}");
+        }
+        // A changed layout is a different key: no hit, still exact.
+        let before = cached.template_hits();
+        let initial = imported(99, 9, false);
+        bind_with(&mut cached, &program, &initial, true);
+        bind_with(&mut fresh, &program, &initial, false);
+        assert_eq!(cached.template_hits(), before);
+        assert_eq!(fingerprint(cached.bound()), fingerprint(fresh.bound()));
+    }
+    /// A pending ownership release can never be served from a template.
+    #[test]
+    fn released_owner_is_never_templated() {
+        let two = [queue(0, 0), queue(1, 1)];
+        let (program, initial) = synthetic(24, 48, 5, &two);
+        let mut planner = SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default()).unwrap();
+        for _ in 0..3 {
+            bind_with(&mut planner, &program, &initial, true);
+        }
+        // Two families with exclusive resources produce ownership transfers.
+        assert_eq!(planner.template_hits(), 0);
+    }
     const EXPECTED_FINGERPRINTS: [u64; 3] = [
         15114495150305685386,
         7488788626014099824,
@@ -1484,6 +1842,18 @@ mod tests {
             samples.push(start.elapsed());
         }
         samples.sort();
+        let mut cached = Vec::new();
+        for frame in 0..30u64 {
+            let start = std::time::Instant::now();
+            bind_with(&mut planner, &program, &imported(frame * 7, frame + 1, true), true);
+            cached.push(start.elapsed());
+        }
+        cached.sort();
+        eprintln!(
+            "bind_cached hits={} median={:?}",
+            planner.template_hits(),
+            cached[cached.len() / 2]
+        );
         eprintln!(
             "bind U={} S={} transitions={} median={:?} p95={:?}",
             program.uses.len(),
