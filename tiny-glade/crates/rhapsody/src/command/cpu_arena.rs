@@ -271,7 +271,7 @@ impl CpuArenaLease {
         clippy::mut_from_ref,
         reason = "bump allocations are disjoint and references cannot outlive this lease"
     )]
-    pub(crate) fn borrow_slice_with<'a, T>(
+    pub(crate) fn borrow_slice_with<'a, T: ?Sized>(
         &'a self,
         len: usize,
         initialize: impl FnMut(usize) -> &'a mut T,
@@ -366,7 +366,7 @@ pub(crate) fn scratch_slice<T: Copy>(
     }
 }
 
-pub(crate) fn scratch_borrows<'a, T>(
+pub(crate) fn scratch_borrows<'a, T: ?Sized>(
     arena: Option<&'a CpuArenaLease>,
     len: usize,
     mut initialize: impl FnMut(usize) -> &'a mut T,

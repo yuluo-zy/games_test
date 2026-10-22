@@ -65,6 +65,25 @@ impl std::hash::Hash for PlanKey {
     }
 }
 
+/// One pass recorder. Closures are recorders, so every existing callback keeps
+/// working; a retained graph supplies long-lived recorders that read per-frame
+/// parameters instead of capturing them. Recording may run on worker threads.
+pub trait PassRecord: Send {
+    fn record(&mut self, context: PassContext<'_>) -> bool;
+}
+impl<F: FnMut(PassContext<'_>) -> bool + Send> PassRecord for F {
+    fn record(&mut self, context: PassContext<'_>) -> bool {
+        self(context)
+    }
+}
+/// The executor picks the retained passes out of the caller's slice as
+/// `&mut dyn PassRecord`; that reference is itself a recorder.
+impl PassRecord for &mut dyn PassRecord {
+    fn record(&mut self, context: PassContext<'_>) -> bool {
+        (**self).record(context)
+    }
+}
+
 /// 一个 batch 的并行录制输入。
 struct ChunkedBatch<'a, C> {
     recorder: &'a mut record::Recorder,
@@ -854,7 +873,7 @@ impl ExecutionChain {
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        callbacks: &mut [impl PassRecord],
     ) -> Result<GraphExecution, Error> {
         self.execute_graph_validated(graph, pool, dependency, backend, callbacks, |_| Ok(()))
     }
@@ -867,7 +886,7 @@ impl ExecutionChain {
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        callbacks: &mut [impl PassRecord],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         let result =
@@ -982,7 +1001,7 @@ impl ExecutionChain {
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        callbacks: &mut [impl PassRecord],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         let prepared = self.compile_graph(graph, pool, dependency, backend, callbacks.len())?;
@@ -1028,7 +1047,7 @@ impl ExecutionChain {
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        callbacks: &mut [impl PassRecord],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         let result =
@@ -1043,7 +1062,7 @@ impl ExecutionChain {
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        callbacks: &mut [impl PassRecord],
         validate: impl FnOnce(&crate::rg::graph::FrameInstance) -> crate::Result<()>,
     ) -> Result<GraphExecution, Error> {
         self.activate_pgo(prepared.pgo_key);
@@ -1071,7 +1090,7 @@ impl ExecutionChain {
                 .iter_mut()
                 .enumerate()
                 .filter(|(i, _)| compiled.plan.retained_passes.binary_search(i).is_ok())
-                .map(|(_, callback)| callback);
+                .map(|(_, callback)| callback as &mut dyn PassRecord);
             let selected = scratch_borrows(
                 cpu_arena.as_ref(),
                 compiled.plan.retained_passes.len(),
@@ -1182,7 +1201,7 @@ impl ExecutionChain {
         compiled: &crate::rg::graph::FrameInstance,
         _dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
-        callbacks: &mut [impl FnMut(PassContext<'_>) -> bool + Send],
+        callbacks: &mut [impl PassRecord],
         cpu_arena: Option<&CpuArenaLease>,
         (_queue, _family): (recording::Queue, u32),
         stats: &mut ExecutionStats,
@@ -1418,7 +1437,7 @@ impl ExecutionChain {
                             );
                             // Serial recording never reads the per-pass durations.
                             let timer = (!serial_strategy).then(std::time::Instant::now);
-                            let ok = callbacks[pass_index](PassContext {
+                            let ok = callbacks[pass_index].record(PassContext {
                                 pass_index,
                                 cpu: cpu_arena,
                                 command: &new,
@@ -1743,7 +1762,7 @@ impl ExecutionChain {
         backend: &mut impl ExecutionBackend,
     ) -> Result<(recording::Command, record::Outcome), Error>
     where
-        C: FnMut(PassContext<'_>) -> bool + Send,
+        C: PassRecord,
     {
         let ChunkedBatch {
             recorder,
@@ -1937,7 +1956,7 @@ impl ExecutionChain {
                         pass_names[pass_index],
                     );
                     let timer = std::time::Instant::now();
-                    let good = callback(PassContext {
+                    let good = callback.record(PassContext {
                         pass_index,
                         cpu: cpu.as_ref(),
                         command: work.command,
