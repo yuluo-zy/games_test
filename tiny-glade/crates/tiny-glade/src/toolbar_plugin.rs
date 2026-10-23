@@ -4,8 +4,8 @@
 //! phase2-toolbar-layout/native-schedule-config-names.json.
 //!
 //! Text/Taffy set44 and renderer-scale set7 are already installed by mei_host.
-//! This entry installs recovered members once. Missing ui_nav_update,
-//! toolbar_steal_mouse_input and demo policy remain explicit gaps.
+//! This entry installs recovered members once. Picking consumes the previous
+//! frame's widget registry before MEI and toolbar producers register this frame.
 use bevy_app::{App, Plugin, Update};
 use bevy_ecs::schedule::IntoScheduleConfigs;
 use crate::run_game::GameSystemSet;
@@ -20,6 +20,31 @@ pub fn build(app: &mut App) {
         toolbar_button as button, toolbar_systems as systems,
         toolbar_update as sizing, photomode as photo, undo_redo_systems as undo};
     toolbar::configure_app(app);
+    app.add_systems(bevy_app::Startup, |mut commands: bevy_ecs::prelude::Commands| {
+        commands.insert_resource(photo::PhotomodeScreenshotFolder(
+            paths::config().join("screenshots")));
+    });
+    // B country-core/src/systems/ui/signifiers owns these implementations;
+    // keep only their host set6 registration in this existing adapter.
+    use country_core::systems::ui::signifiers::{
+        animation::{signifier_animation, signifier_animation_t},
+        signifier_create::signifier_create,
+        signifier_mark_for_delete::{despawn_marked, signfier_mark_for_delete},
+    };
+    app.add_systems(Update, (
+        signifier_create, signfier_mark_for_delete, signifier_animation_t,
+        signifier_animation, despawn_marked,
+    ).chain_ignore_deferred().in_set(GameSystemSet(6))
+        .after(country_core::systems::ui::ui_update::ui_update)
+        .before(toolbar::mei::systems::mei_pre_update));
+    // The same dispatcher consumes toolbar sounds for either real host audio
+    // owner. Never consume the visual signifier stream as an audio substitute.
+    app.add_systems(bevy_app::Startup,
+        country_core::systems::audio::signifier_audio::signifier_audio_init_system::<
+            crate::gameplay_startup::GameplayAudioStudio>);
+    app.add_systems(Update,
+        country_core::systems::audio::signifier_audio::signifier_audio_system::<
+            crate::gameplay_startup::GameplayAudioStudio>.in_set(GameSystemSet(38)));
     app.add_event::<ui::UiClickEvent>();
     app.add_event::<ui::UiDragEvent>();
     app.add_event::<ui::UiJustBecameInFocusEvent>();
@@ -27,6 +52,18 @@ pub fn build(app: &mut App) {
     app.add_systems(bevy_state::state::OnEnter(
         country_core::app_loading_state::AppLoadingState::Game),
         toolbar::toolbar_startup::toolbar_setup);
+    app.add_systems(bevy_state::state::OnExit(
+        country_core::app_loading_state::AppLoadingState::Game),
+        clear_toolbar_session);
+
+    // Original set6: hover_intersection -> ui_update -> mei_pre_update.
+    // Keep this on the gameplay App: the separate loading App has no camera
+    // or world picker. Do not move producers ahead of the registry consumer.
+    app.add_systems(Update, (
+        country_core::systems::ui::hover_intersection::hover_intersection,
+        country_core::systems::ui::ui_update::ui_update,
+    ).chain_ignore_deferred().in_set(GameSystemSet(6))
+        .before(toolbar::mei::systems::mei_pre_update));
 
     // Preserve native nested tuples: these members are not internally chained.
     app.add_systems(Update, (
@@ -40,6 +77,7 @@ pub fn build(app: &mut App) {
             presentation::ui_sounds),
         (presentation::ui_focus_animation, presentation::ui_appear_animation,
             ui::ui_select_animation, ui::ui_locked_animation),
+        ui::ui_nav_update,
     ).chain_ignore_deferred().in_set(GameSystemSet(7))
         .after(crate::mei_host::update_text_renderer_scale));
 
@@ -47,6 +85,7 @@ pub fn build(app: &mut App) {
         country_core::app_loading_state::AppLoadingState::Game);
     app.add_systems(Update, (
         sizing::toolbar_size_mult_update,
+        systems::toolbar_steal_mouse_input,
         (button::switch_app_mode_button, button::switch_toolbar_category_button,
             button::tod_v2_button),
     ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(game())
@@ -54,6 +93,12 @@ pub fn build(app: &mut App) {
     // do_photomode's existing host implementation is split into ordered
     // systems. Preserve that implementation and place its recovered button /
     // slider companions before the final previous-state copy.
+    app.add_systems(Update, photo::photomode_focus
+        .in_set(GameSystemSet(8)).run_if(game())
+        .after(country_core::systems::backend::photomode::process_photomode_transitions)
+        .after(photo::timelapse::restore_after_timelapse)
+        .before(photo::photomode_buttons)
+        .before(country_core::systems::backend::photomode::finish_photomode_frame));
     app.add_systems(Update, (photo::photomode_buttons, photo::ui_slider_reset)
         .in_set(GameSystemSet(8)).run_if(game())
         .after(photo::timelapse::restore_after_timelapse)
@@ -66,4 +111,119 @@ pub fn build(app: &mut App) {
         photo::ui_slider,
     ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(game())
         .after(country_core::systems::backend::photomode::finish_photomode_frame));
+}
+
+/// Host lifecycle repair: the native picker owns captured Arcs across missing
+/// frame registrations, but a direct session Reload must release that ownership.
+/// This is deliberately separate from the original ui_update algorithm: no
+/// synthetic Escape/Shutdown and no manufactured physical input edges.
+pub fn clear_toolbar_session(world: &mut bevy_ecs::world::World) {
+    use country_core::{
+        resources::mouse_capture::{OsCursorVisibilityCmd, OsCursorVisibilityCmdOrigin},
+        systems::{brush_preview::OverwriteBrushPreview, ui::resources::{
+            ui_state::{DragState, UiInteraction, UiState, WidgetId},
+            widget_params::UiNavState,
+        }},
+    };
+    use bevy_ecs::event::Events;
+    if let Some(mut ui) = world.get_resource_mut::<UiState>() {
+        ui.clear_widgets();
+        ui.set_hover_intersections(Vec::new());
+        let mut inactive = [0; 56];
+        inactive[..4].copy_from_slice(&2u32.to_le_bytes());
+        ui.replace_interaction_full(UiInteraction {
+            native_tag: 0, native_phase: DragState::NONE.0, widget: WidgetId(0),
+        }, None, inactive);
+    }
+    if let Some(mut navigation) = world.get_resource_mut::<UiNavState>() {
+        *navigation = UiNavState::default();
+    }
+    if let Some(mut tracking) = world.get_resource_mut::<
+        toolbar::resouces_and_components::ToolbarFocusTracking>() {
+        tracking.clear_session();
+    }
+    if let Some(mut slider) = world.get_resource_mut::<
+        toolbar::resouces_and_components::ToolbarSliderSession>() {
+        slider.clear_session();
+    }
+    if let Some(mut message) = world.get_resource_mut::<
+        country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>() {
+        message.0 = false;
+    }
+    if let Some(mut screen) = world.get_resource_mut::<
+        country_core::resources::gui::PhotomodeScreen>() {
+        screen.enabled = false;
+        screen.was_enabled = false;
+    }
+    if let Some(mut stream) = world.get_resource_mut::<
+        country_core::systems::ui::signifiers::UiSignifierStream>() {
+        *stream = Default::default();
+    }
+    if let Some(mut mei) = world.get_resource_mut::<toolbar::MeiContext>() {
+        let font_table = std::sync::Arc::clone(&mei.font_table);
+        let configs = std::mem::take(&mut mei.configs);
+        *mei = toolbar::MeiContext { font_table, configs, ..Default::default() };
+    }
+    macro_rules! clear_events {
+        ($($kind:ty),* $(,)?) => { $(
+            if let Some(mut events) = world.get_resource_mut::<Events<$kind>>() { events.clear(); }
+        )* };
+    }
+    clear_events!(toolbar::ui_interaction::UiClickEvent,
+        toolbar::ui_interaction::UiDragEvent,
+        toolbar::ui_interaction::UiJustBecameInFocusEvent,
+        toolbar::toolbar_button::UiToolbarButtonResetAllCooldowns,
+        country_core::resources::toolbar::ToolbarUiIsInFocus,
+        // Produced after input translation and consumed on the next frame.
+        // A direct Reload must not deliver the old session's undo/redo press.
+        country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed);
+    if let Some(mut cursor) = world.get_resource_mut::<Events<OsCursorVisibilityCmd>>() {
+        cursor.send(OsCursorVisibilityCmd::Unsuppress(OsCursorVisibilityCmdOrigin(1)));
+    }
+    if let Some(mut brush) = world.get_resource_mut::<Events<OverwriteBrushPreview>>() {
+        brush.send(OverwriteBrushPreview::default());
+    }
+}
+
+#[cfg(test)]
+mod registration_tests {
+    use super::*;
+    use bevy_state::app::AppExtStates;
+
+    #[test]
+    fn production_registration_preserves_picker_signifiers_mei_and_toolbar_order() {
+        let mut app = App::new();
+        app.add_plugins(bevy_state::app::StatesPlugin);
+        app.init_state::<country_core::app_loading_state::AppLoadingState>();
+        for stage in 0..44 {
+            app.configure_sets(Update, GameSystemSet(stage).before(GameSystemSet(stage + 1)));
+        }
+        crate::mei_host::install_mei_frame_systems(&mut app);
+        build(&mut app);
+        app.world_mut().schedule_scope(Update, |world, schedule| {
+            schedule.initialize(world).expect("real toolbar registration must initialize");
+            let names: Vec<_> = schedule.systems().unwrap()
+                .map(|(_, system)| system.name().to_string()).collect();
+            let position = |suffix: &str| {
+                let matches: Vec<_> = names.iter().enumerate()
+                    .filter(|(_, name)| name.ends_with(suffix)).map(|(index, _)| index).collect();
+                assert_eq!(matches.len(), 1, "exactly one production {suffix}: {names:?}");
+                matches[0]
+            };
+            for sequence in [
+                &[
+                    "::hover_intersection", "::ui_update", "::signifier_create",
+                    "::signfier_mark_for_delete", "::signifier_animation_t",
+                    "::signifier_animation", "::despawn_marked", "::mei_pre_update",
+                    "::hide_ui", "::render_taffy_ui_to_widgets", "::ui_nav_update",
+                ][..],
+                &["::toolbar_size_mult_update", "::toolbar_steal_mouse_input",
+                    "::switch_toolbar_category_button"][..],
+            ] {
+                for pair in sequence.windows(2) {
+                    assert!(position(pair[0]) < position(pair[1]), "{pair:?}: {names:?}");
+                }
+            }
+        });
+    }
 }

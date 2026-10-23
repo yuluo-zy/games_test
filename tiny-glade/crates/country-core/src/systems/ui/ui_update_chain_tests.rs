@@ -3,7 +3,7 @@
 // replace_interaction or seeded clicked/used bit exists anywhere in this test.
 #[cfg(test)]
 mod real_input_chain {
-    use super::*;
+    use super::super::*;
     use crate::{
         input::action_set::{DigitalActionPhase, DigitalActionState},
         resources::{

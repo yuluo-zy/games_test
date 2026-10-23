@@ -487,6 +487,778 @@ mod focus;
 mod hide;
 mod ordering;
 mod replay;
+mod navigation {
+    //! Native toolbar navigation: B 14233eed0, subtree 141ea8c60.
+    //! Jump tables and exact bounded instructions are recorded in
+    //! reports/business-module-recovery-2026-10-21/toolbar-input-evidence.
+    use super::UiClickEvent;
+
+    #[cfg(test)]
+    mod native_fixtures {
+        //! Recorded original-executable fixtures; no native business helper is replaced.
+        //! Source: reports/business-module-recovery-2026-10-23-toolbar/native_nav_trees.json.
+        //! EXE SHA256 cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323.
+        use super::*;
+        use crate::resouces_and_components::taffy_layout::AnchoredNode;
+        use country_core::input::action_set::{DigitalActionPhase, DigitalActionState};
+        use taffy::style::{FlexDirection, Style};
+        struct Case {
+            name: &'static str,
+            positions: &'static [(u32, f32, f32)],
+            children: &'static [(u32, &'static [u32])],
+            anchors: &'static [(u32, u32, u8)],
+            visibility: &'static [(u32, u8)],
+            vertical: &'static [u32],
+            current: u32,
+            direction: usize,
+            native_selected: u32,
+        }
+        const CASES: &[Case] = &[
+            Case {
+                name: "sibling_root_priority",
+                positions: &[(10, 0.0, 0.0), (11, 100.0, 0.0), (12, 10.0, 0.0)],
+                children: &[(1, &[10, 11, 12])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 11,
+            },
+            Case {
+                name: "hidden_candidate_is_eligible",
+                positions: &[(10, 0.0, 0.0), (11, 5.0, 0.0)],
+                children: &[(1, &[10, 11])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[(11, 0)],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 11,
+            },
+            Case {
+                name: "subtree_nearest",
+                positions: &[(10, 0.0, 0.0), (11, 100.0, 0.0), (12, 10.0, 0.0)],
+                children: &[(1, &[10, 2]), (2, &[11, 12])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 12,
+            },
+            Case {
+                name: "subtree_tie_keeps_first",
+                positions: &[(10, 0.0, 0.0), (11, 10.0, 1.0), (12, 10.0, -1.0)],
+                children: &[(1, &[10, 2]), (2, &[11, 12])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 11,
+            },
+            Case {
+                name: "left_reverses_siblings",
+                positions: &[(10, 0.0, 0.0), (11, 5.0, 0.0), (12, 100.0, 0.0)],
+                children: &[(1, &[10, 11, 12])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[],
+                current: 12,
+                direction: 0,
+                native_selected: 11,
+            },
+            Case {
+                name: "no_forward_candidate_keeps_current",
+                positions: &[(10, 0.0, 0.0), (11, -1.0, 0.0)],
+                children: &[(1, &[10, 11])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 10,
+            },
+            Case {
+                name: "enter_above_anchor",
+                positions: &[(10, 0.0, 0.0), (11, 0.0, -10.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 0)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 3,
+                native_selected: 11,
+            },
+            Case {
+                name: "return_from_above_anchor",
+                positions: &[(10, 0.0, 0.0), (11, 0.0, -10.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 0)],
+                visibility: &[],
+                vertical: &[],
+                current: 11,
+                direction: 2,
+                native_selected: 10,
+            },
+            Case {
+                name: "enter_below_anchor",
+                positions: &[(10, 0.0, 0.0), (11, 0.0, 10.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 1)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 2,
+                native_selected: 11,
+            },
+            Case {
+                name: "enter_left_anchor",
+                positions: &[(10, 0.0, 0.0), (11, -10.0, 0.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 2)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 0,
+                native_selected: 11,
+            },
+            Case {
+                name: "enter_right_anchor",
+                positions: &[(10, 0.0, 0.0), (11, 10.0, 0.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 3)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 11,
+            },
+            Case {
+                name: "vertical_sibling",
+                positions: &[(10, 0.0, 0.0), (11, 0.0, 10.0)],
+                children: &[(1, &[10, 11])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[1],
+                current: 10,
+                direction: 2,
+                native_selected: 11,
+            },
+            Case {
+                name: "return_from_below_anchor",
+                positions: &[(10, 0.0, 0.0), (11, 0.0, 10.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 1)],
+                visibility: &[],
+                vertical: &[],
+                current: 11,
+                direction: 3,
+                native_selected: 10,
+            },
+            Case {
+                name: "return_from_left_anchor",
+                positions: &[(10, 0.0, 0.0), (11, -10.0, 0.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 2)],
+                visibility: &[],
+                vertical: &[],
+                current: 11,
+                direction: 1,
+                native_selected: 10,
+            },
+            Case {
+                name: "return_from_right_anchor",
+                positions: &[(10, 0.0, 0.0), (11, 10.0, 0.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 3)],
+                visibility: &[],
+                vertical: &[],
+                current: 11,
+                direction: 0,
+                native_selected: 10,
+            },
+            Case {
+                name: "wrong_anchor_return_direction",
+                positions: &[(10, 0.0, 0.0), (11, 0.0, -10.0)],
+                children: &[(1, &[10]), (2, &[11])],
+                anchors: &[(1, 0, 4), (2, 10, 0)],
+                visibility: &[],
+                vertical: &[],
+                current: 11,
+                direction: 3,
+                native_selected: 11,
+            },
+            Case {
+                name: "sibling_precedes_closer_anchor",
+                positions: &[(10, 0.0, 0.0), (11, 100.0, 0.0), (12, 1.0, 0.0)],
+                children: &[(1, &[10, 11]), (2, &[12])],
+                anchors: &[(1, 0, 4), (2, 10, 3)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 11,
+            },
+            Case {
+                name: "nested_ascent_finds_outer_sibling",
+                positions: &[(10, 0.0, 0.0), (11, 5.0, 0.0)],
+                children: &[(1, &[2, 11]), (2, &[10])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 1,
+                native_selected: 11,
+            },
+            Case {
+                name: "vertical_parent_blocks_horizontal_sibling",
+                positions: &[(10, 0.0, 0.0), (11, 5.0, 0.0)],
+                children: &[(1, &[10, 11])],
+                anchors: &[(1, 0, 4)],
+                visibility: &[],
+                vertical: &[1],
+                current: 10,
+                direction: 1,
+                native_selected: 10,
+            },
+            Case {
+                name: "visited_anchor_cycle_terminates",
+                positions: &[(10, 0.0, 0.0)],
+                children: &[(1, &[10])],
+                anchors: &[(1, 10, 4), (1, 10, 0)],
+                visibility: &[],
+                vertical: &[],
+                current: 10,
+                direction: 0,
+                native_selected: 10,
+            },
+        ];
+        #[test]
+        fn production_navigation_matches_recorded_nonempty_native_trees() {
+            for case in CASES {
+                let mut layout = TaffyLayout::default();
+                let mut nodes = HashMap::new();
+                nodes.insert(0, Node::default());
+                let ids = case
+                    .positions
+                    .iter()
+                    .map(|entry| entry.0)
+                    .chain(case.children.iter().flat_map(|(node, children)| {
+                        std::iter::once(*node).chain(children.iter().copied())
+                    }))
+                    .chain(
+                        case.anchors
+                            .iter()
+                            .flat_map(|(node, target, _)| [*node, *target]),
+                    );
+                for id in ids {
+                    nodes.entry(id).or_insert_with(|| {
+                        layout
+                            .taffy
+                            .new_leaf(Style {
+                                flex_direction: if case.vertical.contains(&id) {
+                                    FlexDirection::Column
+                                } else {
+                                    FlexDirection::Row
+                                },
+                                ..Default::default()
+                            })
+                            .unwrap()
+                    });
+                }
+                for &(parent, children) in case.children {
+                    for child in children {
+                        layout
+                            .taffy
+                            .add_child(nodes[&parent], nodes[child])
+                            .unwrap();
+                    }
+                }
+                for &(node, relative_to, side) in case.anchors {
+                    layout.anchored.push(AnchoredNode {
+                        node: nodes[&node],
+                        relative_to: nodes[&relative_to],
+                        side: match side {
+                            0 => AnchorSide::Above,
+                            1 => AnchorSide::Below,
+                            2 => AnchorSide::Left,
+                            3 => AnchorSide::Right,
+                            4 => AnchorSide::Window,
+                            _ => unreachable!(),
+                        },
+                        order: 0,
+                        offset: Vec2::ZERO,
+                        gap: 0.0,
+                    });
+                }
+                let mut world = World::new();
+                let mut entities = HashMap::new();
+                for &(id, x, y) in case.positions {
+                    let entity = world
+                        .spawn((
+                            TaffyNode {
+                                node: nodes[&id],
+                                ..Default::default()
+                            },
+                            UiNav::default(),
+                            Ui2dExtent {
+                                pos: Vec2::new(x, y),
+                                size: Vec2::ONE,
+                            },
+                            UiInteractionState {
+                                state: case
+                                    .visibility
+                                    .iter()
+                                    .find(|(node, _)| *node == id)
+                                    .map_or(1, |(_, state)| *state),
+                                keep: 0,
+                                selected: 0,
+                            },
+                        ))
+                        .id();
+                    entities.insert(id, entity);
+                }
+                world.insert_resource(layout);
+                let mut actions = ActionSetStates::default();
+                actions.digital[20 + case.direction] = DigitalActionState {
+                    phase: DigitalActionPhase::JustPressed,
+                    ..Default::default()
+                };
+                world.insert_resource(actions);
+                let mut navigation = UiNavState::default();
+                navigation.focus = toolbar(entities[&case.current]);
+                world.insert_resource(navigation);
+                world.init_resource::<Events<UiClickEvent>>();
+                let mut schedule = Schedule::default();
+                schedule.add_systems(ui_nav_update);
+                schedule.run(&mut world);
+                assert_eq!(
+                    world.resource::<UiNavState>().focus,
+                    toolbar(entities[&case.native_selected]),
+                    "native fixture {}",
+                    case.name
+                );
+            }
+        }
+    }
+    use crate::resouces_and_components::{
+        TaffyNode, UiNav,
+        taffy_layout::{AnchorSide, TaffyLayout},
+    };
+    use bevy_ecs::prelude::*;
+    use country_core::{
+        components::{Ui2dExtent, UiInteractionState},
+        input::action_set::ActionSetStates,
+        systems::ui::resources::widget_params::{UiFocus, UiNavState},
+    };
+    use glam::Vec2;
+    use std::collections::{HashMap, HashSet};
+    use taffy::node::Node;
+
+    fn clear(focus: &mut UiFocus) {
+        focus.tag = 0;
+        focus._pad = 0;
+    }
+    fn toolbar(entity: Entity) -> UiFocus {
+        UiFocus {
+            tag: 1,
+            _pad: 0,
+            payload: entity.to_bits(),
+        }
+    }
+
+    /// Native recursively visits a node before its children. Visibility is an
+    /// entry-selection condition, not a subtree predicate. Strict distance ties
+    /// preserve the first tree-order candidate, independently for each root.
+    fn nearest(
+        root: Node,
+        layout: &TaffyLayout,
+        nodes: &HashMap<Node, Entity>,
+        items: &Query<(
+            Entity,
+            Option<&Ui2dExtent>,
+            Option<&UiInteractionState>,
+            &UiNav,
+        )>,
+        origin: Vec2,
+        direction: Vec2,
+    ) -> Option<Entity> {
+        let direction = direction.normalize_or_zero();
+        let mut best_distance = f32::MAX;
+        let mut best = None;
+        let mut stack = vec![root];
+        while let Some(node) = stack.pop() {
+            if let Some(&entity) = nodes.get(&node) {
+                if let Ok((_, Some(extent), _, _)) = items.get(entity) {
+                    let delta = extent.pos - origin;
+                    let distance = delta.length();
+                    if delta.normalize_or_zero().dot(direction) > 0.0 && distance < best_distance {
+                        best_distance = distance;
+                        best = Some(entity);
+                    }
+                }
+            }
+            stack.extend(layout.children(node).into_iter().rev());
+        }
+        best
+    }
+
+    pub fn ui_nav_update(
+        items: Query<(
+            Entity,
+            Option<&Ui2dExtent>,
+            Option<&UiInteractionState>,
+            &UiNav,
+        )>,
+        widgets: Query<(Entity, &TaffyNode, &UiNav)>,
+        actions: Res<ActionSetStates>,
+        layout: Res<TaffyLayout>,
+        mut state: ResMut<UiNavState>,
+        mut clicks: EventWriter<UiClickEvent>,
+    ) {
+        if state.focus.is_mei() {
+            clear(&mut state.staged_focus);
+            return;
+        }
+        let raw = [20usize, 21, 22, 23].map(|index| actions.digital[index].just_pressed());
+        let directions = [
+            raw[0] && !raw[1],
+            raw[1] && !raw[0],
+            raw[2] && !raw[3],
+            raw[3] && !raw[2],
+        ];
+        let any_direction = directions.iter().any(|&pressed| pressed);
+        let confirm = actions.digital[19].just_pressed();
+        if !state.focus.is_toolbar() {
+            if !any_direction && !confirm {
+                return;
+            }
+            if state.staged_focus.is_toolbar() {
+                state.focus = state.staged_focus;
+                clear(&mut state.staged_focus);
+                return;
+            }
+            // Query iteration order is the original Bevy entry-selection order.
+            let first = items
+                .iter()
+                .find(|(_, _, visibility, _)| visibility.is_none_or(|value| value.state != 0))
+                .map(|(entity, _, _, _)| entity);
+            clear(&mut state.staged_focus);
+            if let Some(entity) = first {
+                state.focus = toolbar(entity);
+            } else {
+                clear(&mut state.focus);
+            }
+            return;
+        }
+        if actions.digital[18].just_released() {
+            state.staged_focus = state.focus;
+            clear(&mut state.focus);
+            return;
+        }
+        let current = Entity::from_bits(state.focus.payload);
+        let Ok((_, extent, _, navigation)) = items.get(current) else {
+            clear(&mut state.focus);
+            return;
+        };
+        if confirm {
+            clicks.write(UiClickEvent { entity: current });
+            state.staged_focus = state.focus;
+            clear(&mut state.focus);
+            return;
+        }
+        let Some(slot) = directions.iter().position(|&pressed| pressed) else {
+            return;
+        };
+        let link = navigation.links[slot];
+        match link.tag {
+            1 => return,
+            3 => {
+                // The original checks the Entity generation niche before writing.
+                if link.value >> 32 != 0 {
+                    state.focus = toolbar(Entity::from_bits(link.value));
+                }
+                return;
+            }
+            2 => {
+                state.focus = toolbar(current);
+                return;
+            }
+            0 => {}
+            _ => panic!("invalid native UiNav variant"),
+        }
+        let Some(extent) = extent else {
+            state.focus = toolbar(current);
+            return;
+        };
+        let origin = extent.pos;
+        let direction = Vec2::new(
+            directions[1] as u8 as f32 - directions[0] as u8 as f32,
+            directions[2] as u8 as f32 - directions[3] as u8 as f32,
+        );
+
+        // Rebuild the two native hash maps only for spatial fallback. Parent
+        // discovery starts at anchored roots, with the original LIFO traversal.
+        let nodes: HashMap<_, _> = widgets
+            .iter()
+            .map(|(entity, node, _)| (node.node, entity))
+            .collect();
+        let mut parents = HashMap::new();
+        let mut stack: Vec<_> = layout.anchored.iter().map(|entry| entry.node).collect();
+        while let Some(node) = stack.pop() {
+            for child in layout.children(node) {
+                parents.insert(child, node);
+                stack.push(child);
+            }
+        }
+        let (_, current_node, _) = widgets
+            .get(current)
+            .expect("native focused toolbar TaffyNode unwrap");
+        let mut node = current_node.node;
+        let mut visited = HashSet::new();
+        while visited.insert(node) {
+            let mut candidates = Vec::new();
+            let next;
+            if let Some(&parent) = parents.get(&node) {
+                next = parent;
+                // Native tests flex_direction != Row against horizontal movement;
+                // preserve this even for the dependency's reverse-direction tags.
+                let vertical = layout.style(parent).flex_direction != taffy::style::FlexDirection::Row;
+                if vertical != (directions[0] || directions[1]) {
+                    let children = layout.children(parent);
+                    let index = children
+                        .iter()
+                        .position(|&child| child == node)
+                        .expect("native navigation child missing from parent");
+                    if directions[0] || directions[3] {
+                        candidates.extend(children[..index].iter().rev().copied());
+                    } else {
+                        candidates.extend_from_slice(&children[index + 1..]);
+                    }
+                }
+            } else {
+                let Some(anchor) = layout
+                    .anchored
+                    .iter()
+                    .find(|entry| entry.node == node && entry.side != AnchorSide::Window)
+                else {
+                    break;
+                };
+                next = anchor.relative_to;
+                let returning = match anchor.side {
+                    AnchorSide::Above => directions[2],
+                    AnchorSide::Below => directions[3],
+                    AnchorSide::Left => directions[1],
+                    AnchorSide::Right => directions[0],
+                    AnchorSide::Window => false,
+                };
+                if returning {
+                    if let Some(entity) = nearest(next, &layout, &nodes, &items, origin, direction) {
+                        state.focus = toolbar(entity);
+                        return;
+                    }
+                }
+                node = next;
+                continue;
+            }
+            for anchor in &layout.anchored {
+                if anchor.relative_to != node {
+                    continue;
+                }
+                let entering = match anchor.side {
+                    AnchorSide::Above => directions[3],
+                    AnchorSide::Below => directions[2],
+                    AnchorSide::Left => directions[0],
+                    AnchorSide::Right => directions[1],
+                    AnchorSide::Window => false,
+                };
+                if entering {
+                    candidates.push(anchor.node);
+                }
+            }
+            for root in candidates {
+                if let Some(entity) = nearest(root, &layout, &nodes, &items, origin, direction) {
+                    state.focus = toolbar(entity);
+                    return;
+                }
+            }
+            node = next;
+        }
+        state.focus = toolbar(current);
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::resouces_and_components::{UiNavLink, taffy_layout::AnchoredNode};
+        use country_core::input::action_set::{DigitalActionPhase, DigitalActionState};
+        use taffy::style::Style;
+
+        fn fixture() -> (World, Schedule, Node) {
+            let mut world = World::new();
+            let mut layout = TaffyLayout::default();
+            let root = layout.add_node(Style::default()).root();
+            layout.anchored.push(AnchoredNode {
+                node: root,
+                relative_to: Node::default(),
+                side: AnchorSide::Window,
+                order: 0,
+                offset: Vec2::ZERO,
+                gap: 0.0,
+            });
+            world.insert_resource(layout);
+            world.insert_resource(ActionSetStates::default());
+            world.insert_resource(UiNavState::default());
+            world.init_resource::<Events<UiClickEvent>>();
+            let mut schedule = Schedule::default();
+            schedule.add_systems(ui_nav_update);
+            (world, schedule, root)
+        }
+        fn item(world: &mut World, parent: Node, pos: Vec2, state: u8) -> Entity {
+            let mut layout = world.resource_mut::<TaffyLayout>();
+            let node = layout.taffy.new_leaf(Style::default()).unwrap();
+            layout.taffy.add_child(parent, node).unwrap();
+            world
+                .spawn((
+                    UiNav::default(),
+                    TaffyNode {
+                        node,
+                        ..Default::default()
+                    },
+                    Ui2dExtent {
+                        pos,
+                        size: Vec2::ONE,
+                    },
+                    UiInteractionState {
+                        state,
+                        keep: 0,
+                        selected: 0,
+                    },
+                ))
+                .id()
+        }
+        fn press(world: &mut World, slot: usize) {
+            world.resource_mut::<ActionSetStates>().digital = [DigitalActionState::default(); 40];
+            world.resource_mut::<ActionSetStates>().digital[slot] = DigitalActionState {
+                phase: DigitalActionPhase::JustPressed,
+                ..Default::default()
+            };
+        }
+        #[test]
+        fn sibling_priority_and_hidden_subtree_candidates_match_native() {
+            let (mut world, mut schedule, root) = fixture();
+            let current = item(&mut world, root, Vec2::ZERO, 1);
+            let first = item(&mut world, root, Vec2::new(100.0, 0.0), 0);
+            let _closer_later_root = item(&mut world, root, Vec2::new(10.0, 0.0), 1);
+            world.resource_mut::<UiNavState>().focus = toolbar(current);
+            press(&mut world, 21);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiNavState>().focus, toolbar(first));
+        }
+        #[test]
+        fn explicit_links_confirm_and_staged_restore_keep_entity_identity() {
+            let (mut world, mut schedule, root) = fixture();
+            let current = item(&mut world, root, Vec2::ZERO, 1);
+            let target = item(&mut world, root, Vec2::X, 1);
+            world.get_mut::<UiNav>(current).unwrap().links[1] = UiNavLink {
+                tag: 3,
+                value: target.to_bits(),
+            };
+            world.resource_mut::<UiNavState>().focus = toolbar(current);
+            press(&mut world, 21);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiNavState>().focus, toolbar(target));
+            press(&mut world, 19);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<Events<UiClickEvent>>().len(), 1);
+            assert_eq!(world.resource::<UiNavState>().focus.tag, 0);
+            assert_eq!(world.resource::<UiNavState>().staged_focus, toolbar(target));
+            press(&mut world, 19);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiNavState>().focus, toolbar(target));
+            assert_eq!(world.resource::<Events<UiClickEvent>>().len(), 1);
+        }
+        #[test]
+        fn opposite_directions_cancel_and_missing_entity_invalidates_focus() {
+            let (mut world, mut schedule, root) = fixture();
+            let current = item(&mut world, root, Vec2::ZERO, 1);
+            world.resource_mut::<UiNavState>().staged_focus = toolbar(current);
+            press(&mut world, 20);
+            world.resource_mut::<ActionSetStates>().digital[21] = DigitalActionState {
+                phase: DigitalActionPhase::JustPressed,
+                ..Default::default()
+            };
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiNavState>().focus.tag, 0);
+            world.resource_mut::<UiNavState>().focus = toolbar(current);
+            world.despawn(current);
+            press(&mut world, 21);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiNavState>().focus.tag, 0);
+        }
+
+        #[test]
+        fn anchored_menu_entry_and_return_search_real_taffy_subtrees() {
+            let (mut world, mut schedule, root) = fixture();
+            let current = item(&mut world, root, Vec2::ZERO, 1);
+            let anchor_target = world.get::<TaffyNode>(current).unwrap().node;
+            let menu = world
+                .resource_mut::<TaffyLayout>()
+                .taffy
+                .new_leaf(Style::default())
+                .unwrap();
+            world
+                .resource_mut::<TaffyLayout>()
+                .anchored
+                .push(AnchoredNode {
+                    node: menu,
+                    relative_to: anchor_target,
+                    side: AnchorSide::Above,
+                    order: 1,
+                    offset: Vec2::ZERO,
+                    gap: 0.0,
+                });
+            let farther = item(&mut world, menu, Vec2::new(30.0, -10.0), 1);
+            let nearer = item(&mut world, menu, Vec2::new(1.0, -10.0), 1);
+            let _equal_distance_later = item(&mut world, menu, Vec2::new(-1.0, -10.0), 1);
+            world.resource_mut::<UiNavState>().focus = toolbar(current);
+            press(&mut world, 23);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiNavState>().focus, toolbar(nearer));
+            assert_ne!(world.resource::<UiNavState>().focus, toolbar(farther));
+            press(&mut world, 22);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiNavState>().focus, toolbar(current));
+        }
+
+        #[test]
+        fn real_cyclic_link_producer_matches_horizontal_and_vertical_inputs() {
+            for (horizontal, slot) in [(true, 21), (false, 22)] {
+                let (mut world, mut schedule, root) = fixture();
+                let current = item(&mut world, root, Vec2::ZERO, 1);
+                let target = item(&mut world, root, Vec2::ONE, 1);
+                let links = crate::resouces_and_components::link_up_nav(
+                    &[current.to_bits(), target.to_bits()],
+                    horizontal,
+                );
+                for (entity, navigation) in links {
+                    world
+                        .entity_mut(Entity::from_bits(entity))
+                        .insert(navigation);
+                }
+                world.resource_mut::<UiNavState>().focus = toolbar(current);
+                press(&mut world, slot);
+                schedule.run(&mut world);
+                assert_eq!(world.resource::<UiNavState>().focus, toolbar(target));
+                schedule.run(&mut world);
+                assert_eq!(world.resource::<UiNavState>().focus, toolbar(current));
+            }
+        }
+    }
+}
+pub use navigation::ui_nav_update;
 pub use focus::{
     ui_focus_parent_if_self_in_focus, ui_notify_hints_if_toolbar_in_focus,
     ui_send_focus_begin_events, ui_show_if_parent_in_focus,

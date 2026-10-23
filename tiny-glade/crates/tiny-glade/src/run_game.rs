@@ -517,6 +517,9 @@ pub fn run_game_thread(
     app.init_resource::<ActionSetStates>();
     let demo = app.world().resource::<GameConfig>().dev.demo;
     app.insert_resource(country_core::startup::init_photomode_state::PhotomodeState::new(demo));
+    // Gameplay can also be constructed by the asynchronous loader, without
+    // build_game's platform setup. Every gameplay World owns this UI state.
+    app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
     app.init_resource::<country_core::resources::gui::PhotomodeScreen>();
     app.add_event::<country_core::resources::photo_mode::PhotoModeCmd>();
     app.add_event::<country_core::systems::backend::photomode::PhotoModeAudioParameter>();
@@ -1164,9 +1167,8 @@ fn insert_vermeer_resources(app: &mut App, enabled: bool, hold: bool) {
     use country_core::systems::render_loop::vermeer::{
         VermeerDebugControl, VermeerPhase, VermeerState,
     };
-    // Resource-producing prefix of original VermeerPlugin::build @1408a8280.
-    // Its shader PreStartup consumer is provided by the actual renderer; the
-    // still-missing AppLoadingState OnExit schedule is not replaced with a no-op.
+    // Original VermeerPlugin::build @1408a8280. Shader PreStartup is owned
+    // by the existing renderer; session exit releases the original background.
     app.insert_resource(VermeerState {
         phase: if enabled {
             VermeerPhase::Pending
@@ -1177,6 +1179,11 @@ fn insert_vermeer_resources(app: &mut App, enabled: bool, hold: bool) {
         ..Default::default()
     });
     app.insert_resource(VermeerDebugControl::default());
+    app.add_systems(
+        bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
+        (|mut state: bevy_ecs::prelude::ResMut<VermeerState>| state.deactivate())
+            .before(crate::toolbar_plugin::clear_toolbar_session),
+    );
     // Original PainterlyPlugin::build@1408a63e0 owns an independent Disabled state.
     app.init_resource::<country_core::systems::render_loop::painterly::PainterlyState>();
 }

@@ -79,6 +79,8 @@ pub use resouces_and_components::{
 /// 系统全集）未实现的其余系统/事件见 RESTORE.md。
 pub fn configure(world: &mut World, schedule: &mut bevy_ecs::schedule::Schedule) {
     world.init_resource::<MeiContext>();
+    world.init_resource::<resouces_and_components::ToolbarFocusTracking>();
+    world.init_resource::<resouces_and_components::ToolbarSliderSession>();
 
     // FIX-T1：按钮族事件注册（B ToolbarPlugin::build 注册面）。
     world.init_resource::<Events<ui_interaction::UiClickEvent>>();
@@ -121,6 +123,8 @@ pub fn configure(world: &mut World, schedule: &mut bevy_ecs::schedule::Schedule)
 /// the tiny-glade crate (original set numbers 8..43 are U).
 pub fn configure_app(app: &mut bevy_app::App) {
     app.init_resource::<MeiContext>();
+    app.init_resource::<resouces_and_components::ToolbarFocusTracking>();
+    app.init_resource::<resouces_and_components::ToolbarSliderSession>();
     app.init_resource::<toolbar_update::ToolbarSizeMult>();
     // Core-owned in run_game, but idempotent and required by render_taffy's
     // Res<UiNavState> surface when this plugin is the only toolbar entry.
@@ -128,20 +132,16 @@ pub fn configure_app(app: &mut bevy_app::App) {
     app.init_resource::<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>();
 
     // Event owners consumed by the button/animation systems.
-    app.init_resource::<Events<ui_interaction::UiClickEvent>>();
-    app.init_resource::<Events<ui_interaction::UiDragEvent>>();
-    app.init_resource::<Events<ui_interaction::UiJustBecameInFocusEvent>>();
+    app.add_event::<ui_interaction::UiClickEvent>();
+    app.add_event::<ui_interaction::UiDragEvent>();
+    app.add_event::<ui_interaction::UiJustBecameInFocusEvent>();
     app.add_event::<country_core::resources::toolbar::ToolbarUiIsInFocus>();
-    app.init_resource::<Events<toolbar_button::UiToolbarButtonResetAllCooldowns>>();
-    app.init_resource::<Events<country_core::resources::events::ModeJustChanged>>();
-    app.init_resource::<Events<country_core::systems::ui::resources::widget_params::PlayUiSound>>();
-    app.init_resource::<Events<country_core::systems::mode_manager::RequestToolbarCategoryChange>>();
-    app.init_resource::<Events<country_core::systems::mode_manager::RequestAppModeChange>>();
-    app.init_resource::<
-        Events<
-            country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed,
-        >,
-    >();
+    app.add_event::<toolbar_button::UiToolbarButtonResetAllCooldowns>();
+    app.add_event::<country_core::resources::events::ModeJustChanged>();
+    app.add_event::<country_core::systems::ui::resources::widget_params::PlayUiSound>();
+    app.add_event::<country_core::systems::mode_manager::RequestToolbarCategoryChange>();
+    app.add_event::<country_core::systems::mode_manager::RequestAppModeChange>();
+    app.add_event::<country_core::systems::backend::input::calculate_input_delta::UiHistoryButtonPressed>();
 
     // All 24 local toolbar components (native register_required_components).
     resouces_and_components::register_local_components(app.world_mut());
@@ -163,5 +163,26 @@ pub fn configure_app(app: &mut bevy_app::App) {
         app.world_mut().insert_resource(
             country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO),
         );
+    }
+}
+
+#[cfg(test)]
+mod event_lifecycle_tests {
+    use super::*;
+
+    #[test]
+    fn app_event_registration_expires_old_clicks_and_ui_sounds() {
+        use country_core::systems::ui::resources::widget_params::PlayUiSound;
+        let mut app = bevy_app::App::new();
+        configure_app(&mut app);
+        // Repeated host configuration must retain one event maintenance owner.
+        configure_app(&mut app);
+        let entity = app.world_mut().spawn_empty().id();
+        app.world_mut().send_event(ui_interaction::UiClickEvent { entity });
+        app.world_mut().send_event(PlayUiSound::variant4());
+        assert_eq!(app.world().resource::<Events<ui_interaction::UiClickEvent>>().len(), 1);
+        for _ in 0..3 { app.update(); }
+        assert!(app.world().resource::<Events<ui_interaction::UiClickEvent>>().is_empty());
+        assert!(app.world().resource::<Events<PlayUiSound>>().is_empty());
     }
 }

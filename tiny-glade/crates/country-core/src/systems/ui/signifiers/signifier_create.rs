@@ -1,7 +1,7 @@
 //! 指示符的逐帧请求、去重和实体创建。
 //!
-//! 请求生产者每帧提交需要显示的指示符；创建系统消费整批请求，更新活动集合，
-//! 删除系统复用该集合判断哪些实体已不再需要。相同标识复用既有实体。
+//! 原捕获 WidgetParams 拥有工厂列表；全局流仅传递新增请求。
+//! create 使用帧首实体哈希快照；mark 独立读取捕获 owner，不维护第二份 live 表。
 //! 原生取证记录保留在历史报告中，本模块描述当前 ECS 实现的生命周期合同。
 use std::collections::HashSet;
 
@@ -9,17 +9,16 @@ use bevy_ecs::prelude::*;
 use glam::Vec3;
 
 use crate::asset_libraries::mesh_library::AssetMeshLibrary;
-use crate::asset_libraries::shader_library::AssetShaderLibrary;
-use crate::systems::ui::resources::ui_state::UiState;
+use crate::asset_libraries::shader_library::SharedAssetShaderLibrary;
+use crate::systems::ui::resources::ui_state::{UiState, WidgetId};
 
 use super::signifier_factory::SignifierFactory;
 use super::signifier_mark_for_delete::SignifierMarkedForDeletion;
 
-/// 0x28 B 指示符记录（O：**中央裁决 2026-10-16**——机器码 write 拷贝 5×qword
-/// = 40B：tag@0、kind@+8、Vec3@+0x10、f32@+0x1c、qword@+0x20）。
-///
-/// 字段语义（O 面：water/glade-border 的 0x20B 记录族 = {1, 1, Vec3, f32}；
-/// name 槽 = 附加载荷/名字句柄，语义 U）。
+/// Legacy numeric adapter from the early reconstruction, not an original
+/// signifier factory record. Kept only as an explicit boundary for later
+/// terrain/wall/decorator producers; the recovered consumer rejects it.
+/// Original requests own a String plus an Arc callback, also 40 bytes.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct UiAppendSignifier {
@@ -71,7 +70,7 @@ pub const STREAM_MAX_BUCKETS: usize = 0x2c;
 /// 指示符实体标识（O：`country_core::systems::ui::signifiers::SignifierId` 组件；
 /// `signifier_create` 以其去重）。
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SignifierId(pub u64);
+pub struct SignifierId(pub u64, pub WidgetId);
 
 /// 无锁 append-only 流的槽位（crate 内部表示）。
 ///
@@ -89,14 +88,10 @@ pub enum UiSignifierEntry {
     Factory(SignifierFactory),
 }
 
-/// 待消费的指示符请求及本帧活动标识。
-///
-/// 独占可变访问由 Bevy 资源借用保证；活动集合在创建系统每次执行时重建。
+/// 待消费的指示符请求；捕获 WidgetParams 是工厂生命周期的权威 owner。
 #[derive(Resource, Clone, Debug, Default)]
 pub struct UiSignifierStream {
     slots: Vec<UiSignifierEntry>,
-    /// 本帧请求的标识，供删除系统读取，包含被去重复用的实体。
-    active_ids: HashSet<u64>,
 }
 
 impl UiSignifierStream {
@@ -136,7 +131,7 @@ impl UiSignifierStream {
         ]);
     }
 
-    /// 移出全部待消费请求，不克隆名字或闭包，也不改变本帧活动集合。
+    /// 移出全部待消费请求，不克隆名字或闭包；活动工厂仍由捕获 WidgetParams 拥有。
     pub fn take_entries(&mut self) -> Vec<UiSignifierEntry> {
         std::mem::take(&mut self.slots)
     }
@@ -162,77 +157,64 @@ impl UiSignifierStream {
         self.take_all().into_iter()
     }
 
-    /// 是否在最近一次创建阶段收到该标识的有效请求。
-    pub(super) fn is_active(&self, id: SignifierId) -> bool {
-        self.active_ids.contains(&id.0)
-    }
-
     /// 已提交长度（调试/判等用）。
     pub fn committed_len(&self) -> u64 {
         self.slots.len() as u64
     }
 }
 
-/// 记录 → 指示符标识（I：原版 `calculate_hash<WidgetId, Option<&str>>` 把 tag 作 WidgetId、
-/// name 作名字句柄哈希；crate 以 `(tag, kind, name)` 折叠）。
-fn record_id(record: &UiAppendSignifier) -> u64 {
-    // fnv1a 64（crate 内自有，去重键）。
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in [
-        record.tag.to_le_bytes(),
-        record.kind.to_le_bytes(),
-        record.name.to_le_bytes(),
-    ]
-    .concat()
-    {
-        hash ^= b as u64;
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    hash
+/// Original14145a710 hashes the original WidgetId followed by Option<&str>.
+/// Reuse std DefaultHasher through the existing canonical helper. Native78
+/// fixtures prove discriminant u64 and the string FF Hash terminator.
+pub fn record_id(widget: WidgetId, name: Option<&str>) -> u64 {
+    crate::utils::calculate_hash(&(widget, name))
 }
 
-/// 消费本帧请求，记录全部活动标识，仅为尚不存在的指示符唤醒工厂。
-/// 交互停用时丢弃本批请求，避免恢复交互后重放过期几何。
+/// Original140b2cfa0: existing-entity hashes are a snapshot; this frame's
+/// newly woken factories do not mutate that set. Duplicate same-frame names
+/// can intentionally wake more than once.
 pub fn signifier_create(
-    ui_state: Res<UiState>,
+    mut ui_state: ResMut<UiState>,
     mesh_library: Res<AssetMeshLibrary>,
-    shader_library: Res<AssetShaderLibrary>,
+    shader_library: Res<SharedAssetShaderLibrary>,
     mut commands: Commands,
     existing: Query<&SignifierId, Without<SignifierMarkedForDeletion>>,
     mut stream: ResMut<UiSignifierStream>,
 ) {
-    stream.active_ids.clear();
-    let entries = stream.take_entries();
+    let existing: HashSet<u64> = existing.iter().map(|id| id.0).collect();
     if ui_state.interaction().native_tag == 0 {
+        // Original does not take/clear the global append-only stream here.
         return;
     }
-    let mut seen: HashSet<u64> = existing.iter().map(|id| id.0).collect();
-    for entry in entries {
-        match entry {
-            UiSignifierEntry::Raw(record) => {
-                let id = record_id(&record);
-                stream.active_ids.insert(id);
-                if !seen.insert(id) {
-                    continue;
-                }
-                // GAP：旧 crate 5-qword 视图无闭包，唯有 spawn 占位实体。
-                commands.spawn(SignifierId(id));
-            }
-            UiSignifierEntry::Factory(factory) => {
-                // O：`calculate_hash<(WidgetId, Option<&str>)>`；名字 = 记录载荷。
-                let id =
-                    crate::utils::calculate_hash(&(ui_state.interaction().widget, factory.name()));
-                stream.active_ids.insert(id);
-                if !seen.insert(id) {
-                    continue;
-                }
-                // O：唤醒 vtable（`Fn(&AssetMeshLibrary, &AssetShaderLibrary,
-                // &mut Commands) -> Vec<Entity>`）；给返回实体插 SignifierId。
-                let entities = factory.wake(&mesh_library, &shader_library, &mut commands);
-                for entity in entities {
-                    commands.entity(entity).insert(SignifierId(id));
-                }
-            }
+    let entries = stream.take_entries();
+    if !entries.is_empty() {
+        // Same native unique Arc check as std Arc::get_mut. Do not make_mut
+        // or clone the params to conceal a conflicting owner.
+        let params = ui_state.active_params_mut().unwrap();
+        for entry in &entries {
+            let UiSignifierEntry::Factory(factory) = entry else {
+                panic!(
+                    "unrestored raw signifier producer: expected owned name and factory closure, got {entry:?}"
+                );
+            };
+            assert!(factory.has_closure(), "unrestored signifier callback owner");
+            params.signifiers.push(factory.clone());
+        }
+    }
+    drop(entries); // Original cloned String/closure ownership, then drops stream.
+    let widget = ui_state.active_widget();
+    let params = ui_state.active_params().unwrap();
+    for factory in &params.signifiers {
+        let hash = record_id(widget, factory.name());
+        if existing.contains(&hash) {
+            continue;
+        }
+        assert!(factory.has_closure(), "unrestored signifier callback owner");
+        let entities = factory.wake(&mesh_library, &shader_library.0, &mut commands);
+        for entity in entities {
+            // The native high32-zero branch is Option<Entity>::next's
+            // nonzero-generation niche. Rust's iterator preserves that domain.
+            commands.entity(entity).insert(SignifierId(hash, widget));
         }
     }
 }

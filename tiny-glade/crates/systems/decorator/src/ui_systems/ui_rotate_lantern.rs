@@ -117,7 +117,7 @@ pub fn ui_rotate_decorator<C: Send+Sync+'static>(
 fn show_rotation_signifiers(id: DecoratorId,position:Vec3,yaw:f32,stream:&mut UiSignifierStream) {
     use country_core::{components::drawable::DrawableMeshBundle,
         systems::{render_loop::draw_passes::draw_lists::{DontCastShadow,UiPass},
-            ui::signifiers::{animation::SignifierAnimation,signifier_create::SignifierId,SignifierFactory}},
+            ui::signifiers::{animation::SignifierAnimation,SignifierFactory}},
         utils::components::transform::Transform};
     let angle=(yaw+std::f32::consts::PI)*0.5;
     let sine=angle.sin();
@@ -127,7 +127,7 @@ fn show_rotation_signifiers(id: DecoratorId,position:Vec3,yaw:f32,stream:&mut Ui
         let shader=shaders.get_raster_handle_by_name("vertex_color_shader").expect("rotation signifier shader missing");
         [("corner_arrow",false),("corner_arrow_outline",true)].into_iter().map(|(mesh_name,ui_pass)| {
             let mesh=meshes.get_handle_by_name(mesh_name);
-            let mut entity=commands.spawn((DrawableMeshBundle{mesh,shader,transform:Transform{rotation,translation:position,scale:Vec3::ZERO}},DontCastShadow,SignifierId(0),SignifierAnimation{flag_8:0,flag_9:1,value:0.3,duration:0.0,..Default::default()}));
+            let mut entity=commands.spawn((DrawableMeshBundle{mesh,shader,transform:Transform{rotation,translation:position,scale:Vec3::ZERO}},DontCastShadow,SignifierAnimation{flag_8:0,flag_9:1,value:0.3,duration:0.0,..Default::default()}));
             if ui_pass {entity.insert(UiPass);}
             entity.id()
         }).collect()

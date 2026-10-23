@@ -4,8 +4,8 @@
 //! （signifier_animation_t/0x140a69340、signifier_animation/0x140a69c30）、
 //! signifier_mark_for_delete.rs（signfier_mark_for_delete/0x140929160、
 //! despawn_marked/0x140929a90）、mod.rs（register_required_components/clone_behavior 胶水）。
-//! 动画推进（t-tick）与删除链已落地；scale/alpha 目标 switch 与 config_hash→widget
-//! 匹配依赖宿主 UiState，登记待取证。
+//! 捕获 WidgetParams 拥有实际工厂列表，ID 同时保存 hash 与 WidgetId。
+//! 原版顺序与 deferred 边界由本组保持；数字 Raw 生产者仍属后序模块阻断接口。
 pub mod animation;
 pub mod signifier_create;
 pub mod signifier_factory;
@@ -28,17 +28,16 @@ pub fn register_signifier_resources(world: &mut World) {
     world.init_resource::<UiSignifierStream>();
 }
 
-/// 请求生产者应在本组之前执行；创建、动画、标记和销毁按顺序执行。
-/// chain 同时保证延迟命令在后续查询前提交。
+/// 原 set6 consumer 顺序。保留原 chain_ignore_deferred，不提前提交实体命令。
 pub fn add_signifier_systems(schedule: &mut Schedule) {
     schedule.add_systems(
         (
             signifier_create::signifier_create,
+            signifier_mark_for_delete::signfier_mark_for_delete,
             animation::signifier_animation_t,
             animation::signifier_animation,
-            signifier_mark_for_delete::signfier_mark_for_delete,
             signifier_mark_for_delete::despawn_marked,
         )
-            .chain(),
+            .chain_ignore_deferred(),
     );
 }

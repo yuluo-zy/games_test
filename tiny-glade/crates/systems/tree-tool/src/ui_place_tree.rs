@@ -449,69 +449,51 @@ mod seed_cursor_icon_tests {
     }
 
     #[test]
-    fn owned_factory_wakes_deduplicates_and_reclaims_the_actual_cursor_mesh() {
+    fn owned_factory_uses_captured_widget_owner_and_reclaims_actual_cursor_meshes() {
+        use country_core::systems::ui::resources::widget_params::WidgetParams;
+        use country_core::asset_libraries::shader_library::SharedAssetShaderLibrary;
         let mut world = World::new();
         world.insert_resource(AssetMeshLibrary::new());
         world.insert_resource(GameTime::default());
         world.init_resource::<UiSignifierStream>();
         let shaders = AssetShaderLibrary::new();
         shaders.add_raster(
-            RasterShaderProgram::new_draw("vertex_color_shader", Default::default(), &CpuShaders),
-            false,
+            RasterShaderProgram::new_draw("vertex_color_shader", Default::default(), &CpuShaders), false,
         );
-        world.insert_resource(shaders);
-        world.insert_resource(UiState::new(UiInteraction {
-            native_tag: 1,
-            native_phase: 0,
-            widget: WidgetId::from_name("tree_canvas"),
-        }));
+        world.insert_resource(SharedAssetShaderLibrary(std::sync::Arc::new(shaders)));
+        let factory = seed_cursor_icon(Vec2::new(100.0, 200.0), 1000.0, 1.0);
+        let weak = std::sync::Arc::downgrade(factory.closure.as_ref().unwrap());
+        // This is a factory-owner unit boundary, not an OS input test. Capture
+        // actual params, retaining the original same-frame duplicate behavior.
+        let mut ui = UiState::at_startup();
+        ui.replace_interaction_full(UiInteraction { native_tag: 1, native_phase: 1,
+            widget: WidgetId::from_name("tree_canvas") },
+            Some(std::sync::Arc::new(WidgetParams::default().with_signifiers(vec![factory.clone(), factory.clone()]))), [0; 56]);
+        world.insert_resource(ui);
+        drop(factory);
         let mut schedule = Schedule::default();
         add_signifier_systems(&mut schedule);
-
-        let factory = seed_cursor_icon(Vec2::new(100.0, 200.0), 1000.0, 1.0);
-        assert!(factory.has_closure());
-        let closure = factory.closure.as_ref().unwrap();
-        let weak = std::sync::Arc::downgrade(closure);
-        world
-            .resource_mut::<UiSignifierStream>()
-            .write_factory(&factory);
-        world
-            .resource_mut::<UiSignifierStream>()
-            .write_factory(&factory);
         schedule.run(&mut world);
-        assert_eq!(std::sync::Arc::strong_count(closure), 1);
-        drop(factory);
-        assert!(weak.upgrade().is_none());
         let first = entities(&mut world);
-        assert_eq!(first.len(), 1);
-        let first_entity = first[0];
-        assert_eq!(
-            world.get::<Ui2dExtent>(first_entity).unwrap().pos,
-            Vec2::new(82.25, 200.0)
-        );
-        let image = world.get::<Ui2dImage>(first_entity).unwrap();
-        assert_eq!(image.name, "seed_cursor_icon");
-        assert_eq!(image.layer, 0);
-        let first_mesh = world
-            .get::<TransientMesh>(first_entity)
-            .unwrap()
-            .mesh_handle();
-        let registry = world
-            .resource::<AssetMeshLibrary>()
-            .transient_meshes()
-            .clone();
+        assert_eq!(first.len(), 2, "native frame-start snapshot allows duplicate factories");
+        for &entity in &first {
+            assert_eq!(world.get::<Ui2dExtent>(entity).unwrap().pos, Vec2::new(82.25, 200.0));
+            assert_eq!(world.get::<Ui2dImage>(entity).unwrap().name, "seed_cursor_icon");
+        }
+        let meshes:Vec<_> = first.iter().map(|entity| world.get::<TransientMesh>(*entity).unwrap().mesh_handle()).collect();
+        let registry = world.resource::<AssetMeshLibrary>().transient_meshes().clone();
         assert!(registry.lock().unwrap().is_empty());
-
-        world
-            .resource_mut::<UiSignifierStream>()
-            .write_factory(&seed_cursor_icon(Vec2::new(101.0, 200.0), 1000.0, 1.0));
         schedule.run(&mut world);
-        assert!(world.get_entity(first_entity).is_err());
-        assert_eq!(entities(&mut world).len(), 1);
-        assert_eq!(*registry.lock().unwrap(), vec![first_mesh]);
-        schedule.run(&mut world);
+        assert_eq!(entities(&mut world), first, "existing original hashes reuse entities");
+        // Dropping the captured owner releases callbacks and schedules the
+        // original mark/reverse/despawn chain across deferred frame boundaries.
+        world.insert_resource(UiState::at_startup());
+        assert!(weak.upgrade().is_none());
+        for _ in 0..3 { schedule.run(&mut world); }
         assert!(entities(&mut world).is_empty());
-        assert_eq!(registry.lock().unwrap().len(), 2);
+        let retired=registry.lock().unwrap();
+        assert_eq!(retired.len(), meshes.len());
+        assert!(meshes.iter().all(|mesh|retired.contains(mesh)));
     }
 
     // 仅提供 CPU shader 工件，未实际调用的 GPU 创建面保持不可达。

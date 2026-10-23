@@ -43,6 +43,12 @@ impl PlayUiSound {
 }
 
 
+/// Original camera-mode sound notification (B1409d709a): byte0 selects
+/// FirstPersonOn, nonzero selects FirstPersonOff. This is not OS window focus.
+#[repr(transparent)]
+#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PlayPhotomodeSound(pub u8);
+
 /// UI 导航状态（O：`add_ui` 0x140945c60 `insert_resource<UiNavState>`）。
 ///
 /// 原生 **0x38 B**，2026-10-17 fresh 反编译/机器码（B patched, shared worker）逐字段：
@@ -270,8 +276,10 @@ impl WidgetGeometry {
 
 /// 0xb0 B 参数块（O：默认 u32 组 + UiSounds + WidgetVolumeShape + u16@0xa8=0x101 +
 /// flags@0xa9）。
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct WidgetParams {
+    /// Original captured widget owner of named signifier factory callbacks.
+    pub signifiers: Vec<crate::systems::ui::signifiers::SignifierFactory>,
     /// Complete owned geometry for native volume variants.
     pub geometry: Option<WidgetGeometry>,
     /// 默认 u32 组（@0/8/0x10/0x18/0x20/0x30/0x48/0x60）。
@@ -298,6 +306,11 @@ impl Default for WidgetParams {
 }
 
 impl WidgetParams {
+    pub fn with_signifiers(mut self, signifiers: Vec<crate::systems::ui::signifiers::SignifierFactory>) -> Self {
+        self.signifiers = signifiers;
+        self
+    }
+
     /// Native tag3 stores the complete screen-space min/max rectangle.
     pub fn screen_aabb(mut self, min: Vec2, max: Vec2, distance: f32) -> Self {
         self.volume.tag = 3;
@@ -348,6 +361,7 @@ impl WidgetParams {
     /// [`WidgetVolumeShape`] 与 16 B 原始 qword 承载。
     pub fn new(volume: WidgetVolumeShape, extra_78: [u64; 2]) -> Self {
         Self {
+            signifiers: Vec::new(),
             fields: DEFAULT_U32S,
             sounds: UiSounds::empty(),
             extra_78,

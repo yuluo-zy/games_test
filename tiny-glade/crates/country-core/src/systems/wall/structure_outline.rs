@@ -77,7 +77,7 @@ use crate::systems::camera_rig::main_camera::MainCamera;
 use crate::systems::render_loop::draw_passes::draw_lists::{DontCastShadow, UiPass};
 use crate::systems::ui::signifiers::{
     animation::SignifierAnimation,
-    signifier_create::{SignifierId, UiSignifierStream},
+    signifier_create::UiSignifierStream,
     signifier_factory::SignifierFactory,
 };
 use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
@@ -191,7 +191,6 @@ fn outline_line_factory(
                     TransientMesh::new_with_registry(mesh, meshes.transient_meshes()),
                     DrawTopology::Alt(strength),
                     DontCastShadow,
-                    SignifierId(0),
                     // 点已在世界空间；沿用 DebugLine 的“不被通用动画缩到零”设置。
                     SignifierAnimation {
                         flag_8: 1,

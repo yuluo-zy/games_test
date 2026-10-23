@@ -1,138 +1,177 @@
-//! B `systems/wall/snapping/telegraph_walls_are_merged.rs`: merge preview line.
+//! Event-owned wall-merge lines (B 14086ad70), with independent mesh lifetime.
 //!
-//! Evidence: `chapters/systems/wall/snapping/telegraph_walls_are_merged.rs.md`
-//! (O, structure; 0x14086ad70) + fresh decomp 2026-10-17. For every public
-//! wall segment an easing timer accumulates (`timer = (seg+0x40 += Δ) / 0.75`
-//! clamp[0,1]) and `EasingFunction::apply` drives the preview line:
-//!   u_lo = clamp01(2·e − 1),  u_hi = clamp01(2·e)
-//!   ε = 0.025 / curve_len;  if (u_hi − u_lo < 2ε) { u_lo −= ε; u_hi += ε; }  (re-clamp)
-//!   → `Curve::slice_into<Vec3,3D>` [u_lo, u_hi] → mesh/entity rebuild.
-//! When the eased input reaches 1.0 the preview entity is **despawned**.
-//!
-//! 登记（fresh 分歧点）：原生 = **easing 计时 + 曲线切片 + 网格重建 + 实体
-//! spawn/despawn + 组件插入**（`EntityCommands::despawn` /
-//! `update_curve_mesh` / `SignifierEntityBuilder::build` / `insert<LineAcrossWallSignifier>
-//! / DashedLineLength / DrawTopology`）完整实体链；Rust 此前为单 signifier
-//! 近似（无计时/切片）。实体链为 render-host 依赖边界（AGENTS），本域重建
-//! easing 计时 + 切片范围，并以 [`UiAppendSignifier`]（tag 5）承载切片预览；
-//! despawn/insert/网格为宿主接线，登记。
-
+//! Original system signature: evidence/round12/app-edit-recording/registration-contract.json.
+//! Full body: recovery/agent-team/planning/impl-walls-verify/decomp/
+//! 0x14086ad70-telegraph_walls_are_merged.txt. Machine code 14086bbaa..bbc4
+//! reverses easing input for flag != 0. The old all-wall timer/Raw UI stream
+//! approximated an audio event as a factory; this system never uses that stream.
 use bevy_ecs::prelude::*;
-use hashbrown::HashMap;
-use utils::easing_functions::EasingFunction;
+use glam::Vec3;
+use utils::{curve::Curve3, easing_functions::EasingFunction};
 
-use crate::resources::walls::{WallId, public_walls::PublicWalls};
-use crate::resources::{time::GameTime, roofs::geometry::surface::Curve2};
-use crate::systems::ui::signifiers::signifier_create::{UiAppendSignifier, UiSignifierStream};
+use crate::{
+    asset_libraries::{Handle, mesh_library::AssetMeshLibrary, shader_library::SharedAssetShaderLibrary},
+    components::DashedLineLength,
+    render::{mesh::Mesh, pass_builder::draw_list::DrawTopology},
+    resources::{time::GameTime, walls::{WallId, public_walls::PublicWalls}},
+    systems::{audio::PlayWallUiSound, ui::signifiers::SignifierEntityBuilder},
+};
 
-/// Telegraph animation duration (0.75 @ fresh /0.75)。
 const TELEGRAPH_DURATION: f32 = 0.75;
-/// 极小切片 ε 扩展基数（0.025 @ fresh `0.025 / fVar52`）。
 const SLICE_MIN_LEN: f32 = 0.025;
 
-/// 原版 `telegraph_walls_are_merged::PlayLineAcrossWall`（`Events` 实例 0x18 B：id @+0、
-/// wall @+8、u8 @+0x10）。生产者 finish_wall 的 snap-merge 闭包 0x140a82060：
-/// 合并时写两条（`(wall_a, in_progress+0x9e)`、`(snap.wall, snap.end)`），自合并时只写
-/// `(snap.wall, snap.end)`。字节槽名称原版未恢复，按其来源描述。
+/// Original event: wall @+8, direction flag @+0x10 including event ID.
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlayLineAcrossWall {
     pub wall: WallId,
     pub flag: u8,
 }
 
-/// 每墙段累计计时器（原生存于 public 段记录 @+0x40；域内以资源承载）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct TelegraphTimers(pub HashMap<WallId, f32>);
+/// The line owns its curve, so wall deletion does not invalidate its animation.
+#[derive(Component, Clone, Debug)]
+pub struct LineAcrossWallSignifier {
+    pub curve: Curve3,
+    pub wall: WallId,
+    pub elapsed: f32,
+    pub flag: u8,
+}
 
-impl TelegraphTimers {
-    pub fn new() -> Self {
-        Self(HashMap::new())
+fn slice_bounds(curve: &Curve3, t: f32, flag: u8) -> (f32, f32) {
+    let e = EasingFunction::CircularInOut.apply(if flag == 0 { t } else { 1.0 - t });
+    let mut lo = (e + e - 1.0).clamp(0.0, 1.0);
+    let mut hi = (e + e).clamp(0.0, 1.0);
+    let eps = SLICE_MIN_LEN / curve.length;
+    if (hi - lo).abs() < eps + eps {
+        lo = (lo - eps).clamp(0.0, 1.0);
+        hi = (hi + eps).clamp(0.0, 1.0);
     }
+    (lo, hi)
 }
 
-/// `outline 3D 点` at parameter `u`（简化 2D 曲线 coord_at_u → outline 3D 插值）。
-fn outline_at(curve: &Curve2, outline: &[[f32; 3]], u: f32) -> [f32; 3] {
-    let (segment, t) = curve.coord_at_u(u);
-    let a = outline[segment];
-    let b = outline[segment + 1];
-    [
-        b[0] * t + a[0] * (1.0 - t),
-        b[1] * t + a[1] * (1.0 - t),
-        b[2] * t + a[2] * (1.0 - t),
-    ]
-}
-
-/// B 0x14086ad70 (8-param system).
 pub fn telegraph_walls_are_merged(
+    mut requests: EventReader<PlayLineAcrossWall>,
     public: Res<PublicWalls>,
+    mut lines: Query<(Entity, &mut LineAcrossWallSignifier, &Handle<Mesh>, &mut DashedLineLength)>,
+    mut meshes: ResMut<AssetMeshLibrary>,
+    shaders: Res<SharedAssetShaderLibrary>,
+    mut commands: Commands,
+    mut audio: EventWriter<PlayWallUiSound>,
     time: Res<GameTime>,
-    mut timers: ResMut<TelegraphTimers>,
-    mut stream: ResMut<UiSignifierStream>,
 ) {
-    let dt = time.delta;
-    let mut live: std::collections::HashSet<WallId> = std::collections::HashSet::new();
-    for (id, state) in public.all() {
-        state.assert_valid();
-        live.insert(id);
-        let curve = state.simplified_curve_2d();
-        if curve.points.len() < 2 {
-            continue;
-        }
-        let timer = timers.0.entry(id).or_insert(0.0);
-        *timer += dt;
-        let t = (*timer / TELEGRAPH_DURATION).clamp(0.0, 1.0);
-        // eased 输入到达 1.0 → 旧预览实体 despawn（render-host 宿主接线）。
-        // fresh：累加器写回 seg+0x40 后**不重置**（持续 ≥0.75），本帧不再建切片。
-        if t == 1.0 {
-            continue;
-        }
-        // fresh disasm `14086bbcc LEA RCX,[0x142a96d84]` → EasingFunction tag 0
-        // = `CircularInOut`（enum 序：CircularInOut=0）。
-        let e = EasingFunction::CircularInOut.apply(t);
-        // eased 双 u 界（fresh maxps/minps clamp）：u_lo = 2e−1、u_hi = 2e。
-        let eps = SLICE_MIN_LEN / curve.length;
-        let mut u_lo = (2.0 * e - 1.0).clamp(0.0, 1.0);
-        let mut u_hi = (2.0 * e).clamp(0.0, 1.0);
-        if u_hi - u_lo < eps + eps {
-            u_lo = (u_lo - eps).clamp(0.0, 1.0);
-            u_hi = (u_hi + eps).clamp(0.0, 1.0);
-        }
-        // 曲线切片 [u_lo, u_hi] → 预览（原生 slice_into + update_curve_mesh +
-        // SignifierEntityBuilder 实体链为 render-host，登记）。
-        let outline = state.geometry.outline.as_slice();
-        let start = outline_at(curve, outline, u_lo);
-        let end = outline_at(curve, outline, u_hi);
-        stream.write(UiAppendSignifier {
-            tag: 5,
-            kind: 5,
-            position: glam::Vec3::new(start[0], start[1], start[2]),
-            scale: end[0],
-            name: end[2].to_bits() as u64,
-        });
+    for request in requests.read() {
+        let Some(wall) = public.get(request.wall) else { continue; };
+        let height = wall.building_projection().float_0x284();
+        let offset = Vec3::new(height * 0.0 * 0.5, height * 0.5, height * 0.0 * 0.5);
+        let points = wall.geometry.outline.iter().map(|&point| Vec3::from(point) + offset).collect();
+        let curve = Curve3::try_new_from_points(points, false).expect("invalid wall-merge line curve");
+        audio.write(PlayWallUiSound { kind: 5, selector: 0, value: 0.0, position: curve.points[0] });
+        let entity = SignifierEntityBuilder::from_points(curve.points.clone())
+            .custom_shader("dashed_line").animation_duration(0.0)
+            .build(&meshes, &shaders.0, &mut commands);
+        commands.entity(entity).insert((
+            DrawTopology::Alt(3.0), DashedLineLength(curve.length),
+            LineAcrossWallSignifier { curve, wall: request.wall, elapsed: 0.0, flag: request.flag },
+        ));
     }
-    // 清除已删除墙的计时（原生 despawn 后无残留；域内资源同步）。
-    timers.0.retain(|id, _| live.contains(id));
+    for (entity, mut line, mesh, mut length) in &mut lines {
+        line.elapsed += time.delta;
+        let t = (line.elapsed / TELEGRAPH_DURATION).clamp(0.0, 1.0);
+        if t == 1.0 {
+            commands.entity(entity).despawn();
+            continue;
+        }
+        let (lo, hi) = slice_bounds(&line.curve, t, line.flag);
+        let slice = line.curve.try_slice(lo, hi).expect("invalid animated wall-merge line slice");
+        length.0 = slice.length;
+        // Move the generated points into the mesh; get_mut publishes the actual
+        // dirty mesh and COW preserves any already extracted render version.
+        crate::utils::geo::update_curve_mesh(meshes.get_mut(*mesh), slice.points);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        asset_libraries::{shader_library::AssetShaderLibrary, transient_mesh::delete_dropped_transient_meshes},
+        render::{shader::RasterShaderProgram, test_device::TestDevice},
+        resources::walls::{InnerWalls, WallState, publication_source::TerrainHeightGrid512},
+        systems::ui::signifiers::UiSignifierStream,
+    };
+    use std::sync::Arc;
+
+    fn fixture() -> (World, Schedule, WallId) {
+        let mut world = World::new();
+        let mut inner = InnerWalls::new();
+        let wall = inner.new_wall_from_curve(WallState::new(
+            crate::resources::roofs::geometry::surface::Curve2::try_new(vec![[0., 0.], [8., 0.]], false).unwrap(),
+            3.0, 0, 2, false,
+        ));
+        let terrain = TerrainHeightGrid512 { encoded: vec![0; 512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
+        let mut public = PublicWalls::default();
+        public.consume(&mut inner, &terrain);
+        assert!(public.get(wall).is_some());
+        world.insert_resource(public);
+        world.init_resource::<AssetMeshLibrary>();
+        let shaders = Arc::new(AssetShaderLibrary::new());
+        shaders.add_raster(RasterShaderProgram::new_draw("dashed_line", Default::default(), &TestDevice(1)), false);
+        world.insert_resource(SharedAssetShaderLibrary(shaders));
+        world.init_resource::<Events<PlayLineAcrossWall>>();
+        world.init_resource::<Events<PlayWallUiSound>>();
+        world.init_resource::<GameTime>();
+        world.init_resource::<UiSignifierStream>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(telegraph_walls_are_merged);
+        (world, schedule, wall)
+    }
 
     #[test]
-    fn eased_slice_bounds_grow_then_shrink_and_despawn_at_one() {
-        // e=0 → [0,0]；e=0.5 → [0,1]；e→1 → [1,1]（t==1 走 despawn 分支）。
-        let bounds = |e: f32| {
-            let mut lo = (2.0 * e - 1.0).clamp(0.0, 1.0);
-            let mut hi = (2.0 * e).clamp(0.0, 1.0);
-            (lo, hi)
-        };
-        let (lo, hi) = bounds(0.0);
-        assert_eq!((lo, hi), (0.0, 0.0));
-        let (lo, hi) = bounds(0.5);
-        assert_eq!((lo, hi), (0.0, 1.0));
-        let (lo, hi) = bounds(0.75);
-        assert!((lo - 0.5).abs() < 1e-6 && (hi - 1.0).abs() < 1e-6);
-        // t==1.0 不进切片分支（despawn）。
-        assert_eq!(1.0f32.clamp(0.0, 1.0), 1.0);
+    fn walls_without_merge_events_never_accumulate_ui_records_or_spawn_lines() {
+        let (mut world, mut schedule, _) = fixture();
+        for _ in 0..4 { schedule.run(&mut world); }
+        assert_eq!(world.query::<&LineAcrossWallSignifier>().iter(&world).count(), 0);
+        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
+        assert!(world.resource::<Events<PlayWallUiSound>>().is_empty());
+    }
+
+    #[test]
+    fn merge_event_owns_a_real_mesh_updates_it_and_reclaims_after_wall_deletion() {
+        let (mut world, mut schedule, wall) = fixture();
+        let offset = world.resource::<PublicWalls>().get(wall).unwrap().building_projection().float_0x284() * 0.5;
+        world.send_event(PlayLineAcrossWall { wall, flag: 0 });
+        schedule.run(&mut world);
+        let mut query = world.query::<(Entity, &LineAcrossWallSignifier, &Handle<Mesh>, &DrawTopology, &DashedLineLength)>();
+        let (entity, line, mesh, topology, length) = query.single(&world).unwrap();
+        assert_eq!(*topology, DrawTopology::Alt(3.0));
+        assert_eq!(line.curve.points[0].y, offset);
+        assert_eq!(length.0, line.curve.length);
+        let (entity, mesh) = (entity, *mesh);
+        let event = world.resource::<Events<PlayWallUiSound>>().iter_current_update_events().next().unwrap();
+        assert_eq!(event.kind, 5);
+        assert_eq!(event.position, line.curve.points[0]);
+        world.insert_resource(PublicWalls::default());
+        world.resource_mut::<GameTime>().delta = 0.1875;
+        schedule.run(&mut world);
+        assert!(world.get::<LineAcrossWallSignifier>(entity).is_some());
+        assert!(world.get::<DashedLineLength>(entity).unwrap().0 < 8.0);
+        assert!(world.resource::<AssetMeshLibrary>().get(mesh).is_some());
+        world.resource_mut::<GameTime>().delta = 0.75;
+        schedule.run(&mut world);
+        assert!(world.get_entity(entity).is_err());
+        let mut meshes = world.remove_resource::<AssetMeshLibrary>().unwrap();
+        let mut vaos = crate::asset_libraries::vao_library::AssetVAOLibrary::new();
+        delete_dropped_transient_meshes(&TestDevice(1), &mut meshes, &mut vaos);
+        assert!(meshes.get(mesh).is_none());
+        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
+    }
+
+    #[test]
+    fn direction_flag_reverses_easing_without_reversing_the_owned_curve() {
+        let curve = Curve3::try_new_from_points(vec![Vec3::ZERO, Vec3::X * 8.0], false).unwrap();
+        let forward = slice_bounds(&curve, 0.25, 0);
+        let reverse = slice_bounds(&curve, 0.25, 1);
+        assert!(forward.0 == 0.0 && forward.1 < 0.5);
+        assert!(reverse.0 > 0.5 && reverse.1 == 1.0);
+        assert_eq!(forward, slice_bounds(&curve, 0.75, 1));
     }
 }

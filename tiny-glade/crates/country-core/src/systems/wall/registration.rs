@@ -54,7 +54,7 @@ use crate::systems::wall::{
         },
         snapping_to_ends::snapping_to_ends,
         snapping_to_segments::snapping_to_segments,
-        telegraph_walls_are_merged::{TelegraphTimers, telegraph_walls_are_merged},
+        telegraph_walls_are_merged::telegraph_walls_are_merged,
     },
 };
 use bevy_ecs::prelude::*;
@@ -99,7 +99,6 @@ pub fn register_wall_cpu_resources(world: &mut World) {
     world.init_resource::<SnappingMode>();
     world.init_resource::<SnappingDebugDisabled>();
     world.init_resource::<DisableSnappingInput>();
-    world.init_resource::<TelegraphTimers>();
     world.init_resource::<Events<DisableSnapping>>();
     world.init_resource::<AnimateWallBulldozeBuffer>();
     world.init_resource::<WallEraserArchivist>();
@@ -323,6 +322,9 @@ mod tests {
     fn ecs_wall_create_update_dirty_publication_and_delete() {
         let mut world = World::new();
         register_wall_cpu_resources(&mut world);
+        world.init_resource::<crate::asset_libraries::mesh_library::AssetMeshLibrary>();
+        world.insert_resource(crate::asset_libraries::shader_library::SharedAssetShaderLibrary(
+            std::sync::Arc::new(crate::asset_libraries::shader_library::AssetShaderLibrary::new())));
         world.insert_resource(crate::resources::time::GameTime {
             delta: 0.1,
             ..Default::default()

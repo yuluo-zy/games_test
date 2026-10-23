@@ -225,6 +225,15 @@ pub struct WallBendAudioParamReset;
 
 /// `add_audio_events` (0x140941450): register the 16 audio events on `world`.
 pub fn add_audio_events(world: &mut World) {
+    // Canonical channels consumed by the original signifier dispatcher. Their
+    // business owners also register them in the gameplay App for event rotation.
+    world.init_resource::<Events<crate::systems::ui::resources::widget_params::PlayUiSound>>();
+    world.init_resource::<Events<crate::systems::ui::resources::widget_params::PlayPhotomodeSound>>();
+    world.init_resource::<Events<crate::resources::events::InitAdjWallHeightMode>>();
+    world.init_resource::<Events<crate::resources::events::FinishAdjWallHeightMode>>();
+    world.init_resource::<Events<crate::resources::walls::public_walls::OnWallChanged>>();
+    world.init_resource::<Events<crate::resources::events::ModeJustChanged>>();
+    world.init_resource::<Events<crate::systems::mode_manager::LoadingGameComplete>>();
     world.init_resource::<Events<crate::systems::terrain::PlayTerrainSound>>();
     world.init_resource::<Events<SuppressPathSound>>();
     world.init_resource::<Events<PlayReplayAudio>>();

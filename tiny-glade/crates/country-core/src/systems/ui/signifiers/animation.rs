@@ -12,10 +12,8 @@
 //!   门 `byte@+8 == 0` 时：`fVar32 = eased·value`、`fVar33 = byte@+9==0 ? value : fVar32`，
 //!   写 `Transform.scale = (fVar33, fVar32, fVar33)`（+0x1c/+0x20/+0x24）。随后按
 //!   UiState 配置的 kind（`*(*[UiState+0x20]+0x98)`）switch 写 `Transform.translation`
-//!   （+0x10..+0x18）：case 0 取 `+0xa0` 的 12 B、case 6 取 `+0x9c`、case 1 取
-//!   `+0xa8` 表（索引 `+0xb0`）的 12 B 条目；8/9/0xa/0xb/0xc..0x10 的 Ghidra
-//!   反编译损坏（swi/halt_baddata）。crate 的 UiState 未落库该配置表 → kind 数据流
-//!   登记 GAP，scale 面按 fresh 还原。
+//!   （+0x10..+0x18）：Sphere center、PlaneDisc point、SphereCloud indexed center。
+//!   原有界跳表仅八项；旧反编译 8..16 是损坏输出，不能作为算法分支。
 use bevy_ecs::prelude::*;
 use glam::Vec3;
 
@@ -44,7 +42,6 @@ pub struct SignifierAnimation {
     pub t: f32,
     /// +0x18：缓动派生值（`EasingFunction::apply(t)`）。
     pub eased: f32,
-
 }
 
 impl Default for SignifierAnimation {
@@ -121,16 +118,9 @@ pub fn signifier_animation_t(
     }
 }
 
-/// `signifier_animation` @0x140a69c30（O）。
-///
-/// fresh 可逐句对应部分：
-/// - 门 `flag_8 == 0`；
-/// - `value = +0xc`、`multiplier = eased@+0x18`，`scaled = multiplier·value`；
-/// - `x = flag_9 == 0 ? value : scaled`；
-/// - `Transform.scale = (x, scaled, x)`。
-///
-/// 登记 GAP：kind switch（UiState 配置 @+0x98）与 translation 写入；UiState 未落库
-/// signifier 配置表（解锁条件：UiState 暴露 `signifier_config_kind/translation`）。
+/// Original140a69c30: scale and parent-to-volume-origin are independent gates.
+/// The bounded geometry jump table142ad55ac contains only eight variants:
+/// Sphere/Cloud/PlaneDisc update translation; the other five preserve it.
 pub fn signifier_animation(
     mut query: Query<(
         &SignifierAnimation,
@@ -138,16 +128,43 @@ pub fn signifier_animation(
         Option<&SignifierId>,
         Option<&SignifierParentToVolumeOrigin>,
     )>,
-    _ui_state: Res<UiState>,
+    ui_state: Res<UiState>,
 ) {
-    for (anim, mut transform, _id, _parent_to_volume_origin) in &mut query {
-        if anim.flag_8 != 0 {
+    use crate::systems::ui::resources::widget_params::WidgetGeometry;
+    for (anim, mut transform, id, parent_to_origin) in &mut query {
+        if anim.flag_8 == 0 {
+            let value = anim.value;
+            let scaled = anim.eased * value;
+            let x = if anim.flag_9 == 0 { value } else { scaled };
+            transform.scale = Vec3::new(x, scaled, x);
+        }
+        let Some(id) = id else {
+            continue;
+        };
+        if parent_to_origin.is_none()
+            || ui_state.hover_byte() == 0
+            || id.1 != ui_state.active_widget()
+        {
             continue;
         }
-        let value = anim.value;
-        let scaled = anim.eased * value;
-        let x = if anim.flag_9 == 0 { value } else { scaled };
-        transform.scale = Vec3::new(x, scaled, x);
+        let params = ui_state
+            .active_params()
+            .expect("native active signifier WidgetParams unwrap");
+        let position = match params.resolved_geometry().as_ref() {
+            WidgetGeometry::Sphere { center, .. } => Some(*center),
+            WidgetGeometry::SphereCloud { centers, .. } => {
+                let hit = ui_state
+                    .widget_context(ui_state.active_widget())
+                    .intersecting();
+                let index = u64::from_le_bytes(hit[24..32].try_into().unwrap()) as usize;
+                Some(centers[index]) // Original bounds panic is part of the contract.
+            }
+            WidgetGeometry::PlaneDisc { point, .. } => Some(*point),
+            _ => None,
+        };
+        if let Some(position) = position {
+            transform.translation = position;
+        }
     }
 }
 
@@ -186,5 +203,80 @@ mod tests {
         let x = if anim.flag_9 == 0 { anim.value } else { scaled };
         t.scale = Vec3::new(x, scaled, x);
         assert_eq!(t.scale, Vec3::new(2.0, 0.5, 2.0));
+    }
+
+    #[test]
+    fn parent_origin_is_independent_of_scale_gate_and_matches_full_widget_identity() {
+        use crate::systems::ui::resources::{
+            ui_state::{UiInteraction, WidgetId},
+            widget_params::{WidgetGeometry, WidgetParams},
+        };
+        let target = Vec3::new(3.0, 4.0, 5.0);
+        for geometry in [
+            WidgetGeometry::Sphere {
+                center: target,
+                radius: 2.0,
+            },
+            WidgetGeometry::SphereCloud {
+                centers: vec![Vec3::ZERO, target],
+                radius: 1.0,
+            },
+            WidgetGeometry::PlaneDisc {
+                point: target,
+                normal: Vec3::Y,
+                radius: 1.0,
+            },
+        ] {
+            let mut world = World::new();
+            let mut ui = UiState::at_startup();
+            let mut hit = [0; 56];
+            hit[24..32].copy_from_slice(&1u64.to_le_bytes());
+            ui.replace_interaction_full(
+                UiInteraction {
+                    native_tag: 1,
+                    native_phase: 1,
+                    widget: WidgetId(11),
+                },
+                Some(std::sync::Arc::new(
+                    WidgetParams::default().geometry(geometry),
+                )),
+                hit,
+            );
+            world.insert_resource(ui);
+            let animation = SignifierAnimation {
+                flag_8: 1,
+                ..Default::default()
+            };
+            let matching = world
+                .spawn((
+                    animation,
+                    Transform::identity(),
+                    SignifierId(7, WidgetId(11)),
+                    SignifierParentToVolumeOrigin,
+                ))
+                .id();
+            let other_widget = world
+                .spawn((
+                    animation,
+                    Transform::identity(),
+                    SignifierId(7, WidgetId(12)),
+                    SignifierParentToVolumeOrigin,
+                ))
+                .id();
+            let mut schedule = Schedule::default();
+            schedule.add_systems(signifier_animation);
+            schedule.run(&mut world);
+            let transform = world.get::<Transform>(matching).unwrap();
+            assert_eq!(transform.translation, target);
+            assert_eq!(
+                transform.scale,
+                Vec3::ONE,
+                "scale-disabled animation still follows volume origin"
+            );
+            assert_eq!(
+                world.get::<Transform>(other_widget).unwrap().translation,
+                Vec3::ZERO
+            );
+        }
     }
 }

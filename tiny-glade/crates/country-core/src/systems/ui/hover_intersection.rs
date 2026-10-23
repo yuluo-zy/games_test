@@ -346,7 +346,7 @@ mod original_tests {
                         a.iter()
                             .map(|x| {
                                 let q = x.as_array().unwrap();
-                                let v = |i| {
+                                let v = |i: usize| {
                                     Vec3::new(
                                         q[i].as_f64().unwrap() as f32,
                                         q[i + 1].as_f64().unwrap() as f32,

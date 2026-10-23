@@ -19,8 +19,51 @@ pub mod taffy_layout;
 pub mod undo_redo_layout;
 
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::Component;
+use bevy_ecs::prelude::{Component, Resource};
 use taffy::node::Taffy;
+
+/// Original focus-begin membership, owned by the current toolbar session.
+/// Normal updates retain disappeared entity generations exactly as the native
+/// Local<HashSet<Entity>> does; the host releases them on session exit.
+#[derive(Resource, Default, Debug)]
+pub struct ToolbarFocusTracking {
+    pub(crate) focused: std::collections::HashSet<Entity>,
+}
+
+impl ToolbarFocusTracking {
+    /// Release both stale entity generations and allocated storage at unload.
+    pub fn clear_session(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn len(&self) -> usize {
+        self.focused.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.focused.is_empty()
+    }
+}
+
+/// Original optional slider grab offset; finishing a drag retains the value
+/// within the session. Kept public for the existing photomode module re-export.
+#[derive(Default, Debug, PartialEq)]
+pub struct GrabOffset(pub(crate) Option<f32>);
+
+/// Session ownership for the three native slider locals. Input algorithms keep
+/// their original between-frame values; host unload resets all three together.
+#[derive(Resource, Default, Debug, PartialEq)]
+pub struct ToolbarSliderSession {
+    pub(crate) grab: GrabOffset,
+    pub(crate) nav_armed: bool,
+    pub(crate) previous_focus: country_core::systems::ui::resources::widget_params::UiFocus,
+}
+
+impl ToolbarSliderSession {
+    pub fn clear_session(&mut self) {
+        *self = Self::default();
+    }
+}
 
 /// UI 布局树节点（O：`toolbar::resouces_and_components::TaffyNode`；add_toolbar_item
 /// spawn 8 组件之一）。taffy `Node = slotmap::DefaultKey`（8B，align 4）。
@@ -512,10 +555,12 @@ const _UI_NAV_LINK_SIZE: () = assert!(std::mem::size_of::<UiNavLink>() == 0x10);
 /// `ComponentDescriptor` size 立即数 0x40）**：四槽 `UiNavLink`（各 16B）。
 ///
 /// 写面（`ToolbarLayout::link_up_nav` 0x141e4d880，O）：
-/// - 横向（`in_DL==0`）：slot0/slot1 tag=0；slot2={3,next}、slot3={3,prev}；
-/// - 纵向（`in_DL!=0`）：slot0={3,prev}、slot1={3,next}；slot2/slot3 tag=0。
+/// - 纵向（`in_DL==0`）：slot0/slot1 tag=0；slot2={3,next}、slot3={3,prev}；
+/// - 横向（`in_DL!=0`）：slot0={3,prev}、slot1={3,next}；slot2/slot3 tag=0。
 ///
-/// 槽语义名（up/down/left/right 的排序）**U**——按索引写入，不猜名称。
+/// 槽语义为 left/right/down/up，已由 ui_nav_update 14233f537..58e 确认。
+/// toolbar_setup 142346fb4..fc2 将 is_horizontal 的 AL 直接传为 DL；旧恢复
+/// 误将 DL==0 标作横向，导致真实左右键绕过环链接。调用与写面联合裁决纠正。
 ///
 /// **I 级残差**：`link_up_nav` 对“未连接”槽只显式写 tag qword = 0（横向 slot0/1、
 /// 纵向 slot2/3），其 value qword 在原栈记录中未显式写（栈初值 U）。本实现取 0
@@ -530,8 +575,8 @@ pub struct UiNav {
 const _UI_NAV_SIZE: () = assert!(std::mem::size_of::<UiNav>() == 0x40);
 
 impl UiNav {
-    /// `link_up_nav(in_DL==0)` 的槽写面（O）：slot2=next / slot3=prev，slot0/1 清零。
-    pub fn horizontal(prev: u64, next: u64) -> Self {
+    /// `link_up_nav(in_DL==0)` 的纵向槽写面：down=next / up=prev。
+    pub fn vertical(prev: u64, next: u64) -> Self {
         Self {
             links: [
                 UiNavLink::default(),
@@ -542,8 +587,8 @@ impl UiNav {
         }
     }
 
-    /// `link_up_nav(in_DL!=0)` 的槽写面（O）：slot0=prev / slot1=next，slot2/3 清零。
-    pub fn vertical(prev: u64, next: u64) -> Self {
+    /// `link_up_nav(in_DL!=0)` 的横向槽写面：left=prev / right=next。
+    pub fn horizontal(prev: u64, next: u64) -> Self {
         Self {
             links: [
                 UiNavLink { tag: 3, value: prev },
@@ -829,15 +874,15 @@ mod tests {
         let h = link_up_nav(&ids, true);
         assert_eq!(h.len(), 3);
         assert_eq!(h[0].0, 10);
-        assert_eq!(h[0].1.links[2], UiNavLink { tag: 3, value: 20 });
-        assert_eq!(h[0].1.links[3], UiNavLink { tag: 3, value: 30 });
-        assert_eq!(h[0].1.links[0], UiNavLink::default());
-        assert_eq!(h[0].1.links[1], UiNavLink::default());
+        assert_eq!(h[0].1.links[1], UiNavLink { tag: 3, value: 20 });
+        assert_eq!(h[0].1.links[0], UiNavLink { tag: 3, value: 30 });
+        assert_eq!(h[0].1.links[2], UiNavLink::default());
+        assert_eq!(h[0].1.links[3], UiNavLink::default());
 
         let v = link_up_nav(&ids, false);
-        assert_eq!(v[1].1.links[0], UiNavLink { tag: 3, value: 10 });
-        assert_eq!(v[1].1.links[1], UiNavLink { tag: 3, value: 30 });
-        assert_eq!(v[1].1.links[2], UiNavLink::default());
-        assert_eq!(v[1].1.links[3], UiNavLink::default());
+        assert_eq!(v[1].1.links[3], UiNavLink { tag: 3, value: 10 });
+        assert_eq!(v[1].1.links[2], UiNavLink { tag: 3, value: 30 });
+        assert_eq!(v[1].1.links[0], UiNavLink::default());
+        assert_eq!(v[1].1.links[1], UiNavLink::default());
     }
 }

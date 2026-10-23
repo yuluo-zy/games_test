@@ -43,9 +43,11 @@ fn app() -> App {
         })
         .insert_resource(bevy_time::Time::<()>::default())
         .insert_resource(WindowSize::new(960, 540))
-        // This fixture tests keyboard input, without a cursor hovering the
-        // unlaid-out zero-sized nodes or requiring the world widget resolver.
+        // Interactive nodes register even without pointer hover, including
+        // the opaque EmptyContent root. Supply the canonical owner just as
+        // the application does; this fixture still tests keyboard handling.
         .insert_resource(CursorPositionSS(glam::Vec2::splat(-100.)))
+        .insert_resource(country_core::systems::ui::resources::ui_state::UiState::at_startup())
         .init_resource::<UiNavState>()
         .init_resource::<ActionSetStates>()
         .add_event::<MouseWheel>()
