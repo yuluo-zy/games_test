@@ -430,18 +430,18 @@ pub mod bodies {
     use crate::systems::render_loop::draw_passes::draw_shaders as ds;
 
     /// closure_env$4：`DrawBuilder::discard`（`instanced_background_tree_shader`）。
-    pub fn discard(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn discard(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         b.discard();
     }
 
     /// closure_env$42：`DrawBuilder::draw`（`sun_gizmo_shader`）。
-    pub fn plain_draw(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn plain_draw(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         b.draw();
     }
 
     /// closure_env$35（0x1409b8340，`vertex_color_shader` / `sparkles_shader` / `ui_2d` 等）：
     /// `topology tag == 1` → `state.byte0 = (b & 0xfc) | 2` 且 `packet.+0xac`（f32）= 载荷；其它保持；然后 `draw`。
-    pub fn topology_draw(mut b: DrawBuilder<'_>, p: &EntityDrawParams, _w: &mut World) {
+    pub fn topology_draw(mut b: DrawBuilder<'_>, p: &EntityDrawParams, _w: &World) {
         if let Some(DrawTopology::Alt(payload)) = p.topology {
             let pk = b.packet_mut();
             pk.state.0 = (pk.state.0 & !3) | 2;
@@ -451,39 +451,39 @@ pub mod bodies {
     }
 
     /// closure_env$58（draw_lists.rs:1294:25，`normal_debug_shader`）：`todo!("TODO(vulkan)")`。
-    pub fn todo_vulkan_1294(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn todo_vulkan_1294(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         panic!("not yet implemented: TODO(vulkan)");
     }
 
     /// closure_env$59（draw_lists.rs:1304:25，`ivy_debug_lines_shader`）：`todo!("TODO(vulkan)")`。
-    pub fn todo_vulkan_1304(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn todo_vulkan_1304(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         panic!("not yet implemented: TODO(vulkan)");
     }
 
     /// closure_env$46：`draw_floor_shader(b, false)`（`r9d = 0`；`rdx/r8` 未用）。
-    pub fn floor(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn floor(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::floor_shader::draw_floor_shader(b, false);
     }
 
-    pub fn path_pebble(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn path_pebble(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::path_pebble_shader::path_pebble_draw(b);
     }
-    pub fn grass(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn grass(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::grass_shader::draw_grass_shader(b);
     }
-    pub fn grass_lod1(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn grass_lod1(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::grass_shader::draw_grass_lod1_shader(b);
     }
-    pub fn lilypad(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn lilypad(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::water_planes_draw::lilypad_draw(b);
     }
-    pub fn lilypad_flower(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn lilypad_flower(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::water_planes_draw::lilypad_flower_draw(b);
     }
-    pub fn reed(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn reed(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::water_planes_draw::reed_draw(b);
     }
-    pub fn butterfly(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+    pub fn butterfly(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
         ds::instanced_critters::draw_instanced_butterfly_shader(b);
     }
 }
@@ -1556,7 +1556,7 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
 mod tests {
     use super::*;
 
-    fn noop(_b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &mut World) {}
+    fn noop(_b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &World) {}
 
     fn e(shader: u64, key: i32) -> DrawEntry {
         (DrawItem::new(shader, key), noop)

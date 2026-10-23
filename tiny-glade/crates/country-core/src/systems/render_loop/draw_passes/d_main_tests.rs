@@ -131,7 +131,7 @@ fn run<R>(rig: &Rig, f: impl FnOnce(&mut DrawPassCtx<'_>) -> R) -> R {
     f(&mut ctx)
 }
 
-fn cb(b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &mut World) {
+fn cb(b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &World) {
     b.draw_no_vao(3);
 }
 

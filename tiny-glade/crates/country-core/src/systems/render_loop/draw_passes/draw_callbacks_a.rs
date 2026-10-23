@@ -277,14 +277,14 @@ pub const F32_3CC1_UNIFORM: u64 = 0x3cc1_85d8_0517_a5cb;
 // =====================================================================================================================
 
 /// gap 1 `stairs_draw`（0x14086a780）：`StairsStep` 首字节 → [`StairsEntityData`]（`aux` 恒 0：来自表）。
-pub fn stairs_draw_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn stairs_draw_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let flags = comp::<StairsStepView>(w, p.entity).flags;
     stairs_draw(b, StairsEntityData { flags, aux: 0 });
 }
 
 /// 墙砖回调（LOD0/LOD1 同形）：实体 → 代理字节；`gate` 决定 `discard`（先于任何资源读取）；再取
 /// `AssetSsboLibrary`、`WallHighlight.ty`（仅常规路径）与 `bind_brick_erase_highlight` 的四个资源。
-fn bricks_cb<const LOD: u8>(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+fn bricks_cb<const LOD: u8>(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     if w.get_resource::<crate::geometry::runtime::WallBrickUploadStatus>()
         .is_some_and(|status| !status.gpu_ready)
     {
@@ -344,12 +344,12 @@ pub fn read_erase_highlight(w: &World) -> BrickEraseHighlightInputs {
 }
 
 /// gap 2 `indirect_draw_bricks<1>`（0x1408a4ca0）。
-pub fn bricks_lod1_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn bricks_lod1_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     bricks_cb::<1>(b, p, w);
 }
 
 /// gap 3 `indirect_draw_bricks<0>`（0x1408a53d0）。
-pub fn bricks_lod0_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn bricks_lod0_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     bricks_cb::<0>(b, p, w);
 }
 
@@ -368,7 +368,7 @@ pub fn ivy_segment_counts(w: &World) -> Vec<usize> {
 }
 
 /// gap 4 `draw_instanced_ivy_branch_shader`（0x1408dbc50）。
-pub fn ivy_branch_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn ivy_branch_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let counts = ivy_segment_counts(w);
     draw_instanced_ivy_branch_shader(b, counts);
 }
@@ -379,13 +379,13 @@ fn ivy_inputs(w: &World) -> (Vec3, &AssetSsboLibrary) {
 }
 
 /// gap 5 `draw_instanced_ivy_leaf_shader`（0x1408dc180；21 B 薄壳，世界指针后移后 `jmp ivy_leaf_shader`）。
-pub fn ivy_leaf_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn ivy_leaf_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let (eye, lib) = ivy_inputs(w);
     draw_instanced_ivy_leaf_shader(b, eye, &LibView(lib));
 }
 
 /// gap 6 `draw_instanced_ivy_flower_shader`（0x1408dc1a0）。
-pub fn ivy_flower_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn ivy_flower_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let (eye, lib) = ivy_inputs(w);
     draw_instanced_ivy_flower_shader(b, eye, &LibView(lib));
 }
@@ -432,7 +432,7 @@ pub fn env6_body<'p>(b: DrawBuilder<'p>, i: &Env6In, end: impl FnOnce(DrawBuilde
     end(terrain(b));
 }
 
-pub fn env6(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env6(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let i = read_env6(w, p.entity);
     env6_body(b, &i, |b| b.draw());
 }
@@ -486,7 +486,7 @@ pub fn env27_body<'p>(b: DrawBuilder<'p>, i: &Env27In, end: impl FnOnce(DrawBuil
     end(b);
 }
 
-pub fn env27(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env27(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let i = read_env27(w, p.entity);
     env27_body(b, &i, |b| b.draw());
 }
@@ -536,7 +536,7 @@ pub fn env2_body<'p>(b: DrawBuilder<'p>, i: &Env2In, end: impl FnOnce(DrawBuilde
     end(b);
 }
 
-pub fn env2(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env2(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let i = read_env2(w, p.entity);
     env2_body(b, &i, |b| b.draw());
 }
@@ -558,12 +558,12 @@ fn bind_four(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
 }
 
 /// gap 10 `closure_env$48`（0x1409b0570）：四磁盘 → `draw_instanced(0x1f4)`。
-pub fn env48(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env48(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     bind_four(b).draw_instanced_w_gl_draw_flag(0x1f4);
 }
 
 /// gap 20 `closure_env$53`（0x1409b2580）：同四磁盘 → `draw_instanced(0x3c)`。
-pub fn env53(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env53(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     bind_four(b).draw_instanced_w_gl_draw_flag(0x3c);
 }
 
@@ -578,7 +578,7 @@ pub fn read_env52(w: &World) -> bool {
     !res::<bevy_ecs::event::Events<ShowDemoBorderOverlay>>(w).is_empty()
 }
 
-pub fn env52(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env52(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     if !read_env52(w) {
         b.discard();
         return;
@@ -618,7 +618,7 @@ pub fn env57_body<'p>(b: DrawBuilder<'p>, i: &Env57In, end: impl FnOnce(DrawBuil
     end(b);
 }
 
-pub fn env57(mut b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env57(mut b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     apply_topology(&mut b, p);
     let i = read_env57(w, p.entity);
     env57_body(b, &i, |b| b.draw());
@@ -636,7 +636,7 @@ pub const E45_DISKS: [(u64, u64); 5] = [
     (E27_MARKER_KEY, 0x3147_53a9_b77a_bc52),
 ];
 
-pub fn env45(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env45(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     E45_DISKS
         .iter()
         .fold(b, |b, &(k, n)| bind_disk(b, k, n))
@@ -688,7 +688,7 @@ pub fn env0_body<'p>(mut b: DrawBuilder<'p>, i: &Env0In, end: impl FnOnce(DrawBu
 /// `nani_draw(WoodenPlank = 0xd)`。
 pub const E0_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::WoodenPlank;
 
-pub fn env0(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env0(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let i = read_env0(w);
     let w = &*w;
     env0_body(b, &i, |b| nani_draw_world(b, E0_KIND, w));
@@ -714,7 +714,7 @@ pub fn env37_body<'p>(
     end(b);
 }
 
-pub fn env37(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env37(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let logo = res::<crate::resources::logo_animation::LogoAnimation>(w);
     let a = LogoAnimationView {
         f0: logo.progress[0],
@@ -733,12 +733,12 @@ pub const E39_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::LanternEmissive;
 pub const E28_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::Uber;
 
 /// gap 16 `closure_env$39`（0x1409b1e90）：`nani_draw(LanternEmissive = 0x12)`。
-pub fn env39(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env39(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(b, E39_KIND, w);
 }
 
 /// gap 23 `closure_env$28`（0x1409b3220）：`nani_draw(Uber = 0x17)`。
-pub fn env28(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env28(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(b, E28_KIND, w);
 }
 
@@ -754,7 +754,7 @@ pub fn env19_body<'p>(
     end(b.uniform(F32_3CC1_UNIFORM, s.f8));
 }
 
-pub fn env19(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env19(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let s = *comp::<SplashParticleView>(w, p.entity);
     env19_body(b, &s, |b| b.draw());
 }
@@ -774,7 +774,7 @@ pub fn env32_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
     bind_disk(b, E32_DISK_B.0, E32_DISK_B.1)
 }
 
-pub fn env32(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env32(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(env32_binds(b), E32_KIND, w);
 }
 
@@ -796,7 +796,7 @@ pub fn env41_body<'p>(
     end(b.uniform(E41_F32_A, a.f0).uniform(E41_F32_B, a.f4));
 }
 
-pub fn env41(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env41(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let a = *res::<LoadingScreenProgressView>(w);
     env41_body(b, &a, |b| b.draw());
 }
@@ -853,7 +853,7 @@ pub fn env23_body<'p>(b: DrawBuilder<'p>, i: &Env23In, end: impl FnOnce(DrawBuil
     end(b.uniform(CLOTH_ID_UNIFORM, i.cloth.0 as i32));
 }
 
-pub fn env23(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env23(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let i = read_env23(w, p.entity);
     env23_body(b, &i, |b| b.draw());
 }
@@ -887,7 +887,7 @@ pub fn env22_body<'p>(b: DrawBuilder<'p>, i: &Env22In, end: impl FnOnce(DrawBuil
     end(bind_disk(b, cloth_key_c(&i.session), CLOTH_NAME_C));
 }
 
-pub fn env22(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env22(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let i = read_env22(w, p.entity);
     env22_body(b, &i, |b| b.draw());
 }
@@ -908,7 +908,7 @@ pub fn env8_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
     bind_preset(b, E8_PRESET.0, E8_PRESET.1)
 }
 
-pub fn env8(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env8(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(env8_binds(b), E8_KIND, w);
 }
 
@@ -920,7 +920,7 @@ pub fn env10_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
     b.read_ssbo::<FlowerTag>(INSTANCE_SSBO_BINDING)
 }
 
-pub fn env10(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env10(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(env10_binds(b), E10_KIND, w);
 }
 
@@ -933,7 +933,7 @@ pub fn env30_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
     bind_disk(terrain(b), E30_DISK.0, E30_DISK.1)
 }
 
-pub fn env30(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env30(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(env30_binds(b), E30_KIND, w);
 }
 
@@ -946,7 +946,7 @@ pub fn env33_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
     bind_disk(b, E33_DISK.0, E33_DISK.1)
 }
 
-pub fn env33(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env33(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(env33_binds(b), E33_KIND, w);
 }
 
@@ -978,7 +978,7 @@ pub fn env11_binds(b: DrawBuilder<'_>, variant: u8) -> DrawBuilder<'_> {
     b.read_ssbo::<BushTag>(INSTANCE_SSBO_BINDING)
 }
 
-pub fn env11(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env11(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let variant = res::<ActiveSession>(w).meta.glade.native_tag();
     nani_draw_world(env11_binds(b, variant), E11_KIND, w);
 }
@@ -1024,7 +1024,7 @@ pub const E16_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::RoofFloor;
 pub const E17_KIND: GpuWorldSubsetKind = GpuWorldSubsetKind::StairsFloor;
 
 /// gap 24 `closure_env$16`（0x1409b3270）：`nani_draw(RoofFloor = 9)`。
-pub fn env16(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env16(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let h = *res::<RoofHighlight>(w);
     let w = &*w;
     env16_body(b, &h, |b| nani_draw_world(b, E16_KIND, w));
@@ -1036,7 +1036,7 @@ pub fn env17_binds(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
 }
 
 /// gap 30 `closure_env$17`（0x1409b4270）：`nani_draw(StairsFloor = 0x1a)`。
-pub fn env17(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env17(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     nani_draw_world(env17_binds(b), E17_KIND, w);
 }
 
@@ -1045,7 +1045,7 @@ pub fn env17(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
 // =====================================================================================================================
 
 /// gap 26 `closure_env$20`（0x1409b3be0）：预设 0x13 → `draw`。
-pub fn env20(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env20(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     bind_preset(b, PRESET_19.0, PRESET_19.1).draw();
 }
 
@@ -1053,7 +1053,7 @@ pub const E40_DISK: (u64, u64) = (0x84a0_37e6_97de_0324, 0x0894_8865_8ef7_0e65);
 pub const E40_PRESET: (u8, u64) = (0x15, 0x4a9a_ecb3_eff0_f013);
 
 /// gap 31 `closure_env$40`（0x1409b4600）：预设 0x13/5 → 磁盘 0x84a0…（同 stairs/rocky）→ 预设 0x15 → `draw`。
-pub fn env40(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env40(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     let b = bind_preset(b, PRESET_19.0, PRESET_19.1);
     let b = bind_preset(b, PRESET_5.0, PRESET_5.1);
     let b = bind_disk(b, E40_DISK.0, E40_DISK.1);
@@ -1077,7 +1077,7 @@ pub fn env55_body<'p>(
     end(b.uniform(E55_F32_A, a.f4).uniform(E55_F32_B, a.f0));
 }
 
-pub fn env55(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env55(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let a = *comp::<ArrowGizmoView>(w, p.entity);
     env55_body(b, &a, |b| b.draw());
 }
@@ -1139,7 +1139,7 @@ pub fn env3_body<'p>(
     end(b);
 }
 
-pub fn env3(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env3(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     match read_env3(w) {
         Env3In::Discard => b.discard(),
         Env3In::Draw {
@@ -1172,7 +1172,7 @@ pub fn env14_body<'p>(b: DrawBuilder<'p>, g: &WoodenGateView, end: impl FnOnce(D
     end(b.uniform(CLOTH_ID_UNIFORM, g.d30));
 }
 
-pub fn env14(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env14(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let g = *comp::<WoodenGateView>(w, p.entity);
     env14_body(b, &g, |b| b.draw());
 }

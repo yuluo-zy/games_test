@@ -85,8 +85,8 @@ rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridg
 | 3 | 前半帧写回:`write_back`(GameConfig、Vermeer*、Painterly、LutGallery、Thumbnail、ShaderRefactoring、SavedLoadingBackground)、`write_back_with`(6 个 Raster 的上传/消费标志、TerrainEditingData.rasterized)、地形回读按消耗量相减、`StartupRevealFinished` 事件转发;截图请求移交渲染侧,提交/读回直接在渲染 World 完成 | ✅ 代码完成,待提交 |
 | 4 | 材质回调读渲染 World:回调经 `DrawPassCtx.world` 读取,声明在渲染 World 上运行后自然满足;所需组件/资源已在 draw_callbacks_a/b 的清单中 | ✅ 随步骤 5 生效 |
 | 5 | 整体切换:前半帧移入渲染线程,游戏线程删除前半帧调用 | ✅ 代码完成,待提交 |
-| 6 | ECS 多线程执行器:为 525 对冲突按当前单线程拓扑序补显式顺序(Bevy 0.16 `ScheduleBuildPass` 在 flatten 后加边),默认开启 `ecs-multithreaded` | ⏳ 未开始 |
-| 7 | 渲染线程内并行:声明分组并行(只读渲染 World)、保留图扩展、统一 `tg-compute` 任务池、交接时晚锁相机 | ⏳ 未开始 |
+| 6 | ECS 多线程执行器:各调度先单线程构建一次,读取冲突对,按执行顺序经 `ScheduleBuildPass` 加边后切 MultiThreaded(`ecs_order.rs`),`ecs-multithreaded` 进入默认特性 | ✅ 已提交 301141bbd |
+| 7 | 渲染线程内并行 | 🔶 部分完成,见下 |
 | 8 | 测试与修复:全量单测、GPU 集成测试、冒烟、截图、真机测量;修复清单遗漏(运行时 "missing X")、写回遗漏 | ⏳ 全部实现后统一进行 |
 
 ### 已知风险与待验证点(测试阶段逐项确认)
@@ -97,3 +97,10 @@ rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridg
 - 截图:请求在交接时移交,游戏侧 `has_requests/active_capture_purpose` 只看到尚未移交的请求。
 - 加载 App 与游戏 App 共用同一套交接集,切换时重建。
 - `WorldHistoryObservation`(存档历史,不在范围)渲染侧写入不回传。
+
+### 步骤 7 明细(2026-10-23)
+- ✅ draw 回调改为只读渲染 World(`DrawListFn` 第三参 `&World`):声明期不能经回调改 World,是逐 draw 并行的前提。
+- ✅ 统一任务池:`tg-compute` 同时服务游戏线程的 ECS 执行器与渲染线程的并行录制;默认线程数改为核数-2(游戏线程、渲染线程各占一核)。
+- ✅ 晚锁相机:相机等每帧数据在交接点(启动渲染前的最后时刻)提取,已是游戏线程上能取到的最新值。
+- ⛔ 声明分组并行:未做。声明期 `RasterPass`/`DrawBuilder` 经 `Rc<RefCell<RenderGraph>>` 与会话 `Rc<RefCell<VulkanGraphSession>>` 写入,单线程类型。要并行需先把每个 pass 的声明改成"先在线程本地生成 draw 包(只读渲染 World + 只读库快照),再按 pass 顺序串行提交到图",即 `run_list_pass` 拆为 并行 collect + 串行 commit;`DrawBuilder` 需要能脱离 `pass.host` 构造。属 rhapsody/桥接层改动,单独立项。
+- ⛔ 保留图扩展:现有计划缓存几乎全命中;再进一步需要跨帧保留声明结果(按 pass 输入哈希跳过声明),依赖上一条的 collect/commit 拆分。

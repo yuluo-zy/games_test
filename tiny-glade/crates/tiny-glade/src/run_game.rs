@@ -804,8 +804,8 @@ pub fn run_game_thread(
 }
 
 /// Sizes the shared compute task pool before anything creates it with defaults.
-/// rhapsody's parallel command recording (and the ECS executor, when the
-/// `ecs-multithreaded` feature is on) share this pool; one core is left for the render/main thread. `TG_ECS_THREADS`
+/// One pool for the ECS executor (game thread) and rhapsody's parallel command
+/// recording (render thread); two cores stay with those two threads. `TG_ECS_THREADS`
 /// overrides the count. `get_or_init` is first-come, so tests that initialise
 /// their own pool are unaffected.
 fn init_ecs_task_pool() {
@@ -815,7 +815,7 @@ fn init_ecs_task_pool() {
         .ok()
         .and_then(|value| value.trim().parse::<usize>().ok())
         .filter(|threads| *threads > 0)
-        .unwrap_or_else(|| cores.saturating_sub(1).clamp(2, 8));
+        .unwrap_or_else(|| cores.saturating_sub(2).clamp(2, 8));
     ComputeTaskPool::get_or_init(|| {
         TaskPoolBuilder::new()
             .thread_name("tg-compute".into())

@@ -76,7 +76,9 @@ pub struct EntityDrawParams {
 }
 
 /// 回调签名（O：`fn(DrawBuilder, &EntityDrawParams, &mut World)`）。
-pub type DrawListFn = for<'p> fn(DrawBuilder<'p>, &EntityDrawParams, &mut World);
+/// Read-only on the (render-thread) world: declaration never mutates it
+/// through a draw callback, which keeps per-draw callbacks parallelizable.
+pub type DrawListFn = for<'p> fn(DrawBuilder<'p>, &EntityDrawParams, &World);
 
 /// draw-list 项（0x70 B）。
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -139,7 +141,7 @@ pub fn sort_draw_list(list: &mut Vec<DrawListEntry>) {
 mod tests {
     use super::*;
 
-    fn noop(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
+    fn noop(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {}
 
     #[test]
     fn sort_is_stable_on_the_signed_i32_key() {

@@ -62,7 +62,7 @@ fn scope_skips_refresh_only_while_the_snapshot_is_exact() {
     fn unused(
         _: country_core::render::pass_builder::draw_builder::DrawBuilder<'_>,
         _: &country_core::render::pass_builder::draw_list::EntityDrawParams,
-        _: &mut World,
+        _: &World,
     ) {
     }
     let mut item = DrawItem::new(1, 0);
