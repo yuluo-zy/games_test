@@ -110,6 +110,8 @@ fn calc_terrain_lighting_texture_impl(
     generate_mips(env, &desc, &preset8, MIPS_NAME);
 }
 
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

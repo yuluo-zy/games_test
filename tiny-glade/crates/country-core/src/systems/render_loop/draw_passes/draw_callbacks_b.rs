@@ -724,6 +724,34 @@ pub fn wren_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
     let w: &World = w;
     draw_wren_shader(b, |b, k| nani_draw_world(b, k, w));
 }
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
+    m.resource::<GpuWorld>();
+    m.resource::<AssetSsboLibrary>();
+    m.resource::<EditingHighlightView>();
+    m.resource::<CursorTerrainRaycast>();
+    m.resource::<EraserSizeMultiplier>();
+    m.resource::<DebugGuiView>();
+    m.resource::<WallHighlight>();
+    m.resource::<RockyTerrainMeshVertCount>();
+    m.resource::<crate::systems::camera_rig::main_camera::MainCamera>();
+    m.resource::<ActiveSessionView>();
+    m.resource::<crate::resources::logo_animation::LogoAnimation>();
+    m.resource::<Weather>();
+    m.resource::<MainCamera>();
+    m.resource::<TreeCanopyMaxCullDistance>();
+    m.resource::<RoofHighlight>();
+    m.resource::<ActiveSession>();
+    m.resource::<GladeSettings>();
+    m.resource::<CritterControl>();
+    m.component::<InstancedDrawFromPlacementData>();
+    m.component::<RoofFlagClothView>();
+    m.component::<ColorId>();
+    m.component::<PrevTransformView>();
+    m.component::<Duck>();
+    m.component::<DuckState>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

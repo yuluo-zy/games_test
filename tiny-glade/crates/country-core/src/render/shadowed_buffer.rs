@@ -16,7 +16,7 @@ use crate::render::ssbo::rhapsody_boundary::{GraphicsDevice, slice_as_bytes};
 use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ShadowedBuffer<T> {
     /// O：闭区间脏窗口；空 = (usize::MAX, 0)。
     pub dirty: DirtyIndexRange,
@@ -38,6 +38,12 @@ impl<T: StorageElement> ShadowedBuffer<T> {
             data: initial.into_boxed_slice(),
             buffer,
         }
+    }
+
+    /// The same GPU buffer without the CPU shadow (render-thread snapshots
+    /// bind the buffer; only the game side writes the shadow).
+    pub fn gpu_only(&self) -> Self {
+        Self { dirty: DirtyIndexRange::empty(), data: Box::new([]), buffer: self.buffer }
     }
 
     /// I：整块可变视图，标记整个影子为脏（空数组不标记）。

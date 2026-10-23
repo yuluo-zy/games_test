@@ -264,6 +264,8 @@ pub trait NaniInstanceData: Any + Send + Sync {
     fn export_from_rg(&mut self, rg: &mut RenderGraph);
     /// `data[dst] = data[src]`，并把 `dst` 并入脏窗口（O：`0x1415724f0`；先检查 src 再检查 dst）。
     fn copy(&mut self, dst: usize, src: usize);
+    /// The render-thread copy: same GPU buffer, no CPU shadow, no graph handle.
+    fn render_snapshot(&self) -> Box<dyn NaniInstanceData>;
 }
 
 /// 可放进 `InstanceDataBuffer` 的元素：GPU 缓冲元素 + 零初始化。
@@ -330,6 +332,43 @@ impl<T: InstanceElement> NaniInstanceData for InstanceDataBuffer<T> {
         let value = data[src];
         data[dst] = value;
         self.shadow.dirty.add(dst..dst + 1);
+    }
+    fn render_snapshot(&self) -> Box<dyn NaniInstanceData> {
+        Box::new(InstanceDataBuffer { rg_handle: None, shadow: self.shadow.gpu_only() })
+    }
+}
+
+impl GpuWorldSubset {
+    /// Render-thread copy: counts and GPU buffers; the CPU shadows and the
+    /// instance-key index stay with the game side, which alone writes them.
+    fn render_snapshot(&self) -> Self {
+        match self {
+            GpuWorldSubset::Owned(owned) => GpuWorldSubset::Owned(OwnedGpuWorldSubset {
+                condenser: IndexCondenser::new(),
+                positions: owned.positions.gpu_only(),
+                data: owned.data.render_snapshot(),
+                instance_count: owned.instance_count,
+                mesh_part_count: owned.mesh_part_count,
+                next_id: owned.next_id,
+            }),
+            GpuWorldSubset::External(external) => GpuWorldSubset::External(*external),
+        }
+    }
+}
+
+/// A render-thread snapshot (`resource` extraction).
+impl Clone for GpuWorld {
+    fn clone(&self) -> Self {
+        GpuWorld {
+            subsets: core::array::from_fn(|kind| {
+                RwLock::new(self.subsets[kind].read().as_ref().map(GpuWorldSubset::render_snapshot))
+            }),
+            total_instance_count: self.total_instance_count,
+            reserved: self.reserved,
+            params: self.params.clone(),
+            mesh_atlas_info: self.mesh_atlas_info,
+            draw_list_info: self.draw_list_info,
+        }
     }
 }
 

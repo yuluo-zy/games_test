@@ -498,6 +498,21 @@ impl<'f, 's, 'w> SceneComputeHost<'f, 's, 'w> {
     }
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<AssetTextureLibrary>();
+    m.resource::<AssetSsboLibrary>();
+    m.resource::<AssetVAOLibrary>();
+    m.resource::<AssetPlacementDataLibrary>();
+    m.resource::<world_raster_defs::WaterRaster>();
+    m.resource::<world_raster_defs::GardenRaster>();
+    m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
+    m.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>();
+    m.resource::<country_core::systems::camera_rig::main_camera::MainCamera>();
+    m.component::<LanternSsbo>();
+}
+
 #[cfg(test)]
 mod nani_cull_owner_tests {
     use super::retain_nani_cull_read;

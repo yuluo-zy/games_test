@@ -11,7 +11,7 @@
 //! named hard error (or are listed as explicit U controls); nothing is silently
 //! replaced by an empty pass.
 #[path = "session_preview_host.rs"]
-mod session_preview_host;
+pub(crate) mod session_preview_host;
 pub use session_preview_host::install as install_session_previews;
 
 use crate::{
@@ -453,7 +453,7 @@ fn prepare_mei(
     use country_core::{
         asset_libraries::texture_library::AssetTextureLibrary, name_hash::NameHash,
     };
-    if !world.contains_resource::<tg_text::TextRenderer>() {
+    if !world.contains_resource::<country_core::render::extract::Present<tg_text::TextRenderer>>() {
         return Err(tail_missing("TextRenderer (Update44 text_flush_system)"));
     }
     let raster = frame.raster_resources();
@@ -1333,6 +1333,47 @@ pub fn build_world_tail(
         vermeer_active,
         ui_visible,
     })
+}
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.component::<country_core::components::ui::Ui2dExtent>();
+    m.component::<country_core::components::ui::Ui2dImage>();
+    m.component::<country_core::resources::color_icon::CustomizationIcon>();
+    m.component::<country_core::components::ui::UiInteractionState>();
+    m.component::<country_core::components::ui::UiDrawOrder>();
+    m.component::<country_core::components::ui::UiInactive>();
+    m.component::<country_core::components::ui::Ui2dWsExtent>();
+    m.resource::<GameConfig>();
+    m.resource::<AppMode>();
+    m.resource::<ImageFormationConfigs>();
+    m.resource::<FrameRenderConfig>();
+    m.resource::<country_core::systems::camera_rig::main_camera::MainCamera>();
+    m.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>();
+    m.resource::<country_core::asset_libraries::texture_library::AssetTextureLibrary>();
+    m.resource::<WindowSize>();
+    m.presence::<tg_text::TextRenderer>();
+    m.resource::<crate::loading_graph::LoadingGpuResources>();
+    m.resource::<country_core::resources::gui::EscMenuState>();
+    m.resource::<painterly::PainterlyState>();
+    m.resource::<country_core::resources::gui::DebugGui>();
+    m.resource::<country_core::render::frame_constants::FrameConstants>();
+    m.resource::<bevy_time::Time>();
+    m.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    m.resource::<country_core::asset_libraries::vao_library::AssetVAOLibrary>();
+    m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
+    m.resource::<vermeer::VermeerDebugControl>();
+    m.resource::<vermeer::VermeerState>();
+    m.resource::<country_core::resources::gui::EscMenuState>();
+    m.resource::<vermeer::VermeerPassLocals>();
+    m.resource::<crate::loading_graph::SavedLoadingBackgroundTexture>();
+    m.resource::<country_core::systems::render_loop::lut_gallery::LutGalleryState>();
+    m.render_owned::<LutGalleryPreviewOwner>();
+    m.resource::<country_core::systems::render_loop::lut_gallery::LutGalleryState>();
+    m.resource::<country_core::resources::grading_lut::GradingLuts>();
+    m.resource::<country_core::systems::render_loop::draw_passes::feedback_report_bg::FeedbackReportBg>();
+    m.resource::<country_core::systems::backend::icc::ActiveIccProfile>();
 }
 
 #[cfg(test)]

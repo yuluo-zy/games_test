@@ -62,7 +62,7 @@ pub use country_core::systems::GameSystemSet;
 /// Actual current-host World role, set by the gameplay App constructor and
 /// retained when its SubApp moves. The independent loading App never copies
 /// this marker. It is not an asset/load-completion flag.
-#[derive(Resource)]
+#[derive(Clone, Resource)]
 pub(crate) struct GameplayApplication;
 
 /// Each original App constructs a separate shader library. The Arc is a Rust

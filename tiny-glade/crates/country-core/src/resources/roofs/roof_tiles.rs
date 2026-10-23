@@ -31,7 +31,7 @@ pub struct RoofTile {
 /// `roof_tiles.allocation`，`Some` → `allocation_to_draw_multi_instanced`）。
 /// `SparseInstanceBufferAllocation` 不可 `Clone`（其 `Drop` 归还未用完的 chunk），
 /// 故组件不再派生 `Clone`；无消费者依赖克隆。
-#[derive(Component, Debug, Default)]
+#[derive(Clone, Component, Debug, Default)]
 pub struct RoofTiles {
     pub records: Vec<[u8; 64]>,
     /// 屋顶在共享瓦片 SSBO 中的 chunk 分配（`None` = 尚未装配到 GPU）。

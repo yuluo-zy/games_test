@@ -182,3 +182,23 @@ pub fn mouse_depth_compute(
         Ok(())
     })
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.component::<country_core::resources::roofs::roof_tiles::RoofTiles>();
+    m.component::<country_core::resources::roofs::roof_tile_sim::RoofTileSimulation>();
+    m.component::<country_core::resources::roofs::roof_shape::Roof>();
+    m.component::<country_core::resources::roofs::roof_animation::RoofAnimation>();
+    m.resource::<country_core::resources::glade_settings::GladeSettings>();
+    m.resource::<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>();
+    m.resource::<country_core::systems::mode_manager::AppMode>();
+    m.resource::<country_core::systems::mode_manager::AppMode>();
+    m.resource::<WindowSize>();
+    m.resource::<MainCamera>();
+    m.resource::<country_core::startup::init_photomode_state::PhotomodeState>();
+    m.resource::<CursorPositionSS>();
+    m.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    m.resource::<country_core::resources::game_clock::GameClock>();
+    m.resource::<GameConfig>();
+}

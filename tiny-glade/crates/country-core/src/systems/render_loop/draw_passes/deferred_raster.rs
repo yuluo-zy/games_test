@@ -54,7 +54,7 @@ use crate::systems::render_loop::draw_passes::material_id::MaterialId;
 /// Real per-App material shader owner (PDB DeferredRasterResources).
 /// B insert_rendering_resources 140940afa..b50 initializes all five Options
 /// to None; startup_deferred_raster fills only material slots 1,3,0,2.
-#[derive(bevy_ecs::resource::Resource, Default)]
+#[derive(Clone, bevy_ecs::resource::Resource, Default)]
 pub struct DeferredRasterResources {
     pub shaders: [Option<crate::asset_libraries::Handle<RasterShaderProgram>>; 5],
 }

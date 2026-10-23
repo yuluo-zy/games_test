@@ -2430,6 +2430,14 @@ fn bindless_parameters(
     prepared
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.component::<country_core::asset_libraries::Handle<country_core::render::vao::Vao>>();
+    m.resource::<country_core::asset_libraries::vao_library::AssetVAOLibrary>();
+    m.resource::<country_core::asset_libraries::vao_library::AssetVAOLibrary>();
+}
+
 #[cfg(test)]
 mod program_identity_tests {
     use super::*;

@@ -1539,6 +1539,19 @@ pub const DISPATCH: &[ShaderDispatch] = &[
     }, // leaf 0x1409bd4ff fn 0x1409b8340
 ];
 
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
+    m.component::<Handle<Vao>>();
+    m.component::<Handle<RasterShaderProgram>>();
+    m.component::<Transform>();
+    m.component::<DrawTopology>();
+    m.component::<DesignatedRenderPass>();
+    m.component::<UiPass>();
+    m.component::<WireframePass>();
+    m.component::<DontCastShadow>();
+    m.component::<OcclusionCulled>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

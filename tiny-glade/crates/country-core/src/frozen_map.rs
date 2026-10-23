@@ -69,6 +69,17 @@ impl<K: Eq + Hash, V> FrozenMap<K, V> {
     }
 
     /// 遍历全部值（O：`export_from_rg` 对 hashbrown 表逐桶迭代）。
+    /// A new map whose entries are `copy` of this map's (render snapshots).
+    pub fn snapshot_with(&self, mut copy: impl FnMut(&V) -> V) -> Self
+    where
+        K: Clone,
+    {
+        let guard = self.map.read();
+        FrozenMap {
+            map: RwLock::new(guard.iter().map(|(key, value)| (key.clone(), Box::new(copy(value)))).collect()),
+        }
+    }
+
     pub fn for_each(&self, mut f: impl FnMut(&V)) {
         let guard = self.map.read();
         for v in guard.values() {

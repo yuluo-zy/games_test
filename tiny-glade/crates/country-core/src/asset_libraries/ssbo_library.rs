@@ -30,6 +30,9 @@ pub trait Ssbo: Send + Sync {
     fn instance_count(&self) -> Option<usize> {
         None
     }
+    /// The render thread's copy of this storage: same GPU buffer, CPU state
+    /// as of the hand-over.
+    fn snapshot(&self) -> Box<dyn Ssbo>;
 }
 
 impl<T: StorageElement + bytemuck::NoUninit + Send + Sync + 'static> Ssbo
@@ -54,6 +57,9 @@ impl<T: StorageElement + bytemuck::NoUninit + Send + Sync + 'static> Ssbo
         // NoUninit 排除填充和未初始化字节，转换由既有依赖检查对齐。
         bytemuck::try_cast_slice(&self.data).ok()
     }
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(self.clone())
+    }
 }
 
 fn handle_of(buffer: &Buffer) -> ResourceHandle {
@@ -73,6 +79,9 @@ impl<T: StorageElement + Send + Sync + 'static> Ssbo for TypedStorageBuffer<T> {
     fn handle(&self) -> ResourceHandle {
         handle_of(&self.buffer)
     }
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(*self)
+    }
 }
 
 impl<T: StorageElement + Send + Sync + 'static> Ssbo for InstanceBuffer<T> {
@@ -91,6 +100,9 @@ impl<T: StorageElement + Send + Sync + 'static> Ssbo for InstanceBuffer<T> {
     fn instance_count(&self) -> Option<usize> {
         Some(InstanceCounted::instance_count(self))
     }
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(*self)
+    }
 }
 
 impl<T: StorageElement + Send + Sync + 'static> Ssbo for MappedStorageBuffer<'static, T> {
@@ -105,6 +117,11 @@ impl<T: StorageElement + Send + Sync + 'static> Ssbo for MappedStorageBuffer<'st
     }
     fn handle(&self) -> ResourceHandle {
         handle_of(&self.buffer)
+    }
+    /// The mapping stays with the game-side owner (two `&mut` views of one
+    /// mapping would alias); the render copy binds the same buffer only.
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(MappedStorageBuffer::<'static, T> { mapped: &mut [], buffer: self.buffer })
     }
 }
 
@@ -129,6 +146,14 @@ pub struct BufferState {
     data: Box<dyn Ssbo>,
     name: &'static str,
     render_graph: Arc<RwLock<Option<ImportedBuffer>>>,
+}
+
+impl BufferState {
+    /// The render-thread copy; the graph-local import cache is shared because
+    /// only declaration uses it.
+    fn snapshot(&self) -> Self {
+        Self { data: self.data.snapshot(), name: self.name, render_graph: self.render_graph.clone() }
+    }
 }
 
 impl BufferState {
@@ -218,6 +243,14 @@ pub struct InstanceInfo {
 #[derive(bevy_ecs::resource::Resource)]
 pub struct AssetSsboLibrary {
     buffers: FrozenMap<SsboId, BufferState>,
+}
+
+/// A snapshot for the render world (`resource` extraction): the same GPU
+/// buffers with CPU state as of the hand-over.
+impl Clone for AssetSsboLibrary {
+    fn clone(&self) -> Self {
+        AssetSsboLibrary { buffers: self.buffers.snapshot_with(BufferState::snapshot) }
+    }
 }
 
 impl Default for AssetSsboLibrary {

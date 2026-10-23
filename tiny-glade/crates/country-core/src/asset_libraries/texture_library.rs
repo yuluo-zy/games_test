@@ -59,7 +59,7 @@ pub struct PresetTextureState {
 }
 
 /// 并发采样请求的索引与待发布队列。
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct DescriptorMap {
     pub pending: Vec<AssetIndex>,
     /// `AssetIndex -> Option<DescriptorIndex>`，`assign_auto_resize` 维护（缺口填 None）。
@@ -187,6 +187,19 @@ pub struct AssetTextureLibrary {
 }
 
 impl bevy_ecs::resource::Resource for AssetTextureLibrary {}
+
+/// A render-thread snapshot (`resource` extraction).
+impl Clone for AssetTextureLibrary {
+    fn clone(&self) -> Self {
+        AssetTextureLibrary {
+            textures: self.textures.clone(),
+            descriptor_set: self.descriptor_set.clone(),
+            by_name: self.by_name.clone(),
+            presets: self.presets.clone(),
+            bindless: RwLock::new(self.bindless.read().unwrap_or_else(|poison| poison.into_inner()).clone()),
+        }
+    }
+}
 
 /// 写入向量指定位置，用默认值填充中间空位。
 pub fn assign_auto_resize<T: Default + Clone>(values: &mut Vec<T>, index: usize, value: T) {

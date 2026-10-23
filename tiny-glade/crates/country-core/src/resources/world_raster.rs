@@ -232,6 +232,25 @@ pub struct WorldRaster<const N: usize> {
     reupload: bool,
 }
 
+/// A render-thread snapshot. The copy never publishes dirty tiles (only the
+/// game side copies to staging), so it carries an unsubscribed publisher.
+impl<const N: usize> Clone for WorldRaster<N> {
+    fn clone(&self) -> Self {
+        Self {
+            composite: self.composite.clone(),
+            scratch: Vec::new(),
+            tile_hashes: self.tile_hashes.clone(),
+            tile_buffer: Vec::new(),
+            publisher: DirtyTilePublisher::unique(),
+            dirty: self.dirty.clone(),
+            selector: self.selector,
+            staging_dirty: self.staging_dirty,
+            published: self.published,
+            reupload: self.reupload,
+        }
+    }
+}
+
 impl<const N: usize> WorldRaster<N> {
     /// O：0x140a15530。
     pub fn new(publisher: DirtyTilePublisher) -> Self {

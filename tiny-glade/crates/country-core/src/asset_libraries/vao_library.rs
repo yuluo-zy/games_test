@@ -13,13 +13,14 @@ use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
 use crate::render::vao::{Vao, release_vao, try_build_vao};
 
 /// 已发布 VAO 与绘制所需索引数。
+#[derive(Clone)]
 pub struct VaoEntry {
     pub vao: Vao,
     pub index_count: usize,
 }
 
 /// 维护 mesh → VAO 身份 → GPU 数据的对应关系。
-#[derive(Resource)]
+#[derive(Clone, Resource)]
 pub struct AssetVAOLibrary {
     vaos: HashMap<Handle<Vao>, VaoEntry>,
     mesh_to_vao: HashMap<Handle<Mesh>, Handle<Vao>>,

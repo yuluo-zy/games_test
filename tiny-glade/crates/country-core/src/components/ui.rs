@@ -5,7 +5,7 @@ use glam::Vec2;
 
 /// 屏幕空间中的中心位置与尺寸。B 大小 0x10，pos@0、size@8。
 #[repr(C)]
-#[derive(Component, Debug, Default, PartialEq)]
+#[derive(Clone, Component, Debug, Default, PartialEq)]
 pub struct Ui2dExtent {
     pub pos: Vec2,
     pub size: Vec2,
@@ -27,7 +27,7 @@ const _: () = assert!(std::mem::size_of::<UiMouseInteractable>() == 4);
 /// B 大小 0x20；String 占前 24 字节，layer@0x18。持有字符串，不能作为
 /// Copy 数据或无载荷标记；ECS 克隆策略保持原作 Default。
 #[repr(C)]
-#[derive(Component, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Component, Debug, Default, PartialEq, Eq)]
 pub struct Ui2dImage {
     pub name: String,
     pub layer: u32,
@@ -47,7 +47,7 @@ impl Ui2dImage {
 ///
 /// B register 0x140850aa0 记录大小/对齐均为 8；绘制端按 u64 比较。
 #[repr(transparent)]
-#[derive(Component, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Component, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UiDrawOrder(pub u64);
 
 /// B register@0x14084e100: zero-sized marker, alignment 1. The render query

@@ -466,3 +466,12 @@ pub fn with_frame_resources<T>(
     }
     result
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<FrameConstants>();
+    m.resource::<AssetTextureLibrary>();
+    m.resource::<AssetSsboLibrary>();
+    m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary,>();
+}

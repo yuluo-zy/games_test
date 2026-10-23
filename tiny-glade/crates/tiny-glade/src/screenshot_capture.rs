@@ -978,6 +978,15 @@ fn downsample_count(source_height: u32, output_height: u32) -> u64 {
     (source_height as f32 / output_height as f32).log2().round() as u64
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<AppMode>();
+    m.resource::<GameClock>();
+    m.resource::<MainActionSet>();
+    m.resource::<MetaCommander>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

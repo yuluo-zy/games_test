@@ -31,9 +31,25 @@ pub struct AssetMeshLibrary {
     /// CPU 删除先登记身份，维护阶段再通过创建设备释放派生 GPU 资源。
     removed_meshes: Vec<Handle<Mesh>>,
     transient_meshes: Arc<Mutex<Vec<Handle<Mesh>>>>,
-    pub mesh_entries: FrozenMap<Handle<Mesh>, Mesh>,
+    /// Shared with render-thread snapshots; a write while one is alive copies
+    /// that mesh (`Arc::make_mut`).
+    pub mesh_entries: FrozenMap<Handle<Mesh>, Arc<Mesh>>,
     names: RwLock<HashMap<String, Handle<Mesh>>>,
     paths: RwLock<HashMap<PathBuf, Handle<Mesh>>>,
+}
+
+/// A render-thread snapshot: meshes are shared, indices copied.
+impl Clone for AssetMeshLibrary {
+    fn clone(&self) -> Self {
+        AssetMeshLibrary {
+            modified_meshes: self.modified_meshes.clone(),
+            removed_meshes: self.removed_meshes.clone(),
+            transient_meshes: self.transient_meshes.clone(),
+            mesh_entries: self.mesh_entries.snapshot_with(Arc::clone),
+            names: RwLock::new(self.names.read().clone()),
+            paths: RwLock::new(self.paths.read().clone()),
+        }
+    }
 }
 
 impl AssetMeshLibrary {
@@ -63,7 +79,7 @@ impl AssetMeshLibrary {
             .map(|file| PathBuf::from(&file.path));
         assert!(
             self.mesh_entries
-                .insert(mesh_handle, Box::new(asset.asset))
+                .insert(mesh_handle, Box::new(Arc::new(asset.asset)))
                 .is_ok(),
             "assertion failed: self.mesh_entries.insert(mesh_handle, Box::new(asset.asset)).is_ok()"
         );
@@ -77,12 +93,12 @@ impl AssetMeshLibrary {
     }
 
     pub fn get(&self, handle: Handle<Mesh>) -> Option<&Mesh> {
-        self.mesh_entries.get(&handle)
+        self.mesh_entries.get(&handle).map(|mesh| &**mesh)
     }
 
     /// 取得可变资产并登记派生资源更新。
     pub fn get_mut(&mut self, handle: Handle<Mesh>) -> Option<&mut Mesh> {
-        let mesh = self.mesh_entries.get_mut(&handle)?;
+        let mesh = Arc::make_mut(self.mesh_entries.get_mut(&handle)?);
         self.modified_meshes.push(handle);
         Some(mesh)
     }

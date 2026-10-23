@@ -1098,6 +1098,21 @@ impl GraphDeclarer for FrameDeclarer {
     }
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<country_core::asset_libraries::runtime::AssetLibraryRuntime>();
+    m.resource::<country_core::asset_libraries::texture_library::AssetTextureLibrary>();
+    m.resource::<country_core::asset_libraries::vao_library::AssetVAOLibrary>();
+    m.resource::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>();
+    m.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    m.resource::<country_core::geometry::runtime::WallBrickUploadStatus>();
+    m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
+    m.resource::<country_core::resources::gpu_lut::GpuLutTracker>();
+    m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
+    m.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

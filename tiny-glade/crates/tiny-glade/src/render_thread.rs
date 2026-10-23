@@ -13,7 +13,17 @@
 //! `reclaim` is the only back-pressure point: the game thread runs at most one
 //! frame ahead. Results that must reach the game world (screenshots, errors,
 //! progress flags) travel back as [`FrameFeedback`].
-use bevy_ecs::{change_detection::DetectChanges, resource::Resource, world::World};
+use bevy_ecs::{
+    change_detection::{DetectChanges, Ref},
+    component::{Component, Tick},
+    entity::Entity,
+    event::{Event, Events},
+    query::QueryState,
+    resource::Resource,
+    world::World,
+};
+use bevy_state::state::{State, States};
+use std::collections::HashMap;
 use std::{
     panic::{AssertUnwindSafe, catch_unwind, resume_unwind},
     sync::mpsc::{Receiver, SyncSender, sync_channel},
@@ -203,20 +213,26 @@ impl<R: 'static> Drop for RenderThread<R> {
 }
 
 /// The hand-over: copies per-frame state (category A) from the game world
-/// into the render world and applies queued library changes (category B).
+/// into the render world, mirrors entity components, and applies queued
+/// library changes (category B).
+///
+/// Change detection uses explicit ticks: `App::update` ends with
+/// `clear_trackers`, so `is_changed` relative to the world's last change tick
+/// would never report what this update changed.
 #[derive(Default)]
 pub struct ExtractSet {
-    steps: Vec<Box<dyn FnMut(&mut World, &mut World) + Send>>,
+    steps: Vec<Box<dyn FnMut(&mut World, &mut World, Tick) + Send>>,
+    last_run: Option<Tick>,
 }
 impl ExtractSet {
-    pub fn add(&mut self, step: impl FnMut(&mut World, &mut World) + Send + 'static) -> &mut Self {
+    pub fn add(&mut self, step: impl FnMut(&mut World, &mut World, Tick) + Send + 'static) -> &mut Self {
         self.steps.push(Box::new(step));
         self
     }
     /// Category A: the render world receives a copy of `T` every frame, or
     /// loses it when the game world has none.
     pub fn copy<T: Resource + Clone>(&mut self) -> &mut Self {
-        self.add(|game, render| match game.get_resource::<T>() {
+        self.add(|game, render, _| match game.get_resource::<T>() {
             Some(value) => {
                 let value = value.clone();
                 render.insert_resource(value);
@@ -226,16 +242,78 @@ impl ExtractSet {
             }
         })
     }
-    /// Copy only when the game-side value changed since the previous extract
-    /// (bevy change detection), so unchanged state costs one tick comparison.
+    /// Copy only when the game-side value changed since the previous extract,
+    /// so unchanged state costs one tick comparison.
     pub fn copy_changed<T: Resource + Clone>(&mut self) -> &mut Self {
-        self.add(|game, render| {
+        self.add(|game, render, last_run| {
+            let this_run = game.read_change_tick();
             let Some(value) = game.get_resource_ref::<T>() else {
                 render.remove_resource::<T>();
                 return;
             };
-            if value.is_changed() || !render.contains_resource::<T>() {
+            if value.last_changed().is_newer_than(last_run, this_run) || !render.contains_resource::<T>() {
                 let value = value.clone();
+                render.insert_resource(value);
+            }
+        })
+    }
+    /// Mirror component `C` onto the same entity ids in the render world:
+    /// changed or new values are cloned, removed ones are removed.
+    pub fn mirror<C: Component + Clone>(&mut self) -> &mut Self {
+        let mut query: Option<QueryState<(Entity, Ref<'static, C>)>> = None;
+        let mut seen: HashMap<Entity, u64> = HashMap::new();
+        let mut frame = 0u64;
+        let mut pending: Vec<(Entity, C)> = Vec::new();
+        self.add(move |game, render, last_run| {
+            frame += 1;
+            let this_run = game.read_change_tick();
+            let query = query.get_or_insert_with(|| game.query::<(Entity, Ref<C>)>());
+            for (entity, value) in query.iter(game) {
+                let fresh = seen.insert(entity, frame).is_none();
+                if fresh || value.last_changed().is_newer_than(last_run, this_run) {
+                    pending.push((entity, value.clone()));
+                }
+            }
+            seen.retain(|entity, stamp| {
+                let keep = *stamp == frame;
+                if !keep && let Ok(mut mirrored) = render.get_entity_mut(*entity) {
+                    mirrored.remove::<C>();
+                }
+                keep
+            });
+            insert_mirrored(render, &mut pending);
+        })
+    }
+    /// The events of `E` sent since the previous extract.
+    pub fn events<E: Event + Clone>(&mut self) -> &mut Self {
+        let mut cursor = bevy_ecs::event::EventCursor::<E>::default();
+        self.add(move |game, render, _| {
+            let mut events = Events::<E>::default();
+            if let Some(source) = game.get_resource::<Events<E>>() {
+                for event in cursor.read(source) {
+                    events.send(event.clone());
+                }
+            }
+            render.insert_resource(events);
+        })
+    }
+    /// The current value of state `S`.
+    pub fn state<S: States>(&mut self) -> &mut Self {
+        self.add(|game, render, _| match game.get_resource::<State<S>>() {
+            Some(state) => {
+                let value = state.get().clone();
+                render.insert_resource(State::new(value));
+            }
+            None => {
+                render.remove_resource::<State<S>>();
+            }
+        })
+    }
+    /// Render-owned: move `T` to the render world whenever the game world
+    /// (re)inserts it; the render world keeps it otherwise.
+    pub fn move_owned<T: Resource>(&mut self) -> &mut Self {
+        self.add(|game, render, _| {
+            if let Some(value) = game.remove_resource::<T>() {
                 render.insert_resource(value);
             }
         })
@@ -246,7 +324,7 @@ impl ExtractSet {
         &mut self,
         apply: fn(Q, &mut T),
     ) -> &mut Self {
-        self.add(move |game, render| {
+        self.add(move |game, render, _| {
             let Some(mut queue) = game.get_resource_mut::<Q>() else {
                 return;
             };
@@ -257,10 +335,59 @@ impl ExtractSet {
         })
     }
     pub fn run(&mut self, game: &mut World, render: &mut World) {
+        // The first extract copies everything.
+        let last_run = self.last_run.unwrap_or(Tick::new(0));
+        let this_run = game.change_tick();
         for step in &mut self.steps {
-            step(game, render);
+            step(game, render, last_run);
         }
-        game.clear_trackers();
+        self.last_run = Some(this_run);
+    }
+}
+
+impl country_core::render::extract::RenderExtract for ExtractSet {
+    fn component<C: Component + Clone>(&mut self) {
+        self.mirror::<C>();
+    }
+    fn resource<R: Resource + Clone>(&mut self) {
+        self.copy_changed::<R>();
+    }
+    fn events<E: Event + Clone>(&mut self) {
+        ExtractSet::events::<E>(self);
+    }
+    fn state<S: States>(&mut self) {
+        ExtractSet::state::<S>(self);
+    }
+    fn presence<R: Resource>(&mut self) {
+        use country_core::render::extract::Present;
+        self.add(|game, render, _| {
+            if game.contains_resource::<R>() {
+                render.init_resource::<Present<R>>();
+            } else {
+                render.remove_resource::<Present<R>>();
+            }
+        });
+    }
+    fn render_owned<R: Resource>(&mut self) {
+        self.move_owned::<R>();
+    }
+}
+
+/// Insert mirrored values at their game entity ids. An index the game reused
+/// with a new generation replaces the stale render entity first.
+fn insert_mirrored<C: Component>(render: &mut World, pending: &mut Vec<(Entity, C)>) {
+    for (entity, value) in pending.drain(..) {
+        if let Ok(mut mirrored) = render.get_entity_mut(entity) {
+            mirrored.insert(value);
+            continue;
+        }
+        if let Some(stale) = render.entities().resolve_from_id(entity.index())
+            && stale != entity
+        {
+            render.despawn(stale);
+        }
+        #[allow(deprecated)]
+        let _ = render.insert_or_spawn_batch(std::iter::once((entity, (value,))));
     }
 }
 

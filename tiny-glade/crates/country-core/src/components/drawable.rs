@@ -156,10 +156,10 @@ mod tests {
 
 /// Native material disk-texture name hash, eight bytes. The draw callback
 /// reads this same component; no parallel render-only view is constructed.
-#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
+#[derive(Clone, bevy_ecs::component::Component, Debug, PartialEq, Eq)]
 pub struct AlbedoMap(pub u64);
 /// Native alpha-map disk-texture name hash.
-#[derive(bevy_ecs::component::Component, Debug, PartialEq, Eq)]
+#[derive(Clone, bevy_ecs::component::Component, Debug, PartialEq, Eq)]
 pub struct AlphaMap(pub u64);
 
 /// One canonical previous object Transform, read by actual sheep/duck draw callbacks.

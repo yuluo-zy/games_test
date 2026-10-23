@@ -1180,3 +1180,45 @@ pub fn env14(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
 #[cfg(test)]
 #[path = "draw_callbacks_a_tests.rs"]
 mod tests;
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
+    m.resource::<GpuWorld>();
+    m.resource::<AssetSsboLibrary>();
+    m.resource::<crate::geometry::runtime::WallBrickUploadStatus>();
+    m.resource::<WallHighlight>();
+    m.resource::<CursorTerrainRaycast>();
+    m.resource::<EditingHighlightView>();
+    m.resource::<EraserSizeMultiplier>();
+    m.resource::<DebugGuiView>();
+    m.resource::<IvyStorage>();
+    m.resource::<MainCamera>();
+    m.events::<ShowDemoBorderOverlay>();
+    m.resource::<AssetMeshLibrary>();
+    m.resource::<crate::resources::logo_animation::LogoAnimation>();
+    m.resource::<LoadingScreenProgressView>();
+    m.resource::<ActiveSessionView>();
+    m.resource::<ActiveSession>();
+    m.resource::<RoofHighlight>();
+    m.resource::<Weather>();
+    m.resource::<AppMode>();
+    m.component::<StairsStepView>();
+    m.component::<WallBrickInstancedDrawProxyView>();
+    m.component::<AlbedoMapView>();
+    m.component::<AlphaMapView>();
+    m.component::<NormalMapView>();
+    m.component::<SemiTransparent>();
+    m.component::<BackgroundTerrain>();
+    m.component::<OverwriteRoughness>();
+    m.component::<DontReceiveContactShadows>();
+    m.component::<PrevTransformView>();
+    m.component::<Handle<Mesh>>();
+    m.component::<DashedLineLengthView>();
+    m.component::<SplashParticleView>();
+    m.component::<RoofFlagClothView>();
+    m.component::<ColorId>();
+    m.component::<WallFlagClothView>();
+    m.component::<ArrowGizmoView>();
+    m.component::<WoodenGateView>();
+}

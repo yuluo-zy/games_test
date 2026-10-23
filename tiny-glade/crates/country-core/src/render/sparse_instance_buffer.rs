@@ -62,6 +62,17 @@ pub struct SparseInstanceBufferAllocation<T> {
     _marker: PhantomData<fn() -> T>,
 }
 
+/// A non-owning copy (render-thread snapshots): it names the same chunks but
+/// never returns them to the waste queue.
+impl<T> Clone for SparseInstanceBufferAllocation<T> {
+    fn clone(&self) -> Self {
+        let handle = AllocationHandle(self.handle.0.as_ref().map(|allocation| {
+            Box::new(Allocation { chunk_ids: Mutex::new(allocation.chunk_ids.lock().clone()) })
+        }));
+        Self { waste: Weak::new(), handle, _marker: PhantomData }
+    }
+}
+
 impl<T> Drop for SparseInstanceBufferAllocation<T> {
     fn drop(&mut self) {
         if self.handle.is_null() {
@@ -158,7 +169,7 @@ pub struct SparseInstanceBuffer<T: SparseSsbo> {
     /// +0x68。
     pub buffer: TypedStorageBuffer<T>,
     // 保留创建宿主及原始代际句柄，避免依赖 ECS 资源的析构顺序。
-    _buffer_owner: Option<OwnedSparseBuffer>,
+    _buffer_owner: Option<Arc<OwnedSparseBuffer>>,
 }
 
 fn zeroed_bitset(words: usize) -> Box<[AtomicUsize]> {
@@ -222,7 +233,7 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
             dirty_bitset,
             waste: Arc::new(Mutex::new(Vec::new())),
             buffer,
-            _buffer_owner: buffer_owner,
+            _buffer_owner: buffer_owner.map(Arc::new),
         })
     }
 
@@ -599,6 +610,23 @@ impl<T: SparseSsbo + Send + Sync + 'static> Ssbo for SparseInstanceBuffer<T> {
     }
     fn handle(&self) -> ResourceHandle {
         ResourceHandle(self.buffer.buffer.id, self.buffer.buffer.generation)
+    }
+    /// The render copy shares the GPU buffer owner and the waste queue, and
+    /// copies the chunk maps and CPU shadow as of the hand-over.
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        let atomics = |bits: &[AtomicUsize]| -> Box<[AtomicUsize]> {
+            bits.iter().map(|bit| AtomicUsize::new(bit.load(Ordering::Relaxed))).collect()
+        };
+        Box::new(SparseInstanceBuffer::<T> {
+            free_chunks: RwLock::new(self.free_chunks.read().clone()),
+            byte_map: self.byte_map.clone(),
+            active_bitset: atomics(&self.active_bitset),
+            data: self.data.clone(),
+            dirty_bitset: atomics(&self.dirty_bitset),
+            waste: self.waste.clone(),
+            buffer: self.buffer,
+            _buffer_owner: self._buffer_owner.clone(),
+        })
     }
 }
 

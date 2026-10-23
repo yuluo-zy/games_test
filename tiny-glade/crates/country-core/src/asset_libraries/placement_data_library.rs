@@ -12,7 +12,7 @@ use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
 use crate::resources::placement_data::PlacementDataSsbo;
 
 /// 持有已加载的摆放数据缓冲及来源索引。
-#[derive(Resource)]
+#[derive(Clone, Resource)]
 pub struct AssetPlacementDataLibrary {
     pub buffers: HashMap<Handle<PlacementDataSsbo>, (TypedStorageBuffer<PlacementDataSsbo>, usize)>,
     pub paths: HashMap<PathBuf, Handle<PlacementDataSsbo>>,

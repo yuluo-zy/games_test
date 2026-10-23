@@ -110,6 +110,15 @@ pub fn bind_wooden_floor_textures(b: DrawBuilder<'_>) -> DrawBuilder<'_> {
     b.bind_wooden_floor_textures()
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
+    m.resource::<crate::resources::editing_highlight::EditingHighlight>();
+    m.resource::<crate::resources::cursor_terrain_raycast::CursorTerrainRaycast>();
+    m.resource::<crate::resources::walls::EraserSizeMultiplier>();
+    m.resource::<crate::resources::gui::DebugGui>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

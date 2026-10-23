@@ -18,7 +18,7 @@ use super::world_raster::{DirtyTilePublisher, RasterBufferRef, WorldRaster};
 macro_rules! named_raster {
     ($($(#[$meta:meta])* $name:ident),+ $(,)?) => {$(
         $(#[$meta])*
-        #[derive(Resource)]
+        #[derive(Clone, Resource)]
         pub struct $name(pub WorldRaster<512>);
 
         impl $name {

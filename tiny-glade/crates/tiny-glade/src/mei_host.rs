@@ -84,6 +84,13 @@ pub fn install_mei_frame_systems(app: &mut bevy_app::App) {
     ).chain().in_set(GameSystemSet(44)).after(render_text_fragments));
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<toolbar::toolbar_update::ToolbarSizeMult>();
+    m.resource::<country_core::systems::ui::resources::widget_params::UiNavState>();
+}
+
 #[cfg(test)]
 mod registration_tests {
     #[test]
@@ -169,6 +176,9 @@ enum MeiBufferOwnership {
         _primitives: ManagedBuffer,
         _shapes: ManagedBuffer,
     },
+    /// A render-thread snapshot: it names the owner's buffers and atlas but
+    /// releases nothing.
+    Borrowed,
 }
 
 pub struct MeiHost {
@@ -469,12 +479,32 @@ impl MeiHost {
 
 impl Drop for MeiHost {
     fn drop(&mut self) {
+        if matches!(&self.buffer_ownership, MeiBufferOwnership::Borrowed) {
+            return;
+        }
         if matches!(&self.buffer_ownership, MeiBufferOwnership::Private) {
             self.buffers.release(&self.primitives);
             self.buffers.release(&self.shapes);
         }
         if let Some((_, atlas)) = self.atlas.take() {
             self.textures.release(&atlas);
+        }
+    }
+}
+
+impl MeiHost {
+    /// The render thread's view of this frame's text: same buffers, atlas and
+    /// output, owning none of them.
+    pub(crate) fn render_snapshot(&self) -> Self {
+        Self {
+            device: self.device.clone(),
+            buffers: self.buffers.clone(),
+            textures: self.textures.clone(),
+            primitives: self.primitives.clone(),
+            shapes: self.shapes.clone(),
+            buffer_ownership: MeiBufferOwnership::Borrowed,
+            atlas: self.atlas.clone(),
+            last_output: self.last_output.clone(),
         }
     }
 }

@@ -2073,6 +2073,28 @@ impl RenderHost for ProductionRenderHost<'_> {
     }
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<country_core::render::render_config::FrameRenderConfig>();
+    m.resource::<country_core::resources::window::WindowSize>();
+    m.resource::<GameConfig>();
+    m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
+    m.resource::<country_core::resources::gpu_lut::GpuLutTracker>();
+    m.resource::<country_core::render::frame_constants::FrameConstants>();
+    m.resource::<StartupVisualTargets>();
+    m.resource::<crate::world_postprocess::StartupUiVisualTrace>();
+    m.resource::<country_core::systems::render_loop::vermeer::VermeerState>();
+    m.resource::<country_core::systems::render_loop::vermeer::VermeerDebugControl>();
+    m.resource::<country_core::resources::gui::EscMenuState>();
+    m.resource::<crate::loading_graph::LoadingGpuResources>();
+    m.resource::<bevy_time::Time>();
+    m.resource::<country_core::resources::logo_animation::LogoAnimation>();
+    m.resource::<crate::run_game::ApplicationShaderLibrary>();
+    m.resource::<country_core::asset_libraries::runtime::AssetLibraryRuntime>();
+    m.resource::<crate::run_game::GameplayApplication>();
+}
+
 #[cfg(test)]
 mod world_extent_tests {
     use super::{diagnostic_swapchain_policy, display_extent, world_extent, GAMEPLAY_WARMUP_EXTENT};

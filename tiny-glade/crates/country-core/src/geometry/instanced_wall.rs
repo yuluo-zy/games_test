@@ -71,7 +71,7 @@ impl BrickSourceId {
 /// 一堵墙的待提交砖列表与独占稀疏分配。
 ///
 /// 不实现 Clone，避免复制实体时无意共享 GPU 分配；新实体应显式传入砖列表。
-#[derive(bevy_ecs::component::Component, Debug)]
+#[derive(Clone, bevy_ecs::component::Component, Debug)]
 pub struct InstancedWall<T> {
     pub id: u64,
     brick_transforms: Vec<T>,
@@ -89,7 +89,7 @@ enum BaseBrickState {
     Published,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct WallAssemblyAllocations<T> {
     chimney: SparseInstanceBufferAllocation<T>,
     door_stairs: SparseInstanceBufferAllocation<T>,
