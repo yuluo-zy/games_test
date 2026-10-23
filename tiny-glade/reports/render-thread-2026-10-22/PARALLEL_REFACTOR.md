@@ -303,7 +303,7 @@ cargo --config 'source.crates-io.replace-with="cached-ustc"' \
 | 3 | 拆除 `UploadBoundary` 写阻塞：游戏侧物理写入改 owned 上传/帧槽 | 完成 |
 | 4 | 移除 `ECS_COLLECT_GATE` | 完成 |
 | 5 | 资产操作序号/分阶段确认/幂等 | 完成（库级；见下） |
-| 6 | 增量提取：可变组件变更日志、Raster 脏瓦片、容器池 | 未开始 |
+| 6 | 增量提取：可变组件变更日志、Raster 脏瓦片、容器池 | 完成（可变组件仍按 tick；见下） |
 | 7 | 非阻塞控制流程（resize/App 切换/截图） | 未开始 |
 | 8 | 跨 pass 收尾 | 未开始 |
 | 9 | 晚相机验证 | 未开始 |
@@ -337,3 +337,9 @@ cargo --config 'source.crates-io.replace-with="cached-ustc"' \
 - 失败路径：编译/提交失败的帧只确认 applied，不推进 submitted/gpu_complete；增量库的渲染副本不回退，重试不重放已接受的上传/创建。确认按来源 WorldId 过滤，旧 App 不污染新 World。
 - 测试：`asset_ack` 阶段推进/失败/乱序重复完成单元；`render_thread` 新增"同一版本只应用一次、再版本就地更新且确认"；真实 Vulkan `gpu_readback` 测试扩展为验证 applied/submitted、未提交帧只推进 applied、回读完成后 gpu_complete 推进。
 - 范围说明：粒度是"库版本"，不是单个资产条目；条目级 RenderAssetId 代际由既有宿主分配代数（任务前已实现）承担。没有回读源的 App（加载界面）不产生 gpu_complete 确认。
+#### 任务 6：增量提取（完成，范围见说明）
+
+- 可变组件（Transform、动画等经 `&mut C` 写入）：Bevy 钩子不观察可变借用写入，change tick 是目前唯一完整的变化记录，不能宣称已有生产者日志。`ExtractSet::mirror` 改为显式 tick 的 `Changed<C>` 过滤查询（`query_unchecked_manual_with_ticks`，与原 `is_newer_than(last_run, this_run)` 语义一致）：静态帧不为每行构造 `Ref`、不进入复制循环，只有变化行被克隆；首帧/换 World 仍走完整复制。`component_rows_scanned` 改为按匹配原型的实体数统计（不迭代）。删除日志（既有）、immutable 组件钩子日志（既有）保持。
+- Raster 脏瓦片：任务 3 后 Raster 暂存区写入在游戏侧 CPU 影子上执行，按 256 B 块差分上传；`copy_to_staging` 只改写脏瓦片（每瓦片 64 B 连续），因此每帧 GPU 传输量随脏瓦片数增长而非整张 256 KiB。提取侧像素仍只由游戏拥有（既有投影）。
+- 容器池/减少复制：单区间的上传负载（`update_buffer_bytes` 单 range、`MappedHostWriter::write`）现在直接移交给有界上传队列，不再在队列入口二次复制；回读容器（任务 2）由游戏返还复用；镜像 pending Vec 保留容量（既有）。
+- 测试：`extraction_counts…` 扩展为验证可变写入经过滤查询被复制、静态帧 0 复制且扫描计数正确；tiny-glade lib 212 通过（剩余 2 项见任务 3 记录），GPU 集成 22 项通过。

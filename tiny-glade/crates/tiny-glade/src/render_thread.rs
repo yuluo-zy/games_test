@@ -551,7 +551,8 @@ impl ExtractSet {
     /// Mirror component `C` onto the same entity ids in the render world:
     /// changed or new values are cloned, removed ones are removed.
     pub fn mirror<C: Component + Clone>(&mut self) -> &mut Self {
-        let mut query: Option<QueryState<(Entity, Ref<'static, C>)>> = None;
+        let mut query: Option<QueryState<(Entity, &'static C)>> = None;
+        let mut changed_query: Option<QueryState<(Entity, &'static C), bevy_ecs::query::Changed<C>>> = None;
         let mut source_world = None;
         let mut destination_world = None;
         let mut seen: HashSet<Entity> = HashSet::new();
@@ -567,13 +568,16 @@ impl ExtractSet {
                     for &entity in &seen { remove_mirrored::<C>(render, entity, stats); }
                 }
                 query = None;
+                changed_query = None;
                 removals = Default::default();
                 source_world = Some(game.id());
             }
             if full_copy { seen.clear(); }
             destination_world = Some(render.id());
             let this_run = game.read_change_tick();
-            let query = query.get_or_insert_with(|| game.query::<(Entity, Ref<C>)>());
+            let query = query.get_or_insert_with(|| game.query::<(Entity, &C)>());
+            let changed_query = changed_query.get_or_insert_with(||
+                game.query_filtered::<(Entity, &C), bevy_ecs::query::Changed<C>>());
             let component = game.components().component_id::<C>().expect("query registered component");
             if let Some(events) = game.removed_components().get(component) {
                 if removals.missed_events(events) != 0 {
@@ -596,12 +600,31 @@ impl ExtractSet {
                     }
                 }
             }
-            // Tick checks still scan matching rows until all producers have a
-            // publication journal. Static rows no longer mutate the seen set
-            // or participate in a second per-frame removal diff.
-            for (entity, value) in query.iter(game) {
-                stats.component_rows_scanned += 1;
-                if full_copy || value.last_changed().is_newer_than(last_run, this_run) {
+            // Mutable producers (Transform, animation) write through `&mut C`,
+            // which no hook observes: the change tick is the only complete
+            // change record until every writer publishes a journal. The
+            // filtered query compares ticks inside the fetch and constructs no
+            // per-row Ref; only changed rows reach this loop. Static rows do
+            // not touch the seen set or a second per-frame removal diff.
+            query.update_archetypes(game);
+            changed_query.update_archetypes(game);
+            stats.component_rows_scanned += query.matched_archetypes()
+                .map(|id| game.archetypes()[id].len() as u64).sum::<u64>();
+            if full_copy {
+                for (entity, value) in query.iter_manual(game) {
+                    seen.insert(entity);
+                    pending.push((entity, value.clone()));
+                    stats.components_copied += 1;
+                }
+            } else {
+                // SAFETY: read-only query state created from this same `game`
+                // World (rebuilt above whenever the source World changes);
+                // `game` is exclusively borrowed, so no conflicting access exists.
+                let changed = unsafe {
+                    changed_query.query_unchecked_manual_with_ticks(
+                        game.as_unsafe_world_cell_readonly(), last_run, this_run)
+                };
+                for (entity, value) in changed.iter() {
                     seen.insert(entity);
                     pending.push((entity, value.clone()));
                     stats.components_copied += 1;
@@ -1202,6 +1225,15 @@ mod tests {
         assert_eq!(extract.stats().component_rows_scanned, 1);
         assert_eq!(extract.stats().resources_copied, 0);
         assert_eq!(extract.stats().components_copied, 0);
+        // A mutable write through `&mut C` reaches the changed-row filter.
+        let other = game.spawn(Position).id();
+        extract.run(&mut game, &mut render);
+        assert_eq!(extract.stats().components_copied, 1);
+        bevy_ecs::change_detection::DetectChangesMut::set_changed(&mut game.get_mut::<Position>(entity).unwrap());
+        extract.run(&mut game, &mut render);
+        assert_eq!((extract.stats().components_copied, extract.stats().component_rows_scanned), (1, 2));
+        game.despawn(other);
+        extract.run(&mut game, &mut render);
         game.despawn(entity);
         extract.run(&mut game, &mut render);
         assert_eq!(extract.stats().components_removed, 1);

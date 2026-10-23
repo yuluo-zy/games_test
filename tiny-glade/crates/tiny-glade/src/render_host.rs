@@ -218,7 +218,7 @@ impl country_core::render::ssbo::rhapsody_boundary::MappedUploadWriter for Mappe
         payload.extend_from_slice(data);
         let (host, buffer, handle) = (self.host.detached(), self.buffer.clone(), self.handle);
         self.host.read_boundary.write_or_defer(payload.capacity(), move ||
-            host.write_now(&buffer, &handle, &payload, offset).map_err(|error| error.to_string()))
+            host.write_now_owned(&buffer, &handle, payload, offset).map_err(|error| error.to_string()))
             .map_err(BackendError::invalid_usage)
     }
     /// In-place edit of the live mapping. Waits for the boundary and for
@@ -901,6 +901,44 @@ impl BufferHost {
         self.queue_upload(managed, buffer, data, &ranges, at)
     }
 
+    /// [`Self::write_now`] taking ownership: a payload within one upload chunk
+    /// is moved into the bounded queue instead of being copied again.
+    fn write_now_owned(&self, managed: &ManagedBuffer, buffer: &Buffer, payload: Vec<u8>, at: usize)
+        -> Result<(), BackendError> {
+        let host_visible = managed.desc.memory_location != MemoryLocation::GpuOnly
+            && managed.persistent_host_ptr().is_some();
+        if payload.len() as u64 > UPLOAD_CHUNK_BYTES || sync_upload_forced()
+            || (host_visible && !managed.desc.usage.contains(vk::BufferUsageFlags::TRANSFER_DST)) {
+            return self.write_now(managed, buffer, &payload, at);
+        }
+        if payload.is_empty() { return Ok(()); }
+        let _serial = self.publication.lock();
+        let mut uploads = self.uploads.lock();
+        let service = self.upload_service(&mut uploads)?;
+        let bytes = payload.len() as u64;
+        let options_at = |epoch: u64| rhapsody::transfer::UploadOptions {
+            key: rhapsody::transfer::UploadKey(buffer.id),
+            epoch,
+            priority: rhapsody::transfer::UploadPriority::High,
+        };
+        let mut accepted = service.manager.enqueue_upload_owned(managed.shared(), at as u64, payload,
+            options_at(service.epoch), rhapsody::transfer::UploadMode::OrderedDelta);
+        if let Err(rejected) = accepted {
+            Self::flush_locked(service)?;
+            accepted = service.manager.enqueue_upload_owned(managed.shared(), at as u64, rejected.payload,
+                options_at(service.epoch), rhapsody::transfer::UploadMode::OrderedDelta);
+        }
+        match accepted {
+            Ok(_) => { service.queued_bytes += bytes; Ok(()) }
+            Err(rejected) => {
+                log::warn!(target: "tiny_glade::upload", "queued upload rejected ({}); falling back to a waited write", rejected.error);
+                drop(uploads);
+                let data = rejected.payload;
+                self.upload_waited(managed, buffer, &data, &[0..data.len()], at)
+            }
+        }
+    }
+
     /// Submits every queued write to the graphics queue, in order, without
     /// waiting for their completion. Call after all host writes of a frame and
     /// before the graph that reads them is submitted: the submitted jobs publish
@@ -1312,6 +1350,12 @@ impl CoreGraphicsDevice for BufferHost {
         let host = self.detached();
         let handle = *buffer;
         self.read_boundary.write_or_defer(payload.capacity(), move || {
+            if let [(at, _)] = owned_ranges[..] {
+                // One contiguous range: the payload itself becomes the queued
+                // upload; no second copy of its bytes.
+                return host.write_now_owned(&managed, &handle, payload, at)
+                    .map_err(|error| error.to_string());
+            }
             for (at, range) in owned_ranges {
                 host.write_now(&managed, &handle, &payload[range.clone()], at)
                     .map_err(|error| error.to_string())?;
