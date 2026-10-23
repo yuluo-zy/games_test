@@ -43,3 +43,24 @@
 - 截图 `submitted`/`finish` 改到下一次交接时在游戏线程执行;最后一帧在关机时结算。
 - 渲染线程 panic 后线程退出,`RenderThread` 标记 poisoned,后续回收直接报错,不会阻塞。
 - 下一阶段:拆分 rhapsody 会话(乐观提交),让声明/编译也能与上一帧执行并行;B 类库迁移仍按上文清单进行。
+
+## 第二阶段(声明+编译上渲染线程)实施方案 — 2026-10-23 清点结论
+
+前提:用户要求按主线前向实现(业务系统未接入,不以当前帧时间为准)。声明、编译、执行都在渲染线程顺序执行,不需要拆 rhapsody 会话。
+
+### 前半帧读写清点(要点)
+- 实体查询 7 组:draw_lists(Vao/Shader/Transform/各 pass 标记)、refresh_draw_vaos(AssetHandle<Vao>)、world_terrain(Transform+ObjectGrassPush;地形实体)、world_geometry(Roof*)、world_postprocess(Ui2d*)、world_walls(InstancedWall)、draw 回调逐实体组件约 25 种(ColorId、PrevTransformView、*MapView、Sheep/Duck、各 *View 等)。
+- 前半帧对 World 的写(渲染侧拷贝会丢):GameConfig 分辨率(OOM)、GpuWorld import/export、GpuLutTracker、AssetTextureLibrary dset/presets、AssetSsboLibrary RG 缓存与 GroundedBuildings 上传、6 个 Raster 的 staging/reupload 标记、TerrainEditingData、ScheduledTerrainReadback、ShaderRefactoringState/PainterlyState/Vermeer*、MenuBackground/Thumbnail、截图 Requests、LoadingGpuResources 等。
+- 大库在游戏更新中的写者:SSBO 库(set 14/16/19/22/28/36/40/44、PostUpdate sync_wall_bricks 等约 20 个系统,多为 staging 映射写/flush);纹理库(set 33/44、PostUpdate Reload);VAO 库(set 44、PostUpdate Rebuild/Reclaim);GpuWorld(set 40–44 nani);Raster(draw_path/water/garden、set 40 replay、set 33 clear)。Placement 库只在启动/卸载写。
+
+### 迁移步骤(按顺序,每步可独立提交)
+1. **渲染 World 与实体提取**:render World 建镜像实体(游戏 Entity → 渲染 Entity 映射),每帧按变更提取上表组件;A 类小资源用 `ExtractSet::copy_changed` 全部注册(补 Clone)。
+2. **大库改为共享 + 写入时机收口**:6 个库与 6 个 Raster 包成 `Arc<RwLock<_>>` 资源,两个 World 持同一份;游戏更新期只允许"CPU 侧"写,所有改变 GPU 可见状态的 flush/staging 写收进新调度 `RenderSync`,在交接点(渲染线程空闲)于游戏线程运行;渲染线程只在声明期读锁。
+3. **前半帧写回**:上表"前半帧写"改为写渲染侧状态,需要回到游戏侧的(OOM 分辨率、Vermeer/Painterly 进度、截图、TerrainReadback tick、StartupRevealFinished 事件)经 `FrameFeedback::defer` 回放到游戏 World。
+4. **材质回调**:`func(builder, params, &mut World)` 改读 render World(组件来自步骤 1,资源来自 A/B)。
+5. **整体切换**:`render_front` 移入 `render_back_frame` 之前,在渲染线程以 render World 运行;游戏线程每帧 = update → settle → extract → start。删除游戏线程上的前半帧调用。
+6. **ECS 多线程**:为 525 对冲突按当前单线程拓扑序补显式顺序(Bevy 0.16 `ScheduleBuildPass` 可在 flatten 后加边),打开 `ecs-multithreaded`。
+7. **渲染线程内并行**:声明分组并行(只读 render World)、保留图扩展、统一 `tg-compute` 任务池、交接时晚锁相机。
+
+### 第一阶段验证记录(2026-10-23)
+rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridge(9)、original_loading_gpu、original_loading_present(3 帧真实 present + 关机)通过。lib 测试中 history_runtime/intro_history 失败为既有问题(测试缺 TerrainHeightsData,存档历史不在范围内)。
