@@ -46,7 +46,7 @@ use crate::render::pass_builder::bind_resources::{
 use crate::render::pass_builder::draw_list::EntityDrawParams;
 use crate::render::pass_builder::draw_stream::{
     DescriptorSetBinding, DrawKind, DrawPacket, DynamicConstantsBinding, GpuOwned, PassAccess,
-    RasterPass, ResourceAccess, ShaderReflection, TextureBindingKey, access_is_write,
+    DrawDeclarations, PassHost, RasterPass, ResourceAccess, ShaderReflection, TextureBindingKey, access_is_write,
 };
 use crate::render::pass_builder::framebuffer_binding::AttachmentTexture;
 use crate::render::pass_builder::pass_resource_access::SsboType;
@@ -356,7 +356,9 @@ pub enum BindTexture<'a> {
 pub struct DrawBuilder<'p> {
     packet: NoDropOnlyTake<DrawPacket>,
     constants: Option<DynamicConstantsBinding>,
-    pass: &'p mut RasterPass,
+    pass: &'p mut DrawDeclarations,
+    host: &'p mut dyn PassHost,
+    viewport: [u32; 2],
     shader: Arc<ShaderReflection>,
     /// `+0xf0`：`bind_common` 写入的标志字节（0..=4；`DrawBuilder::new` 置 0）。
     common_flag: CommonDrawFlag,
@@ -393,7 +395,9 @@ impl<'p> DrawBuilder<'p> {
         DrawBuilder {
             packet: NoDropOnlyTake::new(packet),
             constants,
-            pass,
+            pass: &mut pass.body,
+            host: &mut *pass.host,
+            viewport: pass.viewport,
             shader,
             common_flag: CommonDrawFlag::Off,
         }
@@ -441,6 +445,7 @@ impl<'p> DrawBuilder<'p> {
             .expect("called `Result::unwrap()` on an `Err` value: TryFromIntError(())");
         assert!(self.pass.bindings.len() < MAX_PASS_BINDINGS);
         self.pass.bindings.push(binding);
+        self.pass.binding_accesses.push(self.pass.accesses.len() - 1);
         idx
     }
 
@@ -480,7 +485,7 @@ impl<'p> DrawBuilder<'p> {
 
     /// `[w, h]` 维度 uniform（`write_optional_uniform<_, [u32; 2]>`，名字 = `with_suffix_dims(name)`）。
     fn write_dims(&mut self, name_hash: u64, extent: (u32, u32)) {
-        let hash = self.pass.host.with_suffix_dims(name_hash);
+        let hash = self.host.with_suffix_dims(name_hash);
         let mut b = take_uniform_scratch();
         [extent.0, extent.1].write_bytes(&mut b);
         self.write_uniform_bytes(hash, &b);
@@ -693,9 +698,7 @@ impl<'p> DrawBuilder<'p> {
     pub fn bind_external_storage_buffer(mut self, name_hash: u64, buffer: &ManagedHandle) -> Self {
         if let Some(binding) = self.lookup_binding(name_hash) {
             self.forget_undefined_texture_binding(binding);
-            let vk = self
-                .pass
-                .host
+            let vk = self.host
                 .vk_buffer(buffer)
                 .expect("called `Option::unwrap()` on a `None` value");
             self.packet.get_mut().bindings.insert(
@@ -751,9 +754,7 @@ impl<'p> DrawBuilder<'p> {
         let slot = match self.pass.buffer_slots.get(slot_name).copied() {
             Some(s) => s,
             None => {
-                let resource = self
-                    .pass
-                    .host
+                let resource = self.host
                     .rg_buffer_resource_typed(rg_hash, type_name)
                     .expect("no entry found for key");
                 self.pass.accesses.push(PassAccess {
@@ -796,7 +797,7 @@ impl<'p> DrawBuilder<'p> {
             }
             BindTexture::Preset(p) => {
                 // O 0x140908c50：`get_rg_texture(preset)`；写访问允许（同步组 0），读为 1。
-                let t = self.pass.host.rg_texture(p.0);
+                let t = self.host.rg_texture(p.0);
                 self.bind_rg_texture(&t, name_hash, access, view);
             }
             BindTexture::FromDisk(d) => {
@@ -805,7 +806,7 @@ impl<'p> DrawBuilder<'p> {
                     !access_is_write(access),
                     "assertion failed: !access.is_write()"
                 );
-                let (handle, desc) = self.pass.host.texture_by_name(d.0);
+                let (handle, desc) = self.host.texture_by_name(d.0);
                 self.bind_raw_texture(&handle, &desc, name_hash, view);
             }
             BindTexture::Raw { texture, desc } => {
@@ -871,9 +872,7 @@ impl<'p> DrawBuilder<'p> {
     ) {
         if let Some(binding) = self.lookup_binding(name_hash) {
             self.forget_undefined_texture_binding(binding);
-            let view = self
-                .pass
-                .host
+            let view = self.host
                 .vk_image_view_with_desc(handle, view)
                 .expect("called `Result::unwrap()` on an `Err` value");
             self.packet.get_mut().bindings.insert(
@@ -901,8 +900,8 @@ impl<'p> DrawBuilder<'p> {
 
     /// 把动态常量字节交回宿主（见 [`PassHost::flush_dynamic_constants`]：原版是映射切片，写入即生效）。
     fn flush_constants(&mut self) {
-        if let Some(constants) = self.constants.as_ref() {
-            self.pass.host.flush_dynamic_constants(constants);
+        if let Some(constants) = self.constants.take() {
+            self.host.finish_dynamic_constants(constants, self.packet.get_mut());
         }
     }
 
@@ -944,9 +943,7 @@ impl<'p> DrawBuilder<'p> {
     /// 取 SSBO 间接缓冲的 rg 资源并登记访问（`get_rg_buffer<DrawIndirectBuffer/DrawIndexedIndirectBuffer>`
     /// + `add_resource_access(res, 2, 1)`）。
     fn indirect_resource<D: SsboType>(&mut self) -> u32 {
-        let resource = self
-            .pass
-            .host
+        let resource = self.host
             .rg_buffer_resource_typed(D::rg_buffer_hash(), core::any::type_name::<D>())
             .expect("no entry found for key");
         self.pass.accesses.push(PassAccess {
@@ -1032,9 +1029,7 @@ impl<'p> DrawBuilder<'p> {
     /// `expect(PLACEMENT_MISSING_MSG)`），克隆句柄后 `bind_external_storage_buffer(0x30e6…, &handle)`，
     /// 再 `draw_instanced_w_gl_draw_flag(flag)`。
     pub fn draw_instanced_from_placement_data(self, id: u64) {
-        let (handle, flag) = self
-            .pass
-            .host
+        let (handle, flag) = self.host
             .placement_buffer(id)
             .expect(PLACEMENT_MISSING_MSG);
         let b = self.bind_external_storage_buffer(PLACEMENT_DATA_BINDING_HASH, &handle);
@@ -1044,6 +1039,9 @@ impl<'p> DrawBuilder<'p> {
     /// `discard`（0x1409082c0）：取走 packet（已取走 → `Option::unwrap` panic），把 `bindings` 里每个桶的状态字节
     /// 置 2（解除 GPU 持有），丢弃 packet 与 builder。
     pub fn discard(mut self) {
+        if let Some(constants) = self.constants.take() {
+            self.host.discard_dynamic_constants(constants);
+        }
         let mut packet = self.packet.take();
         for b in packet.bindings.values_mut() {
             b.state = GpuOwned::STATE_DISCARDED;
@@ -1099,7 +1097,7 @@ impl<'p> DrawBuilder<'p> {
         if self.constants.is_some() {
             self = self.uniform(BIND_COMMON_FLAG_INT_UNIFORM, params.flag as u8 as u32);
         }
-        let viewport = self.pass.viewport;
+        let viewport = self.viewport;
         self = self.optional_uniform(BIND_COMMON_TIME, params.time);
         self = self.optional_uniform(BIND_COMMON_VIEWPORT, viewport);
         self.bind_color_library::<C>()
@@ -1174,14 +1172,10 @@ impl<'p> DrawBuilder<'p> {
     pub fn bind_ray_tracing<Tri: SsboType, Meta: SsboType, Bvh: SsboType, Wall: SsboType>(
         self,
     ) -> Self {
-        let triangles_word = self
-            .pass
-            .host
+        let triangles_word = self.host
             .ssbo_instance_count_typed(Tri::rg_buffer_hash(), core::any::type_name::<Tri>())
             .expect("called `Option::unwrap()` on a `None` value");
-        let bvh_word = self
-            .pass
-            .host
+        let bvh_word = self.host
             .ssbo_instance_count_typed(Bvh::rg_buffer_hash(), core::any::type_name::<Bvh>())
             .expect("called `Option::unwrap()` on a `None` value");
         self.read_storage_buffer::<Tri>(RT_TRIANGLES_SLOT_NAME, RT_TRIANGLES_BINDING_HASH)
@@ -1323,6 +1317,102 @@ mod tests {
         let d = core::mem::take(&mut pass.draws);
         pass.rendered.0 = true;
         d
+    }
+
+    #[test]
+    fn collected_chunks_preserve_draw_order_discard_accesses_and_binding_caches() {
+        fn sequence(pass: &mut RasterPass, range: core::ops::Range<usize>) {
+            let tex = AttachmentTexture { id: 9, extent: (16, 32), format: 37, sample_count: 1 };
+            for i in range {
+                let mut b = builder(pass)
+                    .read_storage_buffer::<Ssbo>("ssbo", 0x10)
+                    .bind_texture_to_draw_builder(BindTexture::RgHandle(&tex), 0x11, ACCESS_SAMPLED_IMAGE, None)
+                    .read_rg_storage_buffer(0x10, 5)
+                    .uniform(0x20, i as u32);
+                b.packet_mut().unknown_b1 = i as u8;
+                b.packet_mut().state.0 = i as u32;
+                b.packet_mut().blend = 0.5;
+                match i % 4 {
+                    0 => b.discard(),
+                    1 => b.multi_draw_indirect::<Ssbo>(8, 2),
+                    2 => b.multi_draw_indexed_indirect::<Ssbo2>(3, 0, 1),
+                    _ => b.draw_indexed_indirect_count(5, 6, [0, 4, 8, 16]),
+                }
+            }
+        }
+        let (mut serial, serial_log) = make_pass();
+        sequence(&mut serial, 0..12);
+        let (mut merged, _) = make_pass();
+        let batches = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..3).map(|index| scope.spawn(move || {
+                // The non-Send mock host is created on this worker and never escapes.
+                let (mut local, log) = make_pass();
+                sequence(&mut local, index * 4..index * 4 + 4);
+                let flushed = log.borrow().flushed_constants.clone();
+                (local.into_draw_batch(), flushed)
+            })).collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect::<Vec<_>>()
+        });
+        let mut flushed = Vec::new();
+        for (batch, constants) in batches {
+            merged.commit_draw_batch(batch);
+            flushed.extend(constants);
+        }
+        assert_eq!(flushed, serial_log.borrow().flushed_constants);
+        assert_eq!(merged.accesses, serial.accesses);
+        assert_eq!(merged.buffer_slots, serial.buffer_slots);
+        assert_eq!(merged.texture_slots, serial.texture_slots);
+        assert_eq!(merged.binding_accesses, serial.binding_accesses);
+        let binding = |b: &RenderPassBinding| (b.resource_index, b.access_type, b.view);
+        assert_eq!(merged.bindings.iter().map(binding).collect::<Vec<_>>(), serial.bindings.iter().map(binding).collect::<Vec<_>>());
+        for (a, b) in merged.draws.iter().zip(&serial.draws) {
+            assert_eq!(a.accesses, b.accesses);
+            assert_eq!(a.kind, b.kind);
+            assert_eq!(a.bindings, b.bindings);
+            assert_eq!((a.state, a.unknown_b1, a.blend), (b.state, b.unknown_b1, b.blend));
+            assert_eq!(a.undefined_texture_bindings, b.undefined_texture_bindings);
+        }
+        assert_eq!(merged.draw_count(), 9);
+        merged.render(); serial.render();
+    }
+
+    #[test]
+    fn collected_logical_buffers_resolve_including_indirect_and_discard() {
+        use crate::render::pass_builder::draw_stream::{DeferredBuffer, DEFERRED_BUFFER_BASE};
+        let (mut host, _) = MockHost::new();
+        host.shaders.insert(SHADER, Arc::new(refl()));
+        host.rg_buffers.insert(0xAAAA, DEFERRED_BUFFER_BASE);
+        host.deferred.push(DeferredBuffer { token: DEFERRED_BUFFER_BASE, hash: 0xAAAA, type_name: core::any::type_name::<Ssbo>() });
+        let mut local = RasterPass::collector(host.boxed(), [1, 1]);
+        builder(&mut local).read_storage_buffer::<Ssbo>("ssbo", 0x10).discard();
+        builder(&mut local).multi_draw_indirect::<Ssbo>(0, 1);
+        let (mut pass, _) = make_pass();
+        pass.commit_draw_batch(local.into_draw_batch());
+        assert!(pass.accesses.iter().all(|a| a.resource == 5));
+        assert_eq!(pass.bindings[0].resource_index, 5);
+        assert_eq!(pass.draws[0].kind, DrawKind::MultiDrawIndirect { buffer: 5, arg_50: 0, arg_58: 1 });
+        assert_eq!(pass.accesses.len(), 2, "discard keeps its declared access");
+        pass.render();
+    }
+
+    #[test]
+    fn collected_chunks_reject_inconsistent_cached_bindings_before_commit() {
+        let (mut first, _) = make_pass();
+        let (mut second, _) = make_pass();
+        builder(&mut first).read_storage_buffer::<Ssbo>("shared", 0x10).draw();
+        builder(&mut second).read_storage_buffer::<Ssbo2>("shared", 0x10).draw();
+        let (pass, _) = make_pass();
+        assert!(!pass.batches_compatible(&[first.into_draw_batch(), second.into_draw_batch()]));
+        pass.render();
+
+        let texture = AttachmentTexture { id: 9, extent: (1, 1), format: 37, sample_count: 1 };
+        let (mut first, _) = make_pass();
+        let (mut second, _) = make_pass();
+        builder(&mut first).bind_texture_to_draw_builder(BindTexture::RgHandle(&texture), 0x10, 0x1d, None).draw();
+        builder(&mut second).bind_texture_to_draw_builder(BindTexture::RgHandle(&texture), 0x10, 0x1e, None).draw();
+        let (pass, _) = make_pass();
+        assert!(!pass.batches_compatible(&[first.into_draw_batch(), second.into_draw_batch()]));
+        pass.render();
     }
 
     #[test]

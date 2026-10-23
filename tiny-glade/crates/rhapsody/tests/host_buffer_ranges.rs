@@ -243,7 +243,7 @@ fn metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_p
         let before = device.allocator_stats().cpu_memory_usage();
         device
             .allocator_stats()
-            .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
+            .set_host_budget(device.allocator_stats().cpu_memory_usage().total() + 1)
             .unwrap();
         if generic {
             assert!(matches!(
@@ -256,7 +256,7 @@ fn metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_p
                 Err(Error::OutOfHostMemory)
             ));
         }
-        device.allocator_stats().set_total_budget(u64::MAX).unwrap();
+        device.allocator_stats().set_host_budget(u64::MAX).unwrap();
         assert!(matches!(command.end(), Err(Error::OutOfHostMemory)));
         assert!(matches!(command.end(), Err(Error::OutOfHostMemory)));
         assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);

@@ -34,9 +34,10 @@ impl Drop for OwnedIccLut {
 }
 
 /// 原资源的默认值是 None；Some 同时拥有显示名称、纹理及其原设备命名空间。
-#[derive(Resource, Default)]
+#[derive(Clone, Resource, Default)]
 pub struct ActiveIccProfile {
-    active: Option<OwnedIccLut>,
+    /// Shared with render-thread snapshots; the last owner unregisters it.
+    active: Option<Arc<OwnedIccLut>>,
 }
 
 impl ActiveIccProfile {
@@ -114,7 +115,7 @@ fn update_window_icc_profile(
             };
             let shown = event.0.file_name().unwrap_or_else(|| event.0.as_os_str());
             next.name = shown.to_string_lossy().into_owned();
-            active.active = Some(next);
+            active.active = Some(Arc::new(next));
         }
         Err(error) => log::warn!(target: "country_core::systems::backend::icc",
             "Failed creating an ICC LUT: {error}"),

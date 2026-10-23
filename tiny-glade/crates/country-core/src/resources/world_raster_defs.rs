@@ -18,13 +18,14 @@ use super::world_raster::{DirtyTilePublisher, RasterBufferRef, WorldRaster};
 macro_rules! named_raster {
     ($($(#[$meta:meta])* $name:ident),+ $(,)?) => {$(
         $(#[$meta])*
-        #[derive(Resource)]
+        #[derive(Clone, Resource)]
         pub struct $name(pub WorldRaster<512>);
 
         impl $name {
             pub fn new(publisher: DirtyTilePublisher) -> Self {
                 Self(WorldRaster::new(publisher))
             }
+            pub fn declaration_snapshot(&self) -> Self { Self(self.0.declaration_snapshot()) }
         }
 
         impl Deref for $name {
@@ -156,8 +157,9 @@ impl WorldRasterResources<'_> {
                 let buffer = library
                     .get_mut::<$staging>()
                     .expect("called `Option::unwrap()` on a `None` value");
-                self.$field
-                    .copy_to_staging(0, bytemuck::cast_slice_mut(buffer.mapped));
+                buffer.with_cpu_write(|mapped|
+                    self.$field.copy_to_staging(0, bytemuck::cast_slice_mut(mapped)))
+                    .expect("world raster staging write failed");
             }};
         }
         upload!(path, PathRasterStagingSsbo);
@@ -329,8 +331,9 @@ impl AllWorldRasterWrite<'_> {
                 let buffer = library
                     .get_mut::<$staging>()
                     .expect("called `Option::unwrap()` on a `None` value");
-                self.$field
-                    .copy_to_staging(0, bytemuck::cast_slice_mut(buffer.mapped));
+                buffer.with_cpu_write(|mapped|
+                    self.$field.copy_to_staging(0, bytemuck::cast_slice_mut(mapped)))
+                    .expect("world raster staging write failed");
             }};
         }
         upload!(path, PathRasterStagingSsbo);

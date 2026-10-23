@@ -132,7 +132,7 @@ impl IndexedCountAdapter {
             trailing_bytes: vec![],
         };
         let package = BindlessShaderPackage::new(&heap, &input, 1)?;
-        let pipeline = compiler.request_compute_spirv(
+        let pipeline = compiler.defer_compute_spirv(
             package.stages[0].spirv_bytes(),
             c"main".into(),
             package.layout,

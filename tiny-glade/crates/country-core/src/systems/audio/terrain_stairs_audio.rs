@@ -72,7 +72,7 @@ impl crate::asset_libraries::ssbo_library::SsboType for StairsCounterSsbo {
         // SAFETY: Self is Pod and length/alignment were checked. Retain the
         // current device/library's persistent mapped owner, as for BushCPU.
         let mapped = unsafe { core::slice::from_raw_parts_mut(ptr, count) };
-        MappedStorageBuffer { mapped, buffer }
+        MappedStorageBuffer::from_mapping_with_access(mapped, buffer, device.mapped_upload_writer(&buffer))
     }
 }
 impl crate::render::pass_builder::pass_resource_access::SsboType for StairsCounterSsbo {

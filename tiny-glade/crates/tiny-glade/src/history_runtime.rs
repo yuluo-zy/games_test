@@ -240,6 +240,30 @@ mod tests {
                 GameSystemSet(stage).before(GameSystemSet(stage + 1)),
             );
         }
+        super::super::startup_event_runtime::install(&mut app);
+        country_core::startup::run_game::initialize_core_resources(app.world_mut());
+        // Match production plugin order: wall publication subscribes to the
+        // canonical terrain readback owner during installation.
+        country_core::systems::terrain::TerrainSystems::insert_terrain_resources(&mut app);
+        country_core::systems::terrain::register_terrain_events(app.world_mut());
+        app.init_resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>();
+        app.init_resource::<country_core::resources::walls::arches::ArchSegments>();
+        crate::app_systems::WallSystems::add_wall_events(&mut app);
+        app.init_resource::<country_core::systems::camera_rig::MainCamera>();
+        app.insert_resource(country_core::resources::window::WindowSize::new(1280, 720));
+        app.init_resource::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>();
+        app.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
+        app.init_resource::<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>();
+        app.add_event::<country_core::resources::window::AudioCursorMoved>();
+        app.init_resource::<country_core::resources::editing_highlight::EditingHighlight>();
+        app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
+        app.insert_resource(country_core::resources::session::ActiveSession::new(
+            country_core::resources::session::SessionId::new(),
+            country_core::resources::session::SessionMeta::default()));
+        app.add_plugins(system_tree::TreePlugin);
+        system_roof::RoofSystems::add_roof_events_and_resources(&mut app);
+        system_roof::RoofSystems::add_roof_systems(&mut app);
+        super::super::install_history_gpu_fixture(&mut app);
         super::super::install_history_and_wall_runtime(&mut app, false);
         app.init_resource::<sys::mode_manager::AppMode>();
         app.init_resource::<sys::mode_manager::PreviousAppMode>();
@@ -308,6 +332,22 @@ mod tests {
             res::session::SessionMeta::default(),
         ));
         let wall = res::walls::WallId(3);
+        // Run the actual wall publication before attaching a roof. Startup
+        // replaces PublicWalls from InnerWalls; a hand-inserted association
+        // before that producer runs cannot survive its first update.
+        let shape = sys::wall::valid_enclosure::Shape::Rectangle(utils::geometry::Rectangle2d {
+            axis: glam::Vec2::X, center: glam::Vec2::ZERO,
+            size: glam::Vec2::new(4.0, 6.0),
+        });
+        let curve = shape.as_curve2();
+        let curve = res::roofs::geometry::surface::Curve2::try_new(
+            curve.points.iter().map(|point| point.to_array()).collect(), false).unwrap();
+        let mut walls = app.world_mut().resource_mut::<res::walls::InnerWalls>();
+        walls.new_wall_with_id(wall, res::walls::WallState::new(curve, 3.9, 0, 0, false));
+        walls.update_wall_state_enclosure(wall,
+            sys::wall::valid_enclosure::ShapeParameters::from_shape(shape).to_snapshot());
+        drop(walls);
+        app.update();
         let mut bytes = [0; 88];
         bytes[..8].copy_from_slice(&wall.0.to_le_bytes());
         bytes[0x14..0x18].copy_from_slice(&2.0f32.to_le_bytes());
@@ -368,6 +408,15 @@ mod tests {
                 .observed()[0x40..0x4c],
             &style
         );
+        {
+            let bucket = app.world().resource::<ReplayBuffer>().buckets.front().unwrap();
+            assert_eq!(bucket.commands.len(), 1);
+            assert_eq!(bucket.timing.len(), 1);
+            assert_eq!(bucket.timing[0].elapsed, 0.05);
+        }
+        // TreePlugin consumes insertion events in set 27; replay emits them
+        // in set 40. Their canonical consumer runs on the following update.
+        app.update();
         let entry = app
             .world()
             .resource::<res::tree_storage::TreeStorage>()
@@ -389,15 +438,6 @@ mod tests {
         );
         assert_eq!(command.rotation, 14.0);
         assert_eq!(command.variant, 19);
-        let bucket = app
-            .world()
-            .resource::<ReplayBuffer>()
-            .buckets
-            .front()
-            .unwrap();
-        assert_eq!(bucket.commands.len(), 1);
-        assert_eq!(bucket.timing.len(), 1);
-        assert_eq!(bucket.timing[0].elapsed, 0.05);
         app.update();
         assert!(
             cursor

@@ -59,6 +59,7 @@ fn breadth_first_ancestor_propagation_matches_32_complete_original_graphs() {
 #[test]
 fn persistent_focus_entries_and_zst_hint_events_match_all_original_frames() {
     let mut world=World::new();
+    world.init_resource::<ToolbarFocusTracking>();
     world.init_resource::<Events<UiJustBecameInFocusEvent>>();world.init_resource::<Events<ToolbarUiIsInFocus>>();
     let ids:Vec<_>=(0..6).map(|i|world.spawn(UiInteractionState {state:i,keep:0,selected:i+40}).id()).collect();
     let mut schedule=Schedule::default();schedule.add_systems((ui_send_focus_begin_events,ui_notify_hints_if_toolbar_in_focus));
@@ -78,4 +79,36 @@ fn missing_parent_state_preserves_original_visibility_unwrap_failure() {
     let parent=world.spawn_empty().id();
     world.spawn((UiInteractionState::default(),UiShowIfParentIsInFocus {parent:parent.to_bits()}));
     let mut schedule=Schedule::default();schedule.add_systems(ui_show_if_parent_in_focus);schedule.run(&mut world);
+}
+
+
+#[test]
+fn session_exit_releases_focus_membership_before_new_entity_generations_enter() {
+    let mut world = World::new();
+    world.init_resource::<Events<UiJustBecameInFocusEvent>>();
+    world.init_resource::<ToolbarFocusTracking>();
+    let mut schedule = Schedule::default();
+    schedule.add_systems(ui_send_focus_begin_events);
+    let mut previous = None;
+    for session in 0..32 {
+        let entity = world.spawn(UiInteractionState { state: 1, keep: 1, selected: 0 }).id();
+        assert_ne!(Some(entity), previous, "new session must carry a new entity generation");
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<ToolbarFocusTracking>().len(), 1, "session {session}");
+        let entered: Vec<_> = world.resource_mut::<Events<UiJustBecameInFocusEvent>>()
+            .drain().map(|event| event.entity).collect();
+        assert_eq!(entered, [entity]);
+        schedule.run(&mut world);
+        assert!(world.resource::<Events<UiJustBecameInFocusEvent>>().is_empty());
+        assert!(world.despawn(entity));
+        schedule.run(&mut world);
+        // Preserve native normal-frame behavior: disappearing from the query
+        // alone does not release the old generation or manufacture an event.
+        assert_eq!(world.resource::<ToolbarFocusTracking>().len(), 1);
+        world.resource_mut::<ToolbarFocusTracking>().clear_session();
+        assert!(world.resource::<ToolbarFocusTracking>().is_empty());
+        schedule.run(&mut world);
+        assert!(world.resource::<Events<UiJustBecameInFocusEvent>>().is_empty());
+        previous = Some(entity);
+    }
 }

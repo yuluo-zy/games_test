@@ -63,6 +63,7 @@ fn original_shared_captures_keep_msaa_pixels_and_actual_slot_owners() -> anyhow:
     app.insert_resource(ApplicationShaderLibrary(shaders.clone()));
     app.insert_resource(AssetPlacementDataLibrary::new());
     app.insert_resource(country_core::resources::time::GameTime::default());
+    app.init_resource::<country_core::render::frame_constants::FrameConstants>();
     app.insert_resource(EscMenuState::Photomode(false));
     app.init_resource::<NextEscMenuState>();
     app.init_resource::<LutGalleryState>();
@@ -94,6 +95,7 @@ fn original_shared_captures_keep_msaa_pixels_and_actual_slot_owners() -> anyhow:
         ),
     )?);
     let ((gallery_id, menu_id), built) = bridge.build_frame(|frame| {
+        tiny_glade::frame_setup::with_frame_resources(frame, app.world_mut(), |frame, world| {
         let color = frame.import_native_texture(source.clone(), 0)?;
         let output = frame.import_native_buffer(readback.clone(), 0)?;
         frame.with_graph(|graph| {
@@ -124,7 +126,6 @@ fn original_shared_captures_keep_msaa_pixels_and_actual_slot_owners() -> anyhow:
             resource: color.raw(),
             desc: country_core::rhapsody_types::TextureDesc::new_2d([128, 128], 0x25),
         };
-        let world = app.world_mut();
         assert_eq!(
             tiny_glade::screenshot::shared_texture_capture::opportunity(
                 frame, world, 1, source, 4
@@ -185,7 +186,7 @@ fn original_shared_captures_keep_msaa_pixels_and_actual_slot_owners() -> anyhow:
                     "verify actual shared capture",
                     &"/screenshot/capture_screenshot_buffer.cs.hlsl:sample1",
                 )?
-                .bind_texture(0x681c_a9c9_3557_dc9c, &&input, 0x19)
+                .bind_texture(0xd15b_e69a_f90f_5947, &&input, 0x19)
                 .write_rg_storage_buffer(
                     0x0f68_04da_1cec_c30e,
                     &RgBuffer {
@@ -202,6 +203,7 @@ fn original_shared_captures_keep_msaa_pixels_and_actual_slot_owners() -> anyhow:
             Ok(())
         })?;
         Ok((gallery_id, menu_id))
+        })
     })?;
     bridge.shader_backend().prewarm(Duration::from_secs(10))?;
     let capture_graph_id = built.graph_id();

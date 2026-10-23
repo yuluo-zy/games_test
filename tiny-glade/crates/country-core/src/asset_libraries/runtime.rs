@@ -19,7 +19,7 @@ use bevy_ecs::prelude::*;
 use std::{path::PathBuf, sync::Arc};
 
 /// 宿主注入真实资源表。缺少设备时保留队列，不制造更新成功。
-#[derive(Resource)]
+#[derive(Clone, Resource)]
 pub struct AssetLibraryRuntime {
     pub(crate) buffers: Arc<dyn GraphicsDevice + Send + Sync>,
     pub(crate) textures: Arc<dyn TextureLibraryDevice + Send + Sync>,

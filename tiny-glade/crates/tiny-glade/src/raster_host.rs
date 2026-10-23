@@ -298,6 +298,7 @@ pub struct AssetTables {
 }
 #[derive(Clone)]
 struct VaoSnapshot {
+    source: Arc<country_core::asset_libraries::vao_library::VaoEntry>,
     index: Arc<rhapsody::resource::Buffer>,
     index_count: u32,
     bindings: Vec<(Arc<str>, Arc<rhapsody::resource::Buffer>)>,
@@ -323,15 +324,18 @@ impl Drop for VaoScope {
 /// 全部光栅 pass 共享的宿主状态。
 pub struct RasterShared {
     pub buffers: Arc<BufferHost>,
+    frame_buffers: Mutex<Option<Arc<BufferHost>>>,
     pub textures: Arc<TextureHost>,
     pub shaders: Arc<ShaderHost>,
     device: Arc<rhapsody::device::Device>,
     attachments: Mutex<AttachmentCache>,
     programs: RasterPrograms,
-    reflections: Mutex<HashMap<(u64, u8), Arc<CoreReflection>>>,
+    reflections: Mutex<crate::draw_template_cache::ReflectionCache>,
+    constant_pool: Arc<crate::draw_constant_pool::ConstantPool>,
     vao_refresh_timing: Mutex<VaoRefreshTiming>,
     /// Bumped every time the VAO snapshot table is replaced.
     vao_table_revision: std::sync::atomic::AtomicU64,
+    vao_snapshot_allocations: std::sync::atomic::AtomicU64,
     /// The global texture table's (resource, range) reads for the graph being
     /// declared. Every raster pass of one graph reads the same table, so it is
     /// imported and range-declared once per graph instead of once per pass.
@@ -425,6 +429,21 @@ impl RasterPrograms {
 }
 
 impl RasterShared {
+    pub(crate) fn set_frame_buffers(&self, buffers: Option<Arc<BufferHost>>) {
+        *self.frame_buffers.lock() = buffers;
+    }
+
+    fn buffer_host(&self) -> Arc<BufferHost> {
+        self.frame_buffers.lock().as_ref().unwrap_or(&self.buffers).clone()
+    }
+    fn reflection(&self, shader: u64, variant: u8) -> Option<Arc<CoreReflection>> {
+        let key = (shader, variant);
+        if let Some(hit) = self.reflections.lock().get(&key) { return Some(hit); }
+        let reflection = self.programs.with_program(shader, |program| core_reflection(program, variant))??;
+        self.reflections.lock().insert(key, reflection.clone());
+        Some(reflection)
+    }
+
     /// Snapshot diagnostic totals; this never clears another frame's measurements.
     pub(crate) fn vao_refresh_timing(&self) -> VaoRefreshTiming {
         *self.vao_refresh_timing.lock()
@@ -494,11 +513,10 @@ impl RasterShared {
         let mut snapshots = IdMap::default();
         for handle in handles {
             let id = handle.id().raw();
-            let entry = vaos.get_by_handle(*handle).ok_or_else(|| {
+            let entry = vaos.shared_by_handle(*handle).ok_or_else(|| {
                 rhapsody::Error::invalid_usage("draw-list VAO is not live in this App")
             })?;
-            let index = self
-                .buffers
+            let index = self.buffer_host()
                 .managed_buffer(&entry.vao.index_buffer)
                 .ok_or_else(|| {
                     rhapsody::Error::invalid_usage(
@@ -514,12 +532,30 @@ impl RasterShared {
                     "VAO index count exceeds its physical buffer",
                 ));
             }
+            // A published VAO entry is immutable. Reuse the complete native
+            // view, while still checking live host generations: an externally
+            // released buffer must not silently become valid through the cache.
+            let cached = self.assets.lock().vaos.get(&id).filter(|snapshot|
+                Arc::ptr_eq(&snapshot.source, entry) && Arc::ptr_eq(&snapshot.index, &index)).cloned();
+            if let Some(cached) = cached {
+                let mut same_versions = cached.bindings.len() == entry.vao.bindings.len();
+                for (binding, (_, owner)) in entry.vao.bindings.iter().zip(&cached.bindings) {
+                    let current = self.buffer_host().managed_buffer(&binding.buffer)
+                        .ok_or_else(|| rhapsody::Error::invalid_usage(
+                            "VAO attribute buffer belongs to another host or is stale"))?;
+                    same_versions &= Arc::ptr_eq(owner, &current.shared());
+                }
+                if same_versions {
+                    snapshots.insert(id, cached);
+                    continue;
+                }
+            }
             let bindings = entry
                 .vao
                 .bindings
                 .iter()
                 .map(|binding| {
-                    self.buffers
+                    self.buffer_host()
                         .managed_buffer(&binding.buffer)
                         .map(|buffer| (binding.name.clone(), buffer.shared()))
                         .ok_or_else(|| {
@@ -529,9 +565,11 @@ impl RasterShared {
                         })
                 })
                 .collect::<rhapsody::Result<Vec<_>>>()?;
+            self.vao_snapshot_allocations.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             snapshots.insert(
                 id,
                 Arc::new(VaoSnapshot {
+                    source: entry.clone(),
                     index,
                     index_count,
                     bindings,
@@ -549,6 +587,12 @@ impl RasterShared {
     pub fn vao_table_revision(&self) -> u64 {
         self.vao_table_revision
             .load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    /// Actual immutable view allocations, independent of table publications.
+    #[doc(hidden)]
+    pub fn vao_snapshot_allocations(&self) -> u64 {
+        self.vao_snapshot_allocations.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     fn vao_scope_state(
@@ -666,12 +710,15 @@ impl RasterShared {
             dynamic: Arc::new(Mutex::new(DynamicConstants::new(device.clone())?)),
             device,
             buffers,
+            frame_buffers: Mutex::new(None),
             textures,
             shaders,
             programs,
-            reflections: Mutex::new(HashMap::new()),
+            reflections: Mutex::new(Default::default()),
+            constant_pool: Arc::new(Default::default()),
             vao_refresh_timing: Mutex::new(VaoRefreshTiming::default()),
             vao_table_revision: std::sync::atomic::AtomicU64::new(0),
+            vao_snapshot_allocations: std::sync::atomic::AtomicU64::new(0),
             table_reads: Mutex::new(None),
             frame_constants: Mutex::new(None),
             vao_scope: Mutex::new(None),
@@ -793,6 +840,14 @@ pub struct RasterPassHost {
 }
 
 impl RasterPassHost {
+    /// Prepare the graph-free declaration capability, also used by equivalence
+    /// diagnostics without changing the process-wide scheduling policy.
+    pub fn prepare_draw_collection(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
+        let shared = self.shared.clone();
+        Arc::new(move || Box::new(RasterCollectHost {
+            shared: shared.clone(), deferred: RefCell::new(Vec::new()),
+        }))
+    }
     pub fn with_resource_graph_factory(
         mut self,
         factory: Rc<dyn Fn() -> country_core::rhapsody_types::RenderGraph>,
@@ -814,7 +869,7 @@ impl RasterPassHost {
 
 /// 一个 draw 在声明期解析好的东西：包 + 管线条目。
 /// O `RasterPipelineOpts::default()` 0x140be6750.
-const ORIGINAL_DEFAULT_RASTER_STATE: u32 = 0x1ffc_00d0;
+pub(crate) const ORIGINAL_DEFAULT_RASTER_STATE: u32 = 0x1ffc_00d0;
 
 struct PreparedDraw {
     packet: DrawPacket,
@@ -834,25 +889,218 @@ struct ExternalDrawBinding {
     view: Option<rhapsody::resource::TextureViewDesc>,
 }
 
-impl PassHost for RasterPassHost {
+
+/// No graph pointer or GPU constant allocator is available during Collect.
+/// The Rc-free shared queries are read-only; each task owns its logical IDs.
+struct RasterCollectHost {
+    shared: Arc<RasterShared>,
+    deferred: RefCell<Vec<country_core::render::pass_builder::draw_stream::DeferredBuffer>>,
+}
+
+use crate::draw_constant_pool::CollectedConstants;
+
+impl PassHost for RasterCollectHost {
     fn raster_shader(
         &self,
         shader: &Handle<RasterShaderProgram>,
         variant: u8,
     ) -> Option<Arc<CoreReflection>> {
-        let key = (shader.0.0, variant);
-        if let Some(hit) = self.shared.reflections.lock().get(&key) {
-            return Some(hit.clone());
+        self.shared.reflection(shader.0.0, variant)
+    }
+
+    fn ssbo_instance_count(&self, rg_buffer_hash: u64) -> Option<u32> {
+        let assets = self.shared.assets.lock();
+        if let Some(leases) = &assets.ssbo_leases {
+            return leases
+                .get(&rg_buffer_hash)?
+                .instance_count()
+                .map(|n| n as u32);
         }
-        let reflection = self
-            .shared
-            .programs
-            .with_program(shader.0.0, |program| core_reflection(program, variant))??;
+        assets.ssbo_instance_counts.get(&rg_buffer_hash).copied()
+    }
+
+    fn ssbo_instance_count_typed(&self, hash: u64, expected_type: &'static str) -> Option<u32> {
+        let assets = self.shared.assets.lock();
+        if let Some(leases) = &assets.ssbo_leases {
+            let lease = leases.get(&hash)?;
+            assert_eq!(lease.canonical_type_name, expected_type);
+            return lease.instance_count().map(|n| n as u32);
+        }
+        assets.ssbo_instance_counts.get(&hash).copied()
+    }
+
+    fn placement_buffer(&self, id: u64) -> Option<(ManagedHandle, u32)> {
+        self.shared.assets.lock().placement.get(&id).cloned()
+    }
+
+    fn vk_buffer(&self, buffer: &ManagedHandle) -> Option<u64> {
+        let managed = self.shared.buffer_host().get_by_id(buffer.0)?;
+        Some(ash::vk::Handle::as_raw(managed.raw()))
+    }
+
+    fn vk_image_view(&self, texture: &ManagedHandle) -> Result<u64, String> {
         self.shared
-            .reflections
+            .textures
+            .default_view(texture.0)
+            .map_err(|error| error.to_string())
+    }
+
+    fn vk_image_view_with_desc(
+        &self,
+        texture: &ManagedHandle,
+        view: Option<&country_core::rhapsody_types::TextureViewDesc>,
+    ) -> Result<u64, String> {
+        match view {
+            Some(view) => self.shared.textures.explicit_view(texture.0, view),
+            None => self.shared.textures.default_view(texture.0),
+        }
+        .map_err(|error| error.to_string())
+    }
+
+    fn texture_by_name(&self, name_hash: u64) -> (ManagedHandle, AttachmentTexture) {
+        self.shared
+            .assets
             .lock()
-            .insert(key, reflection.clone());
-        Some(reflection)
+            .textures_by_name
+            .get(&name_hash)
+            .cloned()
+            .unwrap_or_else(|| panic!("No such texture: name hash 0x{name_hash:016x}"))
+    }
+
+    fn rg_texture(&self, preset: u8) -> AttachmentTexture {
+        self.shared
+            .assets
+            .lock()
+            .presets
+            .get(&preset)
+            .copied()
+            .expect("no entry found for key")
+    }
+
+    fn with_suffix_dims(&self, name_hash: u64) -> u64 {
+        BindingNameHash(name_hash).with_suffix_dims().0
+    }
+
+    fn default_raster_state(&self) -> RasterState {
+        // O `<RasterPipelineOpts as Default>::default` 0x140be6750 = `mov eax,0x1ffc00d0`:
+        // depth test+write on with GREATER (reverse-Z), stencil test off but compare ALWAYS /
+        // mask 0xff, blend off, triangle list, fill, no cull. Callers (e.g. deferred raster
+        // `s & 0xbf`) start from these bits, so a zeroed state (depth LESS, stencil NEVER)
+        // would reject every fragment of draws that enable the stencil test.
+        RasterState(ORIGINAL_DEFAULT_RASTER_STATE)
+    }
+    fn allocate_dynamic_constants(&mut self, reflection: &CoreReflection) -> Option<DynamicConstantsBinding> {
+        Some(DynamicConstantsBinding {
+            data: self.shared.constant_pool.take(reflection.uniform_block_size as usize),
+            binding_index: reflection.uniform_block_binding,
+            keepalive: ManagedHandle(0),
+            lease: None,
+        })
+    }
+    fn finish_dynamic_constants(&mut self, constants: DynamicConstantsBinding, packet: &mut DrawPacket) {
+        // A material can overwrite the uniform binding. Preserve that operation.
+        if let Some(binding) = packet.bindings.get_mut(&constants.binding_index) {
+            if let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut binding.binding {
+                if keepalive.0 == 0 && lease.is_none() {
+                    *lease = Some(ResourceLease::new(Arc::new(self.shared.constant_pool.own(constants.data))));
+                    return;
+                }
+            }
+        }
+        self.shared.constant_pool.recycle(constants.data);
+    }
+    fn discard_dynamic_constants(&mut self, constants: DynamicConstantsBinding) {
+        self.shared.constant_pool.recycle(constants.data);
+    }
+    fn rg_buffer_resource(&self, hash: u64) -> Option<u32> {
+        let assets = self.shared.assets.lock();
+        let id = assets.rg_buffers.get(&hash).copied()?;
+        assert!(id < country_core::render::pass_builder::draw_stream::DEFERRED_BUFFER_BASE);
+        Some(id)
+    }
+    fn rg_buffer_resource_typed(&self, hash: u64, expected_type: &'static str) -> Option<u32> {
+        use country_core::render::pass_builder::draw_stream::{DeferredBuffer, DEFERRED_BUFFER_BASE};
+        {
+            let assets = self.shared.assets.lock();
+            let Some(leases) = &assets.ssbo_leases else {
+                let id = assets.rg_buffers.get(&hash).copied()?;
+                assert!(id < DEFERRED_BUFFER_BASE);
+                return Some(id);
+            };
+            assert_eq!(leases.get(&hash)?.canonical_type_name, expected_type);
+        }
+        let mut deferred = self.deferred.borrow_mut();
+        if let Some(buffer) = deferred.iter().find(|buffer| buffer.hash == hash) {
+            assert_eq!(buffer.type_name, expected_type);
+            return Some(buffer.token);
+        }
+        let token = DEFERRED_BUFFER_BASE.checked_add(u32::try_from(deferred.len()).unwrap()).unwrap();
+        deferred.push(DeferredBuffer { token, hash, type_name: expected_type });
+        Some(token)
+    }
+    fn take_deferred_buffers(&mut self) -> Vec<country_core::render::pass_builder::draw_stream::DeferredBuffer> {
+        std::mem::take(self.deferred.get_mut())
+    }
+    fn create_render_pass(&mut self, _: &RasterRenderPassDesc) -> ManagedHandle {
+        panic!("Collect cannot create a render pass")
+    }
+    fn render_pass_cache(&mut self) -> &mut HbMap<RasterRenderPassDesc, ManagedHandle> {
+        panic!("Collect cannot access the render-pass cache")
+    }
+    fn submit_raster_pass(&mut self, _: RasterPassSubmission) {
+        panic!("Collect cannot submit a render pass")
+    }
+}
+
+impl PassHost for RasterPassHost {
+    fn collect_factory(&self) -> Option<Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync>> {
+        // Opt in until the hardware p95 acceptance gate has been measured.
+        match std::env::var("TG_DRAW_COLLECT").as_deref() {
+            Ok("serial" | "parallel") => {}
+            _ => return None,
+        }
+        Some(self.prepare_draw_collection())
+    }
+
+    fn try_parallel_collect(&self) -> Option<Box<dyn std::any::Any>> {
+        // Never block an ECS/task-pool worker waiting for work in its own pool.
+        if std::thread::current().name() != Some("tg-render")
+            || std::env::var("TG_DRAW_COLLECT").as_deref() != Ok("parallel") { return None; }
+        // Update workers no longer wait on this frame's read lease, so Collect
+        // may share the pool with a concurrent Update.
+        Some(Box::new(()) as Box<dyn std::any::Any>)
+    }
+
+    fn collect_chunk_draws(&self) -> usize {
+        std::env::var("TG_DRAW_COLLECT_CHUNK").ok()
+            .and_then(|value| value.parse::<usize>().ok()).unwrap_or(64).clamp(1, 4096)
+    }
+
+    fn commit_collected_draw(&mut self, packet: &mut DrawPacket) {
+        for binding in packet.bindings.values_mut() {
+            let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut binding.binding else { continue };
+            let Some(bytes) = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>) else { continue };
+            let result = self.shared.dynamic.lock().allocate(bytes.bytes.len() as u64)
+                .and_then(|chunk| {
+                    chunk.write_bytes(&bytes.bytes)?;
+                    Ok(Arc::new(chunk))
+                });
+            match result {
+                Ok(chunk) => {
+                    *keepalive = ManagedHandle(ash::vk::Handle::as_raw(chunk.buffer.raw_handle()));
+                    *lease = Some(ResourceLease::new(chunk));
+                }
+                Err(error) => { self.constants_error.get_or_insert(error); }
+            }
+        }
+    }
+
+    fn raster_shader(
+        &self,
+        shader: &Handle<RasterShaderProgram>,
+        variant: u8,
+    ) -> Option<Arc<CoreReflection>> {
+        self.shared.reflection(shader.0.0, variant)
     }
 
     /// 在常量页里为该管线的 uniform 块分配一块；字节在 [`PassHost::flush_dynamic_constants`] 写入。
@@ -966,7 +1214,7 @@ impl PassHost for RasterPassHost {
     }
 
     fn vk_buffer(&self, buffer: &ManagedHandle) -> Option<u64> {
-        let managed = self.shared.buffers.get_by_id(buffer.0)?;
+        let managed = self.shared.buffer_host().get_by_id(buffer.0)?;
         Some(ash::vk::Handle::as_raw(managed.raw()))
     }
 
@@ -1386,8 +1634,7 @@ impl PassHost for RasterPassHost {
                 if *index_count == 0 {
                     continue;
                 }
-                let buffer = shared
-                    .buffers
+                let buffer = shared.buffer_host()
                     .get_by_id(index_buffer.0)
                     .ok_or_else(|| rhapsody::Error::invalid_usage("index buffer is not live"))?;
                 if u64::from(*index_count) * 4 > buffer.resource().size {
@@ -2210,7 +2457,7 @@ fn import_draw_bindings(
                         "raster buffer binding differs from shader ABI",
                     ));
                 }
-                let owner = shared.buffers.get_by_id(keepalive.0).ok_or_else(|| {
+                let owner = shared.buffer_host().get_by_id(keepalive.0).ok_or_else(|| {
                     rhapsody::Error::invalid_usage("raster storage buffer is not live")
                 })?;
                 if ash::vk::Handle::as_raw(owner.raw_handle()) != *buffer {
@@ -2428,6 +2675,15 @@ fn bindless_parameters(
     );
     country_core::render::declare_probe::rec_prepare(probe_prepare);
     prepared
+}
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.component_journaled::<country_core::asset_libraries::Handle<country_core::render::vao::Vao>>();
+    m.resource_incremental::<country_core::asset_libraries::vao_library::AssetVAOLibrary>(
+        country_core::asset_libraries::vao_library::AssetVAOLibrary::snapshot_revision,
+        country_core::asset_libraries::vao_library::AssetVAOLibrary::update_render_snapshot);
 }
 
 #[cfg(test)]

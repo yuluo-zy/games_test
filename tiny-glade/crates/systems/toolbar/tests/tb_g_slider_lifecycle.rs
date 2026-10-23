@@ -15,7 +15,7 @@ use country_core::{
 };
 use glam::Vec2;
 use toolbar::{
-    photomode::ui_slider, resouces_and_components::UiSlider, ui_interaction::UiDragEvent,
+    photomode::ui_slider, resouces_and_components::{UiSlider, ToolbarSliderSession}, ui_interaction::UiDragEvent,
 };
 
 fn setup(mode: AppMode) -> (World, Schedule) {
@@ -25,6 +25,7 @@ fn setup(mode: AppMode) -> (World, Schedule) {
     world.init_resource::<Events<RequestToolbarCategoryChange>>();
     world.init_resource::<GameTime>();
     world.init_resource::<UiNavState>();
+    world.init_resource::<ToolbarSliderSession>();
     world.init_resource::<ActionSetStates>();
     world.insert_resource(CursorPositionSS(Vec2::splat(-1000.)));
     world.insert_resource(MainCamera::new(1.));
@@ -320,4 +321,54 @@ fn reset_chromatic_and_focus_use_the_original_parameter_defaults() {
         [camera.read_f32(focus + 4), camera.read_f32(focus + 8)],
         [17., -23.]
     );
+}
+
+
+#[test]
+fn session_reload_discards_slider_grab_and_armed_navigation_before_new_focus() {
+    let (mut world, mut schedule) = setup(AppMode::Photomode);
+    let original = slider(&mut world, 0, Vec2::new(100., 100.));
+    focus(&mut world, original);
+    world.resource_mut::<GameTime>().delta = 0.1;
+    schedule.run(&mut world); // Establish the original previous focus.
+    world.resource_mut::<ActionSetStates>().digital[21] = DigitalActionState {
+        phase: DigitalActionPhase::JustPressed, timer_seconds: 0.,
+    };
+    drag(&mut world, original, 3, 104.);
+    schedule.run(&mut world); // Both navigation and grab state are populated.
+    assert_ne!(*world.resource::<ToolbarSliderSession>(), ToolbarSliderSession::default());
+    world.resource_mut::<ActionSetStates>().digital[21] = DigitalActionState {
+        phase: DigitalActionPhase::Held, timer_seconds: 0.,
+    };
+    let knob = world.get::<UiSlider>(original).unwrap().knob_entity().unwrap();
+    assert!(world.despawn(knob));
+    assert!(world.despawn(original));
+    world.resource_mut::<Events<UiDragEvent>>().clear();
+    *world.resource_mut::<UiNavState>() = UiNavState::default();
+    world.resource_mut::<ToolbarSliderSession>().clear_session();
+    assert_eq!(*world.resource::<ToolbarSliderSession>(), ToolbarSliderSession::default());
+    let replacement = slider(&mut world, 0, Vec2::new(100., 100.));
+    assert_ne!(original, replacement);
+    focus(&mut world, replacement);
+    let unchanged = world.resource::<ImageFormationConfigs>().current().params_18[1];
+    for _ in 0..3 {
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<ImageFormationConfigs>().current().params_18[1], unchanged,
+            "Held direction must not inherit the old session's armed state");
+    }
+    // A continuation without a new start must not reuse the previous grab.
+    drag(&mut world, replacement, 1, 285.);
+    schedule.run(&mut world);
+    assert_eq!(world.resource::<ImageFormationConfigs>().current().params_18[1], unchanged);
+    // Fresh release/press and grab edges still drive the real consumer.
+    world.resource_mut::<ActionSetStates>().digital[21] = DigitalActionState::default();
+    schedule.run(&mut world);
+    world.resource_mut::<ActionSetStates>().digital[21] = DigitalActionState {
+        phase: DigitalActionPhase::JustPressed, timer_seconds: 0.,
+    };
+    schedule.run(&mut world);
+    assert!(world.resource::<ImageFormationConfigs>().current().params_18[1] > unchanged);
+    drag(&mut world, replacement, 3, 285.);
+    schedule.run(&mut world);
+    assert_eq!(world.resource::<ImageFormationConfigs>().current().params_18[1], 2.5);
 }

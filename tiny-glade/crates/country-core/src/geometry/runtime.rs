@@ -100,7 +100,7 @@ impl WallBrickAssemblyBatch<'_, '_, '_> {
 
 /// 现raster绘制入口据此拦截设备上传失败；compute未用同gate。
 /// 此状态不是base真实几何/Trigger已经构造的证据。
-#[derive(Resource, Debug)]
+#[derive(Clone, Resource, Debug)]
 pub struct WallBrickUploadStatus {
     pub gpu_ready: bool,
     pub capacity_failures: usize,

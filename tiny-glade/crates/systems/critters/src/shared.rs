@@ -145,10 +145,13 @@ pub fn bird_spot_position(transform:&Transform)->Vec3 {
 #[allow(clippy::too_many_arguments,clippy::type_complexity)]
 pub fn move_critters(time:Res<GameTime>,water:Res<WaterRaster>,garden:Res<GardenRaster>,
     buffers:Res<AssetSsboLibrary>,raycast:Res<RaycastWorld>,walls_hash:Res<WallSpatialHash>,walls:Res<PublicWalls>,
-    mut query:Query<(&mut Transform,&CritterLocomotion,&Velocity,Option<&CritterVelocityMultiplier>,Option<&Duck>,Option<&Sheep>,Option<&mut BirdSpots>)>) {
-    let mask=buffers.get::<TerrainRockMaskSsbo>().expect("move_critters requires canonical mapped TerrainRockMaskSsbo");
+    mut query:Query<(&mut Transform,&CritterLocomotion,&Velocity,Option<&CritterVelocityMultiplier>,Option<&Duck>,Option<&Sheep>,Option<&mut BirdSpots>)>,
+    readbacks:Option<Res<country_core::render::gpu_readback::GpuReadbacks>>) {
+    buffers.get::<TerrainRockMaskSsbo>().expect("move_critters requires canonical mapped TerrainRockMaskSsbo");
+    // Render-thread publication; the live mapping belongs to the in-flight GPU frame.
+    let rock=TerrainRockMaskSsbo::published(readbacks.as_deref());
     let env=LiveEnvironment {water:water.0.as_ref(),garden:Some(garden.0.as_ref()),paths:None,
-        rock:mask.mapped,walls:&walls,hash:&walls_hash,raycast:&raycast};
+        rock,walls:&walls,hash:&walls_hash,raycast:&raycast};
     let rotation_retention=0.01_f32.powf(time.delta);
     for (mut transform,loc,velocity,multiplier,duck,sheep,mut spots) in &mut query {
         advance_critter(&env,&mut transform,loc.0,velocity.0,multiplier.map(|value|value.0),duck.is_some(),sheep.is_some(),spots.as_deref_mut(),time.delta,rotation_retention);
@@ -188,10 +191,12 @@ pub fn avoid_critter_collision(env:&impl CritterEnvironment,transform:&Transform
 #[allow(clippy::too_many_arguments,clippy::type_complexity)]
 pub fn critters_avoid_collisions(water:Res<WaterRaster>,buffers:Res<AssetSsboLibrary>,walls_hash:Res<WallSpatialHash>,walls:Res<PublicWalls>,raycast:Res<RaycastWorld>,
     path_rasters:PathRastersResources,_signifiers:Res<UiSignifierStream>,mut ev_despawn:EventWriter<crate::spawn_ducks::DespawnDuckCmd>,
-    mut query:Query<(Entity,&Transform,&mut CritterGoal,&CritterLocomotion,Option<&Sheep>,Option<&Duck>)>) {
-    let mask=buffers.get::<TerrainRockMaskSsbo>().expect("critters_avoid_collisions requires canonical mapped TerrainRockMaskSsbo");
+    mut query:Query<(Entity,&Transform,&mut CritterGoal,&CritterLocomotion,Option<&Sheep>,Option<&Duck>)>,
+    readbacks:Option<Res<country_core::render::gpu_readback::GpuReadbacks>>) {
+    buffers.get::<TerrainRockMaskSsbo>().expect("critters_avoid_collisions requires canonical mapped TerrainRockMaskSsbo");
+    let rock=TerrainRockMaskSsbo::published(readbacks.as_deref());
     let env=LiveEnvironment {water:water.0.as_ref(),garden:None,paths:Some(path_rasters.as_float_grid()),
-        rock:mask.mapped,walls:&walls,hash:&walls_hash,raycast:&raycast};
+        rock,walls:&walls,hash:&walls_hash,raycast:&raycast};
     for (entity,transform,mut goal,loc,sheep,duck) in &mut query {
         if avoid_critter_collision(&env,transform,&mut goal,loc.0,duck.is_some(),sheep.is_some()) {
             ev_despawn.write(crate::spawn_ducks::DespawnDuckCmd {entity});

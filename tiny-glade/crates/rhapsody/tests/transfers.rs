@@ -23,6 +23,83 @@ fn device() -> Option<Arc<Device>> {
 }
 
 #[test]
+fn recoverable_submit_oom_keeps_original_ticket_payload_and_fifo_position() {
+    use rhapsody::transfer::{UploadKey, UploadMode, UploadOptions, UploadPriority, UploadStatus};
+    let Some(device) = device() else { return };
+    let mut transfers = TransferManager::new(device.clone(), TransferConfig {
+        slots: 1, chunk_bytes: 256, max_bytes: 16384,
+    }).unwrap();
+    let target = Arc::new(Buffer::new(device.clone(), &BufferDesc::new_gpu_only(32,
+        vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST)).unwrap());
+    let first = transfers.enqueue_upload_owned(target.clone(), 0, vec![7; 32],
+        UploadOptions { key: UploadKey(91), epoch: 1, priority: UploadPriority::High },
+        UploadMode::OrderedDelta).unwrap();
+    let before = transfers.upload_queue_stats();
+    let budget = device.allocator_stats();
+    let limit = budget.host_budget_limit();
+    budget.set_host_budget(budget.cpu_memory_usage().total()).unwrap();
+    let failed = transfers.flush_uploads_preserving_oom(1);
+    budget.set_host_budget(limit).unwrap();
+    assert_eq!(failed.unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
+    assert!(matches!(first.status(), UploadStatus::Pending));
+    assert!(first.try_submitted().unwrap().is_none());
+    let after = transfers.upload_queue_stats();
+    assert_eq!((after.queued_jobs, after.queued_bytes), (before.queued_jobs, before.queued_bytes));
+    assert!(after.known_cpu_bytes <= before.known_cpu_bytes);
+    let second = transfers.enqueue_upload_owned(target.clone(), 8, vec![9; 8],
+        UploadOptions { key: UploadKey(92), epoch: 2, priority: UploadPriority::High },
+        UploadMode::OrderedDelta).unwrap();
+    // Distinct logical keys still cannot reorder writes to one physical owner.
+    assert_eq!(transfers.flush_uploads_preserving_oom(1).unwrap().submitted_jobs, 1);
+    first.try_submitted().unwrap().unwrap().wait(5_000_000_000).unwrap();
+    assert!(matches!(second.status(), UploadStatus::Pending));
+    assert_eq!(transfers.flush_uploads_preserving_oom(1).unwrap().submitted_jobs, 1);
+    second.try_submitted().unwrap().unwrap().wait(5_000_000_000).unwrap();
+    let read = transfers.read_buffer(target, 0, 32).unwrap();
+    read.wait(5_000_000_000).unwrap();
+    let mut actual = [0; 32];
+    assert_eq!(read.try_read(&mut actual).unwrap(), Some(32));
+    let mut expected = [7; 32];
+    expected[8..16].fill(9);
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn owned_frame_deltas_preserve_disjoint_and_overlapping_updates_on_gpu() {
+    use rhapsody::transfer::{UploadKey, UploadMode, UploadOptions, UploadPriority, UploadStatus};
+    let Some(device) = device() else { return };
+    let mut transfers = TransferManager::new(device.clone(), TransferConfig {
+        slots: 1, chunk_bytes: 256, max_bytes: 16384,
+    }).unwrap();
+    let target = Arc::new(Buffer::new(device, &BufferDesc::new_gpu_only(32,
+        vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST)).unwrap());
+    transfers.upload_buffer(target.clone(), 0, &[7; 32]).unwrap().wait(5_000_000_000).unwrap();
+    let mut tickets = Vec::new();
+    for (epoch, offset, value) in [(1, 0, 1), (2, 16, 2), (3, 4, 3)] {
+        tickets.push(transfers.enqueue_upload_owned(target.clone(), offset, vec![value; 8],
+            UploadOptions { key: UploadKey(1), epoch, priority: UploadPriority::Normal },
+            UploadMode::OrderedDelta).unwrap());
+    }
+    assert_eq!(transfers.upload_queue_stats().queued_jobs, 3);
+    assert!(tickets.iter().all(|ticket| matches!(ticket.status(), UploadStatus::Pending)));
+    // Submit/wait one at a time to exercise bounded reuse of the sole slot.
+    for ticket in tickets {
+        assert_eq!(transfers.flush_uploads(1).unwrap().submitted_jobs, 1);
+        ticket.try_submitted().unwrap().unwrap().wait(5_000_000_000).unwrap();
+    }
+    let read = transfers.read_buffer(target, 0, 32).unwrap();
+    read.wait(5_000_000_000).unwrap();
+    let mut actual = [0; 32];
+    read.try_read(&mut actual).unwrap().unwrap();
+    let mut expected = [7; 32];
+    expected[..8].fill(1);
+    expected[16..24].fill(2);
+    expected[4..12].fill(3);
+    assert_eq!(actual, expected);
+    assert_eq!(transfers.upload_queue_stats().cancelled_jobs, 0);
+}
+
+#[test]
 fn bounded_async_uploads_feed_the_graph_and_readbacks_keep_their_slots_leased() {
     let Some(device) = device() else {
         return;

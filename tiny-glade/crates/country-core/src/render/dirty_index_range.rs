@@ -16,6 +16,15 @@ pub struct DirtyIndexRange {
     pub end: AtomicUsize,
 }
 
+impl Clone for DirtyIndexRange {
+    fn clone(&self) -> Self {
+        Self {
+            start: AtomicUsize::new(self.start.load(Ordering::Relaxed)),
+            end: AtomicUsize::new(self.end.load(Ordering::Relaxed)),
+        }
+    }
+}
+
 impl Default for DirtyIndexRange {
     fn default() -> Self {
         Self::empty()

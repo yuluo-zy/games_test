@@ -6,7 +6,7 @@ use country_core::{components::UiInteractionState,
     resources::toolbar::ToolbarUiIsInFocus,
     startup::init_photomode_state::PhotomodeState};
 use std::collections::HashSet;
-use crate::resouces_and_components::{UiShowIfParentIsInFocus, ShowOnlyInFpvAndFree};
+use crate::resouces_and_components::{UiShowIfParentIsInFocus, ShowOnlyInFpvAndFree, ToolbarFocusTracking};
 use super::UiJustBecameInFocusEvent;
 
 /// Preserve the native two-phase breadth-first ascent. All initially focused
@@ -67,16 +67,17 @@ pub fn ui_show_if_parent_in_focus(
     }
 }
 
-/// The native Local set is persistent: queried keep=0 removes membership;
-/// disappearance from the query alone does not clear old entity generations.
+/// The native membership set persists within the session: queried keep=0
+/// removes membership; disappearance alone retains old entity generations.
+/// Explicit host unload releases the session owner without changing this loop.
 /// All nonzero keep values enter the set, but only the new exact value1 emits.
 pub fn ui_send_focus_begin_events(
     states: Query<(Entity, &UiInteractionState)>,
     mut events: EventWriter<UiJustBecameInFocusEvent>,
-    mut focused: Local<HashSet<Entity>>,
+    mut tracking: ResMut<ToolbarFocusTracking>,
 ) {
     for (entity, state) in &states {
-        let changed = if state.keep != 0 { focused.insert(entity) } else { focused.remove(&entity) };
+        let changed = if state.keep != 0 { tracking.focused.insert(entity) } else { tracking.focused.remove(&entity) };
         if changed && state.keep == 1 { events.write(UiJustBecameInFocusEvent { entity }); }
     }
 }

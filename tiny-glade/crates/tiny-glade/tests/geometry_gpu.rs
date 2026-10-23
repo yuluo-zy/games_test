@@ -167,6 +167,10 @@ fn wall_brick_schedule_updates_real_device_bytes_and_reuses_idle_storage() {
         read_prefix(&device, &host, &buffer, expected.len()),
         expected
     );
+    let render_snapshot = world.resource::<AssetSsboLibrary>().clone();
+    assert!(render_snapshot.get::<BrickTransformSsbo>().is_none());
+    assert_eq!(render_snapshot.sparse_draw_view::<BrickTransformSsbo>().unwrap()
+        .to_draw_multi_instanced(), [(0, 33)]);
     schedule.run(&mut world);
     assert_eq!(
         read_prefix(&device, &host, &buffer, expected.len()),
@@ -196,8 +200,14 @@ fn wall_brick_schedule_updates_real_device_bytes_and_reuses_idle_storage() {
             .to_draw_multi_instanced()
             .is_empty()
     );
-    // 库先销毁，runtime 和真实宿主继续存活；不能再依赖测试手动 release。
+    // CPU source destruction cannot free a GPU allocation still held by an
+    // extracted frame. Its draw metadata also survives edits and reclamation.
     drop(world.remove_resource::<AssetSsboLibrary>().unwrap());
+    assert!(host.managed_buffer(&buffer).is_some());
+    assert_eq!(render_snapshot.sparse_draw_view::<BrickTransformSsbo>().unwrap()
+        .to_draw_multi_instanced(), [(0, 33)]);
+    assert_eq!(read_prefix(&device, &host, &buffer, 96), replacement.observed_bytes());
+    drop(render_snapshot);
     assert!(host.managed_buffer(&buffer).is_none());
     world.init_resource::<AssetSsboLibrary>();
     world.spawn(InstancedWall::new(8, vec![replacement]));
@@ -209,7 +219,8 @@ fn wall_brick_schedule_updates_real_device_bytes_and_reuses_idle_storage() {
         .unwrap()
         .buffer
         .buffer;
-    assert_eq!(next_buffer.id, buffer.id, "释放后的宿主槽应被复用");
+    assert_eq!(next_buffer.id & 0xffff_ffff, buffer.id & 0xffff_ffff, "释放后的宿主槽应被复用");
+    assert_ne!(next_buffer.id, buffer.id);
     assert_ne!(next_buffer.generation, buffer.generation);
     assert!(host.managed_buffer(&buffer).is_none());
     assert_eq!(

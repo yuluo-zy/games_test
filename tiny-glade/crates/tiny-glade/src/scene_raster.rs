@@ -156,3 +156,10 @@ impl<'f, 's, 'w, 'l> SceneRasterHost<'f, 's, 'w, 'l> {
         self.with_ctx(|ctx, lists| transparency_pass::post_taa_transparency_pass(ctx, color, lists))
     }
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<country_core::resources::game_clock::GameClock>();
+    m.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>();
+}

@@ -119,6 +119,23 @@ pub fn install(app: &mut bevy_app::App) {
 
 /// Independent loading Apps have no screenshot owner; hosts gate optional work
 /// by installation, while a gameplay owner remains mandatory for enqueue.
+/// Screenshot ownership across the render thread: the game world keeps an
+/// (empty) owner so gather/enqueue work, and each hand-over moves the new
+/// requests to the render world, where declaration, submission and readback
+/// handle them.
+pub(crate) fn render_exchange(set: &mut crate::render_thread::RenderExchange) {
+    set.extract.add(|game, render, _| {
+        let Some(mut source) = game.get_resource_mut::<Requests>() else {
+            return;
+        };
+        let incoming = std::mem::take(&mut source.active);
+        let closing = source.closing;
+        let mut owner = render.get_resource_or_insert_with(Requests::default);
+        owner.active.extend(incoming);
+        owner.closing |= closing;
+    });
+}
+
 pub fn installed(world: &World) -> bool {
     world.contains_resource::<Requests>()
 }
@@ -960,6 +977,13 @@ pub fn shutdown(world: &mut World) -> rhapsody::Result<()> {
         request.hurry = true;
     }
     let result = finish_owned(&mut owner);
+    // No later graph can satisfy an unsubmitted request after shutdown. Settle
+    // its callback exactly once instead of silently dropping it with the World.
+    let message = result.as_ref().err().map(|error| format!("Screenshot shutdown failed: {error}"))
+        .unwrap_or_else(|| "Screenshot cancelled before submission during shutdown".to_owned());
+    for mut request in owner.active.drain(..) {
+        if let Some(callback) = request.completion.take() { callback(Err(message.clone())); }
+    }
     // Always join all previously started writer threads even if readback failed.
     for writer in owner.writers.drain(..) {
         let _ = writer.join();
@@ -978,6 +1002,15 @@ fn downsample_count(source_height: u32, output_height: u32) -> u64 {
     (source_height as f32 / output_height as f32).log2().round() as u64
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<AppMode>();
+    m.resource::<GameClock>();
+    m.resource::<MainActionSet>();
+    m.resource::<MetaCommander>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -986,6 +1019,30 @@ mod tests {
         resources::steam::{AnalogActionData, DigitalActionData, SteamSdk},
     };
     use std::sync::Mutex;
+
+    #[test]
+    fn shutdown_settles_unsubmitted_requests_after_render_ownership_transfer_once() {
+        let mut game = World::new();
+        game.init_resource::<Requests>();
+        let (send, receive) = std::sync::mpsc::channel();
+        enqueue(&mut game, ScreenshotRequest {
+            purpose: ScreenshotPurpose::FinalFrame,
+            dimensions: None,
+            sink: ScreenshotSink::Rgba(Arc::new(|_, _, _| panic!("cancelled request delivered pixels"))),
+            completion: Some(Arc::new(move |result| { send.send(result).unwrap(); })),
+        }).unwrap();
+        let mut exchange = crate::render_thread::RenderExchange::default();
+        render_exchange(&mut exchange);
+        let mut render = World::new();
+        exchange.extract.run(&mut game, &mut render);
+        shutdown(&mut game).unwrap();
+        assert!(receive.try_recv().is_err(), "the request moved to the render owner");
+        shutdown(&mut render).unwrap();
+        assert!(receive.recv().unwrap().unwrap_err().contains("cancelled before submission"));
+        shutdown(&mut render).unwrap();
+        assert!(receive.try_recv().is_err());
+        assert!(!has_requests(&render));
+    }
 
     /// Slot ids are the byte offsets 0xe8/0xf0/0xf8 of the original resource / 8.
     #[test]

@@ -256,3 +256,9 @@ pub fn install_deferred_startup(
         },
     );
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<DeferredRasterResources>();
+}

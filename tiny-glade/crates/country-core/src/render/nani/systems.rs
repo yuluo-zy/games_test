@@ -813,13 +813,16 @@ pub fn nani_update_preplaced_flower_ecs(
     mut rows: Query<(&mut InstanceKey, &Transform), With<InstanceDataMarker<PreplacedFlowerInstanceData>>>,
     gpu: Res<GpuWorld>, ssbos: Res<AssetSsboLibrary>, paths: PathRastersResources,
     water: Res<WaterRaster>,
+    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
 ) {
     // Original14207396a obtains the owned subset before142073982 reads
     // TerrainRockMask, even when the component query is empty.
     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::PreplacedFlower);
-    let rock = ssbos.get::<TerrainRockMaskSsbo>()
+    ssbos.get::<TerrainRockMaskSsbo>()
         .expect("called `Option::unwrap()` on a `None` value: TerrainRockMaskSsbo");
-    let mask: &[u32] = bytemuck::cast_slice(&rock.mapped[..]);
+    // The render thread's latest complete publication; the live mapping is
+    // owned by the in-flight GPU frame and is never borrowed here.
+    let mask: &[u32] = bytemuck::cast_slice(TerrainRockMaskSsbo::published(readbacks.as_deref()));
     let path_grids = paths.as_float_grid();
     let water_grid = (**water).as_ref();
     for (mut key, transform) in &mut rows {

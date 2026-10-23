@@ -15,7 +15,7 @@
 
 use crate::render::pass_builder::framebuffer_binding::AttachmentTexture;
 use crate::systems::render_loop::draw_passes::d_main_support::{
-    ColorSpec, DepthSpec, DrawPassCtx, ItemMode, ListPass, run_list_pass, with_stencil_write,
+    ColorSpec, DepthSpec, DrawPassCtx, ItemMode, ListPass, run_list_layer, with_stencil_write,
 };
 use crate::systems::render_loop::draw_passes::draw_lists::{DrawLists, list};
 
@@ -90,67 +90,30 @@ pub fn main_pass(
     shader_refactoring_disabled: bool,
 ) {
     let vp = targets.depth;
-    // 1. "G-buffer"：颜色 tag2，深度 tag0 + 清除到 0.0（`[0xdf8] = 1`、`+0x14 = 0`）。
     let c1 = [ColorSpec::tag2(targets.gbuffer)];
-    let d1 = DepthSpec::Write {
-        tex: targets.depth,
-        layer: 0,
-        clear: Some(0.0),
-    };
-    run_list_pass(
-        ctx,
-        &stencil_pass(names::GBUFFER, &c1, d1, vp),
-        lists.list(list::GBUFFER),
-    );
-    // 2. "G-buffer emissive"：tag0 G-buffer + tag1 emissive。
     let c2 = [ColorSpec::tag0(targets.gbuffer), ColorSpec::tag1(*emissive)];
-    run_list_pass(
-        ctx,
-        &stencil_pass(names::GBUFFER_EMISSIVE, &c2, depth_write_load(targets), vp),
-        lists.list(list::GBUFFER_EMISSIVE),
-    );
-    // 3. "G-buffer velocity"：tag0 G-buffer + tag1 velocity（`rdx += 0x48`）。
-    let c3 = [
-        ColorSpec::tag0(targets.gbuffer),
-        ColorSpec::tag1(targets.velocity),
-    ];
-    run_list_pass(
-        ctx,
-        &stencil_pass(names::GBUFFER_VELOCITY, &c3, depth_write_load(targets), vp),
-        lists.list(list::GBUFFER_VELOCITY),
-    );
-    if shader_refactoring_disabled {
-        // 4. "Forward"：tag0 emissive。
-        let c4 = [ColorSpec::tag0(*emissive)];
-        run_list_pass(
-            ctx,
-            &stencil_pass(names::FORWARD, &c4, depth_write_load(targets), vp),
-            lists.list(list::FORWARD),
-        );
-        // 5. "ForwardVelocity"：tag0 emissive + tag0 velocity。
-        let c5 = [
-            ColorSpec::tag0(*emissive),
-            ColorSpec::tag0(targets.velocity),
-        ];
-        run_list_pass(
-            ctx,
-            &stencil_pass(names::FORWARD_VELOCITY, &c5, depth_write_load(targets), vp),
-            lists.list(list::FORWARD_VELOCITY),
-        );
-    }
-    // 6. "Velocity"：tag0 velocity、深度只读（tag1）；状态在构造包之前改写。
+    let c3 = [ColorSpec::tag0(targets.gbuffer), ColorSpec::tag1(targets.velocity)];
+    let c4 = [ColorSpec::tag0(*emissive)];
+    let c5 = [ColorSpec::tag0(*emissive), ColorSpec::tag0(targets.velocity)];
     let c6 = [ColorSpec::tag0(targets.velocity)];
-    let spec = ListPass {
-        name: names::VELOCITY,
-        colors: &c6,
-        depth: DepthSpec::ReadOnly { tex: targets.depth },
-        viewport: vp,
-        flag: false,
-        mode: ItemMode::Velocity,
-        variant: 0,
-        extra: None,
-    };
-    run_list_pass(ctx, &spec, lists.list(list::VELOCITY));
+    let mut layer = vec![
+        (stencil_pass(names::GBUFFER, &c1, DepthSpec::Write {
+            tex: targets.depth, layer: 0, clear: Some(0.0),
+        }, vp), lists.list(list::GBUFFER)),
+        (stencil_pass(names::GBUFFER_EMISSIVE, &c2, depth_write_load(targets), vp), lists.list(list::GBUFFER_EMISSIVE)),
+        (stencil_pass(names::GBUFFER_VELOCITY, &c3, depth_write_load(targets), vp), lists.list(list::GBUFFER_VELOCITY)),
+    ];
+    if shader_refactoring_disabled {
+        layer.push((stencil_pass(names::FORWARD, &c4, depth_write_load(targets), vp), lists.list(list::FORWARD)));
+        layer.push((stencil_pass(names::FORWARD_VELOCITY, &c5, depth_write_load(targets), vp), lists.list(list::FORWARD_VELOCITY)));
+    }
+    layer.push((ListPass {
+        name: names::VELOCITY, colors: &c6,
+        depth: DepthSpec::ReadOnly { tex: targets.depth }, viewport: vp,
+        flag: false, mode: ItemMode::Velocity, variant: 0, extra: None,
+    }, lists.list(list::VELOCITY)));
+    let jobs: Vec<_> = layer.iter().map(|(spec, items)| (spec, *items)).collect();
+    run_list_layer(ctx, &jobs);
 }
 
 /// W30 — 遮挡 pass 2（HZB 之后；5 个子 pass，全部 tag0 / 深度加载，无 `Forward` 门，O：0x140835a40）。
@@ -162,54 +125,23 @@ pub fn main_pass_oc2(
 ) {
     let vp = targets.depth;
     let c1 = [ColorSpec::tag0(targets.gbuffer)];
-    run_list_pass(
-        ctx,
-        &stencil_pass(names::GBUFFER_OC2, &c1, depth_write_load(targets), vp),
-        lists.list(list::GBUFFER_OC2),
-    );
     let c2 = [ColorSpec::tag0(targets.gbuffer), ColorSpec::tag0(*emissive)];
-    run_list_pass(
-        ctx,
-        &stencil_pass(
-            names::GBUFFER_EMISSIVE_OC2,
-            &c2,
-            depth_write_load(targets),
-            vp,
-        ),
-        lists.list(list::GBUFFER_EMISSIVE_OC2),
-    );
-    let c3 = [
-        ColorSpec::tag0(targets.gbuffer),
-        ColorSpec::tag0(targets.velocity),
-    ];
-    run_list_pass(
-        ctx,
-        &stencil_pass(
-            names::GBUFFER_VELOCITY_OC2,
-            &c3,
-            depth_write_load(targets),
-            vp,
-        ),
-        lists.list(list::GBUFFER_VELOCITY_OC2),
-    );
+    let c3 = [ColorSpec::tag0(targets.gbuffer), ColorSpec::tag0(targets.velocity)];
     let c4 = [ColorSpec::tag0(*emissive)];
-    run_list_pass(
-        ctx,
-        &stencil_pass(names::FORWARD_OC2, &c4, depth_write_load(targets), vp),
-        lists.list(list::FORWARD_OC2),
-    );
     let c5 = [ColorSpec::tag0(targets.velocity)];
-    let spec = ListPass {
-        name: names::VELOCITY_OC2,
-        colors: &c5,
-        depth: DepthSpec::ReadOnly { tex: targets.depth },
-        viewport: vp,
-        flag: false,
-        mode: ItemMode::Velocity,
-        variant: 0,
-        extra: None,
-    };
-    run_list_pass(ctx, &spec, lists.list(list::VELOCITY_OC2));
+    let layer = [
+        (stencil_pass(names::GBUFFER_OC2, &c1, depth_write_load(targets), vp), lists.list(list::GBUFFER_OC2)),
+        (stencil_pass(names::GBUFFER_EMISSIVE_OC2, &c2, depth_write_load(targets), vp), lists.list(list::GBUFFER_EMISSIVE_OC2)),
+        (stencil_pass(names::GBUFFER_VELOCITY_OC2, &c3, depth_write_load(targets), vp), lists.list(list::GBUFFER_VELOCITY_OC2)),
+        (stencil_pass(names::FORWARD_OC2, &c4, depth_write_load(targets), vp), lists.list(list::FORWARD_OC2)),
+        (ListPass {
+            name: names::VELOCITY_OC2, colors: &c5,
+            depth: DepthSpec::ReadOnly { tex: targets.depth }, viewport: vp,
+            flag: false, mode: ItemMode::Velocity, variant: 0, extra: None,
+        }, lists.list(list::VELOCITY_OC2)),
+    ];
+    let jobs: Vec<_> = layer.iter().map(|(spec, items)| (spec, *items)).collect();
+    run_list_layer(ctx, &jobs);
 }
 
 /// W34 — `Late Deferred`（`DrawLists +0x128/+0x130`）与 `Late Forward`（`+0x140/+0x148`）两个子 pass（O：0x1408373b0）。
@@ -224,24 +156,12 @@ pub fn late_forward_and_deferred_pass(
     scene_color: &AttachmentTexture,
     lists: &DrawLists,
 ) {
-    for (name, idx, target) in [
-        (names::LATE_DEFERRED, list::LATE_DEFERRED, targets.gbuffer),
-        (names::LATE_FORWARD, list::LATE_FORWARD, *scene_color),
-    ] {
-        if lists.list(idx).is_empty() {
-            continue;
-        }
-        let colors = [ColorSpec::tag0(target)];
-        let spec = ListPass {
-            name,
-            colors: &colors,
-            depth: depth_write_load(targets),
-            viewport: targets.depth,
-            flag: false,
-            mode: ItemMode::Stencil,
-            variant: 0,
-            extra: None,
-        };
-        run_list_pass(ctx, &spec, lists.list(idx));
-    }
+    let colors = [[ColorSpec::tag0(targets.gbuffer)], [ColorSpec::tag0(*scene_color)]];
+    let specs = [
+        stencil_pass(names::LATE_DEFERRED, &colors[0], depth_write_load(targets), targets.depth),
+        stencil_pass(names::LATE_FORWARD, &colors[1], depth_write_load(targets), targets.depth),
+    ];
+    let items = [lists.list(list::LATE_DEFERRED), lists.list(list::LATE_FORWARD)];
+    let jobs: Vec<_> = specs.iter().zip(items).filter(|(_, items)| !items.is_empty()).collect();
+    run_list_layer(ctx, &jobs);
 }

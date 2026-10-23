@@ -146,15 +146,16 @@ fn world() -> World {
     world.insert_resource(walls);
     let mut ssbos = AssetSsboLibrary::new();
     ssbos.add_new::<TerrainRockMaskSsbo>(&device);
-    let rock = ssbos.get_mut::<TerrainRockMaskSsbo>().unwrap();
-    assert_eq!(rock.mapped.len(), 0x2000);
+    assert_eq!(ssbos.get_mut::<TerrainRockMaskSsbo>().unwrap().mapped.len(), 0x2000);
+    // The render thread's completed rock-mask publication (gpu_readback).
+    let mut rock = vec![TerrainRockMaskSsbo(0); 0x2000];
     let xi = ((-35.0f32 / 130.0 + 0.5) * 512.0) as usize;
     let index = 256 * 512 + xi;
-    rock.mapped[index >> 5].0 |= 1 << (index & 31);
-    assert_eq!(
-        TerrainRockMaskSsbo::sample_mapped_at_world_xz(&rock.mapped[..], -35.0, 0.0),
-        1
-    );
+    rock[index >> 5].0 |= 1 << (index & 31);
+    assert_eq!(TerrainRockMaskSsbo::sample_mapped_at_world_xz(&rock, -35.0, 0.0), 1);
+    let mut readbacks = country_core::render::gpu_readback::GpuReadbacks::default();
+    readbacks.publish_slice(&rock, 1);
+    world.insert_resource(readbacks);
     world.insert_resource(ssbos);
     // These are actual reserved entities/commands, not pre-inserted query components.
     for (i, x) in [-55.0, -35.0, -15.0, 5.0, 25.0, 45.0]
@@ -370,6 +371,9 @@ fn shipped_themes_execute_actual_asset_producer_and_nonempty_delayed_converter()
             0x2000
         );
         world.insert_resource(ssbos);
+        let mut readbacks = country_core::render::gpu_readback::GpuReadbacks::default();
+        readbacks.publish_slice(&[TerrainRockMaskSsbo(0); 0x2000], 1);
+        world.insert_resource(readbacks);
         let mut schedule = Schedule::default();
         schedule.add_systems(
             (

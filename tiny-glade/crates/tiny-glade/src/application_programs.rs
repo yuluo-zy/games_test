@@ -7,7 +7,7 @@ use country_core::{asset_libraries::{Handle, shader_library::AssetShaderLibrary}
     render::shader::{RasterShaderProgram, boundary::*}};
 use crate::render_host::ShaderHost;
 
-#[derive(Resource)]
+#[derive(Clone, Resource)]
 pub(super) struct RegisteredApplicationPrograms {
     pub library: Arc<AssetShaderLibrary>,
     pub backend: Arc<ShaderHost>,

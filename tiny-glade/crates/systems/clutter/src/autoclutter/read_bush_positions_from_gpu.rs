@@ -82,17 +82,31 @@ pub fn hash_bush_positions(positions: &[Vec2]) -> u64 {
 pub fn read_bush_positions_from_gpu(
     ssbos: Res<AssetSsboLibrary>,
     mut grid: ResMut<BushGrid>,
+    readbacks: Option<Res<country_core::render::gpu_readback::GpuReadbacks>>,
+    mut processed: Local<u64>,
 ) {
     // The canonical library performs the native full-type check. Missing
     // registration returns before touching BushGrid or its change tick.
-    let Some(bush) = ssbos.get::<BushCpuSsbo>() else {
+    if ssbos.get::<BushCpuSsbo>().is_none() {
+        return;
+    }
+    // Rows come from the render thread's latest complete publication, never
+    // the mapping the in-flight GPU frame is rewriting. Before the first one
+    // (zero-initialized buffer: count 0) or for an already processed copy the
+    // grid would be unchanged, so neither touches BushGrid or its change tick.
+    let Some(view) = readbacks.as_deref().and_then(|readbacks| readbacks.get::<BushCpuSsbo>()) else {
         return;
     };
-    let len = bush.mapped.len();
+    if view.revision == *processed {
+        return;
+    }
+    *processed = view.revision;
+    let rows = view.data;
+    let len = rows.len();
     if len == 0 {
         panic!("read_bush_positions_from_gpu: panic_bounds_check (empty buffer)");
     }
-    let count = bush.mapped[0].0[0] as usize;
+    let count = rows[0].0[0] as usize;
     if len <= count {
         panic!("read_bush_positions_from_gpu: slice_end_index_len_fail (count={count}, mapped_len={len})");
     }
@@ -103,7 +117,7 @@ pub fn read_bush_positions_from_gpu(
     }
 
     // 3. 逐 bush：Aabb2::from_center_radius(center, 0.7) → 每覆盖格追加 bush 位置。
-    for row in &bush.mapped[1..count + 1] {
+    for row in &rows[1..count + 1] {
         let pos = Vec2::new(f32::from_bits(row.0[0]), f32::from_bits(row.0[1]));
         let rect = [
             pos.x - BUSH_CELL_RADIUS,
@@ -152,35 +166,38 @@ pub fn read_bush_positions_from_gpu(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use country_core::render::ssbo::{MappedStorageBuffer, rhapsody_boundary::Buffer};
+    use country_core::render::{gpu_readback::GpuReadbacks, ssbo::{MappedStorageBuffer, rhapsody_boundary::Buffer}};
 
     /// Actual canonical typed storage/library, with a test-owned mapped page.
     /// This represents completed host readback; it does not emulate GPU work.
     fn fixture(rows: Option<Vec<[u32; 2]>>) -> (World, Schedule, tabloid::Subscriber<DirtyTiles>) {
         let mut world = World::new();
         let library = AssetSsboLibrary::new();
+        let mut readbacks = GpuReadbacks::default();
         if let Some(rows) = rows {
             let size = rows.len() * 8;
+            readbacks.publish_slice(&rows.iter().copied().map(BushCpuSsbo).collect::<Vec<_>>(), 1);
             let mapped = Box::leak(
                 rows.into_iter()
                     .map(BushCpuSsbo)
                     .collect::<Vec<_>>()
                     .into_boxed_slice(),
             );
-            library.register::<BushCpuSsbo>(MappedStorageBuffer {
+            library.register::<BushCpuSsbo>(MappedStorageBuffer::from_mapping(
                 mapped,
-                buffer: Buffer {
+                Buffer {
                     id: 71,
                     generation: 1,
                     _gap10: 0,
                     byte_size: size as u64,
                     _gap20: 0,
                 },
-            });
+            ));
         }
         let mut grid = BushGrid::default();
         let subscriber = grid.publisher.subscribe();
         world.insert_resource(library);
+        world.insert_resource(readbacks);
         world.insert_resource(grid);
         let mut schedule = Schedule::default();
         schedule.add_systems(read_bush_positions_from_gpu);
@@ -189,14 +206,13 @@ mod tests {
     fn bits(point: Vec2) -> [u32; 2] {
         [point.x.to_bits(), point.y.to_bits()]
     }
+    /// A later completed GPU copy, published by the render thread.
     fn mapped(world: &mut World, change: impl FnOnce(&mut [BushCpuSsbo])) {
-        change(
-            &mut world
-                .resource_mut::<AssetSsboLibrary>()
-                .get_mut::<BushCpuSsbo>()
-                .unwrap()
-                .mapped,
-        );
+        let mut readbacks = world.resource_mut::<GpuReadbacks>();
+        let view = readbacks.get::<BushCpuSsbo>().unwrap();
+        let (mut rows, frame) = (view.data.to_vec(), view.frame);
+        change(&mut rows);
+        readbacks.publish_slice(&rows, frame + 1);
     }
 
     #[test]

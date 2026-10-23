@@ -58,8 +58,9 @@ use crate::mei::core::{
 ///    (force_interactive || content.interactive())`；矩形 =
 ///    `(pos..pos+size) * scale`；hover = 光标在内 **或**（focus.tag==Mei &&
 ///    focus.id==node && hold）。
-/// 10. `interactive && hover` → `UiState` **unwrap/panic** + `WidgetParams`
-///     `{new, no_history_recording, occlude_by_world(true),
+/// 10. `interactive` → `UiState` **unwrap/panic** + `WidgetParams`, including
+///     forced-interactive empty roots that block input behind a real menu.
+///     `{new, no_history_recording, occlude_by_world(false),
 ///     allow_negative_distance(true), sounds(empty)}` → `UiState::add<String>`；
 ///     drag 状态位（bit1/2/3）= `slider3d::into_drag_state()` 的三个谓词；
 ///     `clicked` → 状态 bit4（焦点二项待 `MeiContext+0xc8` 槽）；焦点位 +
@@ -213,8 +214,11 @@ pub fn mei_pre_update(
             }
         }
 
-        // O L651-854：仅内容非空节点进入 widget 注册/事件分发。
-        if has_content && interactive && hover {
+        // B140684c98..d64: FORCE_INTERACTIVE bypasses the empty-content test;
+        // registration depends on interactivity, not pointer containment.
+        // Opaque safe_frame roots therefore participate in next-frame picking
+        // across their full bounds, even though their content is empty.
+        if interactive {
             // O L656-675：`Option<ResMut<UiState>>` 缺失 → panic_fmt
             // （原版为 unwrap/expect，串 U）。
             let state = ui_state
@@ -287,7 +291,7 @@ pub fn mei_pre_update(
 
             // 取出本帧输入事件（仅焦点节点消费；未消费则留给 post_update 清空）。
             let focused = mei.nodes.get(id).unwrap().state_bits & NodeStateBits::FOCUS != 0;
-            if focused {
+            if has_content && focused {
                 let events = std::mem::take(&mut mei.input_events);
                 let node = mei.nodes.get_mut(id).unwrap();
                 for ev in events {
@@ -302,13 +306,11 @@ pub fn mei_pre_update(
 
             // O L829-853：`inside && scroll != 0` → 派发滚轮事件
             // （tag 0xc3，载荷 = 累计滚轮 Vec2）。
-            if inside && scroll != Vec2::ZERO {
+            if has_content && inside && scroll != Vec2::ZERO {
                 let node = mei.nodes.get_mut(id).unwrap();
                 node.content
                     .process_input_action(&MeiInputEvent::scroll(scroll));
             }
-        } else if has_content && !interactive && inside {
-            // 非交互节点仍参与悬停位的写入（上面已写）；不注册 widget。
         }
 
         // O L855-890：上升沿声音。

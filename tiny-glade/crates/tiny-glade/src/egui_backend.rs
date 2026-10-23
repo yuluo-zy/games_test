@@ -44,6 +44,8 @@ pub struct EguiBackend {
     shapes: Vec<egui::epaint::ClippedShape>,
     textures_delta: egui::TexturesDelta,
     context: egui::Context,
+    pixels_per_point: f32,
+    primitives: Option<Vec<egui::ClippedPrimitive>>,
 }
 
 impl EguiBackend {
@@ -51,9 +53,27 @@ impl EguiBackend {
         Self {
             shapes: Vec::new(),
             textures_delta: egui::TexturesDelta::default(),
+            pixels_per_point: context.pixels_per_point(),
             context,
+            primitives: None,
         }
     }
+
+    /// Freeze tessellation while this frame still owns the GUI context state.
+    /// The render thread consumes owned primitives and a captured scale; a new
+    /// GUI frame cannot change its font atlas, tessellation options or DPI.
+    pub fn hand_over(&mut self) -> Self {
+        Self {
+            shapes: Vec::new(),
+            textures_delta: std::mem::take(&mut self.textures_delta),
+            context: self.context.clone(),
+            pixels_per_point: self.pixels_per_point,
+            primitives: Some(self.primitives.take().unwrap_or_else(||
+                self.context.tessellate(std::mem::take(&mut self.shapes), self.pixels_per_point))),
+        }
+    }
+
+    pub fn pixels_per_point(&self) -> f32 { self.pixels_per_point }
 
     pub fn context(&self) -> &egui::Context {
         &self.context
@@ -75,6 +95,8 @@ impl EguiBackend {
     ///    the shapes and texture deltas from this backend, not from that channel.
     pub fn end_frame(&mut self) -> egui::PlatformOutput {
         let mut output = self.context.end_frame();
+        self.pixels_per_point = output.pixels_per_point;
+        self.primitives = None;
 
         // Step 2: the original drops the viewport-output hash table.
         output.viewport_output.clear();
@@ -105,8 +127,8 @@ impl EguiBackend {
         for (id, image_delta) in &self.textures_delta.set {
             renderer.update_texture(*id, image_delta)?;
         }
-        let shapes = std::mem::take(&mut self.shapes);
-        let primitives = self.context.tessellate(shapes, self.context.pixels_per_point());
+        let primitives = self.primitives.take().unwrap_or_else(||
+            self.context.tessellate(std::mem::take(&mut self.shapes), self.pixels_per_point));
         renderer.draw_primitives(&primitives, screen_size_pixels)?;
         self.textures_delta.set.clear();
         for id in self.textures_delta.free.drain(..) {
@@ -182,4 +204,32 @@ mod tests {
         assert!(renderer.textures_used.contains(&id));
         assert!(backend.textures_delta.is_empty());
     }
+
+    #[test]
+    fn handed_over_frame_keeps_its_geometry_and_scale_during_the_next_gui_frame() {
+        let context = egui::Context::default();
+        let mut backend = EguiBackend::new(context.clone());
+        context.begin_frame(egui::RawInput::default());
+        context.layer_painter(egui::LayerId::background()).rect_filled(
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(32.0, 16.0)),
+            0.0, egui::Color32::WHITE);
+        backend.end_frame();
+        let scale = backend.pixels_per_point();
+        let mut handed = backend.hand_over();
+        assert!(!handed.primitives.as_ref().unwrap().is_empty());
+        assert!(backend.shapes.is_empty());
+        let worker = std::thread::spawn(move || {
+            context.set_pixels_per_point(scale * 2.0);
+            context.begin_frame(egui::RawInput::default());
+            context.tessellation_options_mut(|options| options.feathering = false);
+            let _ = context.end_frame();
+        });
+        worker.join().unwrap();
+        assert_eq!(handed.pixels_per_point(), scale);
+        let mut renderer = Renderer::default();
+        handed.draw([64, 64], &mut renderer).unwrap();
+        assert!(renderer.calls.contains(&Call::Draw));
+        assert!(!renderer.textures_used.is_empty());
+    }
+
 }

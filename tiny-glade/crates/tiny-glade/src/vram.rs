@@ -19,8 +19,8 @@
 //!   `<0→0`、`>u64::MAX→MAX` 的 CMOVS 序列）；精度说明符由
 //!   `format_inner` 的 Placeholder 常量解出为 `Count::Is(2)` → `{:.2}`。
 //! - 预算字节在 B 中直接由 `PhysicalDevice::..._budget_bytes` 返回裸 u64；
-//!   本 workspace 的 rhapsody 合同为 `Result<Option<u64>>`，缺省按 0 处理
-//!   （B 未支持扩展时求和结果同样为 0）。合同缝，非行为分歧。
+//!   本宿主读取 Device 的原始预算缓存；未知预算明确跳过自动限幅，
+//!   属平台适配，不以 allocator 配额或 heap size 替代驱动预算。
 
 use ash::vk;
 use rhapsody::device::Device;
@@ -48,28 +48,16 @@ const GIB: f64 = 9.313_225_746_154_785e-10;
 /// `scale_from` divides by `0.0` in the host-budget path in the original
 /// machine code (`divsd xmm0, xmm11` where `xmm11 == 0.0`); this is preserved
 /// verbatim because it is observable: a host budget below the reserve yields a
-/// negative value, the `0.0 < value` guard skips it and `min` returns the first
-/// scale, while a positive budget yields `+inf` and does not constrain.
+/// negative value, the `0.0 < value` guard keeps the host scale at zero, while a positive budget yields `+inf` and does not constrain.
 ///
 /// Final quantisation is `(scale * 10.0).floor() * 0.1`.
 pub fn calculate_max_resolution_scale(device: &Device, render_resolution: [u32; 2]) -> f32 {
-    let physical = device
-        .physical_device_info()
-        .expect("physical device info must be initialised");
+    let physical_type = device.properties().device_type;
     let width = render_resolution[0] as f64;
     let height = render_resolution[1] as f64;
 
-    let discrete = physical.properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU;
-    let device_local = physical
-        .device_local_memory_budget_bytes()
-        .ok()
-        .flatten()
-        .unwrap_or(0);
-    let host = physical
-        .host_memory_budget_bytes()
-        .ok()
-        .flatten()
-        .unwrap_or(0);
+    let discrete = physical_type == vk::PhysicalDeviceType::DISCRETE_GPU;
+    let Some((device_local, host)) = driver_budgets(device) else { return f32::MAX; };
 
     let scale = if discrete {
         let gpu = scale_from_budget(device_local as f64, width, height, DISCRETE_RESERVED);
@@ -87,6 +75,15 @@ pub fn calculate_max_resolution_scale(device: &Device, render_resolution: [u32; 
     };
 
     (scale * 10.0).floor() * 0.1
+}
+
+/// Uses the actual logical device's published driver query for every creation
+/// path, including WSI devices without an attached PhysicalDevice wrapper.
+fn driver_budgets(device: &Device) -> Option<(u64, u64)> {
+    let snapshot = device.driver_memory_budget_snapshot()?;
+    let memory = device.memory_properties();
+    let heaps = &memory.memory_heaps[..(memory.memory_heap_count as usize).min(memory.memory_heaps.len())];
+    Some((snapshot.sum_budget(heaps, true), snapshot.sum_budget(heaps, false)))
 }
 
 /// Shared arithmetic for `calculate_max_resolution_scale` (discrete branch).
@@ -123,9 +120,7 @@ pub fn calculate_resolution_scale_mem_estimate_text(
     render_resolution: [u32; 2],
     resolution_scale: f32,
 ) -> String {
-    let physical = device
-        .physical_device_info()
-        .expect("physical device info must be initialised");
+    let physical_type = device.properties().device_type;
     let width = render_resolution[0] as f64;
     let height = render_resolution[1] as f64;
     let scale = resolution_scale as f64;
@@ -133,18 +128,9 @@ pub fn calculate_resolution_scale_mem_estimate_text(
     let pixel_bytes = width * height * BYTES_PER_UNIT;
     let scaled_bytes = width * scale * height * scale * COST_PER_SCALED_UNIT;
 
-    let device_local = physical
-        .device_local_memory_budget_bytes()
-        .ok()
-        .flatten()
-        .unwrap_or(0);
-    let host = physical
-        .host_memory_budget_bytes()
-        .ok()
-        .flatten()
-        .unwrap_or(0);
+    let (device_local, host) = driver_budgets(device).unwrap_or((0, 0));
 
-    if physical.properties.device_type == vk::PhysicalDeviceType::DISCRETE_GPU {
+    if physical_type == vk::PhysicalDeviceType::DISCRETE_GPU {
         // 原版先把字节和 `as u64`（饱和截断）再乘 2^-30；`0.0 * x` 保留，
         // 使 inf/NaN 时与原机器码同为 0。
         let usage_gib = ((scaled_bytes + pixel_bytes + DISCRETE_RESERVED) as u64) as f64 * GIB;

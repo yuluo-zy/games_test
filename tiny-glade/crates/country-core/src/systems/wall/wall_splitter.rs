@@ -60,7 +60,7 @@ use crate::{
             },
             signifiers::{
                 animation::SignifierAnimation,
-                signifier_create::{SignifierId, UiSignifierStream},
+                signifier_create::UiSignifierStream,
                 signifier_factory::SignifierFactory,
             },
         },
@@ -274,8 +274,7 @@ fn scissors_factory(name: &str, rotation: Quat, top: Vec3) -> SignifierFactory {
                             transform,
                         },
                         DontCastShadow,
-                        SignifierId(0),
-                        SignifierAnimation {
+                            SignifierAnimation {
                             flag_8: 1,
                             duration: 0.0,
                             value: 1.0,

@@ -160,3 +160,9 @@ pub fn custom_cursor_pass_from_world(
     let window = crate::utils::get_res::<crate::resources::window::WindowSize>(world);
     custom_cursor_pass(ctx, target, (window.width, window.height), cursor_visible);
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
+    m.resource::<crate::resources::window::WindowSize>();
+}

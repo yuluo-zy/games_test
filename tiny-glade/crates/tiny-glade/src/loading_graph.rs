@@ -42,9 +42,17 @@ pub struct LoadingGpuResources {
     background_preparation: background_prepare::BackgroundPreparation,
 }
 
+/// A render-thread snapshot: the MEI view of this frame; background
+/// preparation is polled on the game thread only.
+impl Clone for LoadingGpuResources {
+    fn clone(&self) -> Self {
+        Self { mei: self.mei.render_snapshot(), background_preparation: Default::default() }
+    }
+}
+
 /// The native managed owner survives the loading→gameplay App move. Graph
 /// indices and TextureHost slot numbers are deliberately not persisted here.
-#[derive(Resource)]
+#[derive(Clone, Resource)]
 pub(crate) struct SavedLoadingBackgroundTexture(pub Arc<rhapsody::resource::Texture>);
 
 pub(crate) fn import_saved_background(
@@ -396,6 +404,25 @@ impl ShaderLookup for LibraryShaders<'_> {
         self.0.get_raster_handle_by_name(name).map(|h| country_core::rhapsody_contract::Handle(
             country_core::rhapsody_contract::ManagedHandle(h.id().raw()), core::marker::PhantomData))
     }
+}
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<SavedLoadingBackgroundTexture>();
+    m.resource::<VermeerState>();
+    m.resource::<country_core::render::device::GraphicsDeviceResource>();
+    m.resource::<LoadingGpuResources>();
+    m.resource::<SavedSessionList>();
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    m.resource::<country_core::asset_libraries::color_library::ColorLibrarySsbo>();
+    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
+    m.resource::<country_core::resources::grading_lut::GradingLuts>();
+    m.resource::<WindowSize>();
+    m.presence::<tg_text::TextRenderer>();
+    m.resource::<bevy_time::Time>();
+    m.resource_incremental::<AssetVAOLibrary>(AssetVAOLibrary::snapshot_revision, AssetVAOLibrary::update_render_snapshot);
+    m.resource::<AssetPlacementDataLibrary>();
 }
 
 #[cfg(test)]

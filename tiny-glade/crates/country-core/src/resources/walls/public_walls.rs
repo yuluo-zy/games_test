@@ -41,7 +41,7 @@ pub enum WallPublicationEvent {
     Deleted(WallId),
 }
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct WallPublicationDelta {
     pub changed: HashSet<WallId>,
     pub removed: HashSet<WallId>,
@@ -59,7 +59,7 @@ pub struct WallPublicationDirty {
     pub secondary: DirtyTiles,
 }
 
-#[derive(Resource, Default)]
+#[derive(Clone, Resource, Default)]
 pub struct PublicWalls {
     records: HashMap<WallId, PublicWallState>,
     roofs: HashMap<WallId, Entity>,

@@ -32,8 +32,9 @@ pub trait GpuLutApi {
     ) -> rhapsody::Result<()>;
 }
 
-type LutBody = Box<dyn Fn(&mut dyn GpuLutApi) -> rhapsody::Result<()> + Send + Sync>;
+type LutBody = std::sync::Arc<dyn Fn(&mut dyn GpuLutApi) -> rhapsody::Result<()> + Send + Sync>;
 
+#[derive(Clone)]
 pub struct GpuLutDesc {
     source_hashes: Vec<u64>,
     render: LutBody,
@@ -46,7 +47,7 @@ impl GpuLutDesc {
     ) -> Self {
         Self {
             source_hashes: Vec::new(),
-            render: Box::new(render),
+            render: std::sync::Arc::new(render),
             rendered: false,
         }
     }
@@ -58,7 +59,7 @@ impl GpuLutDesc {
     }
 }
 
-#[derive(Resource)]
+#[derive(Clone, Resource)]
 pub struct GpuLutTracker {
     luts: Vec<GpuLutDesc>,
 }

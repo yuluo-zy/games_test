@@ -529,3 +529,43 @@ fn new_readback_host_initializes_undefined_bytes_once_and_keeps_gpu_and_explicit
     assert!(buffers.release(&target));
     assert!(buffers.managed_buffer(&target).is_none());
 }
+
+#[test]
+fn resident_thread_builds_its_own_rc_session_and_preserves_gpu_owners_across_frames() {
+    use bevy_ecs::{resource::Resource, world::World};
+    use country_core::render::ssbo::rhapsody_boundary::Buffer;
+    use tiny_glade::render_thread::{ExtractSet, RenderSide, RenderThread};
+    #[derive(Resource, Clone, Copy)]
+    struct FrameInput { buffer: Buffer, value: u32 }
+    fn render(bridge: &mut CoreRenderBridge, side: &mut RenderSide) {
+        let input = *side.world.resource::<FrameInput>();
+        bridge.render_frame(|frame| {
+            let target = frame.import_buffer(&input.buffer, 0)?;
+            frame.with_compute(|compute| rg_buffer_copy_from_slice_u32(compute,
+                target.raw(), 8, &[input.value, !input.value], UploadContentVersion::Unknown))?;
+            frame.with_graph(|graph| { graph.export(target, 0x26)?; Ok(()) })
+        }).unwrap();
+        bridge.wait_submits_done(10_000_000_000).unwrap();
+        side.feedback.rendered = true;
+        side.feedback.submitted = true;
+    }
+    let Some(bridge) = bridge() else { return };
+    let buffers = bridge.hosts().buffers.clone();
+    let owners = bridge.warmup_owners().unwrap();
+    drop(bridge); // the main-thread session is never moved across threads
+    let buffer = buffers.create_buffer(&BufferDesc::new(8, 0x22, 2), "resident frame target", None).unwrap();
+    let mut thread = RenderThread::spawn(move || Ok(CoreRenderBridge::from_owners(owners)?), render).unwrap();
+    let mut game = World::new();
+    let mut extract = ExtractSet::default();
+    extract.copy::<FrameInput>();
+    for value in 0..32_u32 {
+        game.insert_resource(FrameInput { buffer, value });
+        thread.submit_frame(&mut game, &mut extract);
+        let feedback = thread.apply_feedback(&mut game);
+        assert!(feedback.rendered && feedback.submitted);
+        let expected = [value.to_ne_bytes(), (!value).to_ne_bytes()].concat();
+        assert_eq!(&buffers.mapped_slice_mut(&buffer).unwrap()[..8], expected);
+    }
+    thread.shutdown();
+    assert!(buffers.release(&buffer));
+}

@@ -88,7 +88,9 @@ pub fn draw_raster<T, C>(
             let staging = library
                 .get_mut::<T>()
                 .expect("called `Option::unwrap()` on a `None` value");
-            raster.copy_to_staging(1, bytemuck::cast_slice_mut(staging.mapped));
+            staging.with_cpu_write(|mapped|
+                raster.copy_to_staging(1, bytemuck::cast_slice_mut(mapped)))
+                .expect("raster staging write failed");
         },
         on_draw,
         on_erase,

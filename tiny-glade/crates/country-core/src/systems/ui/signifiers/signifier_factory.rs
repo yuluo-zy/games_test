@@ -54,8 +54,16 @@ impl Clone for SignifierFactory {
     /// 深拷贝载荷（避免派生 `Clone` 对裸指针 + `Drop` 的双重释放），并共享闭包
     /// （原生记录经 `Arc` 克隆，引用计数 +1）。
     fn clone(&self) -> Self {
-        let payload = self.payload();
-        let mut cloned = Self::new(payload, self.inner, self.marker);
+        // Native Option<&str> distinguishes None from Some(""). Preserve it
+        // across String/closure cloning rather than normalizing both to [].
+        let mut cloned = if self.name_ptr.is_null() {
+            let mut empty = Self::default();
+            empty.inner = self.inner;
+            empty.marker = self.marker;
+            empty
+        } else {
+            Self::new(self.payload(), self.inner, self.marker)
+        };
         cloned.closure = self.closure.clone();
         cloned
     }
@@ -117,7 +125,11 @@ impl SignifierFactory {
 
     /// 名字载荷（`from_closure`/`new` 均存字节串；非 UTF-8 返回 None）。
     pub fn name(&self) -> Option<&str> {
-        std::str::from_utf8(self.payload()).ok()
+        if self.name_ptr.is_null() {
+            None
+        } else {
+            Some(std::str::from_utf8(self.payload()).expect("native signifier name is UTF-8"))
+        }
     }
 
     /// 唤醒闭包（O：`signifier_create` 0x140b2cfa0 的 vtable 调用槽；

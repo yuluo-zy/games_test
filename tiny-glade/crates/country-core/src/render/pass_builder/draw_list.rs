@@ -39,12 +39,17 @@ use crate::rhapsody_contract::{Handle, ManagedHandle};
 
 /// `DrawTopology` 组件（O：tag u32 ∈ {0,1} + f32 载荷；变体名 U，下面按 `tag==1` 的用法起名，I）。
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq)]
+#[component(immutable,
+    on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub enum DrawTopology {
     /// tag 0（载荷 f32）。
     Default(f32),
     /// tag 1：回调里把 `state.byte0 = (b & 0xfc) | 2` 并改用此 f32。
     Alt(f32),
 }
+
+impl crate::render::extract::JournaledComponent for DrawTopology {}
 
 impl DrawTopology {
     /// 元素里的 tag（`+0x00` u32）。
@@ -76,7 +81,9 @@ pub struct EntityDrawParams {
 }
 
 /// 回调签名（O：`fn(DrawBuilder, &EntityDrawParams, &mut World)`）。
-pub type DrawListFn = for<'p> fn(DrawBuilder<'p>, &EntityDrawParams, &mut World);
+/// Read-only on the (render-thread) world: declaration never mutates it
+/// through a draw callback, which keeps per-draw callbacks parallelizable.
+pub type DrawListFn = for<'p> fn(DrawBuilder<'p>, &EntityDrawParams, &World);
 
 /// draw-list 项（0x70 B）。
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -139,7 +146,7 @@ pub fn sort_draw_list(list: &mut Vec<DrawListEntry>) {
 mod tests {
     use super::*;
 
-    fn noop(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {}
+    fn noop(_b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {}
 
     #[test]
     fn sort_is_stable_on_the_signed_i32_key() {

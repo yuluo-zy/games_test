@@ -389,7 +389,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
     fn unused(
         _: DrawBuilder<'_>,
         _: &country_core::render::pass_builder::draw_list::EntityDrawParams,
-        _: &mut World,
+        _: &World,
     ) {
     }
     lists.list_mut(0).push((item, unused));

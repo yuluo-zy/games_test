@@ -132,3 +132,36 @@ impl ShaderBackend for TestDevice {
         })
     }
 }
+
+/// CPU-only readback readiness adapter. It never claims real GPU completion;
+/// production hazard tests live in the native BufferHost suite.
+#[derive(Default)]
+pub(crate) struct TestReadbackAccess {
+    ready: std::sync::atomic::AtomicBool,
+    reads: std::sync::atomic::AtomicUsize,
+}
+impl TestReadbackAccess {
+    pub(crate) fn set_ready(&self, ready: bool) {
+        self.ready.store(ready, std::sync::atomic::Ordering::Release);
+    }
+    pub(crate) fn reads(&self) -> usize {
+        self.reads.load(std::sync::atomic::Ordering::Acquire)
+    }
+}
+impl rhapsody_boundary::MappedUploadWriter for TestReadbackAccess {
+    fn write(&self, _: usize, _: &[u8]) -> Result<(), rhapsody_boundary::BackendError> {
+        Err(rhapsody_boundary::BackendError::unsupported("test readback has no native upload"))
+    }
+    fn with_write(&self, _: usize, _: usize, edit: &mut dyn FnMut()) -> Result<(), rhapsody_boundary::BackendError> {
+        edit();
+        Ok(())
+    }
+    fn try_read(&self, _: usize, _: usize, read: &mut dyn FnMut()) -> Result<bool, rhapsody_boundary::BackendError> {
+        let ready = self.ready.load(std::sync::atomic::Ordering::Acquire);
+        if ready {
+            self.reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            read();
+        }
+        Ok(ready)
+    }
+}

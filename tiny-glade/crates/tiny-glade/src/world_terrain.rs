@@ -484,3 +484,35 @@ pub fn install_terrain_startup(
         },
     );
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.component::<country_core::utils::components::transform::Transform>();
+    m.component::<country_core::systems::render_loop::compute_passes::grass::ObjectGrassPush>();
+    m.resource::<country_core::resources::stairs::stairs_top_down::StairsTopDownMesh>();
+    m.resource::<country_core::resources::walls::public_walls::PublicWalls>();
+    m.resource_incremental::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(country_core::asset_libraries::ssbo_library::AssetSsboLibrary::snapshot_revision, country_core::asset_libraries::ssbo_library::AssetSsboLibrary::update_render_snapshot);
+    m.resource::<country_core::render::device::GraphicsDeviceResource>();
+    m.resource::<country_core::resources::terrain_editing::TerrainEditingData>();
+    m.events::<RecalculateHeightMapCmd>();
+    m.resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>();
+    m.resource::<country_core::systems::mode_manager::AppMode>();
+    m.events::<AddTerrainHighlightCmd>();
+    m.resource::<country_core::resources::gui::DebugGui>();
+    m.resource_projected::<country_core::resources::world_raster_defs::PathRaster>(country_core::resources::world_raster_defs::PathRaster::declaration_snapshot);
+    m.resource_projected::<country_core::resources::world_raster_defs::Cobblestone1Raster>(country_core::resources::world_raster_defs::Cobblestone1Raster::declaration_snapshot);
+    m.resource_projected::<country_core::resources::world_raster_defs::Cobblestone2Raster>(country_core::resources::world_raster_defs::Cobblestone2Raster::declaration_snapshot);
+    m.resource_projected::<country_core::resources::world_raster_defs::Cobblestone3Raster>(country_core::resources::world_raster_defs::Cobblestone3Raster::declaration_snapshot);
+    m.resource::<country_core::resources::brush_sizes::BrushSizes>();
+    m.resource_projected::<country_core::systems::camera_rig::main_camera::MainCamera>(country_core::systems::camera_rig::main_camera::MainCamera::render_snapshot);
+    m.resource::<country_core::resources::rocky_terrain::RockyTerrainMeshVertCount>();
+    m.resource::<country_core::resources::rocky_terrain::TerrainEntities>();
+    m.resource::<country_core::resources::rocky_terrain::RockyTerrainMeshVertCount>();
+    m.resource::<country_core::game_config::GameConfig>();
+    m.resource_with_revision::<country_core::systems::render_loop::compute_passes::read_terrain_data::ScheduledTerrainReadback>(|readback| readback.pending.load(std::sync::atomic::Ordering::Acquire));
+    m.component_journaled::<country_core::asset_libraries::Handle<country_core::render::vao::Vao>>();
+    m.component_journaled::<country_core::asset_libraries::Handle<country_core::render::shader::RasterShaderProgram>>();
+    m.component::<country_core::utils::components::transform::Transform>();
+    m.component_journaled::<country_core::render::pass_builder::draw_list::DrawTopology>();
+}

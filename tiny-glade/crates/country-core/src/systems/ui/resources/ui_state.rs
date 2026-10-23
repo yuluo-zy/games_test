@@ -229,6 +229,12 @@ impl UiState {
         self.replace_intersection(payload);
     }
 
+    /// Original signifier_create uses Arc::get_mut uniqueness, not COW.
+    /// No mutable owner exists while any other strong or weak owner survives.
+    pub fn active_params_mut(&mut self) -> Option<&mut WidgetParams> {
+        self.active_params.as_mut().and_then(Arc::get_mut)
+    }
+
     pub fn active_params(&self) -> Option<Arc<WidgetParams>> {
         self.active_params.as_ref().map(Arc::clone)
     }

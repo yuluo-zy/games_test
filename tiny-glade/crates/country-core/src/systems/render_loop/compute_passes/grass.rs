@@ -360,6 +360,8 @@ fn bind_preset(pass: ComputePass, name: &str, preset: u8) -> ComputePass {
     pass.bind_texture(binding_hash(name), &TexturePreset(preset), TEX_READ)
 }
 
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

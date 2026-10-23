@@ -418,9 +418,54 @@ pub struct PassAccess {
     pub group: u32,
 }
 
+/// Collect-only IDs live outside rhapsody's u16 resource domain. They never
+/// reach the render graph: Commit resolves them through the original host.
+pub const DEFERRED_BUFFER_BASE: u32 = 1 << 16;
+
+#[derive(Clone, Copy, Debug)]
+pub struct DeferredBuffer {
+    pub token: u32,
+    pub hash: u64,
+    pub type_name: &'static str,
+}
+
+/// Owned output of a contiguous draw range. Contains no host, graph or World.
+/// This is the only declaration result that crosses a worker boundary.
+pub struct DrawBatch {
+    draws: Vec<DrawPacket>,
+    bindings: Vec<RenderPassBinding>,
+    texture_slots: HashMap<TextureBindingKey, u8>,
+    buffer_slots: HashMap<&'static str, u8>,
+    accesses: Vec<PassAccess>,
+    binding_accesses: Vec<usize>,
+    deferred: Vec<DeferredBuffer>,
+}
+
 /// `GraphicsDeviceResource` / `PassResources(7 个指针)` / 游戏资源库在本模块被读取的全部外部调用面
 /// （O 调用点；实现者是 rhapsody 与游戏资源库）。
 pub trait PassHost {
+    /// Prepare an immutable factory. The returned hosts are constructed and
+    /// destroyed inside Collect; neither the graph nor its Rc crosses threads.
+    fn collect_factory(&self) -> Option<Arc<dyn Fn() -> alloc::boxed::Box<dyn PassHost> + Send + Sync>> {
+        None
+    }
+    /// Only an owning render thread may wait on shared-pool collection tasks.
+    fn try_parallel_collect(&self) -> Option<alloc::boxed::Box<dyn core::any::Any>> { None }
+    fn collect_chunk_draws(&self) -> usize { 64 }
+
+    /// Logical SSBO references recorded by a graph-free collector, in lookup order.
+    fn take_deferred_buffers(&mut self) -> Vec<DeferredBuffer> { Vec::new() }
+
+    /// Move constant bytes to the host. Collectors retain ownership until Commit.
+    fn finish_dynamic_constants(&mut self, constants: DynamicConstantsBinding, _packet: &mut DrawPacket) {
+        self.flush_dynamic_constants(&constants);
+    }
+    /// Return task-local storage without publishing a discarded draw.
+    fn discard_dynamic_constants(&mut self, _constants: DynamicConstantsBinding) {}
+
+    /// Resolve owned CPU constants after Collect, on the graph's owning thread.
+    fn commit_collected_draw(&mut self, _packet: &mut DrawPacket) {}
+
     /// `FrozenMap<Handle<RasterShaderProgram>, Box<RasterShaderProgram>>::get` + `variants[variant].compiled`
     /// （`PassResources +0x1a8`）。缺失返回 `None`。
     fn raster_shader(
@@ -564,14 +609,24 @@ pub const MAX_COLOR_ATTACHMENTS: usize = 5;
 /// `render` 里 `ArrayVec<AttachmentDesc, 8>` 的容量（O：`cmp rsi, 0x80`）。
 pub const MAX_RENDER_PASS_COLORS: usize = 8;
 
-/// RasterPass（0x3e8 B）。
-pub struct RasterPass {
-    pub(crate) name: &'static str,
+/// Task-owned draw state. Builders cannot mutate attachments, submit a pass,
+/// or retain the graph-owning RasterPass through this borrow.
+#[derive(Default)]
+pub struct DrawDeclarations {
     pub(crate) draws: Vec<DrawPacket>,
     pub(crate) bindings: Vec<RenderPassBinding>,
     pub(crate) texture_slots: HashMap<TextureBindingKey, u8>,
     pub(crate) buffer_slots: HashMap<&'static str, u8>,
     pub(crate) accesses: Vec<PassAccess>,
+    /// Access introduced by each binding; needed to preserve cache-hit semantics
+    /// when merging independently collected contiguous draw ranges.
+    pub(crate) binding_accesses: Vec<usize>,
+}
+
+/// RasterPass（0x3e8 B）。
+pub struct RasterPass {
+    pub(crate) name: &'static str,
+    pub(crate) body: DrawDeclarations,
     pub(crate) depth: Option<RasterPassDepth>,
     pub(crate) colors: Vec<RasterPassColorAttachment>,
     pub(crate) host: alloc::boxed::Box<dyn PassHost>,
@@ -581,7 +636,129 @@ pub struct RasterPass {
     pub(crate) rendered: DrawPassRenderCheck,
 }
 
+impl core::ops::Deref for RasterPass {
+    type Target = DrawDeclarations;
+    fn deref(&self) -> &Self::Target { &self.body }
+}
+impl core::ops::DerefMut for RasterPass {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.body }
+}
+
 impl RasterPass {
+    /// A task-local declaration sink, deliberately without graph attachments.
+    pub fn collector(host: alloc::boxed::Box<dyn PassHost>, viewport: [u32; 2]) -> Self {
+        Self::new("draw-collect", &[], None, host).with_viewport(viewport)
+    }
+
+    pub fn into_draw_batch(mut self) -> DrawBatch {
+        assert!(self.colors.is_empty() && self.depth.is_none(), "only a collector can become a batch");
+        self.rendered.0 = true;
+        DrawBatch {
+            draws: self.body.draws,
+            bindings: self.body.bindings,
+            texture_slots: self.body.texture_slots,
+            buffer_slots: self.body.buffer_slots,
+            accesses: self.body.accesses,
+            binding_accesses: self.body.binding_accesses,
+            deferred: self.host.take_deferred_buffers(),
+        }
+    }
+
+    /// A texture cache keeps the first declaration's access mode. If a callback
+    /// changes that mode across chunks, its content checks must observe the
+    /// original cache; the caller reruns that pass through the serial path.
+    pub fn batches_compatible(&self, batches: &[DrawBatch]) -> bool {
+        let mut buffers = HashMap::new();
+        let mut textures: HashMap<TextureBindingKey, (u8, Option<TextureViewDesc>)> =
+            self.body.texture_slots.iter().map(|(&key, &slot)| {
+                let b = self.body.bindings[slot as usize]; (key, (b.access_type, b.view))
+            }).collect();
+        for batch in batches {
+            for (&key, &slot) in &batch.buffer_slots {
+                let resource = batch.bindings[slot as usize].resource_index;
+                let signature = if resource >= DEFERRED_BUFFER_BASE {
+                    let deferred = batch.deferred.iter().find(|buffer| buffer.token == resource)
+                        .expect("unresolved Collect resource");
+                    (deferred.hash, deferred.type_name, true)
+                } else { (u64::from(resource), "", false) };
+                if let Some(previous) = buffers.insert(key, signature) {
+                    if previous != signature { return false; }
+                }
+            }
+            for (&key, &slot) in &batch.texture_slots {
+                let b = batch.bindings[slot as usize];
+                let signature = (b.access_type, b.view);
+                if let Some(previous) = textures.insert(key, signature) {
+                    if previous != signature { return false; }
+                }
+            }
+        }
+        true
+    }
+
+    /// Stable Commit. Keep unbound and discarded-draw accesses, eliminate only
+    /// accesses that the original per-pass binding caches would have skipped.
+    pub fn commit_draw_batch(&mut self, mut batch: DrawBatch) {
+        let mut resolved = HashMap::new();
+        for buffer in batch.deferred {
+            let id = self.host.rg_buffer_resource_typed(buffer.hash, buffer.type_name)
+                .expect("no entry found for key");
+            assert!(id < DEFERRED_BUFFER_BASE, "graph resource overlaps Collect ID domain");
+            resolved.insert(buffer.token, id);
+        }
+        let resolve = |id: &mut u32| {
+            if *id >= DEFERRED_BUFFER_BASE {
+                *id = *resolved.get(id).expect("unresolved Collect resource");
+            }
+        };
+        let mut slots = vec![None; batch.bindings.len()];
+        for (&key, &slot) in &batch.texture_slots {
+            slots[slot as usize] = self.body.texture_slots.get(&key).copied();
+        }
+        for (&key, &slot) in &batch.buffer_slots {
+            slots[slot as usize] = self.body.buffer_slots.get(key).copied();
+        }
+        let mut skip = vec![false; batch.accesses.len()];
+        let mut new_bindings = Vec::new();
+        for (index, mut binding) in batch.bindings.drain(..).enumerate() {
+            let access_index = batch.binding_accesses[index];
+            if slots[index].is_some() {
+                skip[access_index] = true;
+            } else {
+                resolve(&mut binding.resource_index);
+                let slot = u8::try_from(self.body.bindings.len()).expect("too many pass bindings");
+                slots[index] = Some(slot);
+                self.body.bindings.push(binding);
+                new_bindings.push(access_index);
+            }
+        }
+        let mut access_indices = vec![0; batch.accesses.len()];
+        for (index, mut access) in batch.accesses.into_iter().enumerate() {
+            if !skip[index] {
+                resolve(&mut access.resource);
+                access_indices[index] = self.body.accesses.len();
+                self.body.accesses.push(access);
+            }
+        }
+        self.body.binding_accesses.extend(new_bindings.into_iter().map(|i| access_indices[i]));
+        for (key, slot) in batch.texture_slots {
+            self.body.texture_slots.entry(key).or_insert(slots[slot as usize].unwrap());
+        }
+        for (key, slot) in batch.buffer_slots {
+            self.body.buffer_slots.entry(key).or_insert(slots[slot as usize].unwrap());
+        }
+        for mut draw in batch.draws {
+            for access in &mut draw.accesses { access.slot = slots[access.slot as usize].unwrap(); }
+            match &mut draw.kind {
+                DrawKind::MultiDrawIndirect { buffer, .. } | DrawKind::IndexedIndirect { buffer, .. } => resolve(buffer),
+                DrawKind::IndexedIndirectCount { buffer, count_buffer, .. } => { resolve(buffer); resolve(count_buffer); }
+                _ => {}
+            }
+            self.host.commit_collected_draw(&mut draw);
+            self.body.draws.push(draw);
+        }
+    }
+
     /// `new`（inline 42）→ `new_impl`（0x140867970）。
     ///
     /// O 顺序：先把颜色附件逐个映射并 `add_resource_access(id, tag0 ? 0x36 : 0x2e, 1)`（`ArrayVec` 上限 5，
@@ -632,11 +809,7 @@ impl RasterPass {
         });
         RasterPass {
             name,
-            draws: Vec::new(),
-            bindings: Vec::new(),
-            texture_slots: HashMap::new(),
-            buffer_slots: HashMap::new(),
-            accesses,
+            body: DrawDeclarations { accesses, ..Default::default() },
             depth,
             colors,
             host,
@@ -658,7 +831,7 @@ impl RasterPass {
 
     /// 已登记的 draw 数。
     pub fn draw_count(&self) -> usize {
-        self.draws.len()
+        self.body.draws.len()
     }
 
     /// 构造 `RenderPassDesc`（O：`render` 前半段）。
@@ -717,12 +890,12 @@ impl RasterPass {
         };
         let submission = RasterPassSubmission {
             name: self.name,
-            draws: core::mem::take(&mut self.draws),
-            bindings: core::mem::take(&mut self.bindings),
-            texture_slots: core::mem::take(&mut self.texture_slots),
-            buffer_slots: core::mem::take(&mut self.buffer_slots),
+            draws: core::mem::take(&mut self.body.draws),
+            bindings: core::mem::take(&mut self.body.bindings),
+            texture_slots: core::mem::take(&mut self.body.texture_slots),
+            buffer_slots: core::mem::take(&mut self.body.buffer_slots),
             render_pass,
-            accesses: core::mem::take(&mut self.accesses),
+            accesses: core::mem::take(&mut self.body.accesses),
             color_count: desc.color_count,
             colors: core::mem::take(&mut self.colors),
             depth: self.depth.take(),
@@ -760,6 +933,7 @@ pub(crate) mod test_host {
     }
 
     pub struct MockHost {
+        pub deferred: Vec<DeferredBuffer>,
         pub log: Rc<RefCell<Log>>,
         pub shaders: HashMap<u64, Arc<ShaderReflection>>,
         pub rg_buffers: HashMap<u64, u32>,
@@ -781,6 +955,7 @@ pub(crate) mod test_host {
             let log = Rc::new(RefCell::new(Log::default()));
             (
                 MockHost {
+                    deferred: Vec::new(),
                     log: log.clone(),
                     shaders: HashMap::new(),
                     rg_buffers: HashMap::new(),
@@ -803,6 +978,7 @@ pub(crate) mod test_host {
     }
 
     impl PassHost for MockHost {
+        fn take_deferred_buffers(&mut self) -> Vec<DeferredBuffer> { core::mem::take(&mut self.deferred) }
         fn raster_shader(
             &self,
             shader: &Handle<RasterShaderProgram>,

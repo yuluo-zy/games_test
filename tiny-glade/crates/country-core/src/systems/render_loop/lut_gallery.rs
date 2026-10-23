@@ -54,7 +54,7 @@ pub const RASTER_STATE_BYTE3_SET: u8 = 0x40;
 pub type LutGalleryInner = LoadMenuThumbnailMetrics;
 
 /// `LutGalleryState` 资源（O 16 B：`+0` 状态 Arc，`+8` 预览纹理共享槽，`build` 里为 `None`）。
-#[derive(bevy_ecs::resource::Resource)]
+#[derive(Clone, bevy_ecs::resource::Resource)]
 pub struct LutGalleryState {
     pub state: Arc<Mutex<LutGalleryInner>>,
     /// `Option<Arc<Mutex<Option<ManagedTexture>>>>`：数据区 niche 字节 @Arc+0x4e == 7 即槽内 `None`。

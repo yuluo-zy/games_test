@@ -358,7 +358,7 @@ impl ShaderLookup for NoShaders {
     }
 }
 
-fn cb(b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &mut World) {
+fn cb(b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &World) {
     b.draw_no_vao(3);
 }
 

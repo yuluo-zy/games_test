@@ -2,7 +2,7 @@
 //! Parameter owners remain in the verified parent module. Bevy owns iteration,
 //! entity generations and deferred command application; no ECS storage mirror.
 use super::{apply_slider_with_eraser, slider_current_position, slider_math};
-use crate::{resouces_and_components::UiSlider, ui_interaction::UiDragEvent};
+use crate::{resouces_and_components::{UiSlider, ToolbarSliderSession}, ui_interaction::UiDragEvent};
 use bevy_ecs::prelude::*;
 use country_core::{
     components::{Ui2dExtent, Ui2dImage, UiDrawOrder},
@@ -21,10 +21,8 @@ use country_core::{
 use glam::Vec2;
 use utils::{easing_functions::EasingFunction, geometry::aabb::Aabb2};
 
-/// Original Local<GrabOffset> is an optional scalar, retained between events.
-/// A finish/cancel event does not clear it in the original consumer.
-#[derive(Default, Debug)]
-pub struct GrabOffset(Option<f32>);
+/// Existing public type path, now held by the explicit session owner.
+pub use crate::resouces_and_components::GrabOffset;
 
 #[derive(Clone, Copy, Debug)]
 pub struct SliderGeometry {
@@ -129,7 +127,8 @@ pub fn navigation_input(entity_bits: u64, focus: UiFocus, previous: UiFocus,
     } else { (None, false) }
 }
 
-/// The original sixteen SystemParams, including the three persistent locals.
+/// Original slider SystemParams with three persistent locals grouped into
+/// their explicit session owner so host unload can release input capture.
 /// Draw first, navigate second, then consume all drag phases in event order.
 /// At most the final selected candidate writes parameter state this frame.
 #[allow(clippy::too_many_arguments)]
@@ -138,11 +137,10 @@ pub fn ui_slider(
     cursor: Res<CursorPositionSS>,
     mut sliders: Query<(Entity, &Ui2dExtent, &mut UiSlider)>,
     mut commands: Commands,
-    mut grab: Local<GrabOffset>,
+    mut session: ResMut<ToolbarSliderSession>,
     time: Res<GameTime>,
     navigation: Res<UiNavState>,
     actions: Res<ActionSetStates>,
-    (mut nav_armed, mut previous_focus): (Local<bool>, Local<UiFocus>),
     mut formation: ResMut<ImageFormationConfigs>,
     mut camera: ResMut<MainCamera>,
     mut sounds: EventWriter<PlayUiSound>,
@@ -186,8 +184,9 @@ pub fn ui_slider(
             .id();
         slider.set_knob_entity(Some(knob));
 
+        let previous_focus = session.previous_focus;
         let (next, category) = navigation_input(entity.to_bits(), navigation.focus,
-            *previous_focus, left, right, time.delta, fraction, &mut nav_armed);
+            previous_focus, left, right, time.delta, fraction, &mut session.nav_armed);
         if let Some(fraction) = next { candidate = Some((entity, fraction)); }
         if category { category_candidate = Some(entity); }
     }
@@ -202,7 +201,7 @@ pub fn ui_slider(
                 .expect("invalid native UiSliderType");
         slider.set_hover_progress(1.0);
         if drag.state == 3 {
-            (*grab).0 = Some(if shape.hit_knob(fraction, cursor.0) {
+            session.grab.0 = Some(if shape.hit_knob(fraction, cursor.0) {
                 shape.knob_center(fraction).x - cursor.0.x
             } else {
                 0.0
@@ -211,7 +210,7 @@ pub fn ui_slider(
         if drag.state < 2 {
             category_candidate = Some(entity);
         }
-        if let Some(offset) = (*grab).0 {
+        if let Some(offset) = session.grab.0 {
             candidate = Some((entity, shape.fraction_at(cursor.0.x, offset)));
         }
     }
@@ -254,5 +253,5 @@ pub fn ui_slider(
             categories.write(RequestToolbarCategoryChange(WindowFocusEvent(category)));
         }
     }
-    *previous_focus = navigation.focus;
+    session.previous_focus = navigation.focus;
 }

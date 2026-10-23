@@ -124,3 +124,11 @@ pub fn path_pebbles_compute(frame: &mut CoreGraphFrame<'_>, world: &World) -> rh
         Ok(())
     })
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<country_core::game_config::GameConfig>();
+    m.resource::<country_core::resources::session::ActiveSession>();
+    m.resource::<country_core::resources::glade_settings::GladeSettings>();
+}

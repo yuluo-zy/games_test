@@ -25,11 +25,27 @@ use winit::{
 };
 
 fn main() -> Result<()> {
+    if std::env::var_os("TG_FRAME_TIMING").is_some() {
+        struct TimingLogger;
+        impl log::Log for TimingLogger {
+            fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+                metadata.target() == "tiny_glade::frame_timing" || metadata.level() <= log::Level::Warn
+            }
+            fn log(&self, record: &log::Record<'_>) {
+                if self.enabled(record.metadata()) { eprintln!("{} {}", record.target(), record.args()); }
+            }
+            fn flush(&self) {}
+        }
+        static LOGGER: TimingLogger = TimingLogger;
+        log::set_logger(&LOGGER)?;
+        log::set_max_level(log::LevelFilter::Info);
+    }
     if let Some(value) = std::env::var_os("TG_VALIDATE_WINDOW_LIFECYCLE") {
         let mode = match value.to_str() {
             Some("loading_close") => WindowValidationMode::LoadingClose,
             Some("suspended_close") => WindowValidationMode::SuspendedClose,
             Some("window_cycle") => WindowValidationMode::WindowCycle,
+            Some("late_camera") => WindowValidationMode::LateCamera,
             _ => anyhow::bail!("未知窗口生命周期验收模式：{value:?}"),
         };
         return validate_gameplay_present(mode);
@@ -55,7 +71,7 @@ fn main() -> Result<()> {
     let shaders = Arc::new(AssetShaderLibrary::new());
     // This is the production device, surface, swapchain and per-App owner.
     // Initialization failure is an error; this executable never skips a GPU.
-    let mut renderer = ProductionRenderer::new(
+    let renderer = ProductionRenderer::new(
         window.clone(),
         installed.join("compiled-shaders"),
         shaders.clone(),
@@ -112,16 +128,20 @@ fn main() -> Result<()> {
                 driver.app_mut().world_mut().resource_mut::<bevy_time::Time<()>>()
                     .advance_by(Duration::from_secs_f64(1.0 / 60.0));
                 driver.frame(Some(egui::RawInput::default()), &mut render, |_| {})?;
-                // The back half runs on the render thread; settle it to observe it.
+                // Reading diagnostic snapshots must preserve the queued frame;
+                // the old synchronous control query reclaimed it here.
+                assert!(render.in_flight());
+                let _ = render.frame_observation();
+                assert!(render.in_flight(), "diagnostic query synchronously reclaimed a frame");
+                // This three-frame fixture explicitly settles for acceptance.
                 driver.settle_render(&mut render)?;
-                let renderer = &mut render.reclaim().renderer;
-                if let Some(error) = renderer.take_error() { return Err(error); }
+                if let Some(error) = render.call(|renderer| renderer.take_error()) { return Err(error); }
                 frames += 1;
                 if frames == 3 {
-                    let presents = renderer.native_present_success_count();
+                    let presents = render.native_present_success_count();
                     anyhow::ensure!(presents > 0,
                         "production loading graph produced no native SUCCESS/SUBOPTIMAL WSI present");
-                    renderer.shutdown()?;
+                    render.shutdown_renderer()?;
                     eprintln!("PASS: {frames} production GameFrameDriver loading/presentation frames; {presents} native SUCCESS/SUBOPTIMAL WSI presents and shutdown completed");
                     *observed.borrow_mut() = Some(Ok(()));
                     target.exit();
@@ -133,7 +153,7 @@ fn main() -> Result<()> {
             }
             Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
                 driver.app_mut().world_mut().insert_resource(WindowSize::new(size.width, size.height));
-                render.reclaim().renderer.resize([size.width, size.height])
+                render.resize([size.width, size.height])
             }
             _ => Ok(()),
         };
@@ -154,6 +174,7 @@ enum WindowValidationMode {
     LoadingClose,
     SuspendedClose,
     WindowCycle,
+    LateCamera,
 }
 
 impl WindowValidationMode {
@@ -210,6 +231,11 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
         run_game::run_game_thread,
     };
 
+    let required_world_frames = std::env::var("TG_VALIDATE_WORLD_FRAMES")
+        .ok().map(|value| value.parse::<u64>()).transpose()?.unwrap_or(12).max(12);
+    let timeout_seconds = std::env::var("TG_VALIDATE_TIMEOUT_SECONDS")
+        .ok().map(|value| value.parse::<u64>()).transpose()?.unwrap_or(180);
+
     let installed = PathBuf::from(
         std::env::var_os("TG_INSTALL_ROOT").context("必须提供原版安装树 TG_INSTALL_ROOT")?,
     ).canonicalize()?;
@@ -221,7 +247,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     tiny_glade::load_language_library::load_language_library(None, None);
     let cli = CliArgs::parse_from(["original-gameplay-wsi"]);
     let mut config = get_app_config(&cli)?;
-    if mode == WindowValidationMode::WindowCycle {
+    if matches!(mode, WindowValidationMode::WindowCycle | WindowValidationMode::LateCamera) {
         // 本模式的真实窗口从同一 windowed 配置启动，之后才验收全屏往返。
         config.video.display.fullscreen = false;
         config.video.display.windowed_resolution = [480, 270];
@@ -231,6 +257,9 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
         config.video.upscaling_mode = country_core::render::render_config::UpscalingMode::Tgsr;
         config.video.upscaling_preset = country_core::render::render_config::UpscalingPreset::Quality;
     }
+    if mode == WindowValidationMode::LateCamera {
+        config.video.fps_limit = 0.0;
+    }
     anyhow::ensure!(!config.dev.demo && !config.dev.skip_splash,
         "必须验证完整版的真实 loading→gameplay 交接");
     let mut app = run_game_thread(config, &cli, WindowSize::new(480, 270))?;
@@ -239,7 +268,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     let event_loop = EventLoop::new()?;
     let window = Arc::new(WindowBuilder::new()
         .with_title("Tiny Glade — original gameplay WSI validation")
-        .with_visible(false)
+        .with_visible(matches!(mode, WindowValidationMode::WindowCycle | WindowValidationMode::LateCamera))
         .with_inner_size(winit::dpi::PhysicalSize::new(480, 270))
         .build(&event_loop)?);
     let mut game = GameLoop::new(app, window.clone(), GameLoopOptions {
@@ -258,16 +287,17 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
         None
     } else {
         Some(WindowLifecycleWatchdog::new(event_loop.create_proxy(),
-            Duration::from_secs(if mode == WindowValidationMode::WindowCycle { 180 } else { 60 }))?)
+            Duration::from_secs(if matches!(mode, WindowValidationMode::WindowCycle | WindowValidationMode::LateCamera) { timeout_seconds } else { 60 }))?)
     };
     let mut close_completed_before_loop_exiting = false;
     let mut preparation_pending_at_close = false;
     let mut world_frames = 0u64;
     let mut loading_frames = 0u64;
     let mut native_before_world = None;
-    let mut previous_receipt = None;
+    let mut previous_frame = None;
     let mut close_requested = false;
     let mut cycle = WindowCycleValidation::default();
+    let mut late_camera = LateCameraValidation::default();
     event_loop.run(move |event, target| {
         let redraw = matches!(&event, Event::WindowEvent { event: WindowEvent::RedrawRequested, .. });
         let exiting = matches!(&event, Event::LoopExiting);
@@ -277,17 +307,22 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                 anyhow::bail!("窗口生命周期验收超时：mode={mode:?}, loading={loading_frames}, world={world_frames}, close={close_requested}, preparation_pending={}",
                     game.gameplay_preparation_pending());
             }
-            let mut native_world_frame = false;
-            let native_before_frame = game.native_present_success_count();
-            let completed_before = game.frame_progress().completed_frames;
+            let mut native_world_frame = None;
             if mode == WindowValidationMode::WindowCycle {
                 cycle.observe_os_event(&event, window.id());
             }
             game.main_loop(event, target)?;
-            if redraw && game.frame_progress().completed_frames > completed_before {
-                if let Some(frame) = game.frame_observation().cloned() {
+            if redraw {
+                // Observations are published asynchronously. Polling must not
+                // reclaim the next queued frame or count a cached receipt twice.
+                let observation = game.frame_observation().cloned();
+                if let Some(frame) = observation.as_ref().filter(|frame|
+                    previous_frame != Some((frame.world, frame.receipt_frame))) {
                     match &frame.kind {
-                        ProductionGraphKind::Loading => loading_frames += 1,
+                        ProductionGraphKind::Loading => {
+                            loading_frames += 1;
+                            previous_frame = Some((frame.world, frame.receipt_frame));
+                        },
                         ProductionGraphKind::Main { world_rendered: true, .. } => {
                             anyhow::ensure!(!game.gameplay_preparation_pending(), "游戏帧早于双 App 交接");
                             let world = game.app().world();
@@ -303,8 +338,8 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                             let cycle_native_ready = frame.present_point.is_some()
                                 && frame.present_generation.is_some_and(|generation| {
                                     if cycle.previous_generation == Some(generation) {
-                                        game.native_present_success_count() > native_before_frame
-                                    } else { game.native_present_success_count() > 0 }
+                                        frame.native_present_successes > cycle.previous_native_successes
+                                    } else { frame.native_present_successes > 0 }
                                 });
                             if mode == WindowValidationMode::WindowCycle && !cycle_native_ready {
                                 // 原生acquire允许暂时无图像/旧generation背压；保World/draw门，
@@ -312,23 +347,23 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                             } else {
                             anyhow::ensure!(frame.present_point.is_some() && frame.present_generation.is_some(),
                                 "生产世界没有 WSI present ticket");
-                            anyhow::ensure!(previous_receipt != Some(frame.receipt_frame), "重复统计同一游戏帧");
-                            previous_receipt = Some(frame.receipt_frame);
-                            native_before_world.get_or_insert(native_before_frame);
+                            previous_frame = Some((frame.world, frame.receipt_frame));
+                            native_before_world.get_or_insert(frame.native_present_successes.saturating_sub(1));
                             world_frames += 1;
-                            native_world_frame = true;
+                            native_world_frame = Some(frame.clone());
                             eprintln!("GAMEPLAY_WSI world_frame={world_frames} receipt={} native_successes={} draws={:?}",
-                                frame.receipt_frame, game.native_present_success_count(), frame.draw_list_lengths);
+                                frame.receipt_frame, frame.native_present_successes, frame.draw_list_lengths);
                             }
                         }
                         _ => anyhow::bail!("出现空世界或 diagnostic minimal 图"),
                     }
                 }
-                let lifecycle_loading_presented = game.frame_observation().is_some_and(|frame| {
+                let lifecycle_loading_presented = observation.as_ref().is_some_and(|frame| {
                     matches!(&frame.kind, ProductionGraphKind::Loading)
                         && frame.present_point.is_some()
                         && frame.present_generation.is_some()
-                }) && game.native_present_success_count() > native_before_frame;
+                        && frame.native_present_successes > 0
+                });
                 if mode.is_loading_close() && lifecycle_loading_presented && !close_requested {
                     // 确认本次真实 loading 原生 present 成功且待交接 owner 仍在。
                     // pending 不表示 worker 一定仍在执行；已发布的结果同样必须 join/释放。
@@ -351,11 +386,15 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                         close_completed_before_loop_exiting = true;
                     }
                 }
-                if mode == WindowValidationMode::WindowCycle && native_world_frame {
-                    cycle.after_frame(&mut game, &window, target, world_frames, native_before_frame)?;
+                if mode == WindowValidationMode::WindowCycle && let Some(frame) = native_world_frame {
+                    cycle.after_frame(&mut game, &window, target, world_frames, &frame)?;
                 }
-                if !mode.is_loading_close() && world_frames >= 12
-                    && (mode != WindowValidationMode::WindowCycle || cycle.complete()) && !close_requested {
+                if mode == WindowValidationMode::LateCamera {
+                    late_camera.after_redraw(&mut game, &window, target, world_frames, observation.as_ref())?;
+                }
+                if !mode.is_loading_close() && world_frames >= required_world_frames
+                    && (mode != WindowValidationMode::WindowCycle || cycle.complete())
+                    && (mode != WindowValidationMode::LateCamera || late_camera.complete()) && !close_requested {
                     // 发送关闭窗口事件，由现有 OS→游戏→保存→GPU 关闭链处理。
                     close_requested = true;
                     game.main_loop(Event::WindowEvent {
@@ -369,7 +408,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                 }
             }
             if !exiting {
-                anyhow::ensure!(started.elapsed() < Duration::from_secs(180),
+                anyhow::ensure!(started.elapsed() < Duration::from_secs(timeout_seconds),
                     "真实游戏窗口验收超时：loading={loading_frames}, world={world_frames}");
             } else if observed.borrow().is_none() {
                 let native = game.native_present_success_count();
@@ -378,7 +417,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                     anyhow::ensure!(!world.contains_resource::<SaveThreadHandle>()
                         && world.get_resource::<AutoSaveState>().is_some_and(|state| !state.is_command_attached()),
                         "关闭后保存线程 owner 或 sender 仍然存在");
-                    anyhow::ensure!(loading_frames > 0 && world_frames >= 12 && close_requested,
+                    anyhow::ensure!(loading_frames > 0 && world_frames >= required_world_frames && close_requested,
                         "窗口提前退出：loading={loading_frames}, world={world_frames}");
                     let world_native = if mode == WindowValidationMode::WindowCycle {
                         anyhow::ensure!(cycle.complete(), "窗口往返分支没有全部完成");
@@ -387,7 +426,12 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                         native.checked_sub(native_before_world.context("没有游戏 present 起点")?)
                             .context("swapchain generation changed during bounded validation")?
                     };
-                    anyhow::ensure!(world_native >= 12, "游戏只完成 {world_native} 次原生 present 成功");
+                    anyhow::ensure!(world_native >= required_world_frames, "游戏只完成 {world_native} 次原生 present 成功");
+                    if mode == WindowValidationMode::LateCamera {
+                        anyhow::ensure!(late_camera.complete(), "真实鼠标输入没有产生已提交的晚相机预览并正常释放");
+                        eprintln!("PASS: actual late camera input previews={} motions={} consumed-through={:?}; real binding/capture/normal camera and native present",
+                            late_camera.previews, late_camera.motions, late_camera.last_input);
+                    }
                     eprintln!("PASS: actual GameLoop loading={loading_frames}, world={world_frames}, world-native-successes={world_native}; OS close/save/GPU shutdown completed");
                 } else {
                     anyhow::ensure!(loading_frames > 0 && close_requested && preparation_pending_at_close
@@ -417,6 +461,98 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     outcome
 }
 
+/// Input is injected through the public winit dispatcher. The real loaded
+/// binding, action translator, capture protocol and camera controller must all
+/// participate; no action/camera/preview resource is manufactured by this test.
+#[derive(Default)]
+struct LateCameraValidation {
+    button: Option<winit::event::MouseButton>,
+    motions: u64,
+    previews: u64,
+    last_receipt: Option<(bevy_ecs::world::WorldId, u64)>,
+    last_input: Option<(u64, u64)>,
+    release_at: Option<u64>,
+    complete: bool,
+}
+
+impl LateCameraValidation {
+    fn complete(&self) -> bool { self.complete }
+
+    fn after_redraw(
+        &mut self,
+        game: &mut tiny_glade::game_loop::GameLoop,
+        window: &Arc<winit::window::Window>,
+        target: &winit::event_loop::EventLoopWindowTarget<()>,
+        world_frames: u64,
+        frame: Option<&tiny_glade::production_renderer::ProductionFrameObservation>,
+    ) -> Result<()> {
+        use country_core::{input::action_set::{MainActionSet, DigitalActionPhase},
+            resources::mouse_capture::CursorCapturedPosition};
+        use winit::event::{ElementState, MouseButton};
+        if self.complete || world_frames == 0 { return Ok(()); }
+        if let Some(frame) = frame.filter(|frame|
+            self.last_receipt != Some((frame.world, frame.receipt_frame))) {
+            self.last_receipt = Some((frame.world, frame.receipt_frame));
+            if let Some((consumed, sampled, true)) = frame.late_camera_input {
+                anyhow::ensure!(sampled > consumed, "晚相机没有采样新的OS输入");
+                anyhow::ensure!(frame.present_point.is_some(), "晚相机帧未进入真实present");
+                self.previews += 1;
+                self.last_input = Some((consumed, sampled));
+                eprintln!("LATE_CAMERA native receipt={} consumed={consumed} sampled={sampled}", frame.receipt_frame);
+            }
+        }
+        // DeviceId is an opaque event identity in this explicitly injected
+        // fixture; it is never passed to an OS device API.
+        let device_id = unsafe { winit::event::DeviceId::dummy() };
+        if let Some(at) = self.release_at {
+            if world_frames > at + 2 {
+                let actions = game.app().world().resource::<MainActionSet>();
+                anyhow::ensure!(actions.digital[2].phase == DigitalActionPhase::Idle,
+                    "真实camera_rotate_mode在释放后仍保持按下");
+                anyhow::ensure!(game.app().world().resource::<CursorCapturedPosition>().0.is_none(),
+                    "真实鼠标捕获在释放后仍被保留");
+                self.complete = true;
+            }
+            return Ok(());
+        }
+        if self.button.is_none() {
+            if game.app().world().resource::<VermeerState>().should_freeze_camera() { return Ok(()); }
+            let profile = game.app().world().resource::<country_core::game_profile::GameProfile>();
+            let bindings = country_core::systems::backend::input::translate_input::BindingsTable::try_from(&profile.key_bindings)?;
+            let button = match bindings.slots[37].mouse.context("旋转动作缺少真实鼠标绑定")? {
+                0 => MouseButton::Left, 1 => MouseButton::Right, 2 => MouseButton::Middle,
+                3 => MouseButton::Back, 4 => MouseButton::Forward, other => MouseButton::Other(other),
+            };
+            game.main_loop(Event::WindowEvent { window_id: window.id(),
+                event: WindowEvent::CursorMoved { device_id,
+                    position: winit::dpi::PhysicalPosition::new(240.0, 135.0) } }, target)?;
+            game.main_loop(Event::WindowEvent { window_id: window.id(),
+                event: WindowEvent::MouseInput { device_id, state: ElementState::Pressed, button } }, target)?;
+            self.button = Some(button);
+            eprintln!("LATE_CAMERA begin real binding={button:?} world_frames={world_frames}");
+        }
+        if self.previews > 0 {
+            game.main_loop(Event::WindowEvent { window_id: window.id(),
+                event: WindowEvent::MouseInput { device_id, state: ElementState::Released,
+                    button: self.button.expect("pressed above") } }, target)?;
+            self.release_at = Some(world_frames);
+            return Ok(());
+        }
+        let anchor = game.app().world().resource::<CursorCapturedPosition>().0
+            .unwrap_or(glam::Vec2::new(240.0, 135.0));
+        // Events after frame() can arrive after extraction or while the next
+        // prepared Update waits for the previous renderer. Keep the assertion
+        // on the actual submitted observation, not on the injected count.
+        for _ in 0..8 {
+            game.main_loop(Event::WindowEvent { window_id: window.id(),
+                event: WindowEvent::CursorMoved { device_id,
+                    position: winit::dpi::PhysicalPosition::new(anchor.x as f64 + 0.5, anchor.y as f64) } }, target)?;
+            self.motions += 1;
+        }
+        Ok(())
+    }
+}
+
 
 /// 真实窗口/交换链验收状态。resize 与全屏大小必须来自真实 winit WindowEvent；
 /// suspend/zero/focus 为明确注入的跨平台语义事件，不伪称 macOS 发出了零尺寸通知。
@@ -427,6 +563,7 @@ struct WindowCycleValidation {
     phase_resize_events: u64,
     phase_generation: Option<u64>,
     previous_generation: Option<u64>,
+    previous_native_successes: u64,
     native_presented_frames: u64,
 }
 
@@ -450,18 +587,18 @@ impl WindowCycleValidation {
         window: &Arc<winit::window::Window>,
         target: &winit::event_loop::EventLoopWindowTarget<()>,
         world_frames: u64,
-        native_before_frame: u64,
+        frame: &tiny_glade::production_renderer::ProductionFrameObservation,
     ) -> Result<()> {
         use country_core::render::{frame_constants::FrameConstants, render_config::{FrameRenderConfig, UpscalingPreset}};
         use tiny_glade::game_loop::PENDING_VIDEO_SETTING_FLAGS;
-        let frame = game.frame_observation().context("生命周期没有真实游戏帧")?.clone();
         let generation = frame.present_generation.context("生命周期没有原生 generation")?;
-        let native = game.native_present_success_count();
+        let native = frame.native_present_successes;
         anyhow::ensure!(if self.previous_generation == Some(generation) {
-            native > native_before_frame
+            native > self.previous_native_successes
         } else { native > 0 }, "生命周期帧没有实际原生 present 成功");
         self.native_presented_frames += 1;
         self.previous_generation = Some(generation);
+        self.previous_native_successes = native;
         match self.phase {
             0 if world_frames >= 3 => {
                 {
@@ -476,7 +613,8 @@ impl WindowCycleValidation {
                 eprintln!("WINDOW_CYCLE requested_size={:?} immediate={immediate:?}", Self::REQUESTED_SIZE);
                 self.phase = 1;
             }
-            1 if self.os_resize_events > self.phase_resize_events => {
+            1 if self.os_resize_events > self.phase_resize_events
+                && Some(generation) != self.phase_generation => {
                 let extent = window.inner_size();
                 if [extent.width, extent.height] != Self::REQUESTED_SIZE { return Ok(()); }
                 let world = game.app().world();

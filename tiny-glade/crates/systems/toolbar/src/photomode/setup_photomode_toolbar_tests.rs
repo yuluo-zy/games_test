@@ -119,9 +119,9 @@ fn real_photo_setup_preserves_every_root_callback_size_parent_and_nav_ring() {
                 );
                 let nav = world.get::<UiNav>(entity).unwrap();
                 let (next, prev) = if alignment.is_horizontal() {
-                    (2, 3)
-                } else {
                     (1, 0)
+                } else {
+                    (2, 3)
                 };
                 assert_eq!(
                     nav.links[next].value,

@@ -83,6 +83,7 @@ pub fn firstperson_steps<S: Studio + Send + Sync + 'static>(
     water: Res<WaterRaster>,
     garden: Res<GardenRaster>,
     actions: Res<ActionSetStates>,
+    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
 ) {
     let bytes = camera.bytes();
     let walking = bytes[0x4d0] == 3;
@@ -94,14 +95,16 @@ pub fn firstperson_steps<S: Studio + Send + Sync + 'static>(
         let material = if bytes[0x328] == 11 {
             // Native resolves and asserts this typed mapping BEFORE sampling
             // even when the water branch subsequently short-circuits.
-            let mask = buffers
+            buffers
                 .get::<TerrainRockMaskSsbo>()
                 .expect("firstperson_steps requires the canonical mapped TerrainRockMaskSsbo");
+            // Latest render-thread publication, never the in-flight mapping.
+            let samples = TerrainRockMaskSsbo::published(readbacks.as_deref());
             let paths = paths.as_float_grid();
             let water = water.0.as_ref();
             let garden = garden.0.as_ref();
             let eye = camera.eye_position();
-            select_ground_material(
+            Some(select_ground_material(
                 |index| {
                     let raster = match index {
                         0 => water,
@@ -111,12 +114,14 @@ pub fn firstperson_steps<S: Studio + Send + Sync + 'static>(
                     };
                     raster.bilinear_sample_at_world_xz(eye.x, eye.z, 130.0, 130.0)
                 },
-                || TerrainRockMaskSsbo::sample_mapped_at_world_xz(mask.mapped, eye.x, eye.z),
-            )
+                || TerrainRockMaskSsbo::sample_mapped_at_world_xz(samples, eye.x, eye.z),
+            ))
         } else {
-            GROUND_TYPE_DEFAULT
+            Some(GROUND_TYPE_DEFAULT)
         };
-        let _ = core.set_parameter(GROUND_TYPE_PARAM, material);
+        if let Some(material) = material {
+            let _ = core.set_parameter(GROUND_TYPE_PARAM, material);
+        }
         if bytes[0x344] == 0 {
             let _ = state.walking_loop.start_if_not_playing();
             return;
@@ -329,16 +334,14 @@ mod original_tests {
             let mut library = AssetSsboLibrary::new();
             library
                 .add_new::<TerrainRockMaskSsbo>(&crate::render::test_device::TestDevice::default());
-            library
-                .get_mut::<TerrainRockMaskSsbo>()
-                .unwrap()
-                .mapped
-                .fill(TerrainRockMaskSsbo(if setting(inputs, "rock", false) {
-                    u32::MAX
-                } else {
-                    0
-                }));
             world.insert_resource(library);
+            let mut readbacks = crate::render::gpu_readback::GpuReadbacks::default();
+            readbacks.publish_slice(&[TerrainRockMaskSsbo(if setting(inputs, "rock", false) {
+                u32::MAX
+            } else {
+                0
+            }); 0x2000], 1);
+            world.insert_resource(readbacks);
             world.insert_resource(WaterRaster(raster(channels[0], selector)));
             world.insert_resource(PathRaster(raster(channels[1], selector)));
             world.insert_resource(Cobblestone1Raster(raster(channels[2], selector)));

@@ -147,8 +147,8 @@ fn real_setup_builds_eleven_categories_full_menus_parent_links_and_cyclic_nav() 
             assert_eq!(world.get::<UiInteractionState>(entity).unwrap().state,1);
             assert!(world.get::<HideIfMenuIsOpen>(entity).is_some());
             let nav=world.get::<UiNav>(entity).unwrap();
-            assert_eq!(nav.links[2].value,layout.menus[(index+1)%11].parent_entity.to_bits());
-            assert_eq!(nav.links[3].value,layout.menus[(index+10)%11].parent_entity.to_bits());
+            assert_eq!(nav.links[1].value,layout.menus[(index+1)%11].parent_entity.to_bits());
+            assert_eq!(nav.links[0].value,layout.menus[(index+10)%11].parent_entity.to_bits());
             if row.tag==11 { assert!(world.get::<TimeOfDayButtonV2>(entity).is_some()); }
             else if demo && [5,8].contains(&row.tag) {assert!(world.get::<UiLocked>(entity).is_some());}
             else {assert_eq!(world.get::<SwitchToolbarCategoryButton>(entity).unwrap().category as u8,row.tag);}

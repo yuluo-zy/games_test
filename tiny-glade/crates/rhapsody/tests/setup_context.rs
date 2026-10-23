@@ -86,7 +86,10 @@ fn held_context_reuses_one_pool_and_recycles_commands_without_waiting() {
     let stats = context.stats();
     assert_eq!(stats.pools_created, 1, "one reusable pool");
     assert_eq!(stats.submissions, 32);
-    assert!(stats.commands_allocated <= 17, "{stats:?}");
+    // The GPU may finish none of the disjoint copies before this host read.
+    // Recycling is verified below after an explicit completion point, rather
+    // than assuming a particular driver/host speed ratio.
+    assert!(stats.commands_allocated <= stats.submissions, "{stats:?}");
     // Further work after completion recycles instead of allocating.
     device.wait_idle().unwrap();
     let before = context.stats();
@@ -190,6 +193,7 @@ fn consecutive_setup_calls_reuse_one_pool_without_any_caller_holding_the_context
         return;
     };
     let buffer = target(&device);
+    let buffer_owners = Arc::strong_count(&device);
     // No `SetupContext` or `Arc` to it is ever kept by the caller.
     for round in 0..12u32 {
         fill(&device, &buffer, 0, 4096, round)
@@ -205,8 +209,9 @@ fn consecutive_setup_calls_reuse_one_pool_without_any_caller_holding_the_context
     let stats = device.setup_context().unwrap().stats();
     assert_eq!(stats.commands_allocated, 1, "{stats:?}");
     assert_eq!(stats.commands_recycled, 11, "{stats:?}");
+    device.try_collect_all_completed().unwrap();
     // The parked pools hold no device reference: no Arc cycle.
-    assert_eq!(Arc::strong_count(&device), 1 + 1, "buffer owns one");
+    assert_eq!(Arc::strong_count(&device), buffer_owners, "setup cache owns no device reference");
     drop(buffer);
     assert_eq!(Arc::strong_count(&device), 1);
 }

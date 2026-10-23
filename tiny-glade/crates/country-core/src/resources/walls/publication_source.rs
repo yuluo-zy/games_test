@@ -105,7 +105,7 @@ pub struct CollectedWallPublication {
     pub relative_heights: Vec<f32>,
     pub metrics: WallPublicationMetrics,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CollectionError {
     InvalidSource,
     Curve(CurveError),

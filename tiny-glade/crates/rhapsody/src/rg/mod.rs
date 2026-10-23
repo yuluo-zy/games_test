@@ -63,6 +63,7 @@ pub use indirect_count::{IndexedCountAdapter, IndexedCountRequest};
 pub use pass_api::{AshCommandBackend, CommandBackend, RenderPassApi};
 pub use pass_bindings::ManagedPassResources;
 pub use pass_builder::PassBuilder;
+pub use parallel::{ChunkStrategy, ParallelRecording, TaskRunner};
 pub use plan::{GraphDefinition, PlanContext, compile_definition};
 pub use plan_check::check_plan;
 pub use profiling::{GpuCommandTiming, GpuTimingConfig, GpuTimingStats};

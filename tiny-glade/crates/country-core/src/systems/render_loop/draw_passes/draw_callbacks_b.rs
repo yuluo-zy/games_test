@@ -276,7 +276,7 @@ macro_rules! nani_env {
             nani(b, GpuWorldSubsetKind::$kind);
         }
         $(#[$m])*
-        pub fn $cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+        pub fn $cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
             $body(b, |b, k| nani_draw_world(b, k, w));
         }
     };
@@ -358,7 +358,7 @@ pub fn env12_body<'p>(b: DrawBuilder<'p>, nani: impl FnOnce(DrawBuilder<'p>, Gpu
         GpuWorldSubsetKind::SolidVertexColorBricks,
     );
 }
-pub fn env12(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env12(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     env12_body(b, |b, k| nani_draw_world(b, k, w));
 }
 /// closure_env$13（0x1409b6540）：同 `$12`，再 `bind_brick_erase_highlight`（四个资源由 World 读出）→
@@ -371,7 +371,7 @@ pub fn env13_body<'p>(
     let b = halftimber_roof_common(b).bind_brick_erase_highlight(brick);
     nani(b, GpuWorldSubsetKind::GothicWindowBricks);
 }
-pub fn env13(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env13(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let brick = brick_erase_inputs(w);
     env13_body(b, &brick, |b, k| nani_draw_world(b, k, w));
 }
@@ -429,7 +429,7 @@ pub fn env34_body<'p>(
     let b = b.uniform(0xb585ce21b6c728c4, i.radius);
     nani(b, GpuWorldSubsetKind::Plaster);
 }
-pub fn env34(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env34(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let (wall_value, wall_tag) = wall_highlight_param(res::<WallHighlight>(w));
     let editing_enabled = res::<EditingHighlightView>(w).enabled;
     let cursor = res::<CursorTerrainRaycast>(w);
@@ -452,12 +452,12 @@ pub fn env34(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
 // 绑定 + draw / multi_draw_indexed_indirect / draw_instanced_w_gl_draw_flag（不碰 World）
 // =====================================================================================================================
 /// closure_env$1（0x1409b5c70）：`BoatSsbo`（binding 0x6d9256d4ac7887ad）→ `multi_draw_indexed_indirect(0xc, 1, 0)`。
-pub fn env1(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env1(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     let b = b.read_ssbo::<BoatTag>(0x6d9256d4ac7887ad);
     b.multi_draw_indexed_indirect::<DrawIndexedIndirectTag>(0xc, 1, 0);
 }
 /// closure_env$7（0x1409b6150）：磁盘 + 预设 0xf/5/0xe/0x13/9/0xa + `Flower03Ssbo` → `multi_draw_indexed_indirect(0x10, 1, 0)`。
-pub fn env7(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env7(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     let b = bind_disk(b, 0x25df9e0f0168ac29, 0xfbdca30f95e604d1);
     let b = bind_preset(b, 0xf, 0x035280b96dab13e6);
     let b = bind_preset(b, 5, 0xed502fff6dc4021f);
@@ -469,24 +469,24 @@ pub fn env7(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
     b.multi_draw_indexed_indirect::<DrawIndexedIndirectTag>(0x10, 1, 0);
 }
 /// closure_env$26（0x1409b7d40）：预设 9/0xa + `GardenStoneSsbo` → `multi_draw_indexed_indirect(0xe, 1, 0)`。
-pub fn env26(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env26(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     let b = bind_preset(b, 9, 0x61b08b5e0470c5f2);
     let b = bind_preset(b, 0xa, 0x297d1e4cdae8f657);
     let b = b.read_ssbo::<GardenStoneTag>(0x6d9256d4ac7887ad);
     b.multi_draw_indexed_indirect::<DrawIndexedIndirectTag>(0xe, 1, 0);
 }
 /// closure_env$54（0x1409b7110）：磁盘 → `draw_instanced_w_gl_draw_flag(0x1770)`。
-pub fn env54(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env54(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     let b = bind_disk(b, 0xcf0ec9b45838117a, 0xe1347d0cd85b697d);
     b.draw_instanced_w_gl_draw_flag(0x1770);
 }
 /// closure_env$51（0x1409b8250）：磁盘 → `draw`。
-pub fn env51(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env51(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     let b = bind_disk(b, 0x10b5ad13d86a52bb, 0xc6f60b64f3d08191);
     b.draw();
 }
 /// closure_env$60（0x1409b8430）：`state.byte0 = (b & 0xf3) | 8`；磁盘 → `draw`。
-pub fn env60(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
+pub fn env60(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &World) {
     let mut b = b;
     set_cull(&mut b, 8);
     let b = bind_disk(b, 0xc2074e99b3c51eee, 0xce8d8d6a107ec5a6);
@@ -494,7 +494,7 @@ pub fn env60(b: DrawBuilder<'_>, _p: &EntityDrawParams, _w: &mut World) {
 }
 /// closure_env$43（0x1409b8620）：`rocky_terrain_shader(b, false)`（`r9d = 0`）；顶点数取自
 /// `RockyTerrainMeshVertCount` 资源（缺失 → `Option::unwrap` panic）。
-pub fn env43(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env43(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let count = res::<RockyTerrainMeshVertCount>(w).0 as u32;
     rocky_terrain_shader(b, false, count);
 }
@@ -511,7 +511,7 @@ pub fn env18_bind(
     let b = b.uniform(0x6183d59b2f20cb8a, semi_transparent);
     b.uniform(0x5e4434780397435a, flat_lighting)
 }
-pub fn env18(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env18(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let e = w.get_entity(p.entity).unwrap();
     let semi = e.contains::<SemiTransparent>();
     let flat = e.contains::<FlatLighting>();
@@ -531,7 +531,7 @@ pub fn env5_bind(b: DrawBuilder<'_>, eye: Vec3) -> DrawBuilder<'_> {
     let b = bind_preset(b, 9, 0x61b08b5e0470c5f2);
     bind_preset(b, 0xa, 0x297d1e4cdae8f657)
 }
-pub fn env5(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env5(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let eye = res::<crate::systems::camera_rig::main_camera::MainCamera>(w).eye_position();
     let b = env5_bind(b, eye);
     let id = comp::<InstancedDrawFromPlacementData>(w, p.entity).0;
@@ -570,7 +570,7 @@ pub fn env21_bind<'p>(b: DrawBuilder<'p>, i: &Env21Inputs) -> DrawBuilder<'p> {
     let b = bind_disk(b, 0xb72fba719985a58c, 0x83b632dfd4a3558c);
     bind_disk(b, env21_last_texture(&i.session_bytes), 0xce84646a28bf8813)
 }
-pub fn env21(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn env21(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let roof_flag_cloth = comp::<RoofFlagClothView>(w, p.entity).0;
     let color_id = comp::<ColorId>(w, p.entity).0;
     let session_bytes = res::<ActiveSessionView>(w).glade_bytes.clone();
@@ -593,7 +593,7 @@ pub fn env38_bind(b: DrawBuilder<'_>, f8: f32, f10: f32) -> DrawBuilder<'_> {
     let b = b.uniform(0x3cc185d80517a5cb, f8);
     b.uniform(0x1986361629359548, f10)
 }
-pub fn env38(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env38(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let logo = res::<crate::resources::logo_animation::LogoAnimation>(w);
     env38_bind(b, logo.progress[2], logo.progress[4]).draw();
 }
@@ -604,13 +604,12 @@ pub fn env36_body(b: DrawBuilder<'_>, ranges: Vec<[u32; 2]>) {
     let b = b.read_ssbo::<SparkleTag>(0xc3483cd70105de2f);
     b.draw_multi_instanced(ranges);
 }
-pub fn env36(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn env36(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let lib = res::<AssetSsboLibrary>(w);
-    // O：`FrozenMap::get(SsboId(0x2bf3b1a4ac675864))` → 名字断言 → `as_any`（虚表 +0x18）取
-    // `SparseInstanceBuffer<SparkleSsbo>` → `to_draw_multi_instanced`（0x1412e4250，与 `<RoofTileSsbo>` 同形，
-    // ICF 合并为同名符号）每帧现算绘制区间。`Vec<DrawRange>` = 8 B 一对 `(first_instance, instance_count)`。
+    // The canonical type check also applies to compact render snapshots;
+    // declaration needs only draw metadata, never the CPU instance shadow.
     let ranges = lib
-        .get::<SparkleSsbo>()
+        .sparse_draw_view::<SparkleSsbo>()
         .expect(UNWRAP_NONE)
         .to_draw_multi_instanced();
     let ranges: Vec<[u32; 2]> = ranges
@@ -623,7 +622,7 @@ pub fn env36(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
 // 直接函数的 World 适配器（`draw_shaders::*` 的 Rust 签名带数据参数，原版在函数内读 World）
 // =====================================================================================================================
 /// `tree_trunk` 适配器（0x1409c9830）：资源 `Weather`（风）、`MainCamera`（eye、季节字节）、`TreeCanopyMaxCullDistance`。
-pub fn tree_trunk_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn tree_trunk_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let wind = res::<Weather>(w).wind_strength;
     let cam = res::<MainCamera>(w);
     let blend = res::<TreeCanopyMaxCullDistance>(w).smoothstep;
@@ -634,7 +633,7 @@ pub fn tree_trunk_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
     tree_trunk(b, &inputs, |b, k| nani_draw_world(b, k, w));
 }
 /// `tree_canopy` 适配器（0x1409ca350）：`season_param` = 季节子结构的 `f32 @+0x104`（`season >= 6` → 越界 panic，同原版的越界读）。
-pub fn tree_canopy_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn tree_canopy_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let cam = res::<MainCamera>(w);
     let camera_mode = cam.mode_byte();
     let lens = cam.read_f32(SEASON_OFFSETS[camera_mode as usize] + SEASON_FIELD_OFFSET);
@@ -647,7 +646,7 @@ pub fn tree_canopy_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) 
     tree_canopy(b, &inputs, |b, k| nani_draw_world(b, k, w));
 }
 /// `draw_instanced_roof_shader_nani` 适配器（0x1409d9070）：`RoofHighlight` 资源。
-pub fn roof_nani_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn roof_nani_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let h = *res::<RoofHighlight>(w);
     let w: &World = w;
     draw_instanced_roof_shader_nani(
@@ -660,16 +659,16 @@ pub fn roof_nani_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
     );
 }
 /// `draw_instanced_roof_spire_shader` 适配器（0x1409d96a0）：`AssetSsboLibrary` 资源。
-pub fn roof_spire_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn roof_spire_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     draw_instanced_roof_spire_shader(b, &LibView(res::<AssetSsboLibrary>(w)));
 }
 /// `draw_instanced_roof_support_beam_shader` 适配器（0x1409d98a0）。
-pub fn roof_support_beam_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn roof_support_beam_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     draw_instanced_roof_support_beam_shader(b, &LibView(res::<AssetSsboLibrary>(w)));
 }
 /// `water_planes_draw` 适配器（0x1409d9bc0）：进程布尔、`ActiveSession`（变体字节、字节序列，两次取资源）。
 /// `bind_ray_tracing<DrawBuilder>` 用 A4 的真实实现（`RtTriangles/RtTriangleMeta/RtBvh/WallColorId`）。
-pub fn water_planes_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn water_planes_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     // Original disabled branch discards before touching ActiveSession.
     if WATER_PLANES_DISABLED.load(Ordering::Relaxed) {
         b.discard();
@@ -686,22 +685,22 @@ pub fn water_planes_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World)
     });
 }
 /// `leaf_particle_draw` (0x140a8a090) reads the actual GladeSettings u64 at +0.
-pub fn leaf_particle_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn leaf_particle_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let count = res::<GladeSettings>(w).leaf_particle_count;
     leaf_particle_draw(b, count);
 }
 /// `draw_instanced_firefly_shader` 适配器（0x1415549b0）：`CritterControl.intensity`。
-pub fn firefly_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn firefly_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let i = res::<CritterControl>(w).intensity;
     draw_instanced_firefly_shader(b, i);
 }
 /// `draw_instanced_firefly_glow_shader` 适配器（0x141554cf0）。
-pub fn firefly_glow_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn firefly_glow_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let i = res::<CritterControl>(w).intensity;
     draw_instanced_firefly_glow_shader(b, i);
 }
 /// `draw_duck_shader` 适配器（0x141555080）：实体上的 `PrevTransform`（Transform 布局）、`Duck`、`DuckState`（读取序同机器码）。
-pub fn duck_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
+pub fn duck_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let t = *comp::<PrevTransformView>(w, p.entity);
     let d = *comp::<Duck>(w, p.entity);
     let s = comp::<DuckState>(w, p.entity).0;
@@ -720,10 +719,38 @@ pub fn duck_cb(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &mut World) {
     );
 }
 /// `draw_wren_shader` 适配器（0x141555ec0）：纯 `nani_draw(Wren)`。
-pub fn wren_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &mut World) {
+pub fn wren_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let w: &World = w;
     draw_wren_shader(b, |b, k| nani_draw_world(b, k, w));
 }
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
+    m.resource::<GpuWorld>();
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    m.resource::<EditingHighlightView>();
+    m.resource::<CursorTerrainRaycast>();
+    m.resource::<EraserSizeMultiplier>();
+    m.resource::<DebugGuiView>();
+    m.resource::<WallHighlight>();
+    m.resource::<RockyTerrainMeshVertCount>();
+    m.resource_projected::<crate::systems::camera_rig::main_camera::MainCamera>(crate::systems::camera_rig::main_camera::MainCamera::render_snapshot);
+    m.resource::<ActiveSessionView>();
+    m.resource::<crate::resources::logo_animation::LogoAnimation>();
+    m.resource::<Weather>();
+    m.resource_projected::<MainCamera>(MainCamera::render_snapshot);
+    m.resource::<TreeCanopyMaxCullDistance>();
+    m.resource::<RoofHighlight>();
+    m.resource::<ActiveSession>();
+    m.resource::<GladeSettings>();
+    m.resource::<CritterControl>();
+    m.component::<InstancedDrawFromPlacementData>();
+    m.component::<RoofFlagClothView>();
+    m.component::<ColorId>();
+    m.component::<PrevTransformView>();
+    m.component::<Duck>();
+    m.component::<DuckState>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1450,7 +1477,7 @@ mod tests {
     /// 需要 `GpuWorld`/`AssetSsboLibrary` 的适配器：资源齐了才会走到 `nani_draw`；这里以缺 `GpuWorld` 的 panic 证明前面的
     /// 取值都成功（缺任何一个前置资源会先在它自己那里 panic，文案相同，故再用 `MainCameraView` 缺失的变体对照）。
     fn nani_adapter_panics(
-        cb: for<'p> fn(DrawBuilder<'p>, &EntityDrawParams, &mut World),
+        cb: for<'p> fn(DrawBuilder<'p>, &EntityDrawParams, &World),
         w: &mut World,
     ) {
         let p = params(w.spawn_empty().id());

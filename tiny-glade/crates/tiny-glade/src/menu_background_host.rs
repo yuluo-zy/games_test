@@ -267,3 +267,12 @@ pub fn render(
 fn missing(name: &str) -> rhapsody::Error {
     rhapsody::Error::invalid_usage(format!("original menu background: missing {name}"))
 }
+
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.render_owned::<MenuBackgroundResources>();
+    m.resource::<MenuCaptureGpu>();
+    m.resource::<EscMenuState>();
+    m.resource::<country_core::resources::time::GameTime>();
+}

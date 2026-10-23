@@ -131,7 +131,7 @@ fn run<R>(rig: &Rig, f: impl FnOnce(&mut DrawPassCtx<'_>) -> R) -> R {
     f(&mut ctx)
 }
 
-fn cb(b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &mut World) {
+fn cb(b: DrawBuilder<'_>, _i: &EntityDrawParams, _w: &World) {
     b.draw_no_vao(3);
 }
 
@@ -715,9 +715,10 @@ fn ui_2d_pass_sorts_by_order_picks_shader_by_tint_and_draws_ws_after() {
     let s = &l.submissions[0];
     assert_eq!(s.name, "UI 2D");
     assert_eq!(s.draws.len(), 5);
-    // 排序后顺序：None(color button=7)、Some(1)(ui_2d=6)、Some(3)×2（稳定：先 tint=6 再 button=7），最后 ws(8)。
+    // Stable order; untinted images use ui_2d=6, customization uses the
+    // animation/color shader=7, followed by the world-space image=8.
     let shaders: Vec<u64> = s.draws.iter().map(|d| d.shader.0.0).collect();
-    assert_eq!(shaders, vec![7, 6, 6, 7, 8]);
+    assert_eq!(shaders, vec![6, 7, 7, 6, 8]);
     assert!(
         s.draws
             .iter()

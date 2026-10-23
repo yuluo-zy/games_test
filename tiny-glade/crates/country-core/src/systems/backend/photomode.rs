@@ -72,7 +72,7 @@ pub fn process_photomode_transitions(
     mut vermeer: ResMut<crate::systems::render_loop::vermeer::VermeerState>,
     mut modes: bevy_ecs::event::EventReader<crate::systems::mode_manager::AppModeChanged>,
     mut commands: bevy_ecs::event::EventReader<crate::resources::photo_mode::PhotoModeCmd>,
-    mut focus: bevy_ecs::event::EventWriter<crate::resources::window::WindowFocusEvent>,
+    mut camera_sounds: bevy_ecs::event::EventWriter<crate::systems::ui::resources::widget_params::PlayPhotomodeSound>,
     mut audio: bevy_ecs::event::EventWriter<PhotoModeAudioParameter>,
     config: Res<crate::game_config::GameConfig>,
     collision: Res<crate::systems::collision::world::RaycastWorld>,
@@ -101,9 +101,13 @@ pub fn process_photomode_transitions(
     for command in commands.read() {
         let Some(mode) = command.camera() else { continue; };
         if debug.camera_mode == CameraMode::WALK {
-            focus.write(crate::resources::window::WindowFocusEvent(1));
+            // B14234b4cf writes byte1 when leaving the walk camera. This
+            // belongs to PlayPhotomodeSound, not the OS focus event stream.
+            camera_sounds.write(crate::systems::ui::resources::widget_params::PlayPhotomodeSound(1));
         } else if mode == crate::resources::photo_mode::PhotoModeCameraMode::Walk {
-            focus.write(crate::resources::window::WindowFocusEvent(0));
+            // B14234b5f7 writes byte0 on entry; preserve the native event
+            // convention even though the cached sound names suggest otherwise.
+            camera_sounds.write(crate::systems::ui::resources::widget_params::PlayPhotomodeSound(0));
             if !photo.walk_camera_initialized {
                 camera.init_walk_camera(&collision, &heights);
                 photo.walk_camera_initialized = true;

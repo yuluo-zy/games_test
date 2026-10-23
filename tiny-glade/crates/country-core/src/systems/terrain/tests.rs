@@ -32,9 +32,16 @@ fn edits_coalesced_changes_and_delayed_readback_use_the_actual_owners() {
     let device = crate::render::test_device::TestDevice(0);
     library.add_new::<TerrainHeightSsbo>(&device);
     library.add_new::<VisualTerrainHeightSsbo>(&device);
-    library.get_mut::<TerrainHeightSsbo>().unwrap().mapped[0].0 = 0x0002_0001;
-    library.get_mut::<VisualTerrainHeightSsbo>().unwrap().mapped[0].0 = 0x0004_0003;
     world.insert_resource(library);
+    // The render thread's published copies (render::gpu_readback).
+    let mut readbacks = crate::render::gpu_readback::GpuReadbacks::default();
+    let mut heights = vec![TerrainHeightSsbo(0); 0x20000];
+    heights[0].0 = 0x0002_0001;
+    readbacks.publish_slice(&heights, 1);
+    let mut visual = vec![VisualTerrainHeightSsbo(0); 0x20000];
+    visual[0].0 = 0x0004_0003;
+    readbacks.publish_slice(&visual, 1);
+    world.insert_resource(readbacks);
     world
         .resource_mut::<Events<SetTerrainStrokePtsCmd>>()
         .send(SetTerrainStrokePtsCmd {
@@ -275,4 +282,43 @@ fn terrain_focus_mode_no_stroke_path_writes_window_focus_once() {
     schedule.run(&mut world);
     let triggers = world.resource::<Events<ui_terrain_focus_mode::TerrainFocusTrigger>>();
     assert_eq!(triggers.len(), 1);
+}
+
+#[test]
+fn terrain_readback_waits_for_a_publication_from_the_issuing_frame() {
+    use crate::render::gpu_readback::GpuReadbacks;
+    let library = AssetSsboLibrary::new();
+    let device = crate::render::test_device::TestDevice(0);
+    library.register::<TerrainHeightSsbo>(<TerrainHeightSsbo as crate::asset_libraries::ssbo_library::SsboType>::new_storage_buffer(&device, None));
+    library.register::<VisualTerrainHeightSsbo>(<VisualTerrainHeightSsbo as crate::asset_libraries::ssbo_library::SsboType>::new_storage_buffer(&device, None));
+    let mut world = World::new();
+    world.insert_resource(library);
+    world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+    world.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
+    world.insert_resource(ScheduledTerrainReadback::default());
+    world.insert_resource(Events::<OnTerrainChange>::default());
+    // Frame 5 issued the copy; only frame-4 data has been published so far.
+    let mut readbacks = GpuReadbacks::default();
+    readbacks.publish_slice(&vec![TerrainHeightSsbo(0x0002_0001); 0x20000], 4);
+    readbacks.publish_slice(&vec![VisualTerrainHeightSsbo(0x0004_0003); 0x20000], 4);
+    readbacks.note_submitted(5);
+    world.insert_resource(readbacks);
+    world.resource_mut::<ScheduledTerrainReadback>().on_terrain_modified();
+    world.resource_mut::<ScheduledTerrainReadback>().on_gpu_copy_issued(1);
+    let mut schedule = Schedule::default();
+    schedule.add_systems(delayed_terrain_changed_msg::delayed_terrain_changed_msg);
+    for _ in 0..5 { schedule.run(&mut world); }
+    assert!(world.resource::<Events<OnTerrainChange>>().is_empty());
+    assert_eq!(world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()[0], 0);
+    // Only one half reaches frame 5: both must be from the issuing frame.
+    world.resource_mut::<GpuReadbacks>().publish_slice(&vec![TerrainHeightSsbo(0x0006_0005); 0x20000], 5);
+    schedule.run(&mut world);
+    assert!(world.resource::<Events<OnTerrainChange>>().is_empty());
+    world.resource_mut::<GpuReadbacks>().publish_slice(&vec![VisualTerrainHeightSsbo(0x0008_0007); 0x20000], 6);
+    schedule.run(&mut world);
+    assert_eq!(&world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()[..2], &[5, 6]);
+    assert_eq!(&world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights()[..2], &[7, 8]);
+    assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
+    schedule.run(&mut world);
+    assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
 }

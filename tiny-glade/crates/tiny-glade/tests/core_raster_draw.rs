@@ -789,7 +789,7 @@ fn core_raster_pass_draws_a_triangle_into_a_core_texture_and_reads_back() {
 
     // core 的链：RasterPass（tag1 = CLEAR 附件）→ DrawBuilder.uniform → draw_no_vao(3) → render。
     let angle = 20f32.to_radians();
-    let host = env.raster.pass_host(graph.clone(), None);
+    let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
     raster_single_object(
         "core triangle",
         &[ColorAttachment::View {
@@ -1196,7 +1196,7 @@ fn core_raster_pass_chain_animates_over_frames_with_two_in_flight() {
         env.add_clear_pass(&graph, color.resource, clear);
         // core 的链：tag0 = LOAD 附件（访问 0x36 读写）→ 清除色保留、三角形叠上去。
         let angle = frame as f32 * STEP_DEG.to_radians();
-        let host = env.raster.pass_host(graph.clone(), None);
+        let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
         raster_single_object(
             "core triangle",
             &[ColorAttachment::Texture(attachment_texture(color.resource))],
@@ -1286,6 +1286,10 @@ fn shifted(dx: f32) -> Triangle {
 }
 
 fn run_depth_frame(env: &Env, draws: &[DepthDraw]) -> Vec<u8> {
+    run_depth_frame_collected(env, draws, false)
+}
+
+fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) -> Vec<u8> {
     let declarer: Rc<dyn GraphDeclarer> = env.session.clone();
     let readback = env.readback_buffer("rb");
     let graph = env.begin();
@@ -1313,7 +1317,8 @@ fn run_depth_frame(env: &Env, draws: &[DepthDraw]) -> Vec<u8> {
         },
         clear: DepthClear::Clear(1.0),
     };
-    let host = env.raster.pass_host(graph.clone(), None);
+    let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
+    let collect_factory = host.prepare_draw_collection();
     let mut pass = RasterPass::new(
         "core depth pass",
         &[ColorAttachment::View {
@@ -1324,19 +1329,38 @@ fn run_depth_frame(env: &Env, draws: &[DepthDraw]) -> Vec<u8> {
         Box::new(host),
     )
     .with_viewport([SIZE, SIZE]);
-    for d in draws {
-        let packet = DrawPacket::new(env.color_program.clone(), [0, 0], DEPTH_TEST_WRITE);
+    let program = env.color_program.clone();
+    let emit = |pass: &mut RasterPass, d: &DepthDraw| {
+        let packet = DrawPacket::new(program.clone(), [0, 0], DEPTH_TEST_WRITE);
         // Flip 抵消视口翻转；平移先于 Flip（参考坐标系里平移），z 最后加。
         let m = glam::Mat4::from_translation(glam::Vec3::new(0.0, 0.0, d.z))
             * glam::Mat4::from_diagonal(glam::Vec4::new(1.0, -1.0, 1.0, 1.0))
             * glam::Mat4::from_translation(glam::Vec3::new(d.dx, 0.0, 0.0));
-        DrawBuilder::new(&mut pass, packet, 0)
+        DrawBuilder::new(pass, packet, 0)
             .uniform(m_hash(), m)
             .uniform(name_hash("c_r"), d.rgb[0])
             .uniform(name_hash("c_g"), d.rgb[1])
             .uniform(name_hash("c_b"), d.rgb[2])
             .uniform(name_hash("c_a"), 1.0f32)
             .draw_no_vao(3);
+    };
+    if collected {
+        let batches = std::thread::scope(|scope| {
+            let handles: Vec<_> = draws.chunks(2).map(|chunk| {
+                let factory = &collect_factory;
+                let emit = &emit;
+                scope.spawn(move || {
+                    let mut local = RasterPass::collector(factory(), [SIZE, SIZE]);
+                    for d in chunk { emit(&mut local, d); }
+                    local.into_draw_batch()
+                })
+            }).collect();
+            handles.into_iter().map(|handle| handle.join().unwrap()).collect::<Vec<_>>()
+        });
+        assert!(pass.batches_compatible(&batches));
+        for batch in batches { pass.commit_draw_batch(batch); }
+    } else {
+        for d in draws { emit(&mut pass, d); }
     }
     pass.render();
     env.add_readback_pass(&graph, color.resource, rb.resource as u32);
@@ -1456,7 +1480,8 @@ fn core_buffer_handle_checks_generation_and_reports_real_description() {
         .buffers
         .create_buffer(&CoreBufferDesc::new(128, 0x22, 2), "replacement", None)
         .unwrap();
-    assert_eq!(handle.id, replacement.id);
+    assert_eq!(handle.id & 0xffff_ffff, replacement.id & 0xffff_ffff);
+    assert_ne!(handle.id, replacement.id);
     assert_ne!(handle.generation, replacement.generation);
     assert!(
         env.buffers.description(&handle).is_none(),
@@ -1585,7 +1610,7 @@ fn mesh_draw_without_an_actual_vao_is_rejected_without_submission() {
         return;
     };
     let graph = env.begin();
-    let host = env.raster.pass_host(graph.clone(), None);
+    let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
     let mut pass = RasterPass::new(
         "unverified",
         &[ColorAttachment::Texture(attachment_texture(0))],
@@ -1673,7 +1698,7 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
             continue;
         }
         for texture in [slot.texture, pair.current] {
-            let host = env.raster.pass_host(graph.clone(), None);
+            let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
             let mut attachment = attachment_texture(texture.resource);
             attachment.extent = (desc.extent[0], desc.extent[1]);
             raster_single_object(
@@ -1726,4 +1751,24 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
             .wait_submits_done(TIMEOUT_NS)
             .unwrap();
     }
+}
+
+#[test]
+fn collected_constants_and_stable_depth_draws_match_inline_pixels() {
+    let Some(env) = Env::new("collected-depth-equivalence") else { return; };
+    let draws = [
+        DepthDraw { dx: -0.15, z: 0.7, rgb: [1.0, 0.0, 0.0] },
+        DepthDraw { dx: 0.15, z: 0.5, rgb: [0.0, 1.0, 0.0] },
+        DepthDraw { dx: 0.0, z: 0.3, rgb: [0.0, 0.0, 1.0] },
+        DepthDraw { dx: 0.0, z: 0.3, rgb: [1.0, 1.0, 0.0] },
+    ];
+    let inline = run_depth_frame(&env, &draws);
+    // Each frame allocates a new tagged external readback handle while the
+    // internal color/depth allocations remain eligible for cache/pool reuse.
+    for collected in [true, false, true] {
+        let pixels = run_depth_frame_collected(&env, &draws, collected);
+        assert_eq!(pixels, inline, "moved constants and stable Commit must preserve every pixel");
+    }
+    assert!(inline.chunks_exact(4).any(|pixel| pixel != [0, 0, 0, 0]));
+    env.raster.clear_attachment_cache();
 }

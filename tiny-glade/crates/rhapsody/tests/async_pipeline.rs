@@ -823,6 +823,29 @@ fn oversized_requests_apply_backpressure_without_a_pipeline_call() {
 }
 
 #[test]
+fn deferred_spirv_owns_capacity_budget_and_keeps_a_stable_completion_ticket() {
+    let Some(device) = device() else { return; };
+    let compiler = AsyncPipelineCompiler::new(
+        Arc::new(PipelineCache::new(device.clone(), &[]).unwrap()),
+        CompilerConfig { max_request_bytes: 1024, ..Default::default() },
+    ).unwrap();
+    let layout = PipelineLayout::new(device, vec![], vec![]).unwrap();
+    let mut overallocated = Vec::with_capacity(4096);
+    overallocated.extend_from_slice(&bytes());
+    assert!(matches!(compiler.defer_compute_spirv(overallocated, c"main".to_owned(), layout.clone()),
+        Err(rhapsody::Error::OutOfHostMemory)), "budget must charge retained capacity, not byte length");
+    assert_eq!(compiler.stats().pending, 0);
+    let ticket = compiler.defer_compute_spirv(bytes(), c"main".to_owned(), layout.clone()).unwrap();
+    let duplicate = compiler.defer_compute_spirv(bytes(), c"main".to_owned(), layout).unwrap();
+    assert!(ticket.same_request(&duplicate));
+    let pipeline = ticket.wait(Duration::from_secs(10)).unwrap();
+    assert!(Arc::ptr_eq(&pipeline, &duplicate.try_get().unwrap()));
+    idle(&compiler);
+    assert_eq!(compiler.stats().compiled, 1);
+    assert_eq!(compiler.stats().request_bytes, 0);
+}
+
+#[test]
 fn low_priority_compilation_defers_under_resource_pressure_but_critical_work_can_progress() {
     let mut config = DeviceConfig::headless();
     config.memory_budget_bytes = 65536;

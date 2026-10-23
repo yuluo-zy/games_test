@@ -284,16 +284,8 @@ fn minimal_world_frame_allowed() -> bool {
 
 /// Original world dimensions.
 ///
-/// Contract §5.1 M1 (I): `dims = min_extent.unwrap_or(world_dims)` — the OOM
-/// retry value is an **override**, not a floor. `world_dims` is the inner
-/// rendering resolution: base window extent times `world_resolution_scale`.
-/// `prepare_frame_constants` treats `extent_10` as `inner_rendering_resolution`
-/// and `global_mip_bias = extent_10/extent_8` (prepare_frame_constants.rs:205,
-/// 214); `FrameRenderConfig::at_startup` copies the window dims without applying
-/// the scale (render_config.rs:49-54), so the scale is consumed here. Reading
-/// `GameConfig.video.world_resolution_scale` is what makes
-/// `set_resolution_scale` (production_renderer.rs) actually shrink the OOM
-/// retry.
+/// The worker override remains exact; normal frames use the same published
+/// inner extent as camera jitter, culling, history and shader frame constants.
 fn world_extent(
     world: &World,
     swapchain: Option<&SwapchainInfo>,
@@ -307,33 +299,12 @@ fn world_extent(
         }
         return Ok(min);
     }
-    let config = world.get_resource::<country_core::render::render_config::FrameRenderConfig>();
-    let base = world
-        .get_resource::<country_core::resources::window::WindowSize>()
-        .map(|window| window.as_dims())
-        .or_else(|| config.map(|config| config.extent_10))
+    let extent = world.get_resource::<country_core::render::render_config::FrameRenderConfig>()
+        .map(|config| config.extent_10)
         .or_else(|| swapchain.map(|info| info.extent))
-        .ok_or_else(|| {
-            rhapsody::Error::invalid_usage(
-                "original compile_main 0x140161cd0: missing WindowSize/FrameRenderConfig producer and no swapchain extent",
-            )
-        })?;
-    // I (evidence item): the native inner-resolution update that applies
-    // world_resolution_scale to extent_10 is not recovered. Apply it at the
-    // point of use so the OOM retry is not a no-op.
-    let scale = world
-        .get_resource::<GameConfig>()
-        .and_then(|config| config.video.world_resolution_scale)
-        .or_else(|| config.map(|config| config.world_resolution_scale))
-        .unwrap_or(1.0);
-    let extent = [
-        (base[0] as f32 * scale) as u32,
-        (base[1] as f32 * scale) as u32,
-    ];
+        .ok_or_else(|| rhapsody::Error::invalid_usage("missing FrameRenderConfig for world extent"))?;
     if extent.contains(&0) {
-        return Err(rhapsody::Error::invalid_usage(
-            "original compile_main 0x140161cd0: world extent is zero after world_resolution_scale",
-        ));
+        return Err(rhapsody::Error::invalid_usage("world extent contains zero"));
     }
     Ok(extent)
 }
@@ -533,10 +504,7 @@ fn compile_full_world_graph(
     renderer.timing_end(TimedStage::Declare, started);
     let (output, built) = result?;
     let started = renderer.timing_start();
-    let prewarm = renderer
-        .bridge
-        .shader_backend()
-        .prewarm(PIPELINE_PREWARM_TIMEOUT);
+    let prewarm = renderer.prewarm_declaration();
     renderer.timing_end(TimedStage::Prewarm, started);
     if let Err(error) = prewarm {
         if let Err(cleanup) = renderer.bridge.cancel_built(built) {
@@ -636,10 +604,7 @@ fn compile_minimal_world_graph(
     renderer.timing_end(TimedStage::Declare, started);
     let (output, built) = result?;
     let started = renderer.timing_start();
-    let prewarm = renderer
-        .bridge
-        .shader_backend()
-        .prewarm(PIPELINE_PREWARM_TIMEOUT);
+    let prewarm = renderer.prewarm_declaration();
     renderer.timing_end(TimedStage::Prewarm, started);
     if let Err(error) = prewarm {
         if let Err(cleanup) = renderer.bridge.cancel_built(built) {
@@ -741,6 +706,9 @@ pub struct ProductionRenderer {
     bridge: CoreRenderBridge,
     egui: EguiGpu,
     swapchain: Arc<Swapchain>,
+    // Acquisition may replace the Arc on resize/out-of-date. Publish that
+    // generation to the main thread instead of retaining its startup Arc.
+    swapchain_observer: Option<Arc<parking_lot::RwLock<Arc<Swapchain>>>>,
     device: Arc<rhapsody::device::Device>,
     shaders: Arc<AssetShaderLibrary>,
     final_post_shader: Option<
@@ -765,16 +733,22 @@ pub struct ProductionRenderer {
     scopes: Vec<usize>,
     first_error: Option<rhapsody::Error>,
     frame_submitted: bool,
+    frame_history_submitted: bool,
     frame_present_queued: bool,
     frame_observation: Option<ProductionFrameObservation>,
+    // Published only after the CPU frame finishes. Readers never send a
+    // control command or wait for the next frame to finish.
+    published_observation: Option<Arc<parking_lot::RwLock<Option<ProductionFrameObservation>>>>,
+    controls: Option<Arc<crate::render_control::WindowControlMailbox>>,
+    prepared_present_format: Option<u32>,
+    cancel_preparation: bool,
     visual_trace: Option<StartupVisualTraceLog>,
     suspended: bool,
     closed: bool,
-    reduced_state: u64,
     stats: rhapsody::device::RenderStats,
     last_stats: rhapsody::device::StatsSnapshot,
     // The native window and platform backing outlive every Vulkan surface owner.
-    platform: PlatformSurface,
+    platform: Option<PlatformSurface>,
     window: Arc<winit::window::Window>,
     /// Draw lists handed to each frame's host and taken back afterwards, so
     /// their 21 vectors keep their capacity from frame to frame.
@@ -783,10 +757,22 @@ pub struct ProductionRenderer {
     pacer: crate::render_loop::FramePacer,
     /// The frame compiled by the front half, waiting for the back half.
     handoff: Option<FrameHandoff>,
-    /// Screenshot bookkeeping of the back half. The render thread never
-    /// touches the game world; `settle_back_frame` applies these to it.
-    deferred_captures: Vec<DeferredCapture>,
-    finish_capture_pending: bool,
+    /// App activation runs at the hand-over against the game world; its
+    /// failure fails the frame on the render thread.
+    activation_error: Option<anyhow::Error>,
+    /// Declaration's writes that travel back to the game world.
+    write_back: crate::render_thread::WriteBackSet,
+    /// GPU readbacks copied out after submission and published to the game.
+    readbacks: crate::gpu_readback::ReadbackPublisher,
+}
+
+/// What the game thread hands over besides the extracted render world.
+#[derive(bevy_ecs::resource::Resource)]
+pub(crate) struct QueuedFrame {
+    buffers: crate::render_host::FrameBufferSnapshot,
+    mode: crate::render_loop::RenderMode,
+    egui: EguiBackend,
+    activation_error: Option<anyhow::Error>,
 }
 
 /// What the back half needs from the front half besides the compiled graph.
@@ -796,9 +782,9 @@ pub(crate) struct BackInputs {
     lists: DrawLists,
     /// The game world the frame was declared from (frame observation identity).
     world: bevy_ecs::world::WorldId,
-    capture_installed: bool,
     elapsed: Duration,
     trace: Option<MainTraceWorld>,
+    late_camera_input: Option<(u64, u64, bool)>,
 }
 
 struct FrameHandoff {
@@ -807,10 +793,6 @@ struct FrameHandoff {
     inputs: BackInputs,
 }
 
-enum DeferredCapture {
-    Submitted(rhapsody::rg::GraphId, SessionFrameReceipt),
-    Cancelled(rhapsody::rg::GraphId),
-}
 
 impl ProductionRenderer {
     pub fn new(
@@ -901,6 +883,8 @@ impl ProductionRenderer {
             bridge,
             egui,
             swapchain,
+            swapchain_observer: None,
+            readbacks: crate::gpu_readback::ReadbackPublisher::new(device.clone()),
             device,
             shaders,
             final_post_shader,
@@ -920,21 +904,25 @@ impl ProductionRenderer {
             scopes: Vec::new(),
             first_error: None,
             frame_submitted: false,
+            frame_history_submitted: false,
             frame_present_queued: false,
             frame_observation: None,
+            published_observation: None,
+            controls: None,
+            prepared_present_format: None,
+            cancel_preparation: false,
             visual_trace: startup_visual_trace_enabled().then(StartupVisualTraceLog::default),
             suspended: false,
             closed: false,
-            reduced_state: 0,
             stats: Default::default(),
             last_stats: Default::default(),
-            platform,
+            platform: Some(platform),
             window,
             spare_lists: DrawLists::new(),
             pacer: Default::default(),
             handoff: None,
-            deferred_captures: Vec::new(),
-            finish_capture_pending: false,
+            activation_error: None,
+            write_back: Default::default(),
         })
     }
 
@@ -1130,7 +1118,7 @@ impl ProductionRenderer {
         self.first_error.take().map(anyhow::Error::from)
     }
     pub fn resize(&mut self, extent: [u32; 2]) -> Result<()> {
-        self.platform.update(&self.window)?;
+        if let Some(platform) = &self.platform { platform.update(&self.window)?; }
         self.swapchain.resize(vk::Extent2D {
             width: extent[0],
             height: extent[1],
@@ -1153,7 +1141,7 @@ impl ProductionRenderer {
         Ok(())
     }
     pub fn resume(&mut self) -> Result<()> {
-        self.platform.update(&self.window)?;
+        if let Some(platform) = &self.platform { platform.update(&self.window)?; }
         self.suspended = false;
         self.swapchain.mark_stale();
         Ok(())
@@ -1240,6 +1228,8 @@ impl ProductionRenderer {
         Ok(())
     }
     pub fn shutdown(&mut self) -> Result<()> {
+        self.bridge.clear_frame_buffers();
+        for app in self.other_applications.values_mut() { app.bridge.clear_frame_buffers(); }
         if self.closed {
             return Ok(());
         }
@@ -1324,6 +1314,12 @@ pub struct ProductionFrameObservation {
     pub output_sample_count: u8,
     pub present_point: Option<rhapsody::sync::SyncPoint>,
     pub present_generation: Option<u64>,
+    /// Native successes in this exact generation at publication, rather than
+    /// a later frame's potentially rebuilt swapchain counter.
+    pub native_present_successes: u64,
+    /// Consumed/sampled OS motion sequence and whether this submitted image
+    /// used the non-consuming late camera preview.
+    pub late_camera_input: Option<(u64, u64, bool)>,
 }
 
 pub struct CompiledGameGraph {
@@ -1334,36 +1330,390 @@ pub struct CompiledGameGraph {
     expected: ExportExpectation,
 }
 
-/// The production renderer on its own thread (reports/render-thread-2026-10-22).
-pub type ProductionRenderThread = crate::render_thread::RenderThread<ProductionRenderer>;
+/// Thread-local graph owners plus a main-thread native surface adapter.
+/// Field order ensures the worker is joined before the platform backing drops.
+pub struct ProductionRenderThread {
+    worker: crate::render_thread::RenderThread<ProductionRenderer>,
+    controls: Arc<crate::render_control::WindowControlMailbox>,
+    observation: Option<ProductionFrameObservation>,
+    published_observation: Arc<parking_lot::RwLock<Option<ProductionFrameObservation>>>,
+    swapchain: Arc<parking_lot::RwLock<Arc<Swapchain>>>,
+    hosts: crate::render_host::HostTables,
+    shaders: Arc<AssetShaderLibrary>,
+    owner: std::thread::ThreadId,
+    platform: Option<PlatformSurface>,
+    window: Arc<winit::window::Window>,
+}
+impl std::ops::Deref for ProductionRenderThread {
+    type Target = crate::render_thread::RenderThread<ProductionRenderer>;
+    fn deref(&self) -> &Self::Target { &self.worker }
+}
+impl std::ops::DerefMut for ProductionRenderThread {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.worker }
+}
 
-impl ProductionRenderer {
-    pub fn into_render_thread(self) -> std::io::Result<ProductionRenderThread> {
-        let side = crate::render_thread::RenderSide {
-            world: World::new(),
-            renderer: self,
-            feedback: Default::default(),
+impl ProductionRenderThread {
+    fn post_control(&self, update: impl FnOnce(&mut crate::render_control::WindowControls)) -> Result<()> {
+        self.controls.update(update);
+        self.worker.notify_control()
+    }
+    pub fn invalidate_surface(&self) -> Result<()> {
+        self.controls.invalidate_surface();
+        self.worker.notify_control()
+    }
+    pub fn cancel_preparation(&self) -> Result<()> {
+        self.controls.cancel_preparation();
+        self.worker.notify_control()
+    }
+    pub fn take_control_error(&self) -> Result<()> {
+        self.controls.take_error().map_or(Ok(()), Err)
+    }
+    /// Requested and applied generations; acknowledgement means CPU control
+    /// application, independently of image submission or native presentation.
+    pub fn control_progress(&self) -> (u64, u64) { self.controls.progress() }
+    pub fn resize(&mut self, extent: [u32; 2]) -> Result<()> {
+        if let Some(platform) = &self.platform { platform.update(&self.window)?; }
+        self.post_control(|state| state.resize = Some(extent))
+    }
+    pub fn resume(&mut self) -> Result<()> {
+        if let Some(platform) = &self.platform { platform.update(&self.window)?; }
+        self.post_control(|state| state.suspended = Some(false))
+    }
+    pub fn suspend(&mut self) -> Result<()> { self.post_control(|state| state.suspended = Some(true)) }
+    pub fn set_focused(&mut self, focused: bool) -> Result<()> {
+        self.post_control(|state| state.focused = Some(focused))
+    }
+    pub fn set_vsync(&mut self, enabled: bool) -> Result<()> {
+        self.post_control(|state| state.vsync = Some(enabled))
+    }
+    pub fn any_present_successful(&self) -> bool { self.swapchain.read().any_present_successful() }
+    pub fn native_present_success_count(&self) -> u64 { self.swapchain.read().native_present_success_count() }
+    pub fn frame_observation(&mut self) -> Option<&ProductionFrameObservation> {
+        self.observation = self.published_observation.read().clone();
+        self.observation.as_ref()
+    }
+    pub fn frame_present_complete(&mut self) -> rhapsody::Result<Option<bool>> {
+        self.call(|renderer| renderer.frame_present_complete())
+    }
+    pub fn shutdown_renderer(&mut self) -> Result<()> {
+        if self.failed() {
+            self.join_failed();
+            anyhow::bail!("render worker failed; joined after renderer cleanup");
+        }
+        self.cancel_preparation()?;
+        // Requests moved during extraction belong to this reclaimed render World.
+        // Finish their readbacks while GPU owners are still alive.
+        let capture = {
+            let side = self.reclaim();
+            if crate::screenshot::shared_texture_capture::installed(&side.world) {
+                crate::screenshot::hurry_active_screenshots_on_shutdown(&mut side.world).map_err(anyhow::Error::from)
+            } else { Ok(()) }
         };
-        // SAFETY: the renderer's Rc/RefCell graph (session, declarer, compiled
-        // frames, other Apps' bridges) is created, used and dropped only through
-        // the renderer. The game world holds Send + Sync resources only, so no
-        // clone of that graph lives outside the side handed between threads.
-        unsafe { crate::render_thread::RenderThread::spawn(side, render_back_frame) }
+        let shutdown = self.call(|renderer| renderer.shutdown());
+        let shutdown = match capture {
+            Ok(()) => shutdown,
+            Err(error) => { if let Err(other) = shutdown { log::error!("GPU shutdown after screenshot error: {other:#}"); } Err(error) },
+        };
+        match self.controls.take_error() {
+            Some(error) => { if let Err(other) = shutdown { log::error!("GPU shutdown after control error: {other:#}"); } Err(error) },
+            None => shutdown,
+        }
+    }
+    pub(crate) fn set_write_back(&mut self, write_back: crate::render_thread::WriteBackSet) {
+        self.call(move |renderer| renderer.set_write_back(write_back));
+    }
+    pub(crate) fn activate_application(&mut self, game: &World) -> Result<()> {
+        let activation = application_activation(game);
+        let (result, hosts, shaders) = self.call(move |renderer| {
+            let result = renderer.activate_application(&activation);
+            (result, renderer.bridge.hosts().clone(), renderer.shaders.clone())
+        });
+        self.hosts = hosts;
+        self.shaders = shaders;
+        result
+    }
+    pub(crate) fn queue_frame(&mut self, game: &World, mode: crate::render_loop::RenderMode, egui: EguiBackend) {
+        self.reclaim();
+        let matches = game.get_resource::<crate::run_game::ApplicationShaderLibrary>()
+            .is_some_and(|shaders| Arc::ptr_eq(&shaders.0, &self.shaders));
+        let activation_error = if matches { None } else { self.activate_application(game).err() };
+        // Seal before sending the packet, so producers cannot overtake the
+        // worker while it is waking up. No per-frame control round trip.
+        let read_boundary = [self.hosts.buffers.begin_frame_read(self.owner), self.hosts.textures.begin_frame_read(self.owner)];
+        let buffers = self.hosts.buffers.freeze_frame_resources();
+        let side = self.reclaim();
+        side.read_boundary = Some(read_boundary);
+        side.world.insert_resource(QueuedFrame { buffers, mode, egui, activation_error });
+    }
+    pub(crate) fn managed_buffer(&mut self, buffer: country_core::render::ssbo::rhapsody_boundary::Buffer)
+        -> Option<rhapsody::resource::ManagedBuffer>
+    {
+        self.hosts.buffers.managed_buffer(&buffer)
     }
 }
 
-/// The render thread's frame: the back half of the frame handed over.
-fn render_back_frame(side: &mut crate::render_thread::RenderSide<ProductionRenderer>) {
-    let renderer = &mut side.renderer;
-    side.feedback.rendered = renderer.handoff.is_some();
-    let result = renderer.render_back(&mut side.world);
-    side.feedback.submitted = renderer.frame_submitted;
-    side.feedback.present_queued = renderer.frame_present_queued;
-    side.feedback.error = result.err();
+/// Activation carries only canonical Send resource owners. In particular, no
+/// Rc session or borrowed game World is reachable from the command.
+fn application_activation(game: &World) -> World {
+    let mut activation = World::new();
+    fn copy<R: bevy_ecs::resource::Resource + Clone>(game: &World, activation: &mut World) {
+        if let Some(resource) = game.get_resource::<R>() { activation.insert_resource(resource.clone()); }
+    }
+    copy::<crate::run_game::ApplicationShaderLibrary>(game, &mut activation);
+    copy::<country_core::asset_libraries::runtime::AssetLibraryRuntime>(game, &mut activation);
+    copy::<crate::render_bridge::CompletedGameplayWarmup>(game, &mut activation);
+    copy::<application_programs::RegisteredApplicationPrograms>(game, &mut activation);
+    activation
 }
 
-/// One half of a frame. The front host borrows the game world and egui on the
-/// game thread; the back host borrows only the render thread's scratch world.
+/// Startup has no live graph or temporal state; only the physical owners are
+/// carried over. Each Rc session is reconstructed inside the worker factory.
+struct ApplicationOwners {
+    owners: crate::render_bridge::CoreRenderOwners,
+    egui: EguiGpu,
+    shaders: Arc<AssetShaderLibrary>,
+    final_post_shader: Option<country_core::asset_libraries::Handle<country_core::render::shader::RasterShaderProgram>>,
+    programs_deferred: bool,
+}
+impl ApplicationOwners {
+    fn into_application(self) -> Result<ApplicationGpu> {
+        Ok(ApplicationGpu { bridge: CoreRenderBridge::from_owners(self.owners)?,
+            egui: self.egui, shaders: self.shaders, final_post_shader: self.final_post_shader,
+            programs_deferred: self.programs_deferred })
+    }
+}
+
+impl ProductionRenderer {
+    pub fn into_render_thread(mut self) -> Result<ProductionRenderThread> {
+        anyhow::ensure!(self.handoff.is_none() && self.pending.is_empty()
+            && self.main.is_none() && self.acquired.is_none() && self.presentation.is_none()
+            && self.frame_observation.is_none() && !self.closed,
+            "resident renderer must be started before its first frame");
+        let owners = self.bridge.warmup_owners()?;
+        // Validate every App before moving any of its owners.
+        let mut other_owners = BTreeMap::new();
+        for (key, app) in &self.other_applications {
+            other_owners.insert(*key, app.bridge.warmup_owners()?);
+        }
+        let other = std::mem::take(&mut self.other_applications).into_iter().map(|(key, app)| {
+            (key, ApplicationOwners { owners: other_owners.remove(&key).expect("validated owner"),
+                egui: app.egui, shaders: app.shaders, final_post_shader: app.final_post_shader,
+                programs_deferred: app.programs_deferred })
+        }).collect::<Vec<_>>();
+        let egui = std::mem::replace(&mut self.egui, EguiGpu::new(self.device.clone(), self.bridge.hosts().clone()));
+        let swapchain = self.swapchain.clone();
+        let swapchain_observer = Arc::new(parking_lot::RwLock::new(swapchain.clone()));
+        let worker_swapchain_observer = swapchain_observer.clone();
+        let published_observation = Arc::new(parking_lot::RwLock::new(None));
+        let worker_observation = published_observation.clone();
+        let controls = Arc::new(crate::render_control::WindowControlMailbox::default());
+        let worker_controls = controls.clone();
+        let device = self.device.clone();
+        let shaders = self.shaders.clone();
+        let final_post_shader = self.final_post_shader;
+        let programs_deferred = self.programs_deferred;
+        let compiled_shader_root = self.compiled_shader_root.clone();
+        let window = self.window.clone();
+        let started = self.started;
+        let mut worker = crate::render_thread::RenderThread::spawn_steps(move || {
+            let bridge = CoreRenderBridge::from_owners(owners)?;
+            let other_applications = other.into_iter().map(|(key, app)|
+                app.into_application().map(|app| (key, app))).collect::<Result<BTreeMap<_, _>>>()?;
+        Ok(ProductionRenderer {
+            bridge,
+            egui,
+            swapchain,
+            swapchain_observer: Some(worker_swapchain_observer),
+            readbacks: crate::gpu_readback::ReadbackPublisher::new(device.clone()),
+            device,
+            shaders,
+            final_post_shader,
+            programs_deferred,
+            other_applications,
+            timing: None,
+            timing_gameplay_count: 0,
+            gpu_timing_bridge: None,
+            gpu_span_window: Default::default(),
+            compiled_shader_root,
+            pending: VecDeque::new(),
+            acquired: None,
+            presentation: None,
+            main: None,
+            main_output: None,
+            started,
+            scopes: Vec::new(),
+            first_error: None,
+            frame_submitted: false,
+            frame_history_submitted: false,
+            frame_present_queued: false,
+            frame_observation: None,
+            published_observation: Some(worker_observation),
+            controls: Some(worker_controls),
+            prepared_present_format: None,
+            cancel_preparation: false,
+            visual_trace: startup_visual_trace_enabled().then(StartupVisualTraceLog::default),
+            suspended: false,
+            closed: false,
+            stats: Default::default(),
+            last_stats: Default::default(),
+            platform: None,
+            window,
+            spare_lists: DrawLists::new(),
+            pacer: Default::default(),
+            handoff: None,
+            activation_error: None,
+            write_back: Default::default(),
+        })
+        }, render_back_frame_step, poll_window_controls)?;
+        let wake_window = self.window.clone();
+        worker.set_wake(Arc::new(move || wake_window.request_redraw()));
+        let owner = worker.call(|_| std::thread::current().id());
+        self.closed = true; // the resident owner now owns GPU shutdown
+        Ok(ProductionRenderThread { worker, controls, platform: self.platform.take(), window: self.window.clone(),
+            observation: None, published_observation, swapchain: swapchain_observer, hosts: self.bridge.hosts().clone(),
+            shaders: self.shaders.clone(), owner })
+    }
+}
+
+impl ProductionRenderer {
+    pub(crate) fn set_write_back(&mut self, write_back: crate::render_thread::WriteBackSet) {
+        self.write_back = write_back;
+    }
+}
+
+fn poll_window_controls(renderer: &mut ProductionRenderer, active: Option<&mut crate::render_thread::RenderSide>) -> bool {
+    let Some(mailbox) = renderer.controls.clone() else { return false; };
+    let Some((generation, control)) = mailbox.take() else { return false; };
+    if control.cancel_preparation { renderer.cancel_preparation = true; }
+    // A pending graph is tied to its original window state. Cancel its actual
+    // owned declaration and screenshot records before applying another state.
+    if let Some(side) = active && renderer.handoff.is_some() {
+        let cleanup = cancel_frame_preparation(renderer, side);
+        complete_render_feedback(renderer, side, cleanup, false);
+        renderer.cancel_preparation = false;
+    }
+    let result = (|| -> Result<()> {
+        if control.suspended == Some(false) { renderer.resume()?; }
+        if let Some(extent) = control.resize { renderer.resize(extent)?; }
+        if control.stale { renderer.swapchain.mark_stale(); }
+        if let Some(vsync) = control.vsync { renderer.set_vsync(vsync)?; }
+        if let Some(focused) = control.focused { renderer.set_focused(focused)?; }
+        if control.suspended == Some(true) { renderer.suspend()?; }
+        Ok(())
+    })();
+    match result {
+        Ok(()) => mailbox.complete(generation),
+        Err(error) => mailbox.fail(error),
+    }
+    true
+}
+
+/// The render thread's frame: declaration and compilation against the
+/// extracted render world, the game-world write-backs, then execution and
+/// presentation.
+#[derive(bevy_ecs::resource::Resource)]
+struct PreparingFrame { started: Instant }
+
+fn cancel_frame_preparation(renderer: &mut ProductionRenderer, side: &mut crate::render_thread::RenderSide) -> Result<()> {
+    if let Some(handoff) = renderer.handoff.take() {
+        crate::screenshot::shared_texture_capture::cancel_unsubmitted(&mut side.world,
+            handoff.prepared.compiled().capture_graph_id);
+        drop(handoff); // CompiledCoreGraph cancels the prepared session exactly once.
+    }
+    side.world.remove_resource::<PreparingFrame>();
+    renderer.finish_render()
+}
+
+fn complete_render_feedback(renderer: &mut ProductionRenderer, side: &mut crate::render_thread::RenderSide,
+    result: Result<()>, rendered: bool) {
+    side.world.remove_resource::<PreparingFrame>();
+    side.feedback.rendered = rendered;
+    if renderer.frame_submitted {
+        renderer.write_back.run_submitted(&mut side.world, &mut side.feedback.apply);
+    } else {
+        renderer.write_back.abort_unsubmitted(&mut side.world);
+    }
+    // After the submitted write-backs: the game sees copy_issued and the
+    // matching submitted frame number in the same hand-over.
+    let buffers = renderer.bridge.hosts().buffers.clone();
+    renderer.readbacks.finish_frame(&mut side.world, &buffers, renderer.frame_submitted, &mut side.feedback);
+    side.feedback.submitted = renderer.frame_submitted;
+    side.feedback.history_submitted = renderer.frame_history_submitted;
+    side.feedback.temporal_candidate = side.world.remove_resource::<crate::temporal_frame::RenderCameraCandidate>()
+        .map(|candidate| candidate.0).filter(|_| renderer.frame_history_submitted);
+    side.feedback.present_queued = renderer.frame_present_queued;
+    side.feedback.error = result.err();
+    if let Some(published) = &renderer.published_observation {
+        *published.write() = renderer.frame_observation.clone();
+    }
+}
+
+/// Prepare exactly once, then retain the same graph/World while pipeline
+/// tickets are pending. No frame upload, egui delta or screenshot is replayed.
+fn render_back_frame_step(renderer: &mut ProductionRenderer, side: &mut crate::render_thread::RenderSide) -> crate::render_thread::RenderStep {
+    use crate::render_thread::RenderStep;
+    if renderer.cancel_preparation && !side.world.contains_resource::<PreparingFrame>() {
+        renderer.cancel_preparation = false;
+        side.world.remove_resource::<QueuedFrame>();
+        renderer.frame_submitted = false;
+        renderer.frame_history_submitted = false;
+        renderer.frame_present_queued = false;
+        renderer.frame_observation = None;
+        complete_render_feedback(renderer, side, Ok(()), false);
+        return RenderStep::Complete;
+    }
+    if !side.world.contains_resource::<PreparingFrame>() {
+        let Some(QueuedFrame { buffers, mode, mut egui, activation_error }) = side.world.remove_resource::<QueuedFrame>() else {
+            return RenderStep::Complete;
+        };
+        renderer.activation_error = activation_error;
+        if renderer.activation_error.is_none() {
+            renderer.activation_error = renderer.bridge.install_frame_buffers(buffers).err().map(Into::into);
+        }
+        renderer.prepared_present_format = None;
+        side.world.remove_resource::<crate::temporal_frame::RenderCameraCandidate>();
+        crate::frame_resolution::adapt(&mut side.world, &renderer.device);
+        crate::temporal_frame::latch_camera_preview(&mut side.world);
+        crate::temporal_frame::prepare_render_candidate(&mut side.world);
+        side.world.insert_resource(PreparingFrame { started: Instant::now() });
+        let front = renderer.render_front(&mut side.world, &mut egui, mode)
+            .and_then(|()| renderer.prepare_presentation_pipeline().map_err(Into::into));
+        renderer.write_back.run(&mut side.world, &mut side.feedback.apply);
+        if let Err(error) = front {
+            if renderer.handoff.is_some() {
+                if let Err(cleanup) = cancel_frame_preparation(renderer, side) { log::warn!("failed Prepare cancellation: {cleanup:#}"); }
+            }
+            complete_render_feedback(renderer, side, Err(error), true);
+            return RenderStep::Complete;
+        }
+    }
+    if renderer.cancel_preparation {
+        renderer.cancel_preparation = false;
+        let cleanup = cancel_frame_preparation(renderer, side);
+        complete_render_feedback(renderer, side, cleanup, false);
+        return RenderStep::Complete;
+    }
+    {
+        let ready = renderer.bridge.shader_backend().poll_preparation();
+        match ready {
+            Ok(false) if side.world.resource::<PreparingFrame>().started.elapsed() < PIPELINE_PREWARM_TIMEOUT => return RenderStep::Pending,
+            Ok(true) => {},
+            other => {
+                let error = other.err().unwrap_or(rhapsody::Error::Timeout);
+                if let Err(cleanup) = cancel_frame_preparation(renderer, side) { log::warn!("pipeline preparation cancellation: {cleanup:#}"); }
+                complete_render_feedback(renderer, side, Err(error.into()), true);
+                return RenderStep::Complete;
+            }
+        }
+    }
+    let admission = side.take_update_admission();
+    let result = renderer.render_back(&mut side.world, admission);
+    complete_render_feedback(renderer, side, result, true);
+    RenderStep::Complete
+}
+
+/// One half of a frame on the render thread: the front host declares from
+/// the render world and the handed-over egui frame; the back host executes.
 pub struct ProductionRenderHost<'a> {
     renderer: &'a mut ProductionRenderer,
     world: &'a mut World,
@@ -1372,20 +1722,60 @@ pub struct ProductionRenderHost<'a> {
     input_lag_reduction: bool,
     lists: DrawLists,
     back: Option<BackContext>,
+    after_main_reads: Option<crate::render_thread::UpdateAdmission>,
 }
 
-/// Front-half facts the back half reads instead of the game world.
+/// Front-half facts the back half uses.
 struct BackContext {
     world: bevy_ecs::world::WorldId,
-    capture_installed: bool,
     elapsed: Duration,
     trace: Option<MainTraceWorld>,
+    late_camera_input: Option<(u64, u64, bool)>,
 }
 
 impl ProductionRenderer {
-    /// Game thread: draw lists and graph compilation (`render_front`). On
-    /// success the compiled frame is kept for the back half; on failure the
-    /// frame is closed here and its error returned.
+    fn prewarm_declaration(&self) -> rhapsody::Result<()> {
+        if self.controls.is_some() { Ok(()) }
+        else { self.bridge.shader_backend().prewarm(PIPELINE_PREWARM_TIMEOUT) }
+    }
+
+    fn prepare_presentation_pipeline(&mut self) -> rhapsody::Result<()> {
+        use country_core::render::pass_builder::draw_stream::{AttachmentDesc, RasterRenderPassDesc, DEPTH_STATE_NONE};
+        let Some(handoff) = &self.handoff else { return Ok(()); };
+        let shader = country_core::systems::render_loop::draw_passes::final_post::resolve_shader_name(
+            handoff.prepared.compiled().expected.sample_count);
+        let format = self.swapchain.format().as_raw() as u32;
+        let mut colors = [AttachmentDesc::default(); 8];
+        colors[0] = AttachmentDesc::new(format).with_sample_count(1);
+        let desc = RasterRenderPassDesc { colors, color_count: 1, depth: AttachmentDesc::default(), depth_state: DEPTH_STATE_NONE };
+        let backend = self.bridge.shader_backend();
+        let pass = backend.passes().create_from_desc(&self.device, &crate::raster_host::rh_render_pass_desc(&desc)?)?;
+        let handle = self.shaders.get_raster_handle_by_name(shader)
+            .ok_or_else(|| rhapsody::Error::invalid_usage(format!("missing resolve shader {shader}")))?;
+        let program = self.shaders.get_raster(handle).expect("registered resolve shader");
+        let pipeline = program.variants[0]
+            .get_or_generate(backend, country_core::rhapsody_types::RasterPipelineKey {
+                handle: pass, selector: crate::raster_host::ORIGINAL_DEFAULT_RASTER_STATE,
+            }).map_err(|error| rhapsody::Error::InvalidUsage {
+                what: "prepare resolve pipeline".into(), source: Some(error.into()),
+            })?;
+        let entry = backend.raster_entry(pipeline)
+            .ok_or_else(|| rhapsody::Error::invalid_usage("prepared resolve pipeline missing from host"))?;
+        // Admission opens after main submission. Reject a changed resolve ABI
+        // that would introduce reads of game-owned globals after that boundary.
+        let bindings = &entry.bindings.abi.bindings;
+        if bindings.len() != 2 || !bindings.iter().all(|binding| {
+            binding.location.set == 0 && matches!(binding.location.binding, 13 | 14)
+        }) {
+            return Err(rhapsody::Error::invalid_usage("resolve ABI contains resources outside its private image and uniforms"));
+        }
+        self.prepared_present_format = Some(format);
+        Ok(())
+    }
+
+    /// Render thread: draw lists and graph compilation (`render_front`)
+    /// against the extracted render world. On success the compiled frame is
+    /// kept for the back half; on failure the frame is closed here.
     pub(crate) fn render_front(
         &mut self, world: &mut World, egui: &mut EguiBackend, mode: crate::render_loop::RenderMode,
     ) -> anyhow::Result<()> {
@@ -1415,13 +1805,14 @@ impl ProductionRenderer {
 
     /// Render thread: execute, acquire, present and collect the frame the front
     /// half compiled (`render_back`), then close it.
-    pub(crate) fn render_back(&mut self, scratch: &mut World) -> anyhow::Result<()> {
+    pub(crate) fn render_back(&mut self, scratch: &mut World, admission: crate::render_thread::UpdateAdmission) -> anyhow::Result<()> {
         let Some(FrameHandoff { prepared, mode, inputs }) = self.handoff.take() else {
             return Ok(());
         };
         let mut pacer = self.pacer;
         let result = {
             let mut host = self.back_host(scratch, inputs);
+            host.after_main_reads = Some(admission);
             crate::render_loop::render_back(&mut host, &mut pacer, mode, prepared)
         };
         self.pacer = pacer;
@@ -1430,40 +1821,18 @@ impl ProductionRenderer {
         host_result
     }
 
-    /// Game thread, at the hand-over: apply the back half's screenshot
-    /// bookkeeping to the game world that declared the frame.
-    pub(crate) fn settle_back_frame(&mut self, world: &mut World) -> anyhow::Result<()> {
-        let mut first_error = None;
-        for capture in std::mem::take(&mut self.deferred_captures) {
-            match capture {
-                DeferredCapture::Submitted(graph, receipt) => {
-                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
-                        world, &mut self.bridge, graph, &receipt,
-                    ) {
-                        first_error.get_or_insert(error);
-                    }
-                }
-                DeferredCapture::Cancelled(graph) => {
-                    crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, graph);
-                }
-            }
-        }
-        if std::mem::take(&mut self.finish_capture_pending)
-            && crate::screenshot::shared_texture_capture::installed(world)
-        {
-            if let Err(error) = crate::screenshot::finish_screenshot_capture(world) {
-                first_error.get_or_insert(error);
-            }
-        }
-        first_error.map_or(Ok(()), |error| Err(error.into()))
-    }
-
     fn finish_render(&mut self) -> anyhow::Result<()> {
+        // Graph/receipt leases retain submitted owners; discard only this
+        // packet's CPU resolver after cancellation or the completed back half.
+        self.bridge.clear_frame_buffers();
         // Close the display frame on every path, including failed frames.
         self.bridge.end_display_frame();
         // Drain the per-frame counters even for frames that are not logged, so
         // a logged frame never carries totals from skipped ones.
         let counters = self.timing.is_some().then(crate::frame_counters::take);
+        // Drain every timed frame, including those omitted by log sampling.
+        // Otherwise the next sampled line reports many frames as one frame.
+        let declaration = self.timing.is_some().then(country_core::render::declare_probe::take);
         self.report_gpu_spans();
         let every = crate::game_loop::frame_timing_every();
         if let Some(t) = self.timing.take().filter(|t| t.frame <= 3 || t.frame % every == 0) {
@@ -1491,6 +1860,15 @@ impl ProductionRenderer {
                 "plan_cache gameplay_n={} hits_total={} misses_total={} miss_reasons=[{}]",
                 t.frame, plans.hits, plans.misses, reasons);
             let (polls, queries) = self.device.timeline_poll_stats();
+            let memory = self.device.memory_usage_snapshot();
+            let host = self.device.allocator_stats().cpu_memory_usage();
+            let heap = self.bridge.shader_backend().bindless_stats();
+            let constants = self.bridge.raster_resources().dynamic_constants().lock().stats();
+            log::info!(target: "tiny_glade::frame_timing",
+                "frame_memory gameplay_n={} device_bytes={} native_blocks={} host_live={} host_cache={} descriptors_live={} descriptors_peak={} descriptors_capacity={} constants_pages={} constants_bytes={} constants_peak={}",
+                t.frame, memory.application_vk_memory_bytes, memory.native_memory_blocks,
+                host.live, host.cache, heap.live, heap.peak_live, heap.capacity,
+                constants.pages, constants.backing_bytes, constants.peak_backing_bytes);
             log::info!(target: "tiny_glade::frame_timing",
                 "timeline_polls gameplay_n={} poll_calls_total={} driver_queries_total={}",
                 t.frame, polls, queries);
@@ -1503,7 +1881,11 @@ impl ProductionRenderer {
                 "render_stages gameplay_n={} graph={:?} receipt={:?} draw_lists_ms={:.3} declare_ms={:.3} prewarm_ms={:.3} compile_ms={:.3} record_submit_ms={:.3} collect_ms={:.3} present_ticket_wait_ms={:.3} acquire_ms={:.3} resolve_inclusive_ms={:.3} present_ms={:.3} frame_throttle_ms={:.3} queue_trim_actual_ms={:.3} queue_trim_budget_ms={:.3} observed_completion_wall_ms={:.3} submitted={} present_queued={} error={}; GPU top-level timestamp span unavailable",
                 t.frame, t.graph, t.receipt, ms(t.draw_lists), ms(t.declare), ms(t.prewarm), ms(t.compile), ms(t.execute), ms(t.collect), ms(t.present_wait), ms(t.acquire), ms(t.resolve), ms(t.present), ms(t.frame_throttle), ms(t.queue_trim), ms(t.queue_budget), t.observed_completion_wall_ns as f64 / 1_000_000.0,
                 self.frame_submitted, self.frame_present_queued, self.first_error.is_some());
-            let d = country_core::render::declare_probe::take();
+            let d = declaration.unwrap_or_default();
+            log::info!(target: "tiny_glade::frame_timing",
+                "draw_collect gameplay_n={} passes={} tasks={} cross_pass_tasks={} prepare_ms={:.3} collect_ms={:.3} commit_ms={:.3}",
+                t.frame, d.collect_passes, d.collect_tasks, d.cross_pass_tasks,
+                d.collect_ns[0] as f64 / 1e6, d.collect_ns[1] as f64 / 1e6, d.collect_ns[2] as f64 / 1e6);
             log::info!(target: "tiny_glade::frame_timing",
                 "declare_split gameplay_n={} declare_ms={:.3} list_passes={} list_draws={} list_loop_ms={:.3} raster_render_ms={:.3} table_reads={} table_ms={:.3} draw_access_ms={:.3}; list_loop and raster_render are disjoint, table_ms and draw_access_ms are inside raster_render",
                 t.frame, ms(t.declare), d.list_passes, d.list_draws, d.list_loop_ns as f64 / 1e6, d.render_ns as f64 / 1e6,
@@ -1527,7 +1909,7 @@ impl ProductionRenderer {
         self.take_error().map_or(Ok(()), Err)
     }
     fn back_host<'a>(&'a mut self, scratch: &'a mut World, inputs: BackInputs) -> ProductionRenderHost<'a> {
-        let BackInputs { video, input_lag_reduction, lists, world, capture_installed, elapsed, trace } = inputs;
+        let BackInputs { video, input_lag_reduction, lists, world, elapsed, trace, late_camera_input } = inputs;
         ProductionRenderHost {
             renderer: self,
             world: scratch,
@@ -1535,7 +1917,8 @@ impl ProductionRenderer {
             video,
             input_lag_reduction,
             lists,
-            back: Some(BackContext { world, capture_installed, elapsed, trace }),
+            back: Some(BackContext { world, elapsed, trace, late_camera_input }),
+            after_main_reads: None,
         }
     }
     fn front_host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> ProductionRenderHost<'a> {
@@ -1544,10 +1927,11 @@ impl ProductionRenderer {
             Some(RenderStageTiming { frame: self.timing_gameplay_count, ..Default::default() })
         } else { None };
         self.frame_submitted = false;
+        self.frame_history_submitted = false;
         self.frame_present_queued = false;
         self.frame_observation = None;
         if let Some(trace) = &mut self.visual_trace { trace.pending_presentation = None; }
-        if let Err(error) = self.activate_application(world) {
+        if let Some(error) = self.activation_error.take() {
             // Keep the full application-switch diagnostic chain. This is an
             // ownership/setup failure before world compilation, not its OOM
             // retry path; no anyhow context is discarded by downcasting it.
@@ -1582,6 +1966,7 @@ impl ProductionRenderer {
             input_lag_reduction: false,
             lists,
             back: None,
+            after_main_reads: None,
         }
     }
 }
@@ -1602,10 +1987,12 @@ impl ProductionRenderHost<'_> {
             video: self.video.take(),
             input_lag_reduction: self.input_lag_reduction,
             lists: std::mem::take(&mut self.lists),
-            world: self.world.id(),
-            capture_installed: crate::screenshot::shared_texture_capture::installed(self.world),
+            world: self.world.get_resource::<crate::render_thread::ExtractedAt>()
+                .map_or_else(|| self.world.id(), |extract| extract.source),
             elapsed: self.world.get_resource::<bevy_time::Time>().map(|time| time.elapsed()).unwrap_or_default(),
             trace,
+            late_camera_input: self.world.get_resource::<crate::temporal_frame::LatchedCameraInput>()
+                .map(|input| (input.consumed_sequence, input.sampled_sequence, input.previewed)),
         }
     }
     fn back(&self) -> &BackContext {
@@ -1642,12 +2029,11 @@ impl ProductionRenderHost<'_> {
             resolve::build(frame, world, &shaders, elapsed, source, &target, flag)?;
             Ok(target)
         })?;
-        if let Err(error) = self
-            .renderer
-            .bridge
-            .shader_backend()
-            .prewarm(PIPELINE_PREWARM_TIMEOUT)
-        {
+        let ready = if self.renderer.controls.is_some() {
+            self.renderer.bridge.shader_backend().poll_preparation().and_then(|ready|
+                if ready { Ok(()) } else { Err(rhapsody::Error::invalid_usage("presentation pipeline missing from Prepare dependencies")) })
+        } else { self.renderer.bridge.shader_backend().prewarm(PIPELINE_PREWARM_TIMEOUT) };
+        if let Err(error) = ready {
             if let Err(cleanup) = self.renderer.bridge.cancel_built(graph) {
                 log::warn!(target: crate::render_loop::LOG_TARGET,
                     "presentation prewarm cancellation: {cleanup}");
@@ -1759,11 +2145,7 @@ impl RenderHost for ProductionRenderHost<'_> {
         self.renderer.timing_end(TimedStage::Declare, started);
         let (output, built) = result?;
         let started = self.renderer.timing_start();
-        let prewarm = self
-            .renderer
-            .bridge
-            .shader_backend()
-            .prewarm(PIPELINE_PREWARM_TIMEOUT);
+        let prewarm = self.renderer.prewarm_declaration();
         self.renderer.timing_end(TimedStage::Prewarm, started);
         if let Err(error) = prewarm {
             if let Err(cleanup) = self.renderer.bridge.cancel_built(built) {
@@ -1822,13 +2204,15 @@ impl RenderHost for ProductionRenderHost<'_> {
     }
     fn resolution_scale(&mut self) -> Option<f32> {
         self.world
-            .get_resource::<GameConfig>()
-            .map(|config| config.video.world_resolution_scale.unwrap_or(1.0))
+            .get_resource::<country_core::render::render_config::FrameRenderConfig>()
+            .map(|config| config.world_resolution_scale)
     }
     fn set_resolution_scale(&mut self, scale: f32) {
-        if let Some(mut config) = self.world.get_resource_mut::<GameConfig>() {
-            config.video.world_resolution_scale = Some(scale);
+        if let Some(mut config) = self.world.get_resource_mut::<country_core::render::render_config::FrameRenderConfig>() {
+            config.world_resolution_scale = scale;
         }
+        crate::frame_resolution::refresh(self.world);
+        crate::temporal_frame::prepare_render_candidate(self.world);
     }
     fn clear_resource_pool(&mut self) {
         if let Err(error) = self
@@ -1859,7 +2243,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn set_reduced_state(&mut self, value: u64) {
-        self.renderer.reduced_state = value;
+        debug_assert_eq!(value, 2);
+        if let Some(mut state) = self.world.get_resource_mut::<country_core::render::adaptive_render_state::AdaptiveRenderState>() {
+            state.mark_out_of_memory();
+        }
     }
     fn log(&mut self, level: Level, message: &str) {
         match level {
@@ -1869,6 +2256,7 @@ impl RenderHost for ProductionRenderHost<'_> {
     }
     fn begin_frame(&mut self, gpu_profiling: bool) {
         self.renderer.frame_submitted = false;
+        self.renderer.frame_history_submitted = false;
         self.renderer.frame_present_queued = false;
         let result = self.renderer.bridge.with_session(|session| {
             session
@@ -1885,6 +2273,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn execute_main_graph(&mut self, compiled: Self::Compiled) {
+        // Register every shared physical read before releasing game writers.
+        // Resolve uses only the exported private image and render-owned uniforms.
+        // This guard also releases admission on every error/return/unwind.
+        let _admission = self.after_main_reads.take();
         let expected = compiled.expected;
         let kind = compiled.kind;
         let capture_graph_id = compiled.capture_graph_id;
@@ -1901,8 +2293,12 @@ impl RenderHost for ProductionRenderHost<'_> {
                 // or export validation below subsequently fails. Abort must
                 // preserve that fact rather than report an unsubmitted frame.
                 self.renderer.frame_submitted = !receipt.receipts.is_empty();
-                if self.back().capture_installed {
-                    self.renderer.deferred_captures.push(DeferredCapture::Submitted(capture_graph_id, receipt.clone()));
+                self.renderer.frame_history_submitted = self.renderer.frame_submitted
+                    && matches!(kind, ProductionGraphKind::Main { world_rendered: true, .. });
+                if crate::screenshot::shared_texture_capture::installed(self.world) {
+                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
+                        self.world, &mut self.renderer.bridge, capture_graph_id, &receipt,
+                    ) { self.renderer.record_error(error); return; }
                 }
                 match self
                 .renderer
@@ -1941,6 +2337,8 @@ impl RenderHost for ProductionRenderHost<'_> {
                         output_sample_count: actual.sample_count,
                         present_point: None,
                         present_generation: None,
+                        native_present_successes: 0,
+                        late_camera_input: back.late_camera_input,
                     });
                     self.renderer.main_output = Some(texture);
                     self.renderer.main = Some((compiled.output, receipt));
@@ -1949,7 +2347,7 @@ impl RenderHost for ProductionRenderHost<'_> {
                 }
             }
             Err(error) => {
-                self.renderer.deferred_captures.push(DeferredCapture::Cancelled(capture_graph_id));
+                crate::screenshot::shared_texture_capture::cancel_unsubmitted(self.world, capture_graph_id);
                 self.renderer.record_error(error);
             }
         }
@@ -1973,11 +2371,24 @@ impl RenderHost for ProductionRenderHost<'_> {
             }
             let started = self.renderer.timing_start();
             let result = Swapchain::validate_swapchain_and_acquire_image(&mut self.renderer.swapchain);
+            if let Some(observer) = &self.renderer.swapchain_observer {
+                if !Arc::ptr_eq(&observer.read(), &self.renderer.swapchain) {
+                    *observer.write() = self.renderer.swapchain.clone();
+                }
+            }
             self.renderer.timing_end(TimedStage::Acquire, started);
             result
         })();
         match result {
             Ok(Some(image)) => {
+                // Native recreation can choose a different surface format.
+                // Its pipeline belongs to the next Prepare; this accepted main
+                // submission keeps its history while presentation is skipped.
+                if self.renderer.controls.is_some() && self.renderer.prepared_present_format
+                    != Some(self.renderer.swapchain.format().as_raw() as u32) {
+                    if let Err(error) = image.cancel(timeout_ns()) { self.renderer.record_error(error); }
+                    return Acquire::Unavailable;
+                }
                 self.renderer.acquired = Some(image);
                 Acquire::Image
             }
@@ -2012,6 +2423,7 @@ impl RenderHost for ProductionRenderHost<'_> {
             if let Some(frame) = self.renderer.frame_observation.as_mut() {
                 frame.present_point = Some(ticket.point);
                 frame.present_generation = Some(ticket.generation());
+                frame.native_present_successes = self.renderer.swapchain.native_present_success_count();
             }
             self.renderer.pending.push_back(ticket);
             self.renderer.frame_present_queued = true;
@@ -2038,9 +2450,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn finish_screenshot_capture(&mut self) {
-        // Readback and delivery run on the game thread at the hand-over.
-        if self.back().capture_installed {
-            self.renderer.finish_capture_pending = true;
+        if crate::screenshot::shared_texture_capture::installed(self.world) {
+            if let Err(error) = crate::screenshot::finish_screenshot_capture(self.world) {
+                self.renderer.record_error(error);
+            }
         }
     }
     fn snapshot_render_stats(&mut self) {
@@ -2073,6 +2486,29 @@ impl RenderHost for ProductionRenderHost<'_> {
     }
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<country_core::render::render_config::FrameRenderConfig>();
+    m.resource::<country_core::render::adaptive_render_state::AdaptiveRenderState>();
+    m.resource::<country_core::resources::window::WindowSize>();
+    m.resource::<GameConfig>();
+    m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
+    m.resource::<country_core::resources::gpu_lut::GpuLutTracker>();
+    m.resource::<country_core::render::frame_constants::FrameConstants>();
+    m.resource::<StartupVisualTargets>();
+    m.resource::<crate::world_postprocess::StartupUiVisualTrace>();
+    m.resource::<country_core::systems::render_loop::vermeer::VermeerState>();
+    m.resource::<country_core::systems::render_loop::vermeer::VermeerDebugControl>();
+    m.resource::<country_core::resources::gui::EscMenuState>();
+    m.resource::<crate::loading_graph::LoadingGpuResources>();
+    m.resource::<bevy_time::Time>();
+    m.resource::<country_core::resources::logo_animation::LogoAnimation>();
+    m.resource::<crate::run_game::ApplicationShaderLibrary>();
+    m.resource::<country_core::asset_libraries::runtime::AssetLibraryRuntime>();
+    m.resource::<crate::run_game::GameplayApplication>();
+}
+
 #[cfg(test)]
 mod world_extent_tests {
     use super::{diagnostic_swapchain_policy, display_extent, world_extent, GAMEPLAY_WARMUP_EXTENT};
@@ -2096,15 +2532,16 @@ mod world_extent_tests {
             tgsr_resolution_scale: 1.0,
             flag_20: false,
         });
+        crate::frame_resolution::refresh(&mut world);
         world
     }
 
     #[test]
     fn extent_consumes_world_resolution_scale() {
         let world = test_world([1280, 720], Some(0.5));
-        assert_eq!(world_extent(&world, None, None).unwrap(), [640, 360]);
+        assert_eq!(world_extent(&world, None, None).unwrap(), [640, 384]);
         let world = test_world([1280, 720], None);
-        assert_eq!(world_extent(&world, None, None).unwrap(), [1280, 720]);
+        assert_eq!(world_extent(&world, None, None).unwrap(), [1280, 736]);
     }
 
     #[test]
@@ -2140,17 +2577,19 @@ mod world_extent_tests {
     #[test]
     fn ordinary_frames_keep_scaled_world_unscaled_display_and_oom_override_contract() {
         let world = test_world([1280, 720], Some(0.5));
-        assert_eq!(world_extent(&world, None, None).unwrap(), [640, 360]);
-        assert_eq!(display_extent(&world, None).unwrap(), [1280, 720]);
+        assert_eq!(world_extent(&world, None, None).unwrap(), [640, 384]);
+        assert_eq!(display_extent(&world, None).unwrap(), [640, 360]);
         assert_eq!(world_extent(&world, None, Some([64, 64])).unwrap(), [64, 64]);
-        assert_eq!(display_extent(&world, None).unwrap(), [1280, 720]);
+        assert_eq!(display_extent(&world, None).unwrap(), [640, 360]);
         assert!(display_extent(&world, Some([32, 0])).is_err());
         assert!(display_extent(&World::new(), None).is_err());
     }
 
     #[test]
-    fn zero_scale_is_a_named_error() {
+    fn zero_scale_uses_the_native_minimum_and_zero_window_is_rejected() {
         let world = test_world([1280, 720], Some(0.0));
+        assert_eq!(world_extent(&world, None, None).unwrap(), [32, 32]);
+        let world = test_world([0, 720], None);
         assert!(world_extent(&world, None, None).is_err());
     }
 

@@ -69,13 +69,21 @@ impl SsboType for MouseTerrainRaycastSsbo {
 /// The original optional lookup tolerates an unregistered mouse buffer, but a
 /// registered empty mapped slice is an invariant failure. AssetSsboLibrary owns
 /// type/name checks and the real mapped storage; no separate success flag exists.
-pub fn read_terrain_stroke_index(library: &AssetSsboLibrary) -> Option<i32> {
-    library.get::<MouseTerrainRaycastSsbo>().map(|buffer| {
-        buffer
-            .mapped
-            .first()
-            .expect("original mouse terrain mapped slice is empty")
-            .terrain_stroke_index
+///
+/// The value comes from the render thread's published readback, never from the
+/// live mapping the in-flight GPU frame is rewriting. Before the first
+/// publication the buffer still holds its initial element (index -1).
+pub fn read_terrain_stroke_index(
+    library: &AssetSsboLibrary,
+    readbacks: Option<&crate::render::gpu_readback::GpuReadbacks>,
+) -> Option<i32> {
+    library.get::<MouseTerrainRaycastSsbo>()?;
+    let published = crate::render::gpu_readback::latest::<MouseTerrainRaycastSsbo>(readbacks);
+    Some(match published {
+        Some(samples) => samples.first()
+            .expect("original mouse terrain readback is empty")
+            .terrain_stroke_index,
+        None => MouseTerrainRaycastSsbo::default().terrain_stroke_index,
     })
 }
 
@@ -108,6 +116,8 @@ pub fn mouse_read_terrain_stroke_index(
         .push_constants(&constants)
         .dispatch_1d(1)
 }
+
+
 
 #[cfg(test)]
 mod tests {
@@ -218,10 +228,11 @@ mod mapped_readback_tests {
             16
         );
         let mut library = AssetSsboLibrary::new();
-        assert_eq!(read_terrain_stroke_index(&library), None);
+        assert_eq!(read_terrain_stroke_index(&library, None), None);
         library.add_new::<MouseTerrainRaycastSsbo>(&InitializedMappedDevice::default());
-        assert_eq!(read_terrain_stroke_index(&library), Some(-1));
-        library.get_mut::<MouseTerrainRaycastSsbo>().unwrap().mapped[0].terrain_stroke_index = 17;
-        assert_eq!(read_terrain_stroke_index(&library), Some(17));
+        assert_eq!(read_terrain_stroke_index(&library, None), Some(-1));
+        let mut readbacks = crate::render::gpu_readback::GpuReadbacks::default();
+        readbacks.publish_slice(&[MouseTerrainRaycastSsbo { terrain_stroke_index: 17, ..Default::default() }], 1);
+        assert_eq!(read_terrain_stroke_index(&library, Some(&readbacks)), Some(17));
     }
 }

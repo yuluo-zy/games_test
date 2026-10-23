@@ -161,6 +161,19 @@ pub fn build_world(
     world_postprocess::build_world_postprocess(frame, world, lists, &lighting, controls.postprocess)
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<country_core::resources::gui::EscMenuState>();
+    m.state::<country_core::app_loading_state::AppLoadingState>();
+    m.resource::<country_core::meta_commander::MetaCommander>();
+    m.resource::<country_core::systems::render_loop::painterly::PainterlyState>();
+    m.resource::<country_core::render::frame_constants::FrameConstants>();
+    m.resource::<ActiveSession>();
+    m.resource::<GameConfig>();
+    m.resource::<FrameRenderConfig>();
+}
+
 #[cfg(test)]
 mod main_selection_tests {
     use super::*;

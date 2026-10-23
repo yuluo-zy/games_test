@@ -41,10 +41,15 @@ impl fmt::Debug for HandleId {
 
 /// 带资源类型的轻量句柄；标记不占空间，不持有 T，也不增加其引用计数。
 #[derive(bevy_ecs::component::Component)]
+#[component(immutable,
+    on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Handle<T> {
     id: HandleId,
     _marker: core::marker::PhantomData<fn() -> T>,
 }
+
+impl<T: Send + Sync + 'static> crate::render::extract::JournaledComponent for Handle<T> {}
 
 impl<T> Handle<T> {
     /// 创建初始状态。

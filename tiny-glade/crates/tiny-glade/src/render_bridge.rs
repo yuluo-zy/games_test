@@ -22,16 +22,18 @@ use rhapsody::{
 use crate::{
     compute_frame::CoreComputeFrame,
     raster_host::{GraphDeclarer, RasterPassHost, RasterShared},
-    render_host::{BufferHost, DeviceHost, GraphPasses, HostTables, ShaderHost, TextureHost},
+    render_host::{BufferHost, DeviceHost, FrameBufferSnapshot, GraphPasses, HostTables, ShaderHost, TextureHost},
 };
 
 /// Owns the production session and the host tables used by both core pass families.
 /// Shader programs must be built through `shader_backend()` and stored in the
 /// exact library passed here. Buffer/texture handles must originate from this bridge;
-/// legacy slot values do not encode an owner namespace. Stale generations are rejected.
+/// globally unique allocation generations reject foreign hosts and stale slot reuse,
+/// including the ID-only bindings used by core material callbacks.
 pub struct CoreRenderBridge {
     session: Rc<RefCell<VulkanGraphSession>>,
     tables: HostTables,
+    frame_buffers: Option<Arc<BufferHost>>,
     raster: Arc<RasterShared>,
     shaders: Arc<AssetShaderLibrary>,
     /// A built graph still owns this session's declaration/specification state.
@@ -51,11 +53,12 @@ pub struct CoreRenderOwners {
 /// Sent back with the actual gameplay SubApp after a fully completed original
 /// world render. The current session's named GPU owners preserve its first
 /// frame history; Mutex permits the single main-thread adoption through &World.
-#[derive(bevy_ecs::resource::Resource)]
+#[derive(Clone, bevy_ecs::resource::Resource)]
 pub struct CompletedGameplayWarmup {
     owners: CoreRenderOwners,
-    named: parking_lot::Mutex<Option<rhapsody::rg::CompletedNamedResources>>,
+    named: Arc<parking_lot::Mutex<Option<rhapsody::rg::CompletedNamedResources>>>,
 }
+
 
 impl CoreRenderBridge {
     pub fn new(
@@ -83,6 +86,7 @@ impl CoreRenderBridge {
         Ok(Self {
             session: Rc::new(RefCell::new(session)),
             tables,
+            frame_buffers: None,
             raster,
             shaders,
             pending_build: Rc::new(Cell::new(None)),
@@ -112,6 +116,7 @@ impl CoreRenderBridge {
         Ok(Self {
             session: Rc::new(RefCell::new(session)),
             tables: owners.tables,
+            frame_buffers: None,
             raster: owners.raster,
             shaders: owners.shaders,
             pending_build: Rc::new(Cell::new(None)),
@@ -139,7 +144,7 @@ impl CoreRenderBridge {
                 raster: self.raster.clone(),
                 shaders: self.shaders.clone(),
             },
-            named: parking_lot::Mutex::new(Some(named)),
+            named: Arc::new(parking_lot::Mutex::new(Some(named))),
         })
     }
 
@@ -216,6 +221,31 @@ impl CoreRenderBridge {
         &self.tables
     }
 
+    /// Install the owners sealed by the game-side extraction boundary. The
+    /// canonical producer tables stay unchanged and can publish later versions.
+    pub fn install_frame_buffers(&mut self, snapshot: FrameBufferSnapshot) -> rhapsody::Result<()> {
+        if self.frame_buffers.is_some() {
+            return Err(rhapsody::Error::invalid_usage("previous frame buffer snapshot is still installed"));
+        }
+        let buffers = self.tables.buffers.with_frame_snapshot(snapshot)?;
+        self.raster.set_frame_buffers(Some(buffers.clone()));
+        self.frame_buffers = Some(buffers);
+        Ok(())
+    }
+
+    /// After submission/cancellation no declaration can resolve another ID.
+    /// Graph imports and GPU receipts retain their own native physical owners.
+    pub fn clear_frame_buffers(&mut self) {
+        self.raster.set_frame_buffers(None);
+        self.frame_buffers = None;
+    }
+
+    fn frame_hosts(&self) -> HostTables {
+        let mut tables = self.tables.clone();
+        if let Some(buffers) = &self.frame_buffers { tables.buffers = buffers.clone(); }
+        tables
+    }
+
     pub fn shader_library(&self) -> &Arc<AssetShaderLibrary> {
         &self.shaders
     }
@@ -225,10 +255,11 @@ impl CoreRenderBridge {
     }
 
     pub fn compute_device(&self) -> Arc<DeviceHost> {
+        let tables = self.frame_hosts();
         Arc::new(DeviceHost {
-            buffers: self.tables.buffers.clone(),
-            textures: self.tables.textures.clone(),
-            shaders: self.tables.shaders.clone(),
+            buffers: tables.buffers,
+            textures: tables.textures,
+            shaders: tables.shaders,
         })
     }
 
@@ -320,6 +351,8 @@ impl CoreRenderBridge {
     ) -> rhapsody::Result<SessionFrameReceipt> {
         let graph = self.claim_built(graph)?;
         self.tables.buffers.flush_pending_uploads()?;
+        // Shared-pool recording runs concurrently with Update: producers no
+        // longer wait on this graph's read lease (render_upload_boundary).
         self.session.borrow_mut().execute_frame(graph)
     }
 
@@ -356,8 +389,7 @@ impl CoreRenderBridge {
             ));
         }
         self.tables.buffers.flush_pending_uploads()?;
-        self.session
-            .borrow_mut()
+        self.session.borrow_mut()
             .execute_prepared(compiled.frame.take().expect("compiled graph consumed once"))
     }
 
@@ -539,7 +571,7 @@ impl CoreGraphFrame<'_> {
     }
 
     pub fn hosts(&self) -> HostTables {
-        self.bridge.tables.clone()
+        self.bridge.frame_hosts()
     }
 
     fn graph(&self) -> Rc<RefCell<RenderGraph>> {
@@ -557,7 +589,7 @@ impl CoreGraphFrame<'_> {
                 device,
                 &self.bridge.raster,
             )?
-            .with_tables(self.bridge.tables.clone())
+            .with_tables(self.bridge.frame_hosts())
             .with_shared_session(self.bridge.session.clone())?;
             let mut frame = CoreComputeFrame::new(passes, &self.bridge.shaders)
                 .with_resource_graph(self.resource_graph());
@@ -575,7 +607,7 @@ impl CoreGraphFrame<'_> {
     ) -> Rc<dyn Fn() -> country_core::rhapsody_types::RenderGraph> {
         let graph = self.graph();
         let declarer = self.declarer.clone();
-        let tables = self.bridge.tables.clone();
+        let tables = self.bridge.frame_hosts();
         Rc::new(move || {
             declarer
                 .scope
@@ -759,10 +791,7 @@ impl CoreGraphFrame<'_> {
         initial_access: u8,
     ) -> rhapsody::Result<ResourceHandle> {
         let result = (|| {
-            let buffer = self
-                .bridge
-                .tables
-                .buffers
+            let buffer = self.bridge.frame_hosts().buffers
                 .managed_buffer(buffer)
                 .ok_or_else(|| {
                     rhapsody::Error::invalid_usage("buffer handle is stale or unavailable")
@@ -1098,6 +1127,26 @@ impl GraphDeclarer for FrameDeclarer {
     }
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<country_core::asset_libraries::runtime::AssetLibraryRuntime>();
+    m.resource_with_revision::<country_core::asset_libraries::texture_library::AssetTextureLibrary>(<country_core::asset_libraries::texture_library::AssetTextureLibrary>::descriptor_revision);
+    m.resource_incremental::<country_core::asset_libraries::vao_library::AssetVAOLibrary>(
+        country_core::asset_libraries::vao_library::AssetVAOLibrary::snapshot_revision,
+        country_core::asset_libraries::vao_library::AssetVAOLibrary::update_render_snapshot);
+    m.resource_incremental::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>(
+        country_core::asset_libraries::mesh_library::AssetMeshLibrary::snapshot_revision,
+        country_core::asset_libraries::mesh_library::AssetMeshLibrary::update_render_snapshot);
+    m.resource_incremental::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(
+        country_core::asset_libraries::ssbo_library::AssetSsboLibrary::snapshot_revision,
+        country_core::asset_libraries::ssbo_library::AssetSsboLibrary::update_render_snapshot);
+    m.resource::<country_core::geometry::runtime::WallBrickUploadStatus>();
+    m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
+    m.resource::<country_core::resources::gpu_lut::GpuLutTracker>();
+    m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1147,10 +1196,29 @@ pub fn warm_up_gameplay_with_world_builder(
     lists.sort();
     bridge.raster_resources().refresh_draw_vaos(world, &lists)?;
     let (output, built) = bridge.build_frame(|frame| build_world(frame, world, &lists))?;
-    if let Err(error) = bridge
-        .shader_backend()
-        .prewarm(crate::production_renderer::PIPELINE_PREWARM_TIMEOUT)
-    {
+    let cancel = world.get_resource::<crate::run_game::GameplayWarmupCancellation>().cloned();
+    let prewarm = if let Some(cancel) = cancel {
+        let started = std::time::Instant::now();
+        loop {
+            // A terminal compiler error takes precedence over concurrent cancel.
+            match bridge.shader_backend().poll_preparation() {
+                Err(error) => break Err(error),
+                state => {
+                    if cancel.0.load(std::sync::atomic::Ordering::Acquire) {
+                        break Err(rhapsody::Error::InvalidUsage { what: "gameplay GPU warmup cancelled".into(),
+                            source: Some(Box::new(crate::run_game::GameplayPreparationCancelled)) });
+                    }
+                    if matches!(state, Ok(true)) { break Ok(()); }
+                    if started.elapsed() >= crate::production_renderer::PIPELINE_PREWARM_TIMEOUT {
+                        break Err(rhapsody::Error::Timeout);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+            }
+        }
+    } else { bridge.shader_backend().prewarm(crate::production_renderer::PIPELINE_PREWARM_TIMEOUT) };
+    if let Err(error) = prewarm {
+        crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, built.graph_id());
         if let Err(cleanup) = bridge.cancel_built(built) {
             log::warn!("failed gameplay warmup prewarm cancellation: {cleanup}");
         }

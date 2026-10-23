@@ -6,6 +6,12 @@ use bevy_app::App;
 use country_core::{resources as res, systems as sys};
 
 pub(super) fn install(app: &mut App) {
+    // Register before resources-only domain helpers so these channels receive
+    // real per-frame maintenance in both native and disabled audio hosts.
+    app.add_event::<sys::ui::resources::widget_params::PlayUiSound>();
+    app.add_event::<sys::ui::resources::widget_params::PlayPhotomodeSound>();
+    app.add_event::<res::events::InitAdjWallHeightMode>();
+    app.add_event::<res::events::FinishAdjWallHeightMode>();
     // Snapshot apply must publish to the maintained channel before raster
     // resources are constructed, so the real staging consumer sees the load.
     app.add_event::<res::world_raster::UploadWorldRasterBuffersToStagingCmd>();

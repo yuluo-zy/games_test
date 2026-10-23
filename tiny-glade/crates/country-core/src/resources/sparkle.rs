@@ -66,7 +66,6 @@ impl SsboType for SparkleSsbo {
 mod tests {
     use super::*;
     use crate::render::test_device::TestDevice;
-    use core::sync::atomic::Ordering;
     use xxhash_rust::xxh3::xxh3_64;
 
     #[test]
@@ -91,7 +90,7 @@ mod tests {
         assert_eq!(b.byte_map[0x300], 0x20, "哨兵 chunk 恒满");
         assert!(b.byte_map[..0x300].iter().all(|&x| x == 0));
         assert_eq!(b.data.len(), 0x6000);
-        assert_eq!(b.active_bitset.len(), 0xc);
+        assert_eq!(b.active_word_count(), 0xc);
         assert_eq!(b.dirty_bitset.len(), 0xc);
         let free = b.free_chunks.read();
         assert_eq!(free.len(), 0x300);
@@ -111,7 +110,7 @@ mod tests {
         }
         assert_eq!(b.byte_map[0], 32);
         assert_eq!(b.byte_map[1], 3);
-        assert_eq!(b.active_bitset[0].load(Ordering::Relaxed), 0b11);
+        assert_eq!(b.active_word(0), 0b11);
         assert_eq!(b.to_draw_multi_instanced(), vec![(0, 35)]);
         assert_eq!(b.allocation_to_draw_multi_instanced(&a), vec![(0, 35)]);
     }

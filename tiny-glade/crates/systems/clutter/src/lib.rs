@@ -316,10 +316,10 @@ mod bush_registration_tests {
     fn configure_registers_actual_reader_and_keeps_host_mapped_storage() {
         let mut world = World::new();
         let library = AssetSsboLibrary::new();
-        library.register::<BushCpuSsbo>(MappedStorageBuffer {
-            mapped: Box::leak(vec![BushCpuSsbo([0, 0x12345678])].into_boxed_slice()),
-            buffer: Buffer { id: 71, generation: 1, _gap10: 0, byte_size: 8, _gap20: 0 },
-        });
+        library.register::<BushCpuSsbo>(MappedStorageBuffer::from_mapping(
+            Box::leak(vec![BushCpuSsbo([0, 0x12345678])].into_boxed_slice()),
+            Buffer { id: 71, generation: 1, _gap10: 0, byte_size: 8, _gap20: 0 },
+        ));
         world.insert_resource(library);
         let mut schedule = Schedule::default();
         configure(&mut world, &mut schedule);

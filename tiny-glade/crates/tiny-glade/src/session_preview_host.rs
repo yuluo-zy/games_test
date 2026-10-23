@@ -382,6 +382,19 @@ fn carousel(metrics: LoadMenuThumbnailMetrics) -> CarouselState {
     }
 }
 
+
+/// Render-thread extraction: what this module reads from the World.
+pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
+    m.resource::<ThumbnailTextures>();
+    m.resource::<PreviewGpu>();
+    m.resource::<crate::run_game::ApplicationShaderLibrary>();
+    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
+    m.resource::<EscMenuState>();
+    m.resource::<SavedSessionList>();
+    m.resource::<GameConfig>();
+    m.resource::<bevy_time::Time>();
+}
+
 #[cfg(test)]
 mod file_tests {
     use super::*;

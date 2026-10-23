@@ -1,9 +1,25 @@
-# 逆向工作约束
+# Tiny Glade 逆向与复现规则
 
-函数进度必须区分自定义业务、宏派生/依赖转发、类型/schema合同和归属待分类项。已确认的Default/Debug/fmt/Clone/Eq/Hash/serde visitor/Bevy注册胶水直接复用derive或原依赖，不计独立未恢复业务函数；字段、枚举、默认值、serde属性和required-components策略按类型合同恢复。不能仅凭方法名删除自定义实现；Timer/Transform默认状态、CurveU范围反序列化等自定义策略仍是业务。证据不足单列待分类。共享基础权威分类入口为tracking/shared-foundation-interface-classification.json与INTERFACE_CLASSIFICATION.md。
+## 开始任务时
 
-当前共享七包的实际源码/逻辑缺口按FOUNDATION_BUSINESS_FUNCTIONS.md和FOUNDATION_BUSINESS_COMPARISON.md逐功能闭包推进。没有原同名helper不证明缺代码，合并后的等价业务实现也必须登记；源码缺失、原验证不足、库外游戏接线以及C-only范围分别列出。原接口库存只作定位和映射，不能解释为同数量的未实现功能。
+- 先看当前任务的状态/验收文件，再看目标代码与最近报告。当前模块总览见 [`tiny-glade/reports/module-recovery-2026-10-23/STATUS.md`](../../tiny-glade/reports/module-recovery-2026-10-23/STATUS.md)；该文件是活跃任务状态，不是全项目完成声明。
+- 只从 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) 和 [`TASK_BACKLOG.md`](TASK_BACKLOG.md) 搜索本任务相关条目；它们是历史记录，不要整篇加载。优先级冲突时，以用户最新要求、当前源码和最新绑定源码/二进制指纹的证据为准。
+- 工具细节按需查 [`AI_REVERSE_TOOLS.md`](AI_REVERSE_TOOLS.md) 与具体后端 schema；不要加载完整工具目录或无关版本/模块材料。
 
-先读 [PROJECT_MEMORY.md](PROJECT_MEMORY.md) 与 [TASK_BACKLOG.md](TASK_BACKLOG.md)。以原作锁定依赖与游戏自有源码为边界；直接复用依赖，不恢复其实现。当前源码优先，场景/GPU后置。依赖适配的变更必须标记旧差分报告过期，重新校验后再更新进度。
+## 实现与证据
 
-涉及rhapsody恢复时，执行[流程重审](evidence/render-recovery/WORKFLOW_RESET.md)。恢复单位为真实consumer驱动的可调用源码闭包；停止新增孤立candidate crate和按函数派任务。优先将已有实现接入共享恢复入口；只有源码/依赖/输入变化或具体语义歧义才重验相关差分。报告必须区分真实代码接线、candidate链测试与原侧行为验证，不以case数/报告一致性替代集成进度。
+- 正确性最高优先，同时要求高性能：不得因原版算法复杂而保留简化或近似实现；优化必须保持完整业务语义，并以实际测量证明性能，不能用编译或局部测试替代性能验收。
+- 优先修改已有归属模块、测试和台账，不随意新建文件、模板目录、重复文档或平行实现。新增文件前先检查现有承载位置；只有独立代码职责、必要的独立验证入口或可复现原证需要才新增，并由中央核查必要性。
+- 游戏自有实现的 crate、目录与文件归属参考 B 版本源码结构，先核对 `skeleton/B` 的原路径再修改对应现有模块；不得为恢复工作另建业务收纳层。现有用户重构的基础库和渲染架构继续沿用，不因目录对齐重建或回退。
+- 以当前 Tiny Glade Rust 工程为生产基线，在现有模块和真实消费者中补齐业务。保留用户已有重构和 API；原作证据用于恢复行为，不复制旧架构/私有 ABI，也不建平行候选生产实现。
+- 以原作锁定依赖和游戏自有逻辑为边界：通用容器、derive、序列化框架及依赖算法直接复用；自定义业务和类型/schema 合同按证据恢复。不能仅凭方法名、缺失 helper 或静态搜索结果判定实现归属/缺失。
+- 任务单位是可观察的真实调用链：producer → 权威状态/算法 → consumer → 交互/持久化/渲染副作用。沿证据闭合必要分支、边界、失败路径、生命周期和跨模块联动；不能用默认值、空操作、假数据或简化算法换取通过。
+- 源码阶段优先；场景和 GPU 按当前模块验收条件执行。只因源码、依赖、输入或语义变化重跑受影响差分；报告注明命令、输入/二进制身份、日志和验证边界。
+- 进度明确区分：原证定位、实现、真实生产接线、candidate/本地链测试、原侧行为差分、模块/整游戏验收。局部测试、编译、case 数或报告一致不代表整链完成；证据不足列为未决。
+- rhapsody 沿用当前重构架构，只修当前 API 的具体缺口；涉及其恢复时先读 [`WORKFLOW_RESET.md`](evidence/render-recovery/WORKFLOW_RESET.md)。
+
+## Token 与磁盘
+
+- 搜索先限目录、文件类型和关键词；优先 `rg` 命中及窄范围上下文，避免重复读取整份历史日志、JSON、反汇编和工具 schema。结果按“结论、证据位置、验证边界、下一步”简短记录。
+- 机械分类/摘要可由可用的小模型或脚本预处理；涉及机器码解释、ABI、跨模块语义和最终验收的判断由主分析复核。不要因省 token 降低证据标准。
+- 只使用本地磁盘；禁止 `/home/ubuntu/ds-download`。网络命令按用户约定清除代理环境变量后直连；不要永久改代理设置。

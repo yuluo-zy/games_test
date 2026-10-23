@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, atomic::{AtomicU64, Ordering}};
 
 use bevy_ecs::resource::Resource;
 use parking_lot::RwLock;
@@ -11,6 +11,14 @@ use parking_lot::RwLock;
 use crate::asset_libraries::Handle;
 use crate::frozen_map::FrozenMap;
 use crate::render::mesh::Mesh;
+use crate::render::extract::{ChangeCursor, ChangeJournal};
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum MeshChange {
+    Mesh(Handle<Mesh>),
+    Name(String),
+    Path(PathBuf),
+}
 
 /// 待注册网格及其可选名字。
 pub struct MeshAsset {
@@ -31,9 +39,33 @@ pub struct AssetMeshLibrary {
     /// CPU 删除先登记身份，维护阶段再通过创建设备释放派生 GPU 资源。
     removed_meshes: Vec<Handle<Mesh>>,
     transient_meshes: Arc<Mutex<Vec<Handle<Mesh>>>>,
-    pub mesh_entries: FrozenMap<Handle<Mesh>, Mesh>,
+    /// Shared with render-thread snapshots; a write while one is alive copies
+    /// that mesh (`Arc::make_mut`).
+    mesh_entries: FrozenMap<Handle<Mesh>, Arc<Mesh>>,
     names: RwLock<HashMap<String, Handle<Mesh>>>,
+    registration_revision: AtomicU64,
     paths: RwLock<HashMap<PathBuf, Handle<Mesh>>>,
+    changes: ChangeJournal<MeshChange>,
+    source_cursor: Option<ChangeCursor>,
+}
+
+/// A render-thread snapshot: meshes are shared, indices copied.
+impl Clone for AssetMeshLibrary {
+    fn clone(&self) -> Self {
+        // Never acknowledge edits recorded while the tables are being copied.
+        let source_cursor = Some(self.changes.cursor());
+        AssetMeshLibrary {
+            modified_meshes: self.modified_meshes.clone(),
+            removed_meshes: self.removed_meshes.clone(),
+            transient_meshes: self.transient_meshes.clone(),
+            mesh_entries: self.mesh_entries.snapshot_with(Arc::clone),
+            names: RwLock::new(self.names.read().clone()),
+            registration_revision: AtomicU64::new(self.registration_revision()),
+            paths: RwLock::new(self.paths.read().clone()),
+            changes: ChangeJournal::default(),
+            source_cursor,
+        }
+    }
 }
 
 impl AssetMeshLibrary {
@@ -45,9 +77,58 @@ impl AssetMeshLibrary {
             transient_meshes: Arc::new(Mutex::new(Vec::new())),
             mesh_entries: FrozenMap::new(),
             names: RwLock::new(HashMap::new()),
+            registration_revision: AtomicU64::new(0),
             paths: RwLock::new(HashMap::new()),
+            changes: ChangeJournal::default(),
+            source_cursor: None,
         }
     }
+
+    /// Shared-reference registration is invisible to ECS change ticks.
+    pub fn registration_revision(&self) -> u64 { self.registration_revision.load(Ordering::Acquire) }
+    pub fn snapshot_revision(&self) -> u64 { self.changes.revision() }
+    /// Publish only changed mesh owners and index keys. CPU mesh edits use
+    /// copy-on-write, so earlier render frames retain their exact mesh version.
+    pub fn update_render_snapshot(&self, destination: &mut Self) {
+        let Some((cursor, changed)) = self.changes.since(destination.source_cursor) else {
+            *destination = self.clone();
+            return;
+        };
+        let mut seen = std::collections::HashSet::with_capacity(changed.len());
+        for change in changed {
+            if !seen.insert(change.clone()) { continue; }
+            match &change {
+                MeshChange::Mesh(handle) => {
+                    if let Some(mesh) = self.mesh_entries.get(handle) {
+                        if let Some(entry) = destination.mesh_entries.get_mut(handle) {
+                            *entry = mesh.clone();
+                        } else {
+                            assert!(destination.mesh_entries.insert(*handle, Box::new(mesh.clone())).is_ok());
+                        }
+                    } else {
+                        destination.mesh_entries.remove(handle);
+                    }
+                }
+                MeshChange::Name(name) => {
+                    if let Some(&handle) = self.names.read().get(name) {
+                        destination.names.get_mut().insert(name.clone(), handle);
+                    } else { destination.names.get_mut().remove(name); }
+                }
+                MeshChange::Path(path) => {
+                    if let Some(&handle) = self.paths.read().get(path) {
+                        destination.paths.get_mut().insert(path.clone(), handle);
+                    } else { destination.paths.get_mut().remove(path); }
+                }
+            }
+            destination.changes.record(change);
+        }
+        destination.modified_meshes.clone_from(&self.modified_meshes);
+        destination.removed_meshes.clone_from(&self.removed_meshes);
+        destination.registration_revision.store(self.registration_revision(), Ordering::Release);
+        destination.source_cursor = Some(cursor);
+    }
+    pub fn len(&self) -> usize { self.mesh_entries.len() }
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     pub fn transient_meshes(&self) -> &Arc<Mutex<Vec<Handle<Mesh>>>> {
         &self.transient_meshes
@@ -63,27 +144,33 @@ impl AssetMeshLibrary {
             .map(|file| PathBuf::from(&file.path));
         assert!(
             self.mesh_entries
-                .insert(mesh_handle, Box::new(asset.asset))
+                .insert(mesh_handle, Box::new(Arc::new(asset.asset)))
                 .is_ok(),
             "assertion failed: self.mesh_entries.insert(mesh_handle, Box::new(asset.asset)).is_ok()"
         );
         if let Some(name) = asset.name {
-            self.names.write().insert(name, mesh_handle);
+            self.names.write().insert(name.clone(), mesh_handle);
+            self.changes.record(MeshChange::Name(name));
         }
         if let Some(path) = source_path {
-            self.paths.write().insert(path, mesh_handle);
+            self.paths.write().insert(path.clone(), mesh_handle);
+            self.changes.record(MeshChange::Path(path));
         }
+        self.registration_revision.fetch_update(Ordering::Release, Ordering::Relaxed,
+            |revision| revision.checked_add(1)).expect("mesh registration revision exhausted");
+        self.changes.record(MeshChange::Mesh(mesh_handle));
         mesh_handle
     }
 
     pub fn get(&self, handle: Handle<Mesh>) -> Option<&Mesh> {
-        self.mesh_entries.get(&handle)
+        self.mesh_entries.get(&handle).map(|mesh| &**mesh)
     }
 
     /// 取得可变资产并登记派生资源更新。
     pub fn get_mut(&mut self, handle: Handle<Mesh>) -> Option<&mut Mesh> {
-        let mesh = self.mesh_entries.get_mut(&handle)?;
+        let mesh = Arc::make_mut(self.mesh_entries.get_mut(&handle)?);
         self.modified_meshes.push(handle);
+        self.changes.record(MeshChange::Mesh(handle));
         Some(mesh)
     }
 
@@ -119,13 +206,24 @@ impl AssetMeshLibrary {
     pub fn remove(&mut self, handle: Handle<Mesh>) {
         if self.mesh_entries.remove(&handle).is_some() {
             self.removed_meshes.push(handle);
+            self.changes.record(MeshChange::Mesh(handle));
         }
+        let mut removed_keys = Vec::new();
         self.names
             .write()
-            .retain(|_, registered| *registered != handle);
+            .retain(|name, registered| {
+                if *registered != handle { return true; }
+                removed_keys.push(MeshChange::Name(name.clone()));
+                false
+            });
         self.paths
             .write()
-            .retain(|_, registered| *registered != handle);
+            .retain(|path, registered| {
+                if *registered != handle { return true; }
+                removed_keys.push(MeshChange::Path(path.clone()));
+                false
+            });
+        for key in removed_keys { self.changes.record(key); }
         self.modified_meshes.retain(|modified| *modified != handle);
     }
 
@@ -219,6 +317,34 @@ mod tests {
 
     fn named(lib: &AssetMeshLibrary, name: &str, m: Mesh) -> Handle<Mesh> {
         lib.add(MeshAsset::new(m, Some(name.to_string())))
+    }
+
+    #[test]
+    fn incremental_snapshot_updates_only_changed_meshes_and_index_keys() {
+        let mut source = AssetMeshLibrary::new();
+        let a = named(&source, "shared", mesh("a"));
+        let b = named(&source, "untouched", mesh("b"));
+        let mut render = source.clone();
+        let untouched_entry = render.mesh_entries.get(&b).unwrap() as *const Arc<Mesh>;
+        let old = render.clone();
+        source.get_mut(a).unwrap().label = "edited".into();
+        source.update_render_snapshot(&mut render);
+        assert_eq!(render.get(a).unwrap().label, "edited");
+        assert_eq!(old.get(a).unwrap().label, "a");
+        assert_eq!(render.mesh_entries.get(&b).unwrap() as *const Arc<Mesh>, untouched_entry);
+        let replacement = named(&source, "shared", mesh("replacement"));
+        source.remove(a);
+        source.update_render_snapshot(&mut render);
+        assert!(render.get(a).is_none());
+        assert_eq!(render.get_handle_by_name("shared"), replacement);
+        assert_eq!(render.get_handle_by_name("untouched"), b);
+        source.remove(replacement);
+        source.update_render_snapshot(&mut render);
+        assert!(render.try_get_handle_by_name("shared").is_none());
+        assert!(old.get(a).is_some());
+        AssetMeshLibrary::new().update_render_snapshot(&mut render);
+        assert!(render.is_empty());
+        assert!(render.try_get_handle_by_name("untouched").is_none());
     }
 
     #[test]

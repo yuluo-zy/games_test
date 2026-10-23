@@ -6,7 +6,7 @@ use bevy_ecs::prelude::*;
 use crate::run_game::GameSystemSet;
 use country_core::{resources as res, systems as sys};
 
-pub(super) fn install(app: &mut App) {
+pub(super) fn install_resources(app: &mut App) {
     // Critter systems/resources (control_critters, butterflies/fireflies GPU upload,
     // CritterControl) belong to CritterPlugin14067d440 (run_game::add_original_plugins).
     // Owning empty constructors run before actual load; init preserves existing
@@ -40,6 +40,11 @@ pub(super) fn install(app: &mut App) {
     // run_game::add_original_plugins.
 
     install_open_adapter_inputs(app);
+
+}
+
+pub(super) fn install(app: &mut App) {
+    install_resources(app);
 
     // OPEN (not closed): wall_roof_hashmap and process_invalid_roof_notifications are NOT
     // members of the original add_roof_systems@14062fcb0 (RoofSystems); their original

@@ -263,7 +263,7 @@ fn brick_transform_registers_as_a_sparse_instance_buffer() {
     assert_eq!(s.data.len(), 0x200000);
     // 影子初值 = T::default()（surface = -100），不是全零。
     assert!(s.data.iter().all(|&v| v == BrickTransformSsbo::default()));
-    assert_eq!(s.active_bitset.len(), 0x400);
+    assert_eq!(s.active_word_count(), 0x400);
     assert_eq!(s.dirty_bitset.len(), 0x400);
     let free = s.free_chunks.read();
     assert_eq!(free.len(), 0x10000);

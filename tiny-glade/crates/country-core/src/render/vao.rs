@@ -25,7 +25,7 @@ pub struct VaoBinding {
     pub buffer: Buffer,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Vao {
     pub bindings: Vec<VaoBinding>,
     pub index_buffer: Buffer,

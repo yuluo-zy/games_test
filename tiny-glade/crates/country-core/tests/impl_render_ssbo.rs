@@ -65,7 +65,7 @@ fn sparse_buffer_layout_matches_the_machine_code() {
     assert_eq!(b.byte_map[0x300], 0x20);
     assert!(b.byte_map[..0x300].iter().all(|&x| x == 0));
     assert_eq!(b.data.len(), 0x6000);
-    assert_eq!(b.active_bitset.len(), 0xc);
+    assert_eq!(b.active_word_count(), 0xc);
     assert_eq!(b.dirty_bitset.len(), 0xc);
     let free = b.free_chunks.read();
     assert_eq!(free.len(), 0x300);

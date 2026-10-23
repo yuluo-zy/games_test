@@ -18,7 +18,11 @@ fn original_full_ssbo_prestartup_uses_real_owners_and_one_cursor_event() {
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade")
         });
     let device =
-        match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+        match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig {
+            // Full startup uses the same asset budget as the production device.
+            memory_budget_bytes: tiny_glade::production_renderer::UNBOUNDED_DEVICE_BUDGET_BYTES,
+            ..rhapsody::device::DeviceConfig::headless()
+        }) {
             Ok(device) => device,
             Err(error) => {
                 assert!(
@@ -111,6 +115,7 @@ fn original_full_ssbo_prestartup_uses_real_owners_and_one_cursor_event() {
 /// loader, frame graph or gameplay-ready signal is substituted by this test.
 #[test]
 fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
+    let _ = tiny_glade::logging::set_up_logging(log::LevelFilter::Warn, false);
     use country_core::{
         asset_libraries::{configwatch::ConfigWatch, mesh_library::AssetMeshLibrary},
         game_config::GameConfig,
@@ -125,8 +130,19 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
         .unwrap_or_else(|| {
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade")
         });
+    // Match the production process's install-root working directory: MEI's
+    // canonical font/config loaders intentionally use their shipped paths.
+    struct RestoreDirectory(PathBuf);
+    impl Drop for RestoreDirectory {
+        fn drop(&mut self) { std::env::set_current_dir(&self.0).unwrap(); }
+    }
+    let _directory = RestoreDirectory(std::env::current_dir().unwrap());
+    std::env::set_current_dir(installed.canonicalize().unwrap()).unwrap();
     let device =
-        match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+        match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig {
+            memory_budget_bytes: tiny_glade::production_renderer::UNBOUNDED_DEVICE_BUDGET_BYTES,
+            ..rhapsody::device::DeviceConfig::headless()
+        }) {
             Ok(device) => device,
             Err(error) => {
                 assert!(
@@ -163,6 +179,7 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
     app.init_resource::<country_core::input::action_set::ActionSetStates>();
     app.init_resource::<country_core::resources::gui::DebugGui>();
     app.add_event::<bevy_input::mouse::MouseWheel>();
+    app.add_event::<country_core::systems::mode_manager::ClearCanvasCmd>();
     app.insert_resource(tiny_glade::run_game::ApplicationShaderLibrary(shaders));
     app.add_event::<CustomCursorSsboCreatedCmd>();
     tiny_glade::gameplay_startup::install_gameplay_gpu_startup(
@@ -177,7 +194,16 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
         bridge.hosts().shaders.clone(),
         installed.canonicalize().unwrap(),
     );
-    app.update();
+    // This acceptance target verifies the complete startup asset tuple. Run
+    // its real startup schedules; gameplay Update needs the full session/App
+    // assembly exercised by original_gameplay_chain and the native GameLoop.
+    app.world_mut().run_schedule(bevy_app::PreStartup);
+    app.world_mut().run_schedule(bevy_app::Startup);
+    // Bevy Main also skips schedules with no registered systems.
+    let _ = app.world_mut().try_run_schedule(bevy_app::PostStartup);
+    // Flush the canonical MEI producer explicitly. This fixture assembles
+    // startup owners, rather than the full session required by Update.
+    tiny_glade::loading_graph::flush_mei_frame(app.world_mut());
     let prefabs = app.world().resource::<PrefabLibrary>();
     assert!(
         !prefabs.inner.is_empty(),
@@ -217,6 +243,7 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
     }
     assert!(parts > 0);
     let mut registered = 0usize;
+    let mut subset_meshes = Vec::new();
     for kind in GpuWorldSubsetKind::ALL {
         let atlas = atlases.get_by_world_subset(kind);
         assert_eq!(
@@ -225,18 +252,19 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
             "{kind:?}"
         );
         registered += usize::from(atlas.registered.is_some());
+        if let Some(mesh) = atlas.registered { subset_meshes.push(mesh); }
     }
-    let mut query = app
-        .world_mut()
-        .query_filtered::<bevy_ecs::entity::Entity, bevy_ecs::query::With<
-            country_core::asset_libraries::Handle<country_core::render::mesh::Mesh>,
-        >>();
-    let drawables = query.iter(app.world()).count();
-    assert_eq!(
-        drawables,
-        registered + 8,
-        "actual Nani and non-demo terrain Startup entities"
-    );
+    let mut query = app.world_mut().query::<&country_core::asset_libraries::Handle<
+        country_core::render::mesh::Mesh>>();
+    let drawable_meshes = query.iter(app.world()).copied().collect::<Vec<_>>();
+    for mesh in subset_meshes {
+        assert_eq!(drawable_meshes.iter().filter(|actual| **actual == mesh).count(), 1,
+            "each registered Nani subset must have exactly one real drawable");
+    }
+    // Other Startup producers also spawn brush/UI previews. Assert this
+    // fixture's actual owners instead of fixing the total for unrelated modules.
+    assert!(drawable_meshes.len() >= registered + 8,
+        "actual Nani and non-demo terrain Startup entities");
     let terrain = app
         .world()
         .resource::<country_core::resources::rocky_terrain::TerrainEntities>();
@@ -279,7 +307,7 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
     assert!(textures.get_handle_and_texture_by_name(country_core::name_hash::NameHash(0xbbc2_dfc4_c682_4251)).is_some(),
         "final_post fixed tony_mc_mapface producer");
     assert!(app.world().resource::<tiny_glade::loading_graph::LoadingGpuResources>()
-        .mei.output().is_some(), "Update44 must flush the actual renderer before graph compilation");
+        .mei.output().is_some(), "canonical MEI flush must prepare the actual renderer before graph compilation");
     bridge
         .shader_backend()
         .prewarm(std::time::Duration::from_secs(60))

@@ -3,7 +3,7 @@
 
 #![allow(clippy::doc_lazy_continuation, clippy::redundant_closure)]
 use core::any::{Any, type_name};
-use std::sync::Arc;
+use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
 
 use parking_lot::RwLock;
 
@@ -13,6 +13,8 @@ use crate::render::ssbo::rhapsody_boundary::{Buffer, GraphicsDevice, ResourceHan
 use crate::render::ssbo::{
     InstanceBuffer, InstanceCounted, MappedStorageBuffer, StorageElement, TypedStorageBuffer,
 };
+use crate::render::sparse_instance_buffer::SparseDrawView;
+use crate::render::extract::{ChangeCursor, ChangeJournal};
 use crate::rhapsody_types::{ImportedBuffer, RenderGraph};
 
 pub const RG_BUFFER_ACCESS: u8 = 0x37;
@@ -30,6 +32,18 @@ pub trait Ssbo: Send + Sync {
     fn instance_count(&self) -> Option<usize> {
         None
     }
+    /// Declaration-only sparse metadata; never exposes CPU instance storage
+    /// or allocation/reclamation authority to a render snapshot.
+    fn sparse_draw_view(&self) -> Option<SparseDrawView<'_>> {
+        None
+    }
+    /// The render thread's declaration state at hand-over. A snapshot may
+    /// expose a different concrete type with no CPU mutation authority.
+    fn snapshot(&self) -> Box<dyn Ssbo>;
+    /// Interior-mutating storage (such as sparse visibility) publishes into
+    /// the same library journal even when its caller holds only `&Storage`.
+    /// Render snapshots must not inherit a producer's notification callback.
+    fn set_change_notifier(&mut self, _notify: Arc<dyn Fn() + Send + Sync>) {}
 }
 
 impl<T: StorageElement + bytemuck::NoUninit + Send + Sync + 'static> Ssbo
@@ -54,6 +68,11 @@ impl<T: StorageElement + bytemuck::NoUninit + Send + Sync + 'static> Ssbo
         // NoUninit 排除填充和未初始化字节，转换由既有依赖检查对齐。
         bytemuck::try_cast_slice(&self.data).ok()
     }
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        // Declaration has no CPU-shadow consumer. Keep its typed GPU metadata,
+        // while the game retains the only shadow and mutation authority.
+        Box::new(self.buffer)
+    }
 }
 
 fn handle_of(buffer: &Buffer) -> ResourceHandle {
@@ -73,6 +92,9 @@ impl<T: StorageElement + Send + Sync + 'static> Ssbo for TypedStorageBuffer<T> {
     fn handle(&self) -> ResourceHandle {
         handle_of(&self.buffer)
     }
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(*self)
+    }
 }
 
 impl<T: StorageElement + Send + Sync + 'static> Ssbo for InstanceBuffer<T> {
@@ -91,6 +113,9 @@ impl<T: StorageElement + Send + Sync + 'static> Ssbo for InstanceBuffer<T> {
     fn instance_count(&self) -> Option<usize> {
         Some(InstanceCounted::instance_count(self))
     }
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(*self)
+    }
 }
 
 impl<T: StorageElement + Send + Sync + 'static> Ssbo for MappedStorageBuffer<'static, T> {
@@ -105,6 +130,11 @@ impl<T: StorageElement + Send + Sync + 'static> Ssbo for MappedStorageBuffer<'st
     }
     fn handle(&self) -> ResourceHandle {
         handle_of(&self.buffer)
+    }
+    /// The mapping stays with the game-side owner (two `&mut` views of one
+    /// mapping would alias); the render copy binds the same buffer only.
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(MappedStorageBuffer::<'static, T>::from_mapping(&mut [], self.buffer))
     }
 }
 
@@ -129,6 +159,14 @@ pub struct BufferState {
     data: Box<dyn Ssbo>,
     name: &'static str,
     render_graph: Arc<RwLock<Option<ImportedBuffer>>>,
+}
+
+impl BufferState {
+    /// The render-thread copy; the graph-local import cache is shared because
+    /// only declaration uses it.
+    fn snapshot(&self) -> Self {
+        Self { data: self.data.snapshot(), name: self.name, render_graph: self.render_graph.clone() }
+    }
 }
 
 impl BufferState {
@@ -218,12 +256,35 @@ pub struct InstanceInfo {
 #[derive(bevy_ecs::resource::Resource)]
 pub struct AssetSsboLibrary {
     buffers: FrozenMap<SsboId, BufferState>,
+    // register() takes &self, so ECS resource ticks do not observe additions.
+    registration_revision: AtomicU64,
+    changes: Arc<ChangeJournal<SsboId>>,
+    source_cursor: Option<ChangeCursor>,
+}
+
+/// A snapshot for the render world: same GPU buffers and declaration metadata.
+/// Sparse instances keep only draw metadata; their CPU shadows stay in game.
+impl Clone for AssetSsboLibrary {
+    fn clone(&self) -> Self {
+        // Capture before reading entries. A concurrent shared registration
+        // after this point must remain replayable on the next hand-over.
+        let source_cursor = Some(self.changes.cursor());
+        AssetSsboLibrary {
+            buffers: self.buffers.snapshot_with(BufferState::snapshot),
+            registration_revision: AtomicU64::new(self.registration_revision()),
+            changes: Arc::new(ChangeJournal::default()),
+            source_cursor,
+        }
+    }
 }
 
 impl Default for AssetSsboLibrary {
     fn default() -> Self {
         AssetSsboLibrary {
             buffers: FrozenMap::new(),
+            registration_revision: AtomicU64::new(0),
+            changes: Arc::new(ChangeJournal::default()),
+            source_cursor: None,
         }
     }
 }
@@ -231,6 +292,36 @@ impl Default for AssetSsboLibrary {
 impl AssetSsboLibrary {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Additions made through shared resource references need this token in
+    /// addition to the ECS tick. Storage edits still use exclusive get_mut.
+    pub fn registration_revision(&self) -> u64 {
+        self.registration_revision.load(Ordering::Acquire)
+    }
+
+    pub fn snapshot_revision(&self) -> u64 { self.changes.revision() }
+
+    /// Replay actual registration/storage writes into the existing render
+    /// table. Unchanged sparse draw metadata keeps its allocation and owner.
+    pub fn update_render_snapshot(&self, destination: &mut Self) {
+        let Some((cursor, changed)) = self.changes.since(destination.source_cursor) else {
+            *destination = self.clone();
+            return;
+        };
+        let mut seen = std::collections::HashSet::with_capacity(changed.len());
+        for id in changed {
+            if !seen.insert(id) { continue; }
+            let source = self.buffers.get(&id).expect("journal entry must name a registered SSBO");
+            if let Some(entry) = destination.buffers.get_mut(&id) {
+                *entry = source.snapshot();
+            } else {
+                assert!(destination.buffers.insert(id, Box::new(source.snapshot())).is_ok());
+            }
+            destination.changes.record(id);
+        }
+        destination.registration_revision.store(self.registration_revision(), Ordering::Release);
+        destination.source_cursor = Some(cursor);
     }
 
     pub fn add_new<T: SsboType>(&self, device: &dyn GraphicsDevice) {
@@ -267,8 +358,10 @@ impl AssetSsboLibrary {
     }
 
     /// 注册已成功创建的存储，允许调用方先处理设备创建失败。
-    pub fn register<T: SsboType>(&self, storage: T::Storage) {
+    pub fn register<T: SsboType>(&self, mut storage: T::Storage) {
         let full_type_name = type_name::<T>();
+        let changes = Arc::clone(&self.changes);
+        storage.set_change_notifier(Arc::new(move || changes.record(SsboId::of::<T>())));
         let state = BufferState::new(Box::new(storage), full_type_name);
         if let Err(existing) = self.buffers.insert(SsboId::of::<T>(), Box::new(state)) {
             if existing.name == full_type_name {
@@ -285,6 +378,9 @@ impl AssetSsboLibrary {
                 full_type_name
             );
         }
+        self.registration_revision.fetch_update(Ordering::Release, Ordering::Relaxed,
+            |revision| revision.checked_add(1)).expect("SSBO registration revision exhausted");
+        self.changes.record(SsboId::of::<T>());
     }
 
     /// 同一导入周期内复用图句柄，导出后允许重新导入。
@@ -319,12 +415,14 @@ impl AssetSsboLibrary {
         leases
     }
 
-    /// 按完整类型校验并取得存储的可变引用。
+    /// 按完整类型校验并取得存储的可变引用；紧凑渲染快照没有 CPU 存储可写。
     pub fn get_mut<T: SsboType>(&mut self) -> Option<&mut T::Storage> {
         let id = SsboId::of::<T>();
         let state = self.buffers.get_mut(&id)?;
         assert_eq!(state.name, type_name::<T>());
-        state.data.as_any_mut().downcast_mut::<T::Storage>()
+        let storage = state.data.as_any_mut().downcast_mut::<T::Storage>()?;
+        self.changes.record(id);
+        Some(storage)
     }
 
     pub fn get_buffer<T: SsboType>(&self) -> Option<&Buffer> {
@@ -339,10 +437,21 @@ impl AssetSsboLibrary {
         state.data.cpu_shadow_words()
     }
 
+    /// Read the concrete storage owner. Render-only sparse snapshots instead
+    /// expose `sparse_draw_view`, and return None here.
     pub fn get<T: SsboType>(&self) -> Option<&T::Storage> {
         let state = self.buffers.get(&SsboId::of::<T>())?;
         assert_eq!(state.name, type_name::<T>());
         state.data.as_any().downcast_ref::<T::Storage>()
+    }
+
+    /// Works for both the game-owned storage and its compact render snapshot.
+    /// Sparse render snapshots intentionally do not implement `T::Storage`:
+    /// use this view for draw ranges, and `get_buffer` for GPU metadata.
+    pub fn sparse_draw_view<T: SsboType>(&self) -> Option<SparseDrawView<'_>> {
+        let state = self.buffers.get(&SsboId::of::<T>())?;
+        assert_eq!(state.name, type_name::<T>());
+        state.data.sparse_draw_view()
     }
 
     /// 该类型是否已注册（`FrozenMap::get` 非空；不做名字断言）。
@@ -380,11 +489,15 @@ impl AssetSsboLibrary {
 
     /// 导出所有已导入缓冲并清除本周期缓存。
     pub fn export_from_rg(&self, render_graph: &mut RenderGraph) {
+        // Render snapshots have independent hash seeds. Export order is part
+        // of the graph plan identity, so use logical import order rather than
+        // hash iteration; otherwise every extracted frame invalidates PGO too.
+        let mut handles = Vec::new();
         self.buffers.for_each(|state| {
-            if let Some(handle) = state.render_graph.write().take() {
-                render_graph.export(handle, RG_BUFFER_ACCESS);
-            }
+            if let Some(handle) = state.render_graph.write().take() { handles.push(handle); }
         });
+        handles.sort_unstable_by_key(|handle| (handle.resource, handle.generation));
+        for handle in handles { render_graph.export(handle, RG_BUFFER_ACCESS); }
     }
 }
 
@@ -495,6 +608,29 @@ mod tests {
     }
 
     #[test]
+    fn incremental_snapshot_reuses_unmodified_storage_and_recovers_expired_history() {
+        let (mut source, device) = lib_with_alpha();
+        source.add_new::<Beta>(&device);
+        let mut render = source.clone();
+        let untouched = render.get::<Beta>().unwrap() as *const InstanceBuffer<Beta>;
+        source.get_mut::<Alpha>().unwrap().buffer.generation = 19;
+        source.update_render_snapshot(&mut render);
+        assert_eq!(render.get_buffer::<Alpha>().unwrap().generation, 19);
+        assert_eq!(render.get::<Beta>().unwrap() as *const InstanceBuffer<Beta>, untouched,
+            "editing Alpha must not snapshot Beta or replace its box");
+        for generation in 20..4200 {
+            source.get_mut::<Alpha>().unwrap().buffer.generation = generation;
+        }
+        source.update_render_snapshot(&mut render);
+        assert_eq!(render.get_buffer::<Alpha>().unwrap().generation, 4199);
+        assert!(render.contains::<Beta>());
+        let replacement = AssetSsboLibrary::new();
+        replacement.add_new::<Beta>(&device);
+        replacement.update_render_snapshot(&mut render);
+        assert!(!render.contains::<Alpha>(), "a new source cannot reuse an old cursor");
+    }
+
+    #[test]
     fn get_rg_buffer_imports_once_then_reuses_the_handle() {
         let (lib, _) = lib_with_alpha();
         let mut rg = RenderGraph::default();
@@ -535,6 +671,22 @@ mod tests {
         let second = lib.get_rg_buffer::<Alpha>(&mut rg);
         assert_eq!(rg.imports.len(), 2);
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn repeated_render_snapshots_export_in_stable_logical_order() {
+        let device = Device::default();
+        let library = AssetSsboLibrary::new();
+        library.register::<Alpha>(Alpha::new_storage_buffer(&device, Some(&[0; 16])));
+        library.register::<Beta>(Beta::new_storage_buffer(&device, Some(&[0; 16])));
+        for _ in 0..64 {
+            let snapshot = library.clone();
+            let mut graph = RenderGraph::default();
+            let first = snapshot.get_rg_buffer::<Beta>(&mut graph);
+            let second = snapshot.get_rg_buffer::<Alpha>(&mut graph);
+            snapshot.export_from_rg(&mut graph);
+            assert_eq!(graph.exports, [(first, RG_BUFFER_ACCESS), (second, RG_BUFFER_ACCESS)]);
+        }
     }
 
     #[test]

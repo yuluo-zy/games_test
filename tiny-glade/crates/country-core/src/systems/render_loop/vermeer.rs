@@ -154,11 +154,11 @@ pub enum VermeerPhase {
 }
 
 /// 托管纹理（O：`+8` 处的 `Option<Texture>`；`Drop` = `ManagedHandle::drop`）。
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ManagedTexture(pub TexRef);
 
 /// Vermeer 揭示状态资源（0x58 B）。
-#[derive(Debug, PartialEq, bevy_ecs::resource::Resource)]
+#[derive(Clone, Debug, PartialEq, bevy_ecs::resource::Resource)]
 pub struct VermeerState {
     /// `+0x00`：帧计数（每帧 +1；`activate` 清零）。
     pub frame_count: u64,

@@ -119,6 +119,16 @@ pub struct ScheduledTerrainReadback {
     pub changed_tick: u32,
 }
 
+impl Clone for ScheduledTerrainReadback {
+    fn clone(&self) -> Self {
+        Self {
+            pending: AtomicU64::new(self.pending.load(core::sync::atomic::Ordering::Acquire)),
+            copy_issued: self.copy_issued,
+            changed_tick: self.changed_tick,
+        }
+    }
+}
+
 impl ScheduledTerrainReadback {
     /// B 0x140aabdc0, LOCK INC; shared by draw and edit consumers.
     pub fn on_terrain_modified(&self) {
