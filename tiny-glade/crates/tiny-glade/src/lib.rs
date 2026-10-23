@@ -11,6 +11,8 @@ pub mod render_host;
 pub mod compute_frame;
 pub mod render_bridge;
 pub mod render_thread;
+#[cfg(feature = "ecs-multithreaded")]
+mod ecs_order;
 pub mod render_extract;
 pub mod frame_world;
 pub mod frame_setup;

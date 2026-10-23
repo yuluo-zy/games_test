@@ -824,15 +824,17 @@ fn init_ecs_task_pool() {
     });
 }
 
-/// Executor policy. The single-threaded executor is the default build; the
-/// `ecs-multithreaded` feature switches bevy to its multi-threaded executor, as in
-/// the original, but only once the system-order ambiguities below are resolved.
+/// Executor policy. The `ecs-multithreaded` feature (on by default) runs every
+/// schedule on bevy's multi-threaded executor with the conflicting, unordered
+/// system pairs pinned to their single-threaded order (`ecs_order`).
 /// `TG_ECS_EXECUTOR=single` forces the single-threaded executor on every schedule
 /// of a feature-enabled build, and `TG_SCHEDULE_AMBIGUITY=1` logs every pair of
 /// conflicting systems with no declared order (the audit that decides whether the
 /// feature is safe: a real run reports 525 such pairs in `Update`).
 fn apply_ecs_executor_policy(app: &mut App) {
     if !ecs_policy_active() {
+        #[cfg(feature = "ecs-multithreaded")]
+        crate::ecs_order::pin_and_parallelize(app.world_mut());
         return;
     }
     let mut schedules = app.world_mut().resource_mut::<bevy_ecs::schedule::Schedules>();
