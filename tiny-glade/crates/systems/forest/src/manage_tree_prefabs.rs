@@ -67,12 +67,15 @@ pub fn manage_tree_prefabs<C:Send+Sync+'static>(
     time:Res<GameTime>,heights:Res<TerrainHeightsData<TerrainHeightSsbo>>,
     paths:PathRastersResources,water:Res<WaterRaster>,garden:Res<GardenRaster>,
     mut cache:Local<MemCache>,
+    readbacks:Option<Res<country_core::render::gpu_readback::GpuReadbacks>>,
 ) {
     cache.candidates.clear();
     let grids=paths.as_float_grid();
     let water=(**water).as_ref();let garden=(**garden).as_ref();
     // Native gets/downcasts this same mandatory mapped owner before the loop.
-    let rock=ssbos.get::<TerrainRockMaskSsbo>().expect("B forest TerrainRockMask mapped SSBO");
+    ssbos.get::<TerrainRockMaskSsbo>().expect("B forest TerrainRockMask mapped SSBO");
+    // Sample the render thread's latest publication, not the in-flight mapping.
+    let rock=TerrainRockMaskSsbo::published(readbacks.as_deref());
     let shape=constructs.read().last().map(|cmd|ShapeParameters::from_observed(cmd.shape));
     for record in &placements.records {
         let p=Vec2::new(record.placement.position.x,record.placement.position.z);
@@ -84,7 +87,7 @@ pub fn manage_tree_prefabs<C:Send+Sync+'static>(
             let w=water.bilinear_sample_at_world_xz(p.x,p.y,RASTER_SCALE,RASTER_SCALE);
             let g=garden.bilinear_sample_at_world_xz(p.x,p.y,RASTER_SCALE,RASTER_SCALE);
             if w>0.0 || g>0.0 {false} else {
-                let rock=TerrainRockMaskSsbo::sample_mapped_at_world_xz(rock.mapped,p.x,p.y)!=0;
+                let rock=TerrainRockMaskSsbo::sample_mapped_at_world_xz(rock,p.x,p.y)!=0;
                 let sum=((a+b)+c)+d;
                 // MAXSS 0,sum then MINSS 1,result preserves an unordered source.
                 let low=if 0.0>sum {0.0}else{sum};

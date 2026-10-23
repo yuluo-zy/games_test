@@ -413,12 +413,8 @@ impl GameFrameDriver {
                 (Some(mut pending), Some(newer)) => { pending.append(newer); Some(pending) }
                 (pending, newer) => pending.or(newer),
             };
-            let Some(_update_admission) = crate::render_upload_boundary::ECS_COLLECT_GATE.try_lock() else {
-                self.pending_collect_input = input;
-                self.waiting_for_collect = true;
-                self.input_consumed_this_call = false;
-                return Ok(false);
-            };
+            // No Collect admission: producers never wait on the render
+            // thread's read lease, so Update runs alongside shared-pool Collect.
             self.waiting_for_collect = false;
             self.update_before_render(input, publish_platform_output)?;
         } else {
@@ -453,19 +449,9 @@ impl GameFrameDriver {
         // Completion/error publication is independent of Update admission.
         // A failed worker must be observed before entering producer systems.
         if render.in_flight() { let _ = render.poll(); }
-        // start() closes preparation admission before publishing a packet.
-        // Retain input without entering a producer which could block on that
-        // packet's CPU read lease throughout a cold pipeline compile.
-        if !self.awaiting_render && !self.loading_render_pending_after_update && !render.update_allowed() {
-            self.pending_collect_input = match (self.pending_collect_input.take(), input) {
-                (Some(mut pending), Some(newer)) => { pending.append(newer); Some(pending) },
-                (pending, newer) => pending.or(newer),
-            };
-            self.waiting_for_preparation = true;
-            self.input_consumed_this_call = false;
-            if let Some(timing) = &mut self.pending_timing { timing.yielded_at = Some(std::time::Instant::now()); }
-            return Ok(());
-        }
+        // Update no longer waits for preparation admission: producers hand
+        // writes to the packet's read lease without blocking, so simulation
+        // proceeds during a cold pipeline compile (render_upload_boundary).
         self.waiting_for_preparation = false;
         // Runs while the render thread executes and presents the previous frame.
         if !self.update_if_admitted(input, publish_platform_output)? {
@@ -1720,31 +1706,23 @@ mod frame_tests {
     }
 
     #[test]
-    fn collect_admission_preserves_input_and_runs_update_once() {
+    fn update_runs_once_with_retained_input_and_no_collect_admission() {
         #[derive(bevy_ecs::resource::Resource, Default)]
         struct Updates(u32);
         let (mut app, _) = vao_test_app();
         app.init_resource::<Updates>();
         app.add_systems(bevy_app::Update, |mut updates: bevy_ecs::prelude::ResMut<Updates>| updates.0 += 1);
         let mut driver = GameFrameDriver::new(app, egui::Context::default());
-        let lease = crate::render_upload_boundary::ECS_COLLECT_GATE.lock();
-        for text in ["first", "second"] {
-            let input = egui::RawInput { events: vec![egui::Event::Text(text.into())], ..Default::default() };
-            assert!(!driver.update_if_admitted(Some(input), |_| panic!("deferred GUI output")).unwrap());
-        }
-        assert_eq!(driver.pending_collect_input.as_ref().unwrap().events.len(), 2);
-        assert_eq!(driver.app.world().resource::<Updates>().0, 0);
-        assert!(driver.waiting_for_collect);
-        assert!(!driver.input_consumed_this_call);
-        drop(lease);
+        // Input retained by an earlier yield is merged ahead of the newer input.
+        driver.pending_collect_input = Some(egui::RawInput { events: vec![egui::Event::Text("first".into())], ..Default::default() });
+        let input = egui::RawInput { events: vec![egui::Event::Text("second".into())], ..Default::default() };
         let mut outputs = 0;
-        assert!(driver.update_if_admitted(None, |_| outputs += 1).unwrap());
+        assert!(driver.update_if_admitted(Some(input), |_| outputs += 1).unwrap());
         assert_eq!(outputs, 1);
         assert_eq!(driver.app.world().resource::<Updates>().0, 1);
         assert!(!driver.waiting_for_collect);
         assert!(driver.pending_collect_input.is_none());
     }
-
     #[test]
     fn pending_loading_or_render_result_resumes_without_consuming_another_update_or_egui_input() {
         #[derive(bevy_ecs::resource::Resource, Default)]

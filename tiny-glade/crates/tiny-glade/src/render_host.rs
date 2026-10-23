@@ -150,7 +150,8 @@ struct BufferUploads {
 
 struct MappedHostWriter {
     buffer: ManagedBuffer,
-    boundary: Arc<crate::render_upload_boundary::UploadBoundary>,
+    handle: Buffer,
+    host: BufferHost,
 }
 
 #[cfg(test)]
@@ -162,7 +163,7 @@ mod mapped_upload_tests {
     };
 
     #[test]
-    fn typed_mapped_upload_owns_memory_and_obeys_the_queued_frame_boundary() {
+    fn typed_mapped_upload_never_waits_and_lands_after_the_queued_frame_reads() {
         let device = match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
             Ok(device) => device,
             Err(error) => {
@@ -182,27 +183,49 @@ mod mapped_upload_tests {
             send.send(storage).unwrap();
         });
         waiting.recv().unwrap();
-        assert!(result.try_recv().is_err());
-        drop(read);
+        // The producer returns while the frame's reads are still pending.
         let mut storage = result.recv_timeout(Duration::from_secs(10)).unwrap();
         thread.join().unwrap();
-        assert_eq!(storage.mapped[0], FireflySsbo::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)));
+        let expected = FireflySsbo::from_translation(glam::Vec3::new(7.0, 8.0, 9.0));
+        assert_eq!(storage.cpu_contents()[0], expected);
+        assert_eq!(host.read_boundary.pending_jobs(), 1);
+        let mut gpu = [0u8; 16];
+        native.read_bytes(0, &mut gpu).unwrap();
+        let x = |gpu: &[u8; 16]| f32::from_le_bytes(gpu[0..4].try_into().unwrap());
+        assert_ne!(x(&gpu), 7.0, "deferred until the frame's reads are registered");
+        drop(read);
+        host.flush_pending_uploads().unwrap();
+        native.read_bytes(0, &mut gpu).unwrap();
+        assert_eq!([x(&gpu), f32::from_le_bytes(gpu[4..8].try_into().unwrap()), f32::from_le_bytes(gpu[8..12].try_into().unwrap())], [7.0, 8.0, 9.0]);
         // The upload capability pins the allocation even after its host table
-        // and other native owners are gone; the retained mapping stays valid.
+        // and other native owners are gone.
         drop(native);
         drop(host);
         storage.cpu_write(&[FireflySsbo::from_translation(glam::Vec3::ONE)]);
-        assert_eq!(storage.mapped[0], FireflySsbo::from_translation(glam::Vec3::ONE));
+        assert_eq!(storage.cpu_contents()[0], FireflySsbo::from_translation(glam::Vec3::ONE));
     }
 }
 impl country_core::render::ssbo::rhapsody_boundary::MappedUploadWriter for MappedHostWriter {
+    /// Never waits: the bytes become an owned, GPU-ordered upload (deferred
+    /// past a pending frame's reads by the boundary). The mapping itself is
+    /// written by that copy; producers keep their own CPU shadow.
     fn write(&self, offset: usize, data: &[u8]) -> Result<(), BackendError> {
-        let _publication = self.boundary.write();
-        self.buffer.write_bytes(offset as u64, data)
+        if offset.checked_add(data.len()).is_none_or(|end| end as u64 > self.buffer.size) {
+            return Err(BackendError::invalid_usage("mapped write exceeds its owner"));
+        }
+        let mut payload = Vec::new();
+        payload.try_reserve_exact(data.len()).map_err(|_| BackendError::OutOfHostMemory)?;
+        payload.extend_from_slice(data);
+        let (host, buffer, handle) = (self.host.detached(), self.buffer.clone(), self.handle);
+        self.host.read_boundary.write_or_defer(payload.capacity(), move ||
+            host.write_now(&buffer, &handle, &payload, offset).map_err(|error| error.to_string()))
+            .map_err(BackendError::invalid_usage)
     }
+    /// In-place edit of the live mapping. Waits for the boundary and for
+    /// overlapping GPU uses; MappedStorageBuffer no longer uses it.
     fn with_write(&self, offset: usize, bytes: usize, edit: &mut dyn FnMut())
         -> Result<(), BackendError> {
-        let _publication = self.boundary.write();
+        let _publication = self.host.read_boundary.write();
         self.buffer.with_host_write(offset as u64, bytes as u64, edit)
     }
     fn try_read(&self, offset: usize, bytes: usize, read: &mut dyn FnMut())
@@ -311,7 +334,7 @@ mod frame_buffer_tests {
     }
 
     #[test]
-    fn exhausted_cow_budget_waits_for_registered_reads_without_publishing_a_partial_owner() {
+    fn exhausted_cow_budget_defers_past_registered_reads_without_publishing_a_partial_owner() {
         let Some(device) = device() else { return; };
         let host = Arc::new(BufferHost::new(device.clone()));
         let buffer = cpu_buffer(&host, 5);
@@ -327,16 +350,16 @@ mod frame_buffer_tests {
             send.send(producer.update_cpu_buffer_bytes(&buffer, &[6; 16], &[0..16])).unwrap();
         });
         starts.recv().unwrap();
-        let blocked = receive.recv_timeout(Duration::from_millis(30)).is_err();
-        let same_before_release = Arc::ptr_eq(&old.shared(), &host.managed_buffer(&buffer).unwrap().shared());
+        // The producer does not wait for the frame; its write is deferred.
+        receive.recv_timeout(Duration::from_secs(5)).unwrap().unwrap();
+        worker.join().unwrap();
+        assert!(Arc::ptr_eq(&old.shared(), &host.managed_buffer(&buffer).unwrap().shared()));
+        host.flush_pending_uploads().unwrap();
+        assert_eq!(gpu_bytes(&device, old.clone()), vec![5; 16], "the pending frame still reads the old bytes");
         // Cancellation ends this frame's registration boundary. A live graph
         // would register its physical reads before opening the same boundary.
         drop(snapshot);
         drop(boundary);
-        let result = receive.recv_timeout(Duration::from_secs(5));
-        worker.join().unwrap();
-        assert!(blocked && same_before_release);
-        result.unwrap().unwrap();
         let current = host.managed_buffer(&buffer).unwrap();
         assert!(Arc::ptr_eq(&old.shared(), &current.shared()));
         host.flush_pending_uploads().unwrap();
@@ -448,6 +471,8 @@ mod stable_frame_buffer_tests {
         let _writer = host.mapped_upload_writer(&mapped).unwrap();
         host.update_cpu_buffer_bytes(&mapped, &[8; 16], &[0..16]).unwrap();
         assert!(Arc::ptr_eq(&old.shared(), &host.managed_buffer(&mapped).unwrap().shared()));
+        // Host-visible targets are written by the same ordered GPU copy.
+        host.flush_pending_uploads().unwrap();
         let mut observed = [0; 16];
         old.read_bytes(0, &mut observed).unwrap();
         assert_eq!(observed, [8; 16]);
@@ -535,7 +560,7 @@ mod mapped_raster_gpu_tests {
     }
 
     #[test]
-    fn raster_edit_waits_for_real_gpu_read_and_readback_skips_unfinished_gpu_write() {
+    fn raster_edit_never_waits_and_is_ordered_after_a_real_gpu_read() {
         let device = match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
             Ok(device) => device,
             Err(error) => {
@@ -552,6 +577,11 @@ mod mapped_raster_gpu_tests {
         raster.composite_mut()[0] = 11;
         raster.dirty_mut().set_cell(0, 0);
         staging.with_cpu_write(|mapped| raster.copy_to_staging(0, bytemuck::cast_slice_mut(mapped))).unwrap();
+        // Writes are GPU-ordered uploads; a frame submits them before its graph.
+        host.0.flush_pending_uploads().unwrap();
+        let mut first = [0u8; 4];
+        source.read_bytes(0, &mut first).unwrap();
+        assert_eq!(first[0], 11);
 
         let pool = VulkanCommandPool::new(device.clone()).unwrap();
         let gate = unsafe { device.raw_device().create_event(&vk::EventCreateInfo::default(), None) }.unwrap();
@@ -596,15 +626,21 @@ mod mapped_raster_gpu_tests {
             finished.send(staging).unwrap();
         });
         starts.recv().unwrap();
-        let early = finishes.recv_timeout(Duration::from_millis(30));
-        let blocked = matches!(&early, Err(mpsc::RecvTimeoutError::Timeout));
-        release.release(); // Unblock before any assertion can unwind.
-        pending.wait(10_000_000_000).unwrap();
-        let staging = early.unwrap_or_else(|_| finishes.recv_timeout(Duration::from_secs(5)).unwrap());
+        // The producer returns although GPU work still reads the staging input.
+        let early = finishes.recv_timeout(Duration::from_secs(5));
+        let staging = match early {
+            Ok(staging) => staging,
+            Err(error) => { release.release(); panic!("producer waited for the GPU: {error}") }
+        };
         worker.join().unwrap();
-        assert!(blocked, "the producer overwrote an input still being read by GPU work");
+        assert_eq!(staging.cpu_contents()[0].0, 22);
+        // Its bytes travel as a GPU copy ordered after the pending read.
+        host.0.flush_pending_uploads().unwrap();
+        release.release();
+        pending.wait(10_000_000_000).unwrap();
         assert_eq!(readback.try_cpu_read(|mapped| mapped[0].0).unwrap(), Some(11));
-        assert_eq!(staging.try_cpu_read(|mapped| mapped[0].0).unwrap(), Some(22));
+        source.read_bytes(0, &mut first).unwrap();
+        assert_eq!(first[0], 22);
     }
 }
 
@@ -845,6 +881,26 @@ impl BufferHost {
         Ok(())
     }
 
+    /// One validated contiguous write. Runs once no other thread's frame
+    /// reads are pending (directly, or from the lease release). Host-visible
+    /// targets that admit transfers are also written by an ordered GPU copy,
+    /// so neither the producer nor the render thread waits for in-flight GPU
+    /// reads of a persistent mapping.
+    fn write_now(&self, managed: &ManagedBuffer, buffer: &Buffer, data: &[u8], at: usize)
+        -> Result<(), BackendError> {
+        let _serial = self.publication.lock();
+        let ranges = [0..data.len()];
+        let host_visible = managed.desc.memory_location != MemoryLocation::GpuOnly
+            && managed.persistent_host_ptr().is_some();
+        if host_visible && !managed.desc.usage.contains(vk::BufferUsageFlags::TRANSFER_DST) {
+            return managed.write_bytes(at as u64, data);
+        }
+        if sync_upload_forced() {
+            return self.upload_waited(managed, buffer, data, &ranges, at);
+        }
+        self.queue_upload(managed, buffer, data, &ranges, at)
+    }
+
     /// Submits every queued write to the graphics queue, in order, without
     /// waiting for their completion. Call after all host writes of a frame and
     /// before the graph that reads them is submitted: the submitted jobs publish
@@ -1001,8 +1057,36 @@ impl BufferHost {
     }
 
     /// 释放句柄：槽位清空并递增代数，缓冲随最后一个克隆释放进入延迟销毁。
+    /// While another thread holds the frame read lease the slot is released
+    /// when the lease ends (in program order with deferred writes); the
+    /// caller never waits. The return value reflects validity at the call.
     pub fn release(&self, handle: &Buffer) -> bool {
-        let _publication = self.read_boundary.write();
+        if self.current_version(handle).is_none() { return false; }
+        let host = self.detached();
+        let handle = *handle;
+        if let Err(error) = self.read_boundary.write_or_defer(0, move || { host.release_now(&handle); Ok(()) }) {
+            log::error!(target: "tiny_glade::upload", "earlier deferred buffer write failed: {error}");
+        }
+        true
+    }
+
+    /// A host sharing every table but bound to no frame snapshot, for jobs
+    /// that run after their producer returned.
+    fn detached(&self) -> Self {
+        Self {
+            device: self.device.clone(), slots: self.slots.clone(), uploads: self.uploads.clone(),
+            read_boundary: self.read_boundary.clone(), publication: self.publication.clone(),
+            cow_budget: self.cow_budget.clone(), upload_coverage: self.upload_coverage.clone(), frame: None,
+            #[cfg(test)]
+            fail_upload_chunk: Mutex::new(None),
+        }
+    }
+
+    pub fn boundary_stats(&self) -> crate::render_upload_boundary::BoundaryStats {
+        self.read_boundary.stats()
+    }
+
+    fn release_now(&self, handle: &Buffer) -> bool {
         let _serial = self.publication.lock();
         if handle.id & (TEXTURE_ID_TAG | BUFFER_TOKEN_TAG) != 0 { return false; }
         let mut slots = self.slots.lock();
@@ -1049,6 +1133,12 @@ impl BufferHost {
         let mut usage = vk::BufferUsageFlags::from_raw(desc.usage);
         if usage.contains(vk::BufferUsageFlags::UNIFORM_BUFFER) {
             usage |= vk::BufferUsageFlags::STORAGE_BUFFER;
+        }
+        // Mapped GPU-written buffers are copied out by the render thread's
+        // readback publisher (gpu_readback.rs) instead of being read in place
+        // by game systems, so the copy source usage is admitted here.
+        if matches!(location, MemoryLocation::GpuToCpu | MemoryLocation::CpuToGpu | MemoryLocation::CpuToGpuLowPrio) {
+            usage |= vk::BufferUsageFlags::TRANSFER_SRC;
         }
         Ok(RhBufferDesc::new(
             u64::try_from(desc.size)
@@ -1196,34 +1286,38 @@ impl CoreGraphicsDevice for BufferHost {
         ranges: &[Range<usize>],
         offset: usize,
     ) -> Result<(), BackendError> {
-        let _publication = self.read_boundary.write();
-        let _serial = self.publication.lock();
-        let managed = self.lookup_current(buffer).ok_or_else(|| {
-            BackendError::invalid_usage("buffer host handle is stale or belongs to another host")
-        })?;
-        if self.frame.is_some() && self.lookup(buffer).is_none_or(|frozen|
-            !Arc::ptr_eq(&frozen.shared(), &managed.shared())) {
-            return Err(BackendError::invalid_usage("render-local write differs from its frozen owner"));
-        }
-        if managed.desc.memory_location != MemoryLocation::GpuOnly
-            && managed.persistent_host_ptr().is_some()
-        {
-            // Device::update_buffer_bytes is an asynchronous staging copy,
-            // even for mapped targets. A host-visible update must instead wait
-            // for overlapping GPU uses and write/flush the actual mapping.
-            // Validate the entire request before the first mutation.
-            rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
-            for range in ranges.iter().filter(|range| !range.is_empty()) {
-                managed.write_bytes(offset as u64 + range.start as u64, &data[range.clone()])?;
+        // Validate synchronously so the producer still sees its own errors.
+        let managed = {
+            let _serial = self.publication.lock();
+            let managed = self.lookup_current(buffer).ok_or_else(|| {
+                BackendError::invalid_usage("buffer host handle is stale or belongs to another host")
+            })?;
+            if self.frame.is_some() && self.lookup(buffer).is_none_or(|frozen|
+                !Arc::ptr_eq(&frozen.shared(), &managed.shared())) {
+                return Err(BackendError::invalid_usage("render-local write differs from its frozen owner"));
             }
-            return Ok(());
+            rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
+            managed
+        };
+        // Owned compact payload: only the requested ranges travel.
+        let total: usize = ranges.iter().map(|range| range.len()).sum();
+        let mut payload = Vec::new();
+        payload.try_reserve_exact(total).map_err(|_| BackendError::OutOfHostMemory)?;
+        let mut owned_ranges = Vec::with_capacity(ranges.len());
+        for range in ranges.iter().filter(|range| !range.is_empty()) {
+            let start = payload.len();
+            payload.extend_from_slice(&data[range.clone()]);
+            owned_ranges.push((offset + range.start, start..payload.len()));
         }
-        // Reject invalid ranges before allocating the lazy transfer service.
-        rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
-        if sync_upload_forced() {
-            return self.upload_waited(&managed, buffer, data, ranges, offset);
-        }
-        self.queue_upload(&managed, buffer, data, ranges, offset)
+        let host = self.detached();
+        let handle = *buffer;
+        self.read_boundary.write_or_defer(payload.capacity(), move || {
+            for (at, range) in owned_ranges {
+                host.write_now(&managed, &handle, &payload[range.clone()], at)
+                    .map_err(|error| error.to_string())?;
+            }
+            Ok(())
+        }).map_err(BackendError::invalid_usage)
     }
 
     fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
@@ -1243,7 +1337,7 @@ impl CoreGraphicsDevice for BufferHost {
         let managed = self.lookup(buffer)?;
         if !matches!(managed.desc.memory_location, MemoryLocation::CpuToGpu | MemoryLocation::CpuToGpuLowPrio | MemoryLocation::GpuToCpu)
             || managed.persistent_host_ptr().is_none() { return None; }
-        Some(Arc::new(MappedHostWriter { buffer: managed, boundary: self.read_boundary.clone() }))
+        Some(Arc::new(MappedHostWriter { buffer: managed, handle: *buffer, host: self.detached() }))
     }
 
     fn device_address(&self, buffer: &Buffer) -> u64 {
@@ -1438,8 +1532,19 @@ impl TextureHost {
             .filter(|_| slot.generation == generation)
     }
 
+    /// Like BufferHost::release: deferred past a pending frame's reads, in
+    /// program order with deferred updates. The caller never waits.
     pub fn release(&self, texture: &Texture) -> bool {
-        let _publication = self.read_boundary.write();
+        if self.get(texture).is_none() { return false; }
+        let host = self.clone();
+        let texture = texture.clone();
+        if let Err(error) = self.read_boundary.write_or_defer(0, move || { host.release_now(&texture); Ok(()) }) {
+            log::error!(target: "tiny_glade::upload", "earlier deferred texture write failed: {error}");
+        }
+        true
+    }
+
+    fn release_now(&self, texture: &Texture) -> bool {
         if texture.id & (TEXTURE_ID_TAG | BUFFER_TOKEN_TAG) != TEXTURE_ID_TAG { return false; }
         let mut slots = self.slots.lock();
         let Some(slot) = ((texture.id & 0xffff_ffff) as usize)
@@ -1580,7 +1685,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
         descriptors: &country_core::rhapsody_contract::DescriptorSet,
         updates: &[country_core::asset_libraries::texture_library::DescriptorImageUpdate],
     ) -> rhapsody::Result<()> {
-        let _publication = self.read_boundary.write();
+        // Validation only; it publishes nothing a pending frame reads.
         for update in updates {
             if update.binding != 0
                 || update.layout != vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL.as_raw() as u64
@@ -1611,7 +1716,6 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
         texture: &Texture,
         update: &country_core::asset_libraries::texture_library::TextureUpdate,
     ) -> rhapsody::Result<()> {
-        let _publication = self.read_boundary.write();
         let managed = self
             .get(texture)
             .ok_or_else(|| rhapsody::Error::invalid_usage("纹理已释放"))?;
@@ -1626,18 +1730,26 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
             return Err(rhapsody::Error::invalid_usage("纹理数据层长度不一致"));
         }
         let bytes_per_layer = update.data.len() / layer_count as usize;
-        let regions: Vec<_> = (0..layer_count)
-            .map(|layer| {
-                let start = layer as usize * bytes_per_layer;
-                rhapsody::resource::TextureUpdateRegion {
-                    data: &update.data[start..start + bytes_per_layer],
-                    extent: update.extent,
-                    mip_level: update.mip_level,
-                    array_layer: layer,
-                }
-            })
-            .collect();
-        rhapsody::resource::update_texture_regions(&self.device, &managed, &regions)
+        // Owned payload: the producer never waits for a pending frame's reads.
+        let mut data = Vec::new();
+        data.try_reserve_exact(update.data.len()).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+        data.extend_from_slice(&update.data);
+        let (device, extent, mip_level) = (self.device.clone(), update.extent, update.mip_level);
+        self.read_boundary.write_or_defer(data.capacity(), move || {
+            let regions: Vec<_> = (0..layer_count)
+                .map(|layer| {
+                    let start = layer as usize * bytes_per_layer;
+                    rhapsody::resource::TextureUpdateRegion {
+                        data: &data[start..start + bytes_per_layer],
+                        extent,
+                        mip_level,
+                        array_layer: layer,
+                    }
+                })
+                .collect();
+            rhapsody::resource::update_texture_regions(&device, &managed, &regions)
+                .map_err(|error| error.to_string())
+        }).map_err(rhapsody::Error::invalid_usage)
     }
 }
 

@@ -1066,10 +1066,9 @@ impl PassHost for RasterPassHost {
         // Never block an ECS/task-pool worker waiting for work in its own pool.
         if std::thread::current().name() != Some("tg-render")
             || std::env::var("TG_DRAW_COLLECT").as_deref() != Ok("parallel") { return None; }
-        // While the conservative upload boundary exists, Update workers can
-        // wait on this frame. Never enqueue Collect behind those workers.
-        crate::render_upload_boundary::ECS_COLLECT_GATE.try_lock()
-            .map(|lease| Box::new(lease) as Box<dyn std::any::Any>)
+        // Update workers no longer wait on this frame's read lease, so Collect
+        // may share the pool with a concurrent Update.
+        Some(Box::new(()) as Box<dyn std::any::Any>)
     }
 
     fn collect_chunk_draws(&self) -> usize {

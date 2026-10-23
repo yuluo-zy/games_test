@@ -97,17 +97,20 @@ pub fn read_mouse_depth_value_from_gpu(
     library: Res<AssetSsboLibrary>,
     mut value: ResMut<MouseDepthValue>,
     mut replay: ResMut<InputRecordReplayState>,
+    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
 ) {
     if replay.mode == InputRecordReplayMode::DisableInput {
         return;
     }
-    let buffer = library
+    library
         .get::<MouseDepthValueSsbo>()
         .expect("MouseDepthValueSsbo is absent or has the wrong storage type");
-    // The last completed sample remains valid while the GPU owns this range.
-    // Recording/replay still advances once per input frame below.
-    buffer.try_cpu_read(|samples| value.apply_gpu_samples(samples))
-        .expect("mouse depth readback failed");
+    // The render thread publishes each completed GPU sample; until the first
+    // one arrives the previous values remain. Recording/replay still advances
+    // once per input frame below.
+    if let Some(samples) = crate::render::gpu_readback::latest::<MouseDepthValueSsbo>(readbacks.as_deref()) {
+        value.apply_gpu_samples(samples);
+    }
     match replay.mode {
         InputRecordReplayMode::AutoRecordPanicRepro | InputRecordReplayMode::Records => {
             replay
@@ -181,16 +184,14 @@ mod tests {
         assert_eq!(value.filtered_mouse_position, Vec3::new(4.0, 5.0, 6.0));
     }
     #[test]
-    fn busy_gpu_keeps_completed_samples_and_still_records_and_replays_the_frame() {
+    fn unpublished_gpu_keeps_previous_samples_and_still_records_and_replays_the_frame() {
         use crate::{input::{input_stream::{InputSnapshot, RecordingRetention}, recording::InputFrame},
-            render::{ssbo::MappedStorageBuffer, test_device::TestReadbackAccess},
+            render::{gpu_readback::GpuReadbacks, ssbo::MappedStorageBuffer},
             resources::toolbar::Toolbar, systems::mode_manager::AppMode};
-        use std::sync::Arc;
-        let access = Arc::new(TestReadbackAccess::default());
         let library = AssetSsboLibrary::new();
         library.register::<MouseDepthValueSsbo>(MappedStorageBuffer::from_mapping_with_access(
             Box::leak(vec![MouseDepthValueSsbo([10.0, 20.0, 30.0, 0.75]); 4].into_boxed_slice()),
-            Default::default(), Some(access.clone())));
+            Default::default(), None));
         let camera = MainCamera::default();
         let mut replay = InputRecordReplayState::default();
         replay.stream.record_frame(InputFrame::default(),
@@ -211,7 +212,6 @@ mod tests {
         schedule.run(&mut world);
         assert_eq!(world.resource::<MouseDepthValue>().replay_frame(), previous);
         assert_eq!(world.resource::<InputRecordReplayState>().stream.get_frame(0).unwrap().mouse_depth, previous);
-        assert_eq!(access.reads(), 0);
         let recorded = MouseDepthReplayFrame { depth: 0.5, mouse_position: Vec3::Z, center_position: Vec3::ONE };
         {
             let mut replay = world.resource_mut::<InputRecordReplayState>();
@@ -220,12 +220,15 @@ mod tests {
         }
         schedule.run(&mut world);
         assert_eq!(world.resource::<MouseDepthValue>().replay_frame(), recorded);
-        assert_eq!(access.reads(), 0);
         world.resource_mut::<InputRecordReplayState>().mode = InputRecordReplayMode::None;
-        access.set_ready(true);
+        // The live mapping is never read; only the render thread's publication.
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<MouseDepthValue>().depth, 0.5);
+        let mut readbacks = GpuReadbacks::default();
+        readbacks.publish_slice(&[MouseDepthValueSsbo([10.0, 20.0, 30.0, 0.75]); 4], 1);
+        world.insert_resource(readbacks);
         schedule.run(&mut world);
         assert_eq!(world.resource::<MouseDepthValue>().depth, 0.75);
-        assert_eq!(access.reads(), 1);
     }
 
 }

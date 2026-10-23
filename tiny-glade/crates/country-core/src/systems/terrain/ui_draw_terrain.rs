@@ -93,6 +93,7 @@ pub fn ui_draw_terrain(
     mut pending: ResMut<PendingTerrainHistory>,
     assets: Option<Res<AssetSsboLibrary>>,
     mut archivist: ResMut<LiveDecoratorArchivist>,
+    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
 ) {
     // 门：AppMode::Terrain（O：0x140a9fdf9 `CMP dword [RAX],0xa`）。
     if mode.native_tag() != 10 {
@@ -154,26 +155,6 @@ pub fn ui_draw_terrain(
     } else {
         0
     };
-    // Resolve both readbacks before creating a stroke or advancing its state.
-    // A busy GPU retries this transition next Update without a partial edit.
-    let start_sample = if state == 1 {
-        let library = assets.as_deref()
-            .expect("terrain drawing requires the SSBO library");
-        let Some(mouse_index) = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::try_read_terrain_stroke_index(library) else {
-            return;
-        };
-        let mask = library.get::<TerrainRockMaskSsbo>()
-            .expect("terrain drawing requires TerrainRockMaskSsbo");
-        let Some(on_rock) = mask.try_cpu_read(|samples| {
-            mouse_index.is_some_and(|index| index != -1)
-                && sample_at_world_xz(bytemuck::cast_slice(samples), cursor.x, cursor.y) != 0
-        }).expect("terrain drawing rock-mask readback failed") else {
-            return;
-        };
-        Some((mouse_index, on_rock))
-    } else {
-        None
-    };
     draw_state.state = state;
     // subtype == 3 → drag 距离槽（disasm 0x140aa00a2..0x140aa00c3）。
     if subtype == 3 {
@@ -187,7 +168,18 @@ pub fn ui_draw_terrain(
                 // B aa010f..aa011d: preserve the raw drag distance before any
                 // SSBO lookup or clamp/addition for the actual stroke height.
                 editing.cursor_height_override = Some(draw_state.drag_distance);
-                let (mouse_index, on_rock) = start_sample.expect("new stroke readbacks are ready");
+                // Both readbacks come from the render thread's latest published
+                // copies; neither inspects the mapping an in-flight GPU frame is
+                // rewriting, so the original lookup order after creation holds.
+                let library = assets.as_deref()
+                    .expect("terrain drawing requires the SSBO library");
+                let readbacks = readbacks.as_deref();
+                let mouse_index = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(library, readbacks);
+                library.get::<TerrainRockMaskSsbo>()
+                    .expect("terrain drawing requires TerrainRockMaskSsbo");
+                let samples = TerrainRockMaskSsbo::published(readbacks);
+                let on_rock = mouse_index.is_some_and(|index| index != -1)
+                    && sample_at_world_xz(bytemuck::cast_slice(samples), cursor.x, cursor.y) != 0;
                 let height = initial_stroke_height(mouse_index, on_rock, draw_state.drag_distance);
                 editing.strokes.get_mut(&id).unwrap().height_ws = height;
                 draw_state.active = true;
@@ -687,12 +679,9 @@ mod original_initial_height_tests {
         let mut world = World::new();
         register_terrain_events(&mut world);
         register_test_buffers(&mut world);
-        world
-            .resource_mut::<AssetSsboLibrary>()
-            .get_mut::<MouseTerrainRaycastSsbo>()
-            .unwrap()
-            .mapped[0]
-            .terrain_stroke_index = 7;
+        let mut readbacks = crate::render::gpu_readback::GpuReadbacks::default();
+        readbacks.publish_slice(&[MouseTerrainRaycastSsbo { terrain_stroke_index: 7, ..Default::default() }], 1);
+        world.insert_resource(readbacks);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast {
             tag: 1,

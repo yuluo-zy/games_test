@@ -59,26 +59,6 @@ pub struct CompletedGameplayWarmup {
     named: Arc<parking_lot::Mutex<Option<rhapsody::rg::CompletedNamedResources>>>,
 }
 
-/// Shared ECS tasks may wait for this graph's CPU read boundary. Admission
-/// covers just CPU graph execution/recording; it never spans WSI waits. Fallback
-/// changes scheduling only, keeping the plan, chunk boundaries and draw order.
-fn with_recording_admission<T>(gate: &parking_lot::Mutex<()>, session: &mut VulkanGraphSession,
-    body: impl FnOnce(&mut VulkanGraphSession) -> T) -> T {
-    let admission = gate.try_lock();
-    let runner = session.chain.parallel.runner;
-    if admission.is_none() {
-        session.chain.parallel.runner = rhapsody::rg::TaskRunner::Inline;
-    }
-    struct Restore<'a> {
-        session: &'a mut VulkanGraphSession,
-        runner: rhapsody::rg::TaskRunner,
-    }
-    impl Drop for Restore<'_> {
-        fn drop(&mut self) { self.session.chain.parallel.runner = self.runner; }
-    }
-    let restore = Restore { session, runner };
-    body(restore.session)
-}
 
 impl CoreRenderBridge {
     pub fn new(
@@ -371,7 +351,9 @@ impl CoreRenderBridge {
     ) -> rhapsody::Result<SessionFrameReceipt> {
         let graph = self.claim_built(graph)?;
         self.tables.buffers.flush_pending_uploads()?;
-        with_recording_admission(&crate::render_upload_boundary::ECS_COLLECT_GATE, &mut self.session.borrow_mut(), |session| session.execute_frame(graph))
+        // Shared-pool recording runs concurrently with Update: producers no
+        // longer wait on this graph's read lease (render_upload_boundary).
+        self.session.borrow_mut().execute_frame(graph)
     }
 
     /// Reject a different App's graph before consuming its declaration.
@@ -407,8 +389,8 @@ impl CoreRenderBridge {
             ));
         }
         self.tables.buffers.flush_pending_uploads()?;
-        with_recording_admission(&crate::render_upload_boundary::ECS_COLLECT_GATE, &mut self.session.borrow_mut(), |session|
-            session.execute_prepared(compiled.frame.take().expect("compiled graph consumed once")))
+        self.session.borrow_mut()
+            .execute_prepared(compiled.frame.take().expect("compiled graph consumed once"))
     }
 
     /// Present the swapchain image rendered by `target`'s executed graph.
@@ -1168,49 +1150,6 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn recording_admission_falls_back_and_restores_the_runner_on_all_exits() {
-        use rhapsody::rg::{ChunkStrategy, ParallelRecording, TaskRunner};
-        let device = match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
-            Ok(device) => device,
-            Err(error) => {
-                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|value| value == "1"), "{error}");
-                return;
-            }
-        };
-        let mut session = VulkanGraphSession::new(VulkanGraphBackend::new(device, AccessTable::original()).unwrap());
-        let parallel = ParallelRecording {
-            runner: TaskRunner::ComputePool,
-            strategy: ChunkStrategy::Balanced { max_chunks: 4, chunk_overhead_ns: 100 },
-            min_total_ns: 123,
-        };
-        session.chain.parallel = parallel;
-        let gate = parking_lot::Mutex::new(());
-        let producer = gate.lock();
-        let outcome: Result<(), ()> = with_recording_admission(&gate, &mut session, |session| {
-            assert_eq!(session.chain.parallel.runner, TaskRunner::Inline);
-            assert_eq!(session.chain.parallel.strategy, parallel.strategy);
-            assert_eq!(session.chain.parallel.min_total_ns, parallel.min_total_ns);
-            Err(())
-        });
-        assert_eq!(outcome, Err(()));
-        assert_eq!(session.chain.parallel, parallel);
-        let unwind = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            with_recording_admission(&gate, &mut session, |session| {
-                assert_eq!(session.chain.parallel.runner, TaskRunner::Inline);
-                panic!("recording cancellation");
-            });
-        }));
-        assert!(unwind.is_err());
-        assert_eq!(session.chain.parallel, parallel);
-        with_recording_admission(&gate, &mut session, |session| assert_eq!(session.chain.parallel.runner, TaskRunner::Inline));
-        assert_eq!(session.chain.parallel, parallel);
-        drop(producer);
-        // No competing producer: admission keeps the configured parallel runner.
-        with_recording_admission(&gate, &mut session, |session| assert_eq!(session.chain.parallel.runner, TaskRunner::ComputePool));
-        assert_eq!(session.chain.parallel, parallel);
-    }
 
     #[test]
     fn raster_declaration_lease_rejects_other_graphs_and_revoked_hosts() {

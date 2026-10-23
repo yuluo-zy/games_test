@@ -40,6 +40,7 @@ pub mod decorator_plugin;
 pub mod event_loop;
 pub mod fps_limiter;
 pub mod game_loop;
+pub mod gpu_readback;
 pub mod gui;
 pub mod icc;
 pub mod load_language_library;

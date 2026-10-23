@@ -479,6 +479,9 @@ impl ExtractSet {
                 }
                 stats.resources_copied += 1;
                 previous_revision = Some(current_revision);
+                // Staged acknowledgment of this library revision (asset_ack).
+                render.get_resource_or_init::<country_core::render::asset_ack::AppliedAssetRevisions>()
+                    .0.push((std::any::TypeId::of::<T>(), current_revision.2));
             }
         })
     }
@@ -1157,6 +1160,30 @@ mod tests {
         worker.notify_control().unwrap();
         assert_eq!(observed.recv_timeout(std::time::Duration::from_secs(2)).unwrap(), 10_001);
         worker.shutdown();
+    }
+
+    #[test]
+    fn incremental_library_revisions_apply_once_and_are_acknowledged_per_hand_over() {
+        use country_core::render::asset_ack::AppliedAssetRevisions;
+        #[derive(Resource, Clone, Default)]
+        struct Library { revision: u64, applied: u32 }
+        let (mut game, mut render) = (World::new(), World::new());
+        game.insert_resource(Library { revision: 1, applied: 0 });
+        let mut extract = ExtractSet::default();
+        extract.copy_incremental::<Library>(|library| library.revision, |source, destination| {
+            destination.revision = source.revision;
+            destination.applied += 1;
+        });
+        extract.run(&mut game, &mut render);
+        assert_eq!(render.remove_resource::<AppliedAssetRevisions>().unwrap().0,
+            [(std::any::TypeId::of::<Library>(), 1)]);
+        // The same revision is never re-applied (idempotent hand-over).
+        extract.run(&mut game, &mut render);
+        assert!(render.get_resource::<AppliedAssetRevisions>().is_none());
+        game.resource_mut::<Library>().revision = 2;
+        extract.run(&mut game, &mut render);
+        assert_eq!(render.resource::<Library>().applied, 1, "an existing copy is updated, not recreated");
+        assert_eq!(render.resource::<AppliedAssetRevisions>().0, [(std::any::TypeId::of::<Library>(), 2)]);
     }
 
     #[test]

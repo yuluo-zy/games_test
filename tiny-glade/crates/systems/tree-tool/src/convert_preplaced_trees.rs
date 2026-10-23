@@ -41,12 +41,16 @@ pub fn convert_preplaced_trees<S: Send + Sync + 'static>(
     storage: Res<TreeStorage>,
     converted: Query<(&PrefabInstanceData, &ConvertedPreplacedTree)>,
     mut history: ResMut<History<S>>,
+    readbacks: Option<Res<country_core::render::gpu_readback::GpuReadbacks>>,
+    mut spawned_after: Local<u64>,
 ) {
+    let readbacks = readbacks.as_deref();
     // Native reader advances to the end of both event buffers, coalescing all
     // requests. Taking just .next() would retrigger the delay for each event.
     if spawns.read().count() != 0 {
         wait.count = 1;
         wait.flag = true;
+        *spawned_after = readbacks.map_or(0, |readbacks| readbacks.submitted_frame());
         return;
     }
     if !wait.flag {
@@ -56,11 +60,20 @@ pub fn convert_preplaced_trees<S: Send + Sync + 'static>(
     if wait.count <= 2 {
         return;
     }
-    wait.flag = false;
-    log::info!("Adding converted pre-placed trees to history");
-    let rock = library
+    library
         .get::<TerrainRockMaskSsbo>()
         .expect("TerrainRockMaskSsbo must exist and expose its mapped readback");
+    // The two-frame delay is not a GPU fence: wait for a rock mask the render
+    // thread published from a frame submitted after the spawn request.
+    let Some(rock) = readbacks
+        .and_then(|readbacks| readbacks.get::<TerrainRockMaskSsbo>())
+        .filter(|view| view.frame > *spawned_after)
+        .map(|view| view.data)
+    else {
+        return;
+    };
+    wait.flag = false;
+    log::info!("Adding converted pre-placed trees to history");
     let mut edits = Vec::new();
     for (id, entry) in storage.iter() {
         // Missing/dead Entity or either missing component is a native skip,
@@ -83,7 +96,7 @@ pub fn convert_preplaced_trees<S: Send + Sync + 'static>(
         // Original evaluates rock only when water/garden did not block.
         let mut blocked = water > 0.0
             || garden > 0.0
-            || TerrainRockMaskSsbo::sample_mapped_at_world_xz(&rock.mapped[..], pos.x, pos.y) != 0;
+            || TerrainRockMaskSsbo::sample_mapped_at_world_xz(rock, pos.x, pos.y) != 0;
         if !blocked {
             // MAXSS(0,sum), MINSS(1,sum), UCOMISS/JA: unordered sums
             // follow the nonpositive branch, then the actual wall cell test.

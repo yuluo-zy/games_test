@@ -284,6 +284,7 @@ pub fn photomode_focus(
     mut camera: ResMut<MainCamera>,
     mut photo: ResMut<PhotomodeState>,
     mut mei: ResMut<crate::MeiContext>,
+    readbacks: Option<Res<country_core::render::gpu_readback::GpuReadbacks>>,
 ) {
     use country_core::systems::render_loop::compute_passes::dof_autofocus::DofFocusReadbackSsbo;
     if !screen.enabled {
@@ -293,16 +294,21 @@ pub fn photomode_focus(
     // Native14234b914: tag5 and its actual f32 distance, not a world ray or
     // a screen rectangle. Preserve the original default history flag.
     let canvas = ui.add("camera_focus_canvas", photo_focus_canvas_params());
-    let readback = library
+    library
         .get::<DofFocusReadbackSsbo>()
         .expect("photomode requires the original DofFocusReadbackSsbo");
+    // The render thread's latest completed autofocus response; before the
+    // first one the buffer still holds its zero-initialized element.
+    let response = country_core::render::gpu_readback::latest::<DofFocusReadbackSsbo>(readbacks.as_deref())
+        .and_then(|samples| samples.first().copied())
+        .unwrap_or_default();
     let marker = update_photo_focus(
         &mut camera,
         &mut photo,
         cursor.0,
         *window,
         canvas.dragged(),
-        readback.mapped[0],
+        response,
     );
     if photo.show_focus_marker && menu.is_closed() && !matches!(camera.mode_byte(), 3 | 4) {
         draw_photo_focus_marker(&mut mei, marker);

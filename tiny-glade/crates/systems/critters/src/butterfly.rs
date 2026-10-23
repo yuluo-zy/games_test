@@ -113,14 +113,15 @@ pub fn update_butterfly_states(
         &CritterGoal,
     )>,
     sheep_query: Query<(&Transform, &Sheep)>,
+    readbacks: Option<Res<country_core::render::gpu_readback::GpuReadbacks>>,
 ) {
     let dt = time.delta;
-    // Canonical mapped rock-mask readback (same owner as shared::move_critters); the old
-    // TerrainRockMask shadow is never populated.
-    let rock_mask = &*buffers
+    // Canonical rock-mask readback (same owner as shared::move_critters), from
+    // the render thread's latest publication rather than the in-flight mapping.
+    buffers
         .get::<terrain_rock_mask::TerrainRockMaskSsbo>()
-        .expect("update_butterfly_states requires canonical mapped TerrainRockMaskSsbo")
-        .mapped;
+        .expect("update_butterfly_states requires canonical mapped TerrainRockMaskSsbo");
+    let rock_mask = terrain_rock_mask::TerrainRockMaskSsbo::published(readbacks.as_deref());
     let mut rng_ctx = rng.0.lock().unwrap();
     // O 0x141d851cb：`from_iter<Vec2, Map<QueryIter<(Transform, Sheep)>>>` 收集避羊位。
     let sheep_positions: Vec<Vec2> = sheep_query

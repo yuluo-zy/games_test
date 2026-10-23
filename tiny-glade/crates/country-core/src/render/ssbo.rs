@@ -683,13 +683,19 @@ pub struct MappedStorageBuffer<'a, T> {
     /// `+0x10`。
     pub buffer: Buffer,
     upload_writer: Option<std::sync::Arc<dyn rhapsody_boundary::MappedUploadWriter>>,
+    /// Writer-backed owners: the game's authoritative CPU contents. Edits run
+    /// here and only changed spans travel as owned GPU-ordered uploads, so a
+    /// producer never touches (or waits for) the mapping an in-flight frame reads.
+    shadow: Option<Vec<T>>,
+    /// Reused pre-edit copy for change detection.
+    before: Vec<T>,
 }
 
 impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
     /// Adapt an existing mapping whose synchronization remains with its owner
     /// (CPU test mappings and GPU readback owners use this constructor).
     pub fn from_mapping(mapped: &'a mut [T], buffer: Buffer) -> Self {
-        Self { mapped, buffer, upload_writer: None }
+        Self { mapped, buffer, upload_writer: None, shadow: None, before: Vec::new() }
     }
 
     /// Adapt a manually constructed native mapping while retaining the host's
@@ -698,7 +704,7 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
         mapped: &'a mut [T], buffer: Buffer,
         access: Option<std::sync::Arc<dyn rhapsody_boundary::MappedUploadWriter>>,
     ) -> Self {
-        Self { mapped, buffer, upload_writer: access }
+        Self { mapped, buffer, upload_writer: access, shadow: None, before: Vec::new() }
     }
     /// 缓冲字节大小：`BUFFER_LEN * size_of::<T>()`（编译期常量）。
     pub const fn byte_len() -> usize {
@@ -764,7 +770,7 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
         // SAFETY: 对齐与整除已断言；`T: Copy` 且映射区由设备持有至缓冲销毁（与原版保存的裸指针等价）；字节内容按元素重解释
         // （`T` 非 `Pod` 派生，故不能用 `bytemuck::cast_slice_mut`——离线缓存缺 `bytemuck_derive`）。
         let mapped: &'a mut [T] = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
-        Self { mapped, buffer, upload_writer: device.mapped_upload_writer(&buffer) }
+        Self { mapped, buffer, upload_writer: device.mapped_upload_writer(&buffer), shadow: None, before: Vec::new() }
     }
 
     /// `cpu_write`（O：`impl$6::cpu_write<ButterflySsbo/FireflySsbo>` 0x14230edb0 / 0x14230f1e0，各 1057 B，puffin scope 之外就是一次
@@ -794,17 +800,49 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
         -> Result<(), rhapsody_boundary::BackendError> {
         let offset = range.start.checked_mul(core::mem::size_of::<T>())
             .ok_or_else(|| rhapsody_boundary::BackendError::invalid_usage("mapped edit offset overflow"))?;
-        let mapped = self.mapped.get_mut(range)
+        let mapped = self.mapped.get_mut(range.clone())
             .ok_or_else(|| rhapsody_boundary::BackendError::invalid_usage("mapped edit exceeds its owner"))?;
-        let bytes = core::mem::size_of_val(mapped);
-        let mut edit = Some(edit);
-        if let Some(writer) = &self.upload_writer {
-            writer.with_write(offset, bytes, &mut ||
-                edit.take().expect("one protected mapped edit")(mapped))
-        } else {
-            edit.take().expect("one local mapped edit")(mapped);
-            Ok(())
+        let Some(writer) = &self.upload_writer else {
+            edit(mapped);
+            return Ok(());
+        };
+        let _ = offset;
+        // Seed once from the mapping: until the first CPU edit it holds only
+        // its creation contents (CPU-to-GPU memory is never written by the GPU).
+        let shadow = self.shadow.get_or_insert_with(|| self.mapped.to_vec());
+        let target = &mut shadow[range.clone()];
+        self.before.clear();
+        self.before.extend_from_slice(target);
+        edit(target);
+        // Upload only changed spans (CHUNK-granular, adjacent spans merged).
+        const CHUNK: usize = 256;
+        let size = core::mem::size_of::<T>();
+        let base = range.start * size;
+        let new = slice_as_bytes(target);
+        let old = slice_as_bytes(&self.before);
+        let mut start = None;
+        let mut at = 0;
+        while at <= new.len() {
+            let end = (at + CHUNK).min(new.len());
+            let changed = at < new.len() && new[at..end] != old[at..end];
+            match (changed, start) {
+                (true, None) => start = Some(at),
+                (false, Some(from)) => {
+                    writer.write(base + from, &new[from..at])?;
+                    start = None;
+                }
+                _ => {}
+            }
+            if at == new.len() { break; }
+            at = end;
         }
+        Ok(())
+    }
+
+    /// The owner's latest CPU contents: the shadow of a writer-backed buffer
+    /// (its GPU copy follows asynchronously), otherwise the mapping itself.
+    pub fn cpu_contents(&self) -> &[T] {
+        self.shadow.as_deref().unwrap_or(self.mapped)
     }
 
     /// Observe the latest complete GPU contents without stalling simulation.

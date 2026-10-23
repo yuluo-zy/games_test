@@ -289,3 +289,51 @@ cargo --config 'source.crates-io.replace-with="cached-ustc"' \
 - `/tmp/render-main-cross-pass-integrated.log`：新组件 hook 与扩展跨 pass 的下一轮真实链回归进行中，不能提前记为通过。
 
 整体仍未完成：新实现统一全量、完整上传序号/确认协议、尚未迁移的可变组件生产者、窗口晚输入实际命中、最终多场景长跑及真机性能验收仍需继续。
+
+
+
+### 并行/非阻塞收尾任务（2026-10-23 晚起，Windows 本机 + 本机 Vulkan）
+
+此前一轮把回读消费者改成 `try_cpu_read`（等 GPU 完成才读、回调内持提交锁），方向错误：游戏线程与渲染提交互相加锁，且 GPU 每帧改写时长期读不到数据。已整体回退，按下表重做。每完成一项更新本表。
+
+| # | 任务 | 状态 |
+|---|---|---|
+| 1 | 回退错误的 `try_cpu_read` 回读迁移与 `mapped` 私有化 | 完成 |
+| 2 | GPU 回读改为渲染侧复制、完成后发布，游戏侧只收消息 | 完成 |
+| 3 | 拆除 `UploadBoundary` 写阻塞：游戏侧物理写入改 owned 上传/帧槽 | 完成 |
+| 4 | 移除 `ECS_COLLECT_GATE` | 完成 |
+| 5 | 资产操作序号/分阶段确认/幂等 | 完成（库级；见下） |
+| 6 | 增量提取：可变组件变更日志、Raster 脏瓦片、容器池 | 未开始 |
+| 7 | 非阻塞控制流程（resize/App 切换/截图） | 未开始 |
+| 8 | 跨 pass 收尾 | 未开始 |
+| 9 | 晚相机验证 | 未开始 |
+| 10 | 统一编译/测试验收与文档更新 | 未开始 |
+
+#### 任务 2：回读消息化（完成）
+
+- 游戏侧 `country_core::render::gpu_readback::GpuReadbacks`：每类型保留最近一份完整副本（16 字节对齐 owned 存储）、产生它的渲染已提交帧号、发布次数；旧帧结果拒收，被替换的容器返还渲染侧复用。`submitted_frame` 是游戏已确认的最新提交帧。
+- 渲染侧 `tiny_glade::gpu_readback::ReadbackPublisher`（`complete_render_feedback` 中，位于提交写回之后）：每个成功提交帧对游戏真正消费的 7 类回读（岩石遮罩、鼠标地形笔刷、鼠标深度、DoF 对焦、bush、两类地形高度）发出 `TransferManager::read_buffer`；后续帧收尾非阻塞 `try_read`，完成的数据连同来源 WorldId、帧号经 `FrameFeedback` 移交。地形高度只在 `copy_issued` 的帧（或首次、或上次因暂存槽满欠下时）复制。暂存 48 槽 × 512 KiB 上限、惰性分配；槽满跳过并计数，未完成复制超过 40 个时丢最旧。`BufferHost::convert` 对主机可见缓冲追加 `TRANSFER_SRC`。
+- 消费者改读发布数据，不再触碰映射、不拿 GPU 锁、不等待：地形笔刷索引/悬停/绘制、鼠标深度、脚步声、Nani 预置花、动物移动/避障、蝴蝶、森林、bush 网格（同一 revision 不重复处理）、拍照对焦。时序敏感项按帧号判定：地形高度等到"发出复制那一帧"之后的数据；预置树转换等到生成请求之后提交的帧的岩石遮罩。首份数据到达前使用缓冲初值（全零 / 索引 -1），与原版首帧前读到的初始内容相同。地形绘制恢复原版"先建笔画再读回读"的顺序。
+- 验证：`cargo check --workspace --all-targets --exclude toolbar` 与 `-p toolbar --lib` 通过；country-core 相关 369 项单元、clutter/critters/forest/tree 共 88 项通过；新增真实 Vulkan（Windows 本机设备）测试：复制→非阻塞完成→仅向来源 World 发布、发布后映射改变不影响副本，通过。
+- 已知范围：只有生产 `ProductionRenderer` 路径发布；无窗口 `render_headless_gameplay_frame` 等夹具不发布，依赖回读结果的 GPU 集成测试需要接入同一发布器后再复验（任务 10）。`render_host::accepted_sparse_upload_survives_submit_oom...` 在本机失败于其测试辅助 `read_buffer` 的 usage/范围校验（GpuOnly 稀疏缓冲），与本改动无关，留待任务 10 定位。
+#### 任务 3：生产者写入不再等待（完成）
+
+- `UploadBoundary::write_or_defer`：其他线程持有帧读租约时，写入作为拥有字节的作业入队并立即返回；租约释放（主图提交后的准入、取消或 shutdown）在重新开放边界前按 FIFO 执行全部作业。之后的直接写入因此仍排在先前延后的写入之后；租约持有者（渲染线程）自身的 render-local 写入照常立即执行、排在下一帧作业之前。延后字节上限 64 MiB，超出才回退为等待并计数（`BoundaryStats.budget_waits`）。作业失败记入粘滞错误，由下一次写入返回，不静默丢失。
+- 改走 `write_or_defer` 的路径：`BufferHost::update_buffer_bytes`（同步校验、紧凑 owned 负载）、`BufferHost::release`、`MappedHostWriter::write`、`TextureHost::release`、`TextureHost::update_texture`（owned 像素副本）。`update_persistent_descriptor_set` 只做校验，去掉边界。显式同步的 `update_buffer_bytes_wait` 与 `MappedHostWriter::with_write` 保留等待语义，生产 `MappedStorageBuffer` 已不再调用后者。
+- 主机可见目标（含 TRANSFER_DST）不再由 CPU 写持久映射（那要等在途 GPU 读完），改为与设备本地缓冲相同的有序 GPU 复制，由下一帧 `flush_pending_uploads` 在图执行前提交。没有 TRANSFER_DST 的主机可见缓冲仍按旧路径写映射。
+- `MappedStorageBuffer`（有宿主写入器时）持有游戏侧 CPU 影子：编辑在影子上运行，按 256 B 块比较出变化区间，只上传变化部分（Raster 暂存区的脏瓦片编辑因此只传脏瓦片）。影子首次编辑时从映射初值播种（CPU→GPU 内存不被 GPU 写）。`cpu_contents()` 返回影子；本地/测试映射仍原地编辑。
+- 验证：`render_upload_boundary` 新增"生产者不等待、延后写按序在边界重开前执行、失败由下次写报告"单元；按新语义改写 4 个旧"必须阻塞"测试：萤火虫映射写入在租约期间立即返回、释放并 flush 后 GPU 内容正确；COW 预算耗尽时写入延后而旧帧仍读旧字节；主机可见缓冲经 GPU 复制更新；Raster 暂存编辑不等待真实 GPU 读、其复制排在该读之后（读到 11，之后映射为 22）。真实 Vulkan 下 tiny-glade lib 211 通过；country-core lib 2841 通过；critters/clutter/forest/tree 全部通过；集成 core_render_bridge 10、render_snapshots 10、compile_before_submit 1、geometry_gpu 1 通过。
+- 环境限制：本机无 Vulkan 验证层，`tests/render_host.rs`（19）与 `core_raster_draw`（11）在设备初始化即失败，未能验收；`gui_tod` 缺原版资产；`render_host::accepted_sparse_upload…` 的测试辅助对无 TRANSFER_SRC 的 GpuOnly 缓冲调用 `read_buffer`，为既有夹具问题。三者均留待任务 10。
+#### 任务 4：移除 ECS_COLLECT_GATE 与准备期 Update 门禁（完成）
+
+- 门禁存在的原因是"Update 的池任务可能阻塞在渲染帧的读租约上，而渲染的 Collect/录制任务排在它们之后"的循环等待。任务 3 之后生产者不再等待租约，唯一剩余的等待点是延后预算（64 MiB）耗尽：现在只有非池线程会等；`tg-compute` 池线程超额入队并计入 `budget_overflows`，从而在任何情况下都不形成池内循环等待。
+- 删除 `ECS_COLLECT_GATE` 及其全部使用：`render_bridge::with_recording_admission`（execute_built / execute_compiled 直接执行，录制保持配置的并行 runner）、`raster_host::try_parallel_collect` 的 try_lock、`GameFrameDriver::update_if_admitted` 的让出分支。Update 与共享池 Collect/录制可以同时进行。
+- 同时去掉 Update 前的"准备期准入"让出（`render.update_allowed()` 为假时保留输入返回事件循环）：其注释写明唯一原因是生产者会在冷管线编译期间阻塞于该包的读租约，现已不成立。模拟在冷管线编译期间继续推进；`update_allowed` API 与渲染线程内部状态机保持不变（窗口循环仍用它决定是否唤醒）。
+- 测试：新增"池线程超出预算也不等待"单元；改写 `collect_admission…` 为"无准入门禁、保留输入合并、只更新一次"；删除只验证门禁回退的 `recording_admission_falls_back…`。tiny-glade lib 211 通过（剩余 2 项为任务 3 已记录的环境/夹具问题）；core_render_bridge 10、render_snapshots 10、compile_before_submit 1、geometry_gpu 1 通过。强制并行完整游戏短流程需原资产与窗口环境，留待任务 10。
+#### 任务 5：资产版本分阶段确认与幂等（完成，库级粒度）
+
+- 操作序号：沿用各资产库已有的单调发布版本（SSBO/网格/VAO/纹理的 `snapshot_revision` 等，经 `copy_incremental` 提取）。同一来源 World 内只增不减，渲染侧对已应用的 (World, 版本) 不重复应用；已有副本就地增量更新而不重建。
+- 分阶段确认 `country_core::render::asset_ack::RenderAssetAcks`（游戏 World 资源）：`applied`（渲染副本已应用）→ `submitted`（引用该版本的帧成功提交）→ `gpu_complete`（该帧 GPU 完成）。`copy_incremental` 每次应用记入渲染 World 的 `AppliedAssetRevisions`；`ReadbackPublisher::finish_frame` 取走它，随反馈确认 applied/submitted；GPU 完成以同队列上帧后发出的回读复制完成为证（之后提交的同队列 fence 完成意味着该帧已完成），无需额外等待或 fence。
+- 失败路径：编译/提交失败的帧只确认 applied，不推进 submitted/gpu_complete；增量库的渲染副本不回退，重试不重放已接受的上传/创建。确认按来源 WorldId 过滤，旧 App 不污染新 World。
+- 测试：`asset_ack` 阶段推进/失败/乱序重复完成单元；`render_thread` 新增"同一版本只应用一次、再版本就地更新且确认"；真实 Vulkan `gpu_readback` 测试扩展为验证 applied/submitted、未提交帧只推进 applied、回读完成后 gpu_complete 推进。
+- 范围说明：粒度是"库版本"，不是单个资产条目；条目级 RenderAssetId 代际由既有宿主分配代数（任务前已实现）承担。没有回读源的 App（加载界面）不产生 gpu_complete 确认。

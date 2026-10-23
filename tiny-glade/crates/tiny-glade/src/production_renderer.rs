@@ -762,6 +762,8 @@ pub struct ProductionRenderer {
     activation_error: Option<anyhow::Error>,
     /// Declaration's writes that travel back to the game world.
     write_back: crate::render_thread::WriteBackSet,
+    /// GPU readbacks copied out after submission and published to the game.
+    readbacks: crate::gpu_readback::ReadbackPublisher,
 }
 
 /// What the game thread hands over besides the extracted render world.
@@ -882,6 +884,7 @@ impl ProductionRenderer {
             egui,
             swapchain,
             swapchain_observer: None,
+            readbacks: crate::gpu_readback::ReadbackPublisher::new(device.clone()),
             device,
             shaders,
             final_post_shader,
@@ -1521,6 +1524,7 @@ impl ProductionRenderer {
             egui,
             swapchain,
             swapchain_observer: Some(worker_swapchain_observer),
+            readbacks: crate::gpu_readback::ReadbackPublisher::new(device.clone()),
             device,
             shaders,
             final_post_shader,
@@ -1629,6 +1633,10 @@ fn complete_render_feedback(renderer: &mut ProductionRenderer, side: &mut crate:
     } else {
         renderer.write_back.abort_unsubmitted(&mut side.world);
     }
+    // After the submitted write-backs: the game sees copy_issued and the
+    // matching submitted frame number in the same hand-over.
+    let buffers = renderer.bridge.hosts().buffers.clone();
+    renderer.readbacks.finish_frame(&mut side.world, &buffers, renderer.frame_submitted, &mut side.feedback);
     side.feedback.submitted = renderer.frame_submitted;
     side.feedback.history_submitted = renderer.frame_history_submitted;
     side.feedback.temporal_candidate = side.world.remove_resource::<crate::temporal_frame::RenderCameraCandidate>()

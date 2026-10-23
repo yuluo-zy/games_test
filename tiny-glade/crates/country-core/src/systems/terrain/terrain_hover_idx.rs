@@ -74,10 +74,10 @@ pub fn terrain_hover_idx(
     library: Option<Res<AssetSsboLibrary>>,
     cursor: Option<Res<CursorTerrainRaycast>>,
     water_raster: Option<Res<WaterRaster>>,
+    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
 ) {
     // **函数开头无条件复位输出 tag=0**（O：fresh 反编译 `*puVar4 = 0` 在 mode 门之前；
     // miss/门失败帧输出被清）。早期 Rust 不清 → 门失败帧残留上帧命中。
-    let previous = *hovered;
     hovered.tag = 0;
     // AppMode 0x421 掩码门（O：`mode<0xb && (0x421>>(mode&0x1f))&1`，bits {0,5,10} =
     // All/Garden/Terrain 工具；`& 0x1f` 为原生移位掩码）。
@@ -97,13 +97,10 @@ pub fn terrain_hover_idx(
         );
     }
     let id = if let Some(library) = library {
-        match crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::try_read_terrain_stroke_index(&library) {
-            Some(Some(id)) => id,
-            Some(None) => return,
-            None => {
-                *hovered = previous;
-                return;
-            }
+        match crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(
+            &library, readbacks.as_deref()) {
+            Some(id) => id,
+            None => return,
         }
     } else {
         // Existing host/readback adapter remains usable without a graphics owner.
@@ -163,8 +160,10 @@ mod live_water_tests {
         crate::systems::terrain::register_terrain_events(&mut world);
         let mut library = AssetSsboLibrary::new();
         library.add_new::<MouseTerrainRaycastSsbo>(&crate::render::test_device::TestDevice(0));
-        library.get_mut::<MouseTerrainRaycastSsbo>().unwrap().mapped[0].terrain_stroke_index = 7;
         world.insert_resource(library);
+        let mut readbacks = crate::render::gpu_readback::GpuReadbacks::default();
+        readbacks.publish_slice(&[MouseTerrainRaycastSsbo { terrain_stroke_index: 7, ..Default::default() }], 1);
+        world.insert_resource(readbacks);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast::default());
         world.insert_resource(WaterRaster::new(

@@ -41,6 +41,14 @@ impl TerrainRockMaskSsbo {
     pub fn sample_mapped_at_world_xz(mask: &[Self], x: f32, z: f32) -> u32 {
         sample_at_world_xz(bytemuck::cast_slice(mask), x, z)
     }
+
+    /// 最近一份渲染线程发布的完整岩石遮罩。首份 GPU 结果到达前与新建
+    /// 回读缓冲的零初始化内容相同（全零，无岩石）。游戏系统从这里读，
+    /// 不再借用在途 GPU 帧正在改写的映射区。
+    pub fn published(readbacks: Option<&crate::render::gpu_readback::GpuReadbacks>) -> &[Self] {
+        static ZERO: [TerrainRockMaskSsbo; 0x2000] = [TerrainRockMaskSsbo(0); 0x2000];
+        crate::render::gpu_readback::latest::<Self>(readbacks).unwrap_or(&ZERO)
+    }
 }
 
 /// 岩石 mask 栅格边长（I：512，与地形高度同族）。
