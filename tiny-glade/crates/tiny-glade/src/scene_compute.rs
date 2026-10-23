@@ -510,7 +510,6 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
     m.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>();
     m.resource::<country_core::systems::camera_rig::main_camera::MainCamera>();
-    m.component::<LanternSsbo>();
 }
 
 #[cfg(test)]

@@ -203,6 +203,9 @@ pub struct GameFrameDriver {
     in_flight_gameplay: bool,
     /// Latched at hand-overs, so the event loop never waits on the render thread.
     any_present_successful: bool,
+    /// Game-world side of the hand-over (the render side's write-backs live
+    /// in the renderer); rebuilt with an empty render world per App.
+    extract: Option<crate::render_thread::ExtractSet>,
     limiter: crate::fps_limiter::FpsLimiter,
     progress: FrameProgress,
     /// Opt-in evidence through the existing post-UI screenshot owner. Never
@@ -275,6 +278,7 @@ impl GameFrameDriver {
             egui: EguiBackend::new(context),
             in_flight_gameplay: false,
             any_present_successful: false,
+            extract: None,
             limiter: crate::fps_limiter::FpsLimiter::new(),
             progress: FrameProgress::default(),
             startup_ui_capture: std::env::var_os("TG_STARTUP_UI_CAPTURE")
@@ -304,21 +308,28 @@ impl GameFrameDriver {
 
     /// Wait for the frame on the render thread (if any) and apply its results
     /// to the game world: screenshot bookkeeping, progress counts, errors.
+    /// Start a fresh render world and hand-over for the current App (first
+    /// frame, and after an App switch: entity ids belong to one World).
+    pub fn reset_render_exchange(
+        &mut self,
+        render: &mut crate::production_renderer::ProductionRenderThread,
+    ) {
+        let exchange = crate::render_extract::production_exchange();
+        let side = render.reclaim();
+        side.world = World::new();
+        side.renderer.set_write_back(exchange.write_back);
+        self.extract = Some(exchange.extract);
+    }
+
     pub fn settle_render(
         &mut self,
         render: &mut crate::production_renderer::ProductionRenderThread,
     ) -> anyhow::Result<()> {
-        let renderer = &mut render.reclaim().renderer;
-        let settled = renderer.settle_back_frame(self.app.world_mut());
-        self.any_present_successful |= renderer.any_present_successful();
+        self.any_present_successful |= render.reclaim().renderer.any_present_successful();
         let feedback = render.apply_feedback(self.app.world_mut());
         if let Some(error) = feedback.error {
-            if let Err(secondary) = settled {
-                log::error!(target: crate::render_loop::LOG_TARGET, "screenshot settle after a failed frame: {secondary:#}");
-            }
             return Err(error);
         }
-        settled?;
         if feedback.rendered && self.in_flight_gameplay {
             if feedback.submitted {
                 self.progress.gameplay_submissions =
@@ -416,14 +427,23 @@ impl GameFrameDriver {
                 },
             ])?;
         }
-        // Hand-over: wait for the previous frame's back half, settle its
-        // results on the game world, then compile this frame (front half).
+        // Hand-over: wait for the previous frame, apply its results and
+        // write-backs to the game world, extract this frame into the render
+        // world and start it (declare → present all run on the render thread).
         let handover_start = timing_start.map(|_| std::time::Instant::now());
         self.settle_render(render)?;
         let handover_time = handover_start.map(|start| start.elapsed());
-        let front_start = timing_start.map(|_| std::time::Instant::now());
-        render.reclaim().renderer.render_front(self.app.world_mut(), &mut self.egui, mode)?;
-        let front_time = front_start.map(|start| start.elapsed());
+        let extract_start = timing_start.map(|_| std::time::Instant::now());
+        if self.extract.is_none() {
+            self.reset_render_exchange(render);
+        }
+        let side = render.reclaim();
+        self.extract
+            .as_mut()
+            .expect("installed above")
+            .run(self.app.world_mut(), &mut side.world);
+        side.renderer.queue_frame(self.app.world(), mode, self.egui.hand_over());
+        let extract_time = extract_start.map(|start| start.elapsed());
         self.in_flight_gameplay = gameplay_frame;
         render.start();
         self.progress.completed_frames = self.progress.completed_frames.wrapping_add(1);
@@ -449,11 +469,11 @@ impl GameFrameDriver {
             let n = if gameplay_frame { self.progress.gameplay_frames } else { self.progress.completed_frames };
             if n <= 3 || n % 30 == 0 || total.as_secs_f64() >= 1.0 {
                 log::info!(target: "tiny_glade::frame_timing",
-                    "frame n={n} gameplay={gameplay_frame} completed={} update_ms={:.3} handover_wait_ms={:.3} front_ms={:.3} limiter_ms={:.3} total_ms={:.3} target_fps={target_fps}",
+                    "frame n={n} gameplay={gameplay_frame} completed={} update_ms={:.3} handover_wait_ms={:.3} extract_ms={:.3} limiter_ms={:.3} total_ms={:.3} target_fps={target_fps}",
                     self.progress.completed_frames,
                     update_time.expect("timing enabled").as_secs_f64() * 1000.0,
                     handover_time.expect("timing enabled").as_secs_f64() * 1000.0,
-                    front_time.expect("timing enabled").as_secs_f64() * 1000.0,
+                    extract_time.expect("timing enabled").as_secs_f64() * 1000.0,
                     limiter_time.as_secs_f64() * 1000.0, total.as_secs_f64() * 1000.0);
             }
         }
@@ -1040,6 +1060,7 @@ impl GameLoop {
             if preparation.poll(self.driver.app_mut())? {
                 drop(old_cursor_lease);
                 self.reset_world_event_cursors();
+                self.driver.reset_render_exchange(&mut self.render);
                 self.render.reclaim().renderer
                     .activate_application(self.driver.app().world())?;
                 // The worker may have run more than two updates after PreStartup,

@@ -17,6 +17,9 @@ impl<R: Send + Sync + 'static> Default for Present<R> {
     }
 }
 
+/// What a partial write-back applies to the game-side resource.
+pub type WriteBack<R> = Box<dyn FnOnce(&mut R) + Send>;
+
 pub trait RenderExtract {
     /// Mirror component `C` of every game entity onto the same entity id.
     fn component<C: Component + Clone>(&mut self);
@@ -28,6 +31,17 @@ pub trait RenderExtract {
     fn state<S: States>(&mut self);
     /// Mirror only whether `R` exists, as `Present<R>`.
     fn presence<R: Resource>(&mut self);
+    /// Declaration writes `R` and the game reads it: whenever the render copy
+    /// changes during a frame it is written back to the game world at the
+    /// next hand-over, unless the game changed `R` itself since the extract.
+    /// A render-side removal is written back too.
+    fn write_back<R: Resource + Clone>(&mut self);
+    /// A partial write-back: `take` reads the render copy after the frame
+    /// and returns what to apply to the game's `R` (game-side changes since the
+    /// extract win when `guarded`).
+    fn write_back_with<R: Resource>(&mut self, guarded: bool, take: fn(&R) -> Option<WriteBack<R>>);
+    /// Events of `E` that declaration sends are forwarded to the game world.
+    fn forward_events<E: Event>(&mut self);
     /// `R` belongs to the render side: whenever the game world (re)creates it,
     /// it moves to the render world.
     fn render_owned<R: Resource>(&mut self);

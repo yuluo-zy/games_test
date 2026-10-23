@@ -55,6 +55,16 @@ impl EguiBackend {
         }
     }
 
+    /// Move this frame's shapes and texture changes to a backend for the render
+    /// thread (same context; the game thread starts the next egui frame).
+    pub fn hand_over(&mut self) -> Self {
+        Self {
+            shapes: std::mem::take(&mut self.shapes),
+            textures_delta: std::mem::take(&mut self.textures_delta),
+            context: self.context.clone(),
+        }
+    }
+
     pub fn context(&self) -> &egui::Context {
         &self.context
     }

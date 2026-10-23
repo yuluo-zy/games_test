@@ -119,6 +119,23 @@ pub fn install(app: &mut bevy_app::App) {
 
 /// Independent loading Apps have no screenshot owner; hosts gate optional work
 /// by installation, while a gameplay owner remains mandatory for enqueue.
+/// Screenshot ownership across the render thread: the game world keeps an
+/// (empty) owner so gather/enqueue work, and each hand-over moves the new
+/// requests to the render world, where declaration, submission and readback
+/// handle them.
+pub(crate) fn render_exchange(set: &mut crate::render_thread::RenderExchange) {
+    set.extract.add(|game, render, _| {
+        let Some(mut source) = game.get_resource_mut::<Requests>() else {
+            return;
+        };
+        let incoming = std::mem::take(&mut source.active);
+        let closing = source.closing;
+        let mut owner = render.get_resource_or_insert_with(Requests::default);
+        owner.active.extend(incoming);
+        owner.closing |= closing;
+    });
+}
+
 pub fn installed(world: &World) -> bool {
     world.contains_resource::<Requests>()
 }

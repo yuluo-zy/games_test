@@ -14,7 +14,7 @@
 //! frame ahead. Results that must reach the game world (screenshots, errors,
 //! progress flags) travel back as [`FrameFeedback`].
 use bevy_ecs::{
-    change_detection::{DetectChanges, Ref},
+    change_detection::{DetectChanges, DetectChangesMut, Ref},
     component::{Component, Tick},
     entity::Entity,
     event::{Event, Events},
@@ -309,6 +309,17 @@ impl ExtractSet {
             }
         })
     }
+    /// Mirror whether the game world has `R`, as `Present<R>`.
+    pub fn presence<R: Resource>(&mut self) -> &mut Self {
+        use country_core::render::extract::Present;
+        self.add(|game, render, _| {
+            if game.contains_resource::<R>() {
+                render.init_resource::<Present<R>>();
+            } else {
+                render.remove_resource::<Present<R>>();
+            }
+        })
+    }
     /// Render-owned: move `T` to the render world whenever the game world
     /// (re)inserts it; the render world keeps it otherwise.
     pub fn move_owned<T: Resource>(&mut self) -> &mut Self {
@@ -342,36 +353,160 @@ impl ExtractSet {
             step(game, render, last_run);
         }
         self.last_run = Some(this_run);
+        let render_tick = render.change_tick();
+        render.insert_resource(ExtractedAt { game: this_run, render: render_tick });
+        // Declaration's writes must carry a later tick than the extract's.
+        render.increment_change_tick();
     }
 }
 
-impl country_core::render::extract::RenderExtract for ExtractSet {
-    fn component<C: Component + Clone>(&mut self) {
-        self.mirror::<C>();
+/// A mutation of the game world produced on the render thread.
+pub type GameApply = Box<dyn FnOnce(&mut World) + Send>;
+
+/// Ticks of the last extract, in both worlds.
+#[derive(Resource, Clone, Copy)]
+pub struct ExtractedAt {
+    pub game: Tick,
+    pub render: Tick,
+}
+
+/// Runs on the render thread after declaration: turns render-side writes the
+/// game needs into `GameApply`s, applied at the next hand-over.
+#[derive(Default)]
+pub struct WriteBackSet {
+    steps: Vec<Box<dyn FnMut(&mut World, ExtractedAt, &mut Vec<GameApply>) + Send>>,
+}
+impl WriteBackSet {
+    pub fn add(&mut self, step: impl FnMut(&mut World, ExtractedAt, &mut Vec<GameApply>) + Send + 'static) -> &mut Self {
+        self.steps.push(Box::new(step));
+        self
     }
-    fn resource<R: Resource + Clone>(&mut self) {
-        self.copy_changed::<R>();
-    }
-    fn events<E: Event + Clone>(&mut self) {
-        ExtractSet::events::<E>(self);
-    }
-    fn state<S: States>(&mut self) {
-        ExtractSet::state::<S>(self);
-    }
-    fn presence<R: Resource>(&mut self) {
-        use country_core::render::extract::Present;
-        self.add(|game, render, _| {
-            if game.contains_resource::<R>() {
-                render.init_resource::<Present<R>>();
-            } else {
-                render.remove_resource::<Present<R>>();
-            }
-        });
-    }
-    fn render_owned<R: Resource>(&mut self) {
-        self.move_owned::<R>();
+    pub fn run(&mut self, render: &mut World, out: &mut Vec<GameApply>) {
+        let Some(at) = render.get_resource::<ExtractedAt>().copied() else {
+            return;
+        };
+        for step in &mut self.steps {
+            step(render, at, out);
+        }
     }
 }
+
+/// Both directions of the hand-over, as registered by the declaration modules.
+#[derive(Default)]
+pub struct RenderExchange {
+    pub extract: ExtractSet,
+    pub write_back: WriteBackSet,
+    /// Several modules read the same type; each is extracted once.
+    registered: std::collections::HashSet<(u8, std::any::TypeId)>,
+}
+impl RenderExchange {
+    fn first<T: 'static>(&mut self, kind: u8) -> bool {
+        self.registered.insert((kind, std::any::TypeId::of::<T>()))
+    }
+}
+
+impl country_core::render::extract::RenderExtract for RenderExchange {
+    fn component<C: Component + Clone>(&mut self) {
+        if self.first::<C>(0) {
+            self.extract.mirror::<C>();
+        }
+    }
+    fn resource<R: Resource + Clone>(&mut self) {
+        if self.first::<R>(1) {
+            self.extract.copy_changed::<R>();
+        }
+    }
+    fn events<E: Event + Clone>(&mut self) {
+        if self.first::<E>(2) {
+            self.extract.events::<E>();
+        }
+    }
+    fn state<S: States>(&mut self) {
+        if self.first::<S>(3) {
+            self.extract.state::<S>();
+        }
+    }
+    fn presence<R: Resource>(&mut self) {
+        if self.first::<R>(4) {
+            self.extract.presence::<R>();
+        }
+    }
+    fn render_owned<R: Resource>(&mut self) {
+        if self.first::<R>(5) {
+            self.extract.move_owned::<R>();
+        }
+    }
+    fn write_back<R: Resource + Clone>(&mut self) {
+        // Whether the render world had `R` right after the extract, so that a
+        // removal during declaration can be told from "never there".
+        let present = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let seen = present.clone();
+        self.extract.add(move |_, render, _| {
+            seen.store(render.contains_resource::<R>(), std::sync::atomic::Ordering::Relaxed);
+        });
+        self.write_back.steps.push(Box::new(move |render, at, out| {
+            let this_run = render.read_change_tick();
+            match render.get_resource_ref::<R>() {
+                Some(value) if value.last_changed().is_newer_than(at.render, this_run) => {
+                    let value = value.clone();
+                    out.push(Box::new(move |game: &mut World| {
+                        let now = game.read_change_tick();
+                        match game.get_resource_mut::<R>() {
+                            Some(current) if current.last_changed().is_newer_than(at.game, now) => {}
+                            Some(mut current) => *current.bypass_change_detection() = value,
+                            None => game.insert_resource(value),
+                        }
+                    }));
+                }
+                Some(_) => {}
+                None if present.load(std::sync::atomic::Ordering::Relaxed) => {
+                    out.push(Box::new(|game: &mut World| {
+                        game.remove_resource::<R>();
+                    }));
+                }
+                None => {}
+            }
+        }));
+    }
+    fn write_back_with<R: Resource>(
+        &mut self,
+        guarded: bool,
+        take: fn(&R) -> Option<country_core::render::extract::WriteBack<R>>,
+    ) {
+        self.write_back.steps.push(Box::new(move |render, at, out| {
+            let Some(apply) = render.get_resource::<R>().and_then(take) else {
+                return;
+            };
+            out.push(Box::new(move |game: &mut World| {
+                let now = game.read_change_tick();
+                if let Some(mut current) = game.get_resource_mut::<R>()
+                    && !(guarded && current.last_changed().is_newer_than(at.game, now))
+                {
+                    apply(current.bypass_change_detection());
+                }
+            }));
+        }));
+    }
+    fn forward_events<E: Event>(&mut self) {
+        self.extract.add(|_, render, _| {
+            render.init_resource::<Events<E>>();
+        });
+        self.write_back.steps.push(Box::new(|render, _, out| {
+            let Some(mut events) = render.get_resource_mut::<Events<E>>() else {
+                return;
+            };
+            let sent: Vec<E> = events.drain().collect();
+            if !sent.is_empty() {
+                out.push(Box::new(move |game: &mut World| {
+                    if let Some(mut events) = game.get_resource_mut::<Events<E>>() {
+                        events.send_batch(sent);
+                    }
+                }));
+            }
+        }));
+    }
+}
+
 
 /// Insert mirrored values at their game entity ids. An index the game reused
 /// with a new generation replaces the stale render entity first.

@@ -64,3 +64,36 @@
 
 ### 第一阶段验证记录(2026-10-23)
 rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridge(9)、original_loading_gpu、original_loading_present(3 帧真实 present + 关机)通过。lib 测试中 history_runtime/intro_history 失败为既有问题(测试缺 TerrainHeightsData,存档历史不在范围内)。
+
+## 第二阶段详细计划与进度(2026-10-23 更新)
+
+目标:游戏线程每帧只做"更新 → 交接(回收 + 写回 + 提取)→ 启动";声明、编译、执行、呈现全部在渲染线程。
+
+### 当前每帧流程(已实现,未测试)
+1. 游戏线程 `App::update`(与上一帧渲染并行)。
+2. `GameFrameDriver::settle_render`:回收渲染侧,执行 `FrameFeedback.apply`(写回),计数与错误。
+3. `ExtractSet::run(game, render)`:按 tick 拷贝资源、镜像实体组件、事件/状态/存在性、渲染侧所有资源、截图请求移交;写入 `ExtractedAt` 并推进渲染 World tick。
+4. `ProductionRenderer::queue_frame`:在游戏线程用游戏 World 做 App 激活,交出本帧 egui(`EguiBackend::hand_over`)。
+5. 渲染线程 `render_back_frame`:`render_front`(绘制列表+声明+编译,读渲染 World)→ `WriteBackSet::run`(生成写回)→ `render_back`(执行/取图/呈现/present/节奏)。
+6. App 切换时 `reset_render_exchange`:新渲染 World + 新交接集(实体 id 只属于一个 World)。
+
+### 步骤与状态
+| 步骤 | 内容 | 状态 |
+|---|---|---|
+| 1 | 渲染 World 与实体提取:`RenderExtract` trait,各声明模块的 `render_extract` 清单,`ExtractSet` 显式 tick、实体镜像(同 id、换代替换)、事件、状态、存在性 `Present<R>`、渲染侧所有 | ✅ 已提交 d7792767d |
+| 2 | 大库快照:SSBO(含稀疏/映射)、网格 Arc 共享、GpuWorld 仅 GPU 视图、纹理、VAO、摆放、Raster、MEI(Borrowed)、ICC(Arc)、LUT 等 | ✅ 已提交 d7792767d |
+| 3 | 前半帧写回:`write_back`(GameConfig、Vermeer*、Painterly、LutGallery、Thumbnail、ShaderRefactoring、SavedLoadingBackground)、`write_back_with`(6 个 Raster 的上传/消费标志、TerrainEditingData.rasterized)、地形回读按消耗量相减、`StartupRevealFinished` 事件转发;截图请求移交渲染侧,提交/读回直接在渲染 World 完成 | ✅ 代码完成,待提交 |
+| 4 | 材质回调读渲染 World:回调经 `DrawPassCtx.world` 读取,声明在渲染 World 上运行后自然满足;所需组件/资源已在 draw_callbacks_a/b 的清单中 | ✅ 随步骤 5 生效 |
+| 5 | 整体切换:前半帧移入渲染线程,游戏线程删除前半帧调用 | ✅ 代码完成,待提交 |
+| 6 | ECS 多线程执行器:为 525 对冲突按当前单线程拓扑序补显式顺序(Bevy 0.16 `ScheduleBuildPass` 在 flatten 后加边),默认开启 `ecs-multithreaded` | ⏳ 未开始 |
+| 7 | 渲染线程内并行:声明分组并行(只读渲染 World)、保留图扩展、统一 `tg-compute` 任务池、交接时晚锁相机 | ⏳ 未开始 |
+| 8 | 测试与修复:全量单测、GPU 集成测试、冒烟、截图、真机测量;修复清单遗漏(运行时 "missing X")、写回遗漏 | ⏳ 全部实现后统一进行 |
+
+### 已知风险与待验证点(测试阶段逐项确认)
+- 清单由静态扫描生成:经辅助函数间接读取的资源可能遗漏,表现为渲染线程报 "missing X";补到对应模块的 `render_extract`。
+- 快照语义:游戏在更新 N+1 写的 GPU 映射内存与渲染线程录制 N 并行,和原先"GPU 执行 N 与更新 N+1 并行"同类;CPU 侧快照保证声明看到一致的帧 N 数据。
+- 每帧快照开销:SSBO 库中 ShadowedBuffer/稀疏缓冲的 CPU 影子整块复制,需实测;必要时改为 Arc 写时复制或去掉渲染侧不读的影子。
+- 渲染侧写入且游戏也读的状态若漏登记写回,游戏侧会停在旧值(如画廊预览、缩略图之外的 UI 状态)。
+- 截图:请求在交接时移交,游戏侧 `has_requests/active_capture_purpose` 只看到尚未移交的请求。
+- 加载 App 与游戏 App 共用同一套交接集,切换时重建。
+- `WorldHistoryObservation`(存档历史,不在范围)渲染侧写入不回传。

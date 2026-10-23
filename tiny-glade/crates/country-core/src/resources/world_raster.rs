@@ -313,6 +313,17 @@ impl<const N: usize> WorldRaster<N> {
         self.reupload = true;
     }
 
+    /// The upload/consumer state the render thread left in its copy, adopted
+    /// by the game-side owner (`published`, `reupload`, dirty tiles).
+    pub fn consumption(&self) -> (bool, bool, DirtyTiles) {
+        (self.published, self.reupload, self.dirty.clone())
+    }
+    pub fn adopt_consumption(&mut self, (published, reupload, dirty): (bool, bool, DirtyTiles)) {
+        self.published = published;
+        self.reupload = reupload;
+        self.dirty = dirty;
+    }
+
     /// Water/garden/path-mask consumers clear the flag and tile bitmap together.
     pub fn consume_reupload(&mut self) {
         self.reupload = false;

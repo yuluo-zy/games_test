@@ -783,10 +783,19 @@ pub struct ProductionRenderer {
     pacer: crate::render_loop::FramePacer,
     /// The frame compiled by the front half, waiting for the back half.
     handoff: Option<FrameHandoff>,
-    /// Screenshot bookkeeping of the back half. The render thread never
-    /// touches the game world; `settle_back_frame` applies these to it.
-    deferred_captures: Vec<DeferredCapture>,
-    finish_capture_pending: bool,
+    /// The frame queued by the hand-over for the render thread.
+    queued: Option<QueuedFrame>,
+    /// App activation runs at the hand-over against the game world; its
+    /// failure fails the frame on the render thread.
+    activation_error: Option<anyhow::Error>,
+    /// Declaration's writes that travel back to the game world.
+    write_back: crate::render_thread::WriteBackSet,
+}
+
+/// What the game thread hands over besides the extracted render world.
+pub(crate) struct QueuedFrame {
+    mode: crate::render_loop::RenderMode,
+    egui: EguiBackend,
 }
 
 /// What the back half needs from the front half besides the compiled graph.
@@ -796,7 +805,6 @@ pub(crate) struct BackInputs {
     lists: DrawLists,
     /// The game world the frame was declared from (frame observation identity).
     world: bevy_ecs::world::WorldId,
-    capture_installed: bool,
     elapsed: Duration,
     trace: Option<MainTraceWorld>,
 }
@@ -807,10 +815,6 @@ struct FrameHandoff {
     inputs: BackInputs,
 }
 
-enum DeferredCapture {
-    Submitted(rhapsody::rg::GraphId, SessionFrameReceipt),
-    Cancelled(rhapsody::rg::GraphId),
-}
 
 impl ProductionRenderer {
     pub fn new(
@@ -933,8 +937,9 @@ impl ProductionRenderer {
             spare_lists: DrawLists::new(),
             pacer: Default::default(),
             handoff: None,
-            deferred_captures: Vec::new(),
-            finish_capture_pending: false,
+            queued: None,
+            activation_error: None,
+            write_back: Default::default(),
         })
     }
 
@@ -1352,18 +1357,40 @@ impl ProductionRenderer {
     }
 }
 
-/// The render thread's frame: the back half of the frame handed over.
+impl ProductionRenderer {
+    /// Game thread, renderer reclaimed: activate the App's per-App libraries
+    /// from the game world and queue the frame for the render thread.
+    pub(crate) fn queue_frame(
+        &mut self, game: &World, mode: crate::render_loop::RenderMode, egui: EguiBackend,
+    ) {
+        self.activation_error = self.activate_application(game).err();
+        self.queued = Some(QueuedFrame { mode, egui });
+    }
+    pub(crate) fn set_write_back(&mut self, write_back: crate::render_thread::WriteBackSet) {
+        self.write_back = write_back;
+    }
+}
+
+/// The render thread's frame: declaration and compilation against the
+/// extracted render world, the game-world write-backs, then execution and
+/// presentation.
 fn render_back_frame(side: &mut crate::render_thread::RenderSide<ProductionRenderer>) {
     let renderer = &mut side.renderer;
-    side.feedback.rendered = renderer.handoff.is_some();
-    let result = renderer.render_back(&mut side.world);
+    let Some(QueuedFrame { mode, mut egui }) = renderer.queued.take() else {
+        side.feedback.rendered = false;
+        return;
+    };
+    side.feedback.rendered = true;
+    let front = renderer.render_front(&mut side.world, &mut egui, mode);
+    renderer.write_back.run(&mut side.world, &mut side.feedback.apply);
+    let result = front.and_then(|()| renderer.render_back(&mut side.world));
     side.feedback.submitted = renderer.frame_submitted;
     side.feedback.present_queued = renderer.frame_present_queued;
     side.feedback.error = result.err();
 }
 
-/// One half of a frame. The front host borrows the game world and egui on the
-/// game thread; the back host borrows only the render thread's scratch world.
+/// One half of a frame on the render thread: the front host declares from
+/// the render world and the handed-over egui frame; the back host executes.
 pub struct ProductionRenderHost<'a> {
     renderer: &'a mut ProductionRenderer,
     world: &'a mut World,
@@ -1374,18 +1401,17 @@ pub struct ProductionRenderHost<'a> {
     back: Option<BackContext>,
 }
 
-/// Front-half facts the back half reads instead of the game world.
+/// Front-half facts the back half uses.
 struct BackContext {
     world: bevy_ecs::world::WorldId,
-    capture_installed: bool,
     elapsed: Duration,
     trace: Option<MainTraceWorld>,
 }
 
 impl ProductionRenderer {
-    /// Game thread: draw lists and graph compilation (`render_front`). On
-    /// success the compiled frame is kept for the back half; on failure the
-    /// frame is closed here and its error returned.
+    /// Render thread: draw lists and graph compilation (`render_front`)
+    /// against the extracted render world. On success the compiled frame is
+    /// kept for the back half; on failure the frame is closed here.
     pub(crate) fn render_front(
         &mut self, world: &mut World, egui: &mut EguiBackend, mode: crate::render_loop::RenderMode,
     ) -> anyhow::Result<()> {
@@ -1428,34 +1454,6 @@ impl ProductionRenderer {
         let host_result = self.finish_render();
         result?;
         host_result
-    }
-
-    /// Game thread, at the hand-over: apply the back half's screenshot
-    /// bookkeeping to the game world that declared the frame.
-    pub(crate) fn settle_back_frame(&mut self, world: &mut World) -> anyhow::Result<()> {
-        let mut first_error = None;
-        for capture in std::mem::take(&mut self.deferred_captures) {
-            match capture {
-                DeferredCapture::Submitted(graph, receipt) => {
-                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
-                        world, &mut self.bridge, graph, &receipt,
-                    ) {
-                        first_error.get_or_insert(error);
-                    }
-                }
-                DeferredCapture::Cancelled(graph) => {
-                    crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, graph);
-                }
-            }
-        }
-        if std::mem::take(&mut self.finish_capture_pending)
-            && crate::screenshot::shared_texture_capture::installed(world)
-        {
-            if let Err(error) = crate::screenshot::finish_screenshot_capture(world) {
-                first_error.get_or_insert(error);
-            }
-        }
-        first_error.map_or(Ok(()), |error| Err(error.into()))
     }
 
     fn finish_render(&mut self) -> anyhow::Result<()> {
@@ -1527,7 +1525,7 @@ impl ProductionRenderer {
         self.take_error().map_or(Ok(()), Err)
     }
     fn back_host<'a>(&'a mut self, scratch: &'a mut World, inputs: BackInputs) -> ProductionRenderHost<'a> {
-        let BackInputs { video, input_lag_reduction, lists, world, capture_installed, elapsed, trace } = inputs;
+        let BackInputs { video, input_lag_reduction, lists, world, elapsed, trace } = inputs;
         ProductionRenderHost {
             renderer: self,
             world: scratch,
@@ -1535,7 +1533,7 @@ impl ProductionRenderer {
             video,
             input_lag_reduction,
             lists,
-            back: Some(BackContext { world, capture_installed, elapsed, trace }),
+            back: Some(BackContext { world, elapsed, trace }),
         }
     }
     fn front_host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> ProductionRenderHost<'a> {
@@ -1547,7 +1545,7 @@ impl ProductionRenderer {
         self.frame_present_queued = false;
         self.frame_observation = None;
         if let Some(trace) = &mut self.visual_trace { trace.pending_presentation = None; }
-        if let Err(error) = self.activate_application(world) {
+        if let Some(error) = self.activation_error.take() {
             // Keep the full application-switch diagnostic chain. This is an
             // ownership/setup failure before world compilation, not its OOM
             // retry path; no anyhow context is discarded by downcasting it.
@@ -1603,7 +1601,6 @@ impl ProductionRenderHost<'_> {
             input_lag_reduction: self.input_lag_reduction,
             lists: std::mem::take(&mut self.lists),
             world: self.world.id(),
-            capture_installed: crate::screenshot::shared_texture_capture::installed(self.world),
             elapsed: self.world.get_resource::<bevy_time::Time>().map(|time| time.elapsed()).unwrap_or_default(),
             trace,
         }
@@ -1901,8 +1898,10 @@ impl RenderHost for ProductionRenderHost<'_> {
                 // or export validation below subsequently fails. Abort must
                 // preserve that fact rather than report an unsubmitted frame.
                 self.renderer.frame_submitted = !receipt.receipts.is_empty();
-                if self.back().capture_installed {
-                    self.renderer.deferred_captures.push(DeferredCapture::Submitted(capture_graph_id, receipt.clone()));
+                if crate::screenshot::shared_texture_capture::installed(self.world) {
+                    if let Err(error) = crate::screenshot::shared_texture_capture::submitted(
+                        self.world, &mut self.renderer.bridge, capture_graph_id, &receipt,
+                    ) { self.renderer.record_error(error); return; }
                 }
                 match self
                 .renderer
@@ -1949,7 +1948,7 @@ impl RenderHost for ProductionRenderHost<'_> {
                 }
             }
             Err(error) => {
-                self.renderer.deferred_captures.push(DeferredCapture::Cancelled(capture_graph_id));
+                crate::screenshot::shared_texture_capture::cancel_unsubmitted(self.world, capture_graph_id);
                 self.renderer.record_error(error);
             }
         }
@@ -2038,9 +2037,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         }
     }
     fn finish_screenshot_capture(&mut self) {
-        // Readback and delivery run on the game thread at the hand-over.
-        if self.back().capture_installed {
-            self.renderer.finish_capture_pending = true;
+        if crate::screenshot::shared_texture_capture::installed(self.world) {
+            if let Err(error) = crate::screenshot::finish_screenshot_capture(self.world) {
+                self.renderer.record_error(error);
+            }
         }
     }
     fn snapshot_render_stats(&mut self) {
