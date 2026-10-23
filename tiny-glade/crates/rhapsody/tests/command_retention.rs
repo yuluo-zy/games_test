@@ -130,11 +130,11 @@ fn owner_storage_oom_keeps_its_category_and_publishes_no_queue_point() {
         .unwrap();
     device
         .allocator_stats()
-        .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
+        .set_host_budget(device.allocator_stats().cpu_memory_usage().total() + 1)
         .unwrap();
     let dropped = Arc::new(AtomicUsize::new(0));
     let result = command.retain_object(Arc::new(Owner(dropped.clone())));
-    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_host_budget(u64::MAX).unwrap();
     assert!(matches!(result, Err(Error::OutOfHostMemory)));
     assert!(matches!(command.end(), Err(Error::OutOfHostMemory)));
     assert_eq!(device.allocator_stats().cpu_memory_usage().total(), before);
@@ -376,10 +376,10 @@ fn external_owner_and_nested_array_oom_each_leave_real_queue_and_semaphores_unch
         let mut command = pool.allocate().unwrap();
         command.begin().unwrap();
         command.end().unwrap();
-        let before = device.allocator_stats().budget_usage().total();
+        let before = device.allocator_stats().cpu_memory_usage().total();
         device
             .allocator_stats()
-            .set_total_budget(before + spare)
+            .set_host_budget(before + spare)
             .unwrap();
         let result = command.submit_to(
             rhapsody::raw::device::DeviceQueue {
@@ -390,7 +390,7 @@ fn external_owner_and_nested_array_oom_each_leave_real_queue_and_semaphores_unch
             &[],
             &signals,
         );
-        device.allocator_stats().set_total_budget(u64::MAX).unwrap();
+        device.allocator_stats().set_host_budget(u64::MAX).unwrap();
         assert!(matches!(result, Err(Error::OutOfHostMemory)));
         assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
         for semaphore in &semaphores {
@@ -445,11 +445,11 @@ fn descriptor_owner_row_oom_precedes_native_update_and_preserves_retry() {
     let updates = device.descriptor_update_count();
     device
         .allocator_stats()
-        .set_total_budget(device.allocator_stats().budget_usage().total() + 1)
+        .set_host_budget(device.allocator_stats().cpu_memory_usage().total() + 1)
         .unwrap();
     // SAFETY: the set is unsubmitted and this owned buffer matches its layout.
     let result = unsafe { set.update(0, 0, &binding) };
-    device.allocator_stats().set_total_budget(u64::MAX).unwrap();
+    device.allocator_stats().set_host_budget(u64::MAX).unwrap();
     assert!(matches!(result, Err(Error::OutOfHostMemory)));
     assert_eq!(device.descriptor_update_count(), updates);
     assert_eq!(device.allocator_stats().cpu_memory_usage().total(), before);

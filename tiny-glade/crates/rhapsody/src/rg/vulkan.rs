@@ -29,18 +29,22 @@ pub use presentation::{PRESENT_ACCESS, PresentTarget, SwapchainContents};
 /// 后端导入 token 与跨帧 temporal token 共用的物理资源标识空间。
 ///
 /// 两边曾各自从 1 起分配，会撞号：`bind_import_named` 会因“token 已属于其他物理资源”拒绝导入。
-/// 现在统一用一个全进程单调计数器；外部指定的 token（`bind_import_named`）通过 [`reserve_token`]
-/// 把计数器推过它，之后分配的 token 一定更大。0 与 `u64::MAX` 保留为无效。
+/// 自动分配只使用低 62 位；带高位标记的宿主编号属于独立域。
+/// 不把自动计数器推进到宿主域：宿主下一次分配的编号可能恰好覆盖
+/// 已退役但仍在资源池／计划缓存中的内部资源。未标记的显式编号仍预留。
+/// 0 与 `u64::MAX` 保留为无效。
+const GENERATED_TOKEN_LIMIT: u64 = 1 << 62;
 static NEXT_TOKEN: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 fn try_allocate_token() -> Option<u64> {
     use std::sync::atomic::Ordering;
     NEXT_TOKEN
         .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |t| {
-            (t < u64::MAX - 1).then(|| t + 1)
+            (t < GENERATED_TOKEN_LIMIT).then(|| t + 1)
         })
         .ok()
 }
 fn reserve_token(token: u64) {
+    if token >= GENERATED_TOKEN_LIMIT { return; }
     NEXT_TOKEN.fetch_max(
         token.saturating_add(1),
         std::sync::atomic::Ordering::Relaxed,

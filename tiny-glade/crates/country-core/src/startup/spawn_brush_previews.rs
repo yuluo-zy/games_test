@@ -348,7 +348,7 @@ mod original_startup_tests {
         .unwrap();
         assert_eq!(world.entities().len(), 0);
         queue.apply(&mut world);
-        assert_eq!(meshes.mesh_entries.len(), 22);
+        assert_eq!(meshes.len(), 22);
         for r in native["registrations"].as_array().unwrap() {
             let name = r["name"].as_str().unwrap();
             let mesh = meshes.get(meshes.get_handle_by_name(name)).unwrap();
@@ -469,7 +469,7 @@ mod original_startup_tests {
                 case["spawns"].as_u64().unwrap()
             );
             assert_eq!(
-                meshes.mesh_entries.len() as u64,
+                meshes.len() as u64,
                 case["registered"].as_u64().unwrap()
             );
             std::fs::rename(removed, file).unwrap();
@@ -495,6 +495,6 @@ mod original_startup_tests {
         );
         queue.apply(&mut world);
         assert_eq!(world.entities().len(), 0);
-        assert_eq!(meshes.mesh_entries.len(), 18);
+        assert_eq!(meshes.len(), 18);
     }
 }

@@ -295,6 +295,8 @@ impl StorageElement for BrickTransformSsbo {
 // SAFETY: Pod 派生验证无填充；容量等于 CHUNK_COUNT × SLOTS_PER_CHUNK。
 unsafe impl SparseSsbo for BrickTransformSsbo {
     const CHUNK_COUNT: usize = 0x10000;
+    // CPU wall producers own every field; draw/cull consumers only read it.
+    const CPU_AUTHORITATIVE: bool = true;
 }
 
 impl SsboType for BrickTransformSsbo {

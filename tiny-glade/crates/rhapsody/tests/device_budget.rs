@@ -265,8 +265,13 @@ fn throttled_budget_refresh_skips_a_second_query_inside_the_interval() {
     ) else {
         return;
     };
+    let initial = device.driver_memory_budget_snapshot();
     let first = device.refresh_memory_budget_if_due().unwrap();
     let second = device.refresh_memory_budget_if_due().unwrap();
+    let actual = second.as_ref().or(first.as_ref()).map(
+        rhapsody::raw::physical_device::MemoryBudgetSnapshot::from_vk).or(initial);
+    assert_eq!(device.driver_memory_budget_snapshot(), actual,
+        "cached raw telemetry must match the latest actual query, independently of allocator limits");
     if device.memory_budget_enabled() {
         // Under pressure the refresh is always due; otherwise the second call is skipped.
         let pressure = device.allocator_stats().budget_action() != rhapsody::device::BudgetAction::None;

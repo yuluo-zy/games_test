@@ -381,11 +381,7 @@ mod tests {
         BufferSnapshot {
             data: buffer.data.to_vec(),
             byte_map: buffer.byte_map.to_vec(),
-            active: buffer
-                .active_bitset
-                .iter()
-                .map(|v| v.load(Ordering::Relaxed))
-                .collect(),
+            active: buffer.active_words().collect(),
             dirty: buffer
                 .dirty_bitset
                 .iter()

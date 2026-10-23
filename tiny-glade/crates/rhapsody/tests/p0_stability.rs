@@ -38,6 +38,7 @@ struct Bookkeeping {
     pending_frames: usize,
     resources: usize,
     commands: usize,
+    command_bound: usize,
     pending_commands: usize,
     completed_commands: usize,
     recording_commands: usize,
@@ -51,6 +52,9 @@ fn sample(session: &VulkanGraphSession, imports_waiting_release: usize) -> Bookk
         pending_frames: session.pending_frame_count(),
         resources: session.resource_count(),
         commands: session.command_count(),
+        // Two passes may record in one or two chunks as timing estimates
+        // change. Each in-flight frame has its own command-pool slot.
+        command_bound: session.backend.device().frames_in_flight() as usize * 2,
         pending_commands: session.chain.pending_command_count(),
         completed_commands: session.chain.completed_command_count(),
         recording_commands: session.chain.recording_command_count(),
@@ -194,6 +198,8 @@ fn run() -> Option<Samples> {
         release_finished_imports(&mut session, &mut imports);
         imports.push_back(run_frame(&mut session, frame));
         assert!(session.pending_frame_count() <= 2);
+        let state = sample(&session, imports.len());
+        assert!(state.commands <= state.command_bound, "frame {frame}: {state:?}");
         if frame % COLLECT_EVERY == MID_PHASE {
             mid.push(sample(&session, imports.len()));
         }
@@ -229,7 +235,7 @@ fn assert_bookkeeping_bounded(warm: &Bookkeeping, end: &Bookkeeping) {
     let bounded = |field: &str, a: usize, b: usize| assert!(b <= a, "{field} 增长: {a} -> {b}");
     bounded("pending_frames", warm.pending_frames, end.pending_frames);
     bounded("resources", warm.resources, end.resources);
-    bounded("commands", warm.commands, end.commands);
+    assert!(warm.commands <= warm.command_bound && end.commands <= end.command_bound);
     bounded(
         "pending_commands",
         warm.pending_commands,

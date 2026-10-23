@@ -26,8 +26,10 @@ pub const SLOTS_PER_CHUNK: usize = 32;
 ///
 /// # Safety
 /// 元素不得包含填充或未初始化字节，所有字段必须可按字节上传；容量须等于 chunk 数乘 32。
+/// CPU_AUTHORITATIVE 只能为纯 CPU 生产、GPU 只读且不暴露持久原生地址的类型启用。
 pub unsafe trait SparseSsbo: StorageElement + Default {
     const CHUNK_COUNT: usize;
+    const CPU_AUTHORITATIVE: bool = false;
 }
 
 /// O — chunk 编号以 u32 存放。
@@ -35,6 +37,103 @@ pub type ChunkId = u32;
 
 /// `(first_instance, instance_count)`（O：8 B 一项，由 `DrawBuilder::draw_multi_instanced` 消费）。
 pub type DrawRange = (u32, u32);
+
+/// Read-only declaration input. The game owns the CPU instances, free list,
+/// dirty ranges and reclamation queue; none of those are available here.
+#[derive(Clone, Copy)]
+pub struct SparseDrawView<'a> {
+    byte_map: &'a [u8],
+    active: ActiveChunks<'a>,
+}
+
+#[derive(Clone, Copy)]
+enum ActiveChunks<'a> {
+    Live(&'a [AtomicUsize]),
+    Snapshot(&'a [usize]),
+}
+
+impl SparseDrawView<'_> {
+    fn active_chunks(&self) -> impl Iterator<Item = usize> + '_ {
+        let len = match self.active {
+            ActiveChunks::Live(bits) => bits.len(),
+            ActiveChunks::Snapshot(bits) => bits.len(),
+        };
+        (0..len).flat_map(move |word_index| {
+            let mut bits = match self.active {
+                ActiveChunks::Live(bits) => bits[word_index].load(Ordering::Relaxed),
+                ActiveChunks::Snapshot(bits) => bits[word_index],
+            };
+            std::iter::from_fn(move || {
+                if bits == 0 { return None; }
+                let chunk = word_index * usize::BITS as usize + bits.trailing_zeros() as usize;
+                bits &= bits - 1;
+                Some(chunk)
+            })
+        })
+    }
+
+    pub fn to_draw_multi_instanced(&self) -> Vec<DrawRange> {
+        merge_draw_runs(self.active_chunks(), self.byte_map)
+    }
+
+    pub fn allocation_to_draw_multi_instanced<T>(
+        &self,
+        allocation: &SparseInstanceBufferAllocation<T>,
+    ) -> Vec<DrawRange> {
+        merge_draw_runs(
+            chunk_list(allocation.chunk_ids()).iter().map(|&id| id as usize),
+            self.byte_map,
+        )
+    }
+
+    /// Highlight selection is a filter, not a temporary mutation of shared
+    /// visibility. Other declarations can safely read this view concurrently.
+    pub fn to_draw_multi_instanced_excluding<T>(
+        &self,
+        allocation: &SparseInstanceBufferAllocation<T>,
+    ) -> Vec<DrawRange> {
+        let excluded: std::collections::HashSet<_> =
+            chunk_list(allocation.chunk_ids()).iter().copied().collect();
+        merge_draw_runs(
+            self.active_chunks().filter(|&id| !excluded.contains(&(id as ChunkId))),
+            self.byte_map,
+        )
+    }
+}
+
+struct SparseDrawSnapshot {
+    byte_map: Box<[u8]>,
+    active: Box<[usize]>,
+}
+
+/// Keeps the GPU allocation alive but has no CPU write or free authority.
+struct SparseRenderBuffer<T: SparseSsbo> {
+    draws: Arc<SparseDrawSnapshot>,
+    buffer: TypedStorageBuffer<T>,
+    _buffer_owner: Option<Arc<OwnedSparseBuffer>>,
+}
+
+impl<T: SparseSsbo + Send + Sync + 'static> Ssbo for SparseRenderBuffer<T> {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
+    fn buffer(&self) -> &rhapsody_boundary::Buffer { &self.buffer.buffer }
+    fn handle(&self) -> ResourceHandle {
+        ResourceHandle(self.buffer.buffer.id, self.buffer.buffer.generation)
+    }
+    fn sparse_draw_view(&self) -> Option<SparseDrawView<'_>> {
+        Some(SparseDrawView {
+            byte_map: &self.draws.byte_map,
+            active: ActiveChunks::Snapshot(&self.draws.active),
+        })
+    }
+    fn snapshot(&self) -> Box<dyn Ssbo> {
+        Box::new(Self {
+            draws: Arc::clone(&self.draws),
+            buffer: self.buffer,
+            _buffer_owner: self._buffer_owner.clone(),
+        })
+    }
+}
 
 /// 一次分配拥有的 chunk 表（O：0x20 B；`Vec` @0、`RawMutex` @0x18）。
 #[derive(Debug, Default)]
@@ -159,7 +258,7 @@ pub struct SparseInstanceBuffer<T: SparseSsbo> {
     /// +0x20：每 chunk 的已写入数量；长度 n+1，`[n] = 0x20` 为哨兵（“永远是满的”）。
     pub byte_map: Box<[u8]>,
     /// +0x30：active 位图，n/64 个字。
-    pub active_bitset: Box<[AtomicUsize]>,
+    active_bitset: Box<[AtomicUsize]>,
     /// CPU 影子，按 `T::default()` 初始化；仅上传 dirty chunk。
     pub data: Box<[T]>,
     /// +0x50：dirty 位图。
@@ -170,6 +269,11 @@ pub struct SparseInstanceBuffer<T: SparseSsbo> {
     pub buffer: TypedStorageBuffer<T>,
     // 保留创建宿主及原始代际句柄，避免依赖 ECS 资源的析构顺序。
     _buffer_owner: Option<Arc<OwnedSparseBuffer>>,
+    // Writers still expose public metadata, so compare it rather than trusting
+    // a revision counter that an existing writer could bypass. Extraction runs
+    // after Update; the cache only owns immutable declaration metadata.
+    draw_snapshot: Mutex<Option<Arc<SparseDrawSnapshot>>>,
+    change_notifier: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 fn zeroed_bitset(words: usize) -> Box<[AtomicUsize]> {
@@ -212,6 +316,11 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         }
 
         let buffer = TypedStorageBuffer::try_new_uninitialized(device)?;
+        if T::CPU_AUTHORITATIVE {
+            // SAFETY: enabling this constant is part of SparseSsbo's contract;
+            // `data` below is the complete authoritative allocation.
+            unsafe { device.register_cpu_authoritative_buffer(&buffer.buffer); }
+        }
         // 先建立释放守卫，后续 CPU 初始化即使发生 unwind 也不会泄漏设备分配。
         let buffer_owner = owner.map(|device| OwnedSparseBuffer {
             device,
@@ -234,12 +343,32 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
             waste: Arc::new(Mutex::new(Vec::new())),
             buffer,
             _buffer_owner: buffer_owner.map(Arc::new),
+            draw_snapshot: Mutex::new(None),
+            change_notifier: None,
         })
     }
 
     /// O — 5 字节桩 0x140005c50：返回内嵌的 `TypedStorageBuffer`（@0x68）。
     pub fn buffer(&self) -> &TypedStorageBuffer<T> {
         &self.buffer
+    }
+
+    pub fn draw_view(&self) -> SparseDrawView<'_> {
+        SparseDrawView {
+            byte_map: &self.byte_map,
+            active: ActiveChunks::Live(&self.active_bitset),
+        }
+    }
+
+    /// Read active words without exposing AtomicUsize's interior write access.
+    pub fn active_word_count(&self) -> usize { self.active_bitset.len() }
+
+    pub fn active_word(&self, index: usize) -> usize {
+        self.active_bitset[index].load(Ordering::Relaxed)
+    }
+
+    pub fn active_words(&self) -> impl ExactSizeIterator<Item = usize> + '_ {
+        self.active_bitset.iter().map(|word| word.load(Ordering::Relaxed))
     }
 
     /// I — 原版内联（无独立符号）：新建一个空分配，`waste` 为本缓冲的弱引用。
@@ -340,17 +469,23 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
 
     /// O — `hide` 0x1412e3c00：清掉该分配所有 chunk 的 active 位。
     pub fn hide(&self, allocation: &SparseInstanceBufferAllocation<T>) {
+        let mut changed = false;
         for &id in chunk_list(allocation.chunk_ids()).iter() {
-            self.active_bitset[id as usize >> 6]
-                .fetch_and(!(1usize << (id & 63)), Ordering::Relaxed);
+            let mask = 1usize << (id & 63);
+            changed |= self.active_bitset[id as usize >> 6]
+                .fetch_and(!mask, Ordering::Relaxed) & mask != 0;
         }
+        if changed && let Some(notify) = &self.change_notifier { notify(); }
     }
 
     /// O — `show` 0x1412e3c80：置上该分配所有 chunk 的 active 位。
     pub fn show(&self, allocation: &SparseInstanceBufferAllocation<T>) {
+        let mut changed = false;
         for &id in chunk_list(allocation.chunk_ids()).iter() {
-            self.active_bitset[id as usize >> 6].fetch_or(1usize << (id & 63), Ordering::Relaxed);
+            let mask = 1usize << (id & 63);
+            changed |= self.active_bitset[id as usize >> 6].fetch_or(mask, Ordering::Relaxed) & mask == 0;
         }
+        if changed && let Some(notify) = &self.change_notifier { notify(); }
     }
 
     /// O — `take_out_waste` 0x1412e3d00：回收 `waste` 里的分配。
@@ -397,12 +532,12 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
             return Ok(());
         }
         // SparseSsbo 的安全合同保证元素没有填充和未初始化字节。
-        device.update_buffer_bytes(
-            &self.buffer.buffer,
-            rhapsody_boundary::slice_as_bytes(&self.data),
-            &byte_ranges,
-            0,
-        )?;
+        let data = rhapsody_boundary::slice_as_bytes(&self.data);
+        if T::CPU_AUTHORITATIVE {
+            device.update_cpu_buffer_bytes(&self.buffer.buffer, data, &byte_ranges)?;
+        } else {
+            device.update_buffer_bytes(&self.buffer.buffer, data, &byte_ranges, 0)?;
+        }
         for word in &mut self.dirty_bitset {
             *word.get_mut() = 0;
         }
@@ -419,33 +554,12 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         &self,
         allocation: &SparseInstanceBufferAllocation<T>,
     ) -> Vec<DrawRange> {
-        merge_draw_runs(
-            chunk_list(allocation.chunk_ids())
-                .iter()
-                .map(|&id| id as usize),
-            &self.byte_map,
-        )
+        self.draw_view().allocation_to_draw_multi_instanced(allocation)
     }
 
     /// O — `impl$3::to_draw_multi_instanced` 0x1412e4250：对整张 active 位图做同样的合并。
     pub fn to_draw_multi_instanced(&self) -> Vec<DrawRange> {
-        let chunks = self
-            .active_bitset
-            .iter()
-            .enumerate()
-            .flat_map(|(word_index, word)| {
-                let mut active_chunks = word.load(Ordering::Relaxed);
-                std::iter::from_fn(move || {
-                    if active_chunks == 0 {
-                        return None;
-                    }
-                    let chunk_index =
-                        word_index * usize::BITS as usize + active_chunks.trailing_zeros() as usize;
-                    active_chunks &= active_chunks - 1;
-                    Some(chunk_index)
-                })
-            });
-        merge_draw_runs(chunks, &self.byte_map)
+        self.draw_view().to_draw_multi_instanced()
     }
 }
 
@@ -599,6 +713,9 @@ fn clear_parts(
 }
 
 impl<T: SparseSsbo + Send + Sync + 'static> Ssbo for SparseInstanceBuffer<T> {
+    fn set_change_notifier(&mut self, notify: Arc<dyn Fn() + Send + Sync>) {
+        self.change_notifier = Some(notify);
+    }
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -611,19 +728,28 @@ impl<T: SparseSsbo + Send + Sync + 'static> Ssbo for SparseInstanceBuffer<T> {
     fn handle(&self) -> ResourceHandle {
         ResourceHandle(self.buffer.buffer.id, self.buffer.buffer.generation)
     }
-    /// The render copy shares the GPU buffer owner and the waste queue, and
-    /// copies the chunk maps and CPU shadow as of the hand-over.
+    fn sparse_draw_view(&self) -> Option<SparseDrawView<'_>> {
+        Some(self.draw_view())
+    }
+    /// Copy only declaration metadata. In particular, a brick buffer's large
+    /// CPU shadow and its reclamation authority stay with the game owner.
     fn snapshot(&self) -> Box<dyn Ssbo> {
-        let atomics = |bits: &[AtomicUsize]| -> Box<[AtomicUsize]> {
-            bits.iter().map(|bit| AtomicUsize::new(bit.load(Ordering::Relaxed))).collect()
-        };
-        Box::new(SparseInstanceBuffer::<T> {
-            free_chunks: RwLock::new(self.free_chunks.read().clone()),
-            byte_map: self.byte_map.clone(),
-            active_bitset: atomics(&self.active_bitset),
-            data: self.data.clone(),
-            dirty_bitset: atomics(&self.dirty_bitset),
-            waste: self.waste.clone(),
+        let mut cached = self.draw_snapshot.lock();
+        let unchanged = cached.as_ref().is_some_and(|snapshot| {
+            snapshot.byte_map == self.byte_map
+                && snapshot.active.len() == self.active_bitset.len()
+                && snapshot.active.iter().zip(self.active_bitset.iter())
+                    .all(|(old, current)| *old == current.load(Ordering::Relaxed))
+        });
+        if !unchanged {
+            *cached = Some(Arc::new(SparseDrawSnapshot {
+                byte_map: self.byte_map.clone(),
+                active: self.active_bitset.iter()
+                    .map(|bit| bit.load(Ordering::Relaxed)).collect(),
+            }));
+        }
+        Box::new(SparseRenderBuffer::<T> {
+            draws: cached.as_ref().expect("initialized draw snapshot").clone(),
             buffer: self.buffer,
             _buffer_owner: self._buffer_owner.clone(),
         })
@@ -705,6 +831,38 @@ mod tests {
         let dev = Rec::default();
         let b = SparseInstanceBuffer::<Elem>::new_storage_buffer(&dev, None);
         (dev, b)
+    }
+
+    #[test]
+    fn metadata_snapshots_share_static_storage_and_isolate_visibility_and_reuse() {
+        fn draws(value: &dyn Ssbo) -> Arc<SparseDrawSnapshot> {
+            value.as_any().downcast_ref::<SparseRenderBuffer<Elem>>().unwrap().draws.clone()
+        }
+        let (device, mut buffer) = new_buf();
+        let allocation = buffer.new_allocation();
+        buffer.writer(&allocation).push(&Elem(1)).unwrap();
+        let first = buffer.snapshot();
+        let first_draws = draws(first.as_ref());
+        buffer.gpu_flush(&device);
+        let second = buffer.snapshot();
+        assert!(Arc::ptr_eq(&first_draws, &draws(second.as_ref())));
+        // Updating only instance bytes must not allocate another draw table.
+        buffer.writer(&allocation).replace_all(&[Elem(2)]).unwrap();
+        assert!(Arc::ptr_eq(&first_draws, &draws(buffer.snapshot().as_ref())));
+        buffer.hide(&allocation);
+        let hidden = buffer.snapshot();
+        assert!(!Arc::ptr_eq(&first_draws, &draws(hidden.as_ref())));
+        assert_eq!(first.sparse_draw_view().unwrap().to_draw_multi_instanced(), vec![(0, 1)]);
+        assert!(hidden.sparse_draw_view().unwrap().to_draw_multi_instanced().is_empty());
+        buffer.show(&allocation);
+        // Public metadata writers cannot bypass publication invalidation.
+        buffer.byte_map[0] = 2;
+        let changed = buffer.snapshot();
+        assert_eq!(changed.sparse_draw_view().unwrap().to_draw_multi_instanced(), vec![(0, 2)]);
+        drop(allocation);
+        buffer.take_out_waste();
+        assert!(buffer.snapshot().sparse_draw_view().unwrap().to_draw_multi_instanced().is_empty());
+        assert_eq!(changed.sparse_draw_view().unwrap().to_draw_multi_instanced(), vec![(0, 2)]);
     }
 
     #[test]

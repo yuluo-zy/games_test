@@ -483,33 +483,26 @@ pub struct BindlessHeap {
     set: Arc<VulkanDescriptorSet>,
     device: Arc<Device>,
     slots: Mutex<Slots>,
-    /// Hot descriptor cache of a pool page (`None` outside a page pool): the
-    /// lease of a resource is written once and reused by every later draw and
-    /// frame while something besides the cache keeps the resource alive.
+    /// Reuse descriptors while a prepared group or submitted command owns the
+    /// lease. The index cache must not keep its own descriptors/resources alive.
     resident: Mutex<Option<ResidentLeases>>,
     // Declared after slots: release credit only after the actual CPU buffers.
     _slot_memory: crate::raw::allocator::CpuMemoryReservation,
 }
 #[derive(Default)]
 struct ResidentLeases {
-    leases: std::collections::HashMap<parameters::ResourceKey, Arc<BindlessLease>>,
+    leases: std::collections::HashMap<parameters::ResourceKey, std::sync::Weak<BindlessLease>>,
     inserts_since_trim: usize,
+    memory: Option<crate::raw::allocator::CpuMemoryReservation>,
 }
-/// Inserts between two sweeps that drop leases whose resource only the cache
-/// still references.
+/// Expired weak keys are swept periodically; a fixed limit also bounds live
+/// keys when unusually many groups are retained by a caller.
 const RESIDENT_TRIM_INTERVAL: usize = 512;
+const MAX_RESIDENT_KEYS: usize = 4096;
 impl ResidentLeases {
-    fn trim(&mut self) -> Vec<Arc<BindlessLease>> {
+    fn trim(&mut self) {
         self.inserts_since_trim = 0;
-        let mut dropped = Vec::new();
-        self.leases.retain(|_, lease| {
-            let alive = Arc::strong_count(lease) > 1 || lease.owner.referenced_elsewhere();
-            if !alive {
-                dropped.push(lease.clone());
-            }
-            alive
-        });
-        dropped
+        self.leases.retain(|_, lease| lease.strong_count() != 0);
     }
 }
 enum Owner {
@@ -524,16 +517,6 @@ enum Owner {
         layout: vk::ImageLayout,
     },
     Sampler(Arc<Sampler>),
-}
-impl Owner {
-    /// Something other than its lease holds the bound object.
-    fn referenced_elsewhere(&self) -> bool {
-        match self {
-            Self::Buffer { buffer, .. } => Arc::strong_count(buffer) > 1,
-            Self::View { view, .. } => Arc::strong_count(view) > 1,
-            Self::Sampler(sampler) => Arc::strong_count(sampler) > 1,
-        }
-    }
 }
 impl GpuUse for Owner {
     fn visit_uses(&self, visit: &mut crate::resource::UseVisitor<'_>) -> Result<()> {
@@ -791,21 +774,30 @@ impl BindlessHeap {
             drop(resident);
             return make();
         };
-        if let Some(lease) = cache.leases.get(&key) {
+        if let Some(lease) = cache.leases.get(&key).and_then(std::sync::Weak::upgrade) {
             record_count(RecordCount::LocalCacheHits, 1);
-            return Ok(lease.clone());
+            return Ok(lease);
         }
-        let dropped = (cache.inserts_since_trim >= RESIDENT_TRIM_INTERVAL).then(|| cache.trim());
+        if cache.inserts_since_trim >= RESIDENT_TRIM_INTERVAL || cache.leases.len() >= MAX_RESIDENT_KEYS {
+            cache.trim();
+        }
         drop(resident);
-        // Dropping a lease takes the slot lock; never under the cache lock.
-        drop(dropped);
         let lease = make()?;
         if let Some(cache) = self.resident.lock().as_mut() {
-            cache
-                .leases
-                .try_reserve(1)
-                .map_err(|_| Error::OutOfHostMemory)?;
-            cache.leases.insert(key, lease.clone());
+            if cache.leases.len() >= MAX_RESIDENT_KEYS { return Ok(lease); }
+            if cache.leases.len() == cache.leases.capacity() {
+                // Account a conservative bucket/control-byte allocation bound
+                // before growing the optional index. A rejected cache admission
+                // still returns the valid uncached descriptor.
+                let capacity = cache.leases.capacity().saturating_mul(2).max(3);
+                let bytes = (capacity + 1).next_power_of_two()
+                    * (std::mem::size_of::<(parameters::ResourceKey, std::sync::Weak<BindlessLease>)>() + 1) + 16;
+                let Ok(memory) = self.device.memory.stats.reserve_cpu_bytes(
+                    bytes as u64, crate::device::BudgetCategory::Cache) else { return Ok(lease); };
+                if cache.leases.try_reserve(1).is_err() { return Ok(lease); }
+                cache.memory = Some(memory);
+            }
+            cache.leases.insert(key, Arc::downgrade(&lease));
             cache.inserts_since_trim += 1;
         }
         Ok(lease)
@@ -817,10 +809,9 @@ impl BindlessHeap {
         );
         drop(old);
     }
-    /// Drop resident leases whose resource only the cache still references.
+    /// Remove expired index entries; GPU owners govern the actual lease lifetime.
     fn trim_resident(&self) {
-        let dropped = self.resident.lock().as_mut().map(ResidentLeases::trim);
-        drop(dropped);
+        if let Some(cache) = self.resident.lock().as_mut() { cache.trim(); }
     }
     fn reserve(self: &Arc<Self>, kind: DescriptorKind, owner: Owner) -> Result<Arc<BindlessLease>> {
         let _trace = RecordSpan::new(RecordPhase::DescriptorReserve);
@@ -1552,6 +1543,42 @@ impl BindlessPageCursor {
 mod tests {
     use super::*;
     use crate::sync::{QueueId, SyncPoint};
+
+    #[test]
+    fn page_index_reuses_live_leases_without_retaining_retired_ranges_or_itself() {
+        let device = match Device::new_headless(&crate::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                eprintln!("SKIP descriptor cache GPU initialization: {error}");
+                return;
+            }
+        };
+        let heap = BindlessHeap::new(device.clone(), BindlessConfig {
+            sampled_images: 4, storage_images: 4, storage_buffers: 4, samplers: 4,
+        }).unwrap();
+        heap.set_residency(true);
+        let buffer = Arc::new(Buffer::new(device,
+            &crate::raw::buffer::BufferDesc::new_cpu_to_gpu(8192 * 256, vk::BufferUsageFlags::STORAGE_BUFFER)).unwrap());
+        // Thousands of independent ranges of one still-live allocation exposed
+        // the old cache's mistaken resource strong-count liveness test.
+        for range in 0..8192u64 {
+            let offset = range * 256;
+            let key = parameters::ResourceKey::Buffer(buffer.raw_handle().as_raw(), offset, 4, false);
+            let first = heap.resident_lease(key, || heap.storage_buffer(buffer.clone(), offset, 4)).unwrap();
+            let second = heap.resident_lease(key, || panic!("live lease must be reused")).unwrap();
+            assert!(Arc::ptr_eq(&first, &second));
+            drop(first);
+            assert_eq!(heap.stats().live, 1);
+            drop(second);
+            assert_eq!(heap.stats().live, 0);
+            assert!(heap.resident.lock().as_ref().unwrap().leases.len() <= MAX_RESIDENT_KEYS);
+        }
+        let weak = Arc::downgrade(&heap);
+        drop(heap);
+        assert!(weak.upgrade().is_none(), "an index cannot form a heap/lease ownership cycle");
+    }
+
     #[test]
     fn slots_require_all_queues_to_complete_and_stale_generations_never_match() {
         let mut slots = Slots::new([1; 4]).unwrap();

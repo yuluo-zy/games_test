@@ -49,6 +49,22 @@ pub struct UploadOptions {
     pub epoch: u64,
     pub priority: UploadPriority,
 }
+
+/// Pending replacements may supersede older replacements of the same key.
+/// Ordered deltas are never merged or implicitly cancelled: each accepted
+/// interval remains a separate FIFO job, including across frame epochs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UploadMode {
+    Replacement,
+    OrderedDelta,
+}
+
+/// Failed admission returns the caller's allocation unchanged for retry.
+#[derive(Debug)]
+pub struct OwnedUploadError {
+    pub error: Error,
+    pub payload: Vec<u8>,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UploadCancellation {
     Superseded,
@@ -239,6 +255,7 @@ pub(super) struct Job<T> {
     pub task: Arc<Task>,
     pub segments: Vec<Segment>,
     sequence: u64,
+    mode: UploadMode,
     // Segment backing drops before its capacity credit.
     _memory: Reservation,
 }
@@ -409,6 +426,7 @@ impl<T> UploadQueue<T> {
             .filter(|&index| {
                 self.jobs[index].options.key == options.key
                     && self.jobs[index].options.epoch == options.epoch
+                    && self.jobs[index].mode == UploadMode::Replacement
             })
         {
             let job = &mut self.jobs[index];
@@ -466,6 +484,7 @@ impl<T> UploadQueue<T> {
             .iter()
             .filter(|job| {
                 Self::same_key(job, &target, options.key) && job.options.epoch < options.epoch
+                    && job.mode == UploadMode::Replacement
             })
             .count();
         if self.jobs.len() - superseded == self.config.max_jobs {
@@ -485,7 +504,8 @@ impl<T> UploadQueue<T> {
         segments.push(Segment { offset, payload });
         let task = self.task()?;
         self.cancel_matching(
-            |job| Self::same_key(job, &target, options.key) && job.options.epoch < options.epoch,
+            |job| Self::same_key(job, &target, options.key) && job.options.epoch < options.epoch
+                && job.mode == UploadMode::Replacement,
             UploadCancellation::Superseded,
         );
         if let Some(index) = epoch_index {
@@ -503,7 +523,73 @@ impl<T> UploadQueue<T> {
             task: task.clone(),
             segments,
             sequence,
+            mode: UploadMode::Replacement,
             _memory: memory,
+        });
+        self.sequence = sequence;
+        Ok(task)
+    }
+
+    /// Take ownership without copying or coalescing the payload. All fallible
+    /// admission precedes publication; a rejected request cannot advance the
+    /// key epoch, cancel an accepted job, or lose the caller's bytes.
+    pub fn enqueue_owned(
+        &mut self,
+        target: Arc<T>,
+        offset: u64,
+        bytes: Vec<u8>,
+        options: UploadOptions,
+        mode: UploadMode,
+    ) -> core::result::Result<Arc<Task>, OwnedUploadError> {
+        let admitted = (|| {
+            if bytes.is_empty() || bytes.len() > self.chunk_bytes
+                || offset.checked_add(bytes.len() as u64).is_none()
+            {
+                return Err(Error::invalid_usage("queued upload interval exceeds one chunk"));
+            }
+            let epoch_index = self.fresh(&target, options)?;
+            let supersedes = |job: &Job<T>| mode == UploadMode::Replacement
+                && job.mode == UploadMode::Replacement
+                && Self::same_key(job, &target, options.key)
+                && job.options.epoch < options.epoch;
+            let superseded = self.jobs.iter().filter(|job| supersedes(job)).count();
+            if self.jobs.len() - superseded >= self.config.max_jobs {
+                return Err(Error::Timeout);
+            }
+            let sequence = self.sequence.checked_add(1)
+                .ok_or_else(|| Error::invalid_usage("upload FIFO exhausted"))?;
+            // Capacity, not length: retained spare storage consumes budget too.
+            let payload_memory = Reservation::new(&self.local, bytes.capacity())?;
+            let mut memory = Reservation::new(&self.local, size_of::<Segment>())?;
+            let segments = reserve::<Segment>(1)?;
+            memory.resize(segments.capacity() * size_of::<Segment>())?;
+            let task = self.task()?;
+            Ok((epoch_index, sequence, payload_memory, memory, segments, task))
+        })();
+        let (epoch_index, sequence, payload_memory, memory, mut segments, task) =
+            match admitted {
+                Ok(admitted) => admitted,
+                Err(error) => return Err(OwnedUploadError { error, payload: bytes }),
+            };
+        segments.push(Segment {
+            offset,
+            payload: Payload { data: bytes, _memory: payload_memory },
+        });
+        if mode == UploadMode::Replacement {
+            self.cancel_matching(
+                |job| job.mode == UploadMode::Replacement
+                    && Self::same_key(job, &target, options.key)
+                    && job.options.epoch < options.epoch,
+                UploadCancellation::Superseded,
+            );
+        }
+        if let Some(index) = epoch_index {
+            self.epochs[index].epoch = options.epoch;
+        } else {
+            self.epochs.push(Epoch { target: Arc::downgrade(&target), key: options.key, epoch: options.epoch });
+        }
+        self.jobs.push(Job {
+            target, options, task: task.clone(), segments, sequence, mode, _memory: memory,
         });
         self.sequence = sequence;
         Ok(task)
@@ -671,6 +757,58 @@ mod tests {
             queue: QueueId::new(0).unwrap(),
             value,
         }
+    }
+    #[test]
+    fn owned_deltas_preserve_all_epochs_and_the_original_allocation() {
+        let mut queue = queue(64);
+        let target = Arc::new(());
+        let bytes = vec![1, 2, 3, 4];
+        let pointer = bytes.as_ptr();
+        let first = queue.enqueue_owned(target.clone(), 0, bytes,
+            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        queue.enqueue_owned(target.clone(), 8, vec![5; 4],
+            options(1, 2, UploadPriority::High), UploadMode::OrderedDelta).unwrap();
+        // Even the legacy replacing API must not implicitly cancel a delta.
+        queue.enqueue(target, 16, &[9; 4], options(1, 3, UploadPriority::High)).unwrap();
+        assert_eq!(queue.queued_jobs(), 3);
+        assert_eq!(queue.job(0).segments[0].bytes().as_ptr(), pointer);
+        assert!(matches!(*first.status.lock(), UploadStatus::Pending));
+        assert_eq!(queue.next(BudgetAction::None), Some(0));
+        queue.publish(0, point(1));
+        assert_eq!(queue.job(0).segments[0].offset, 8);
+        queue.publish(0, point(2));
+        assert_eq!(queue.job(0).segments[0].offset, 16);
+    }
+
+    #[test]
+    fn owned_admission_failure_returns_storage_and_does_not_advance_epoch() {
+        let mut queue = queue(64);
+        let target = Arc::new(());
+        let mut bytes = Vec::with_capacity(queue.config.max_cpu_bytes);
+        bytes.extend_from_slice(&[7; 4]);
+        let pointer = bytes.as_ptr();
+        let before = queue.stats().known_cpu_bytes;
+        let error = queue.enqueue_owned(target.clone(), 0, bytes,
+            options(1, 9, UploadPriority::Normal), UploadMode::OrderedDelta).err().expect("budget rejection");
+        assert_eq!(error.payload.as_ptr(), pointer);
+        assert_eq!(error.payload, [7; 4]);
+        assert_eq!(queue.queued_jobs(), 0);
+        assert_eq!(queue.stats().known_cpu_bytes, before);
+        queue.enqueue_owned(target, 0, vec![1; 4],
+            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+    }
+
+    #[test]
+    fn owned_deltas_in_the_same_epoch_keep_separate_completion_tickets() {
+        let mut queue = queue(64);
+        let target = Arc::new(());
+        let opts = options(1, 1, UploadPriority::Normal);
+        let first = queue.enqueue_owned(target.clone(), 0, vec![1; 4], opts, UploadMode::OrderedDelta).unwrap();
+        let second = queue.enqueue_owned(target, 0, vec![2; 4], opts, UploadMode::OrderedDelta).unwrap();
+        assert!(!Arc::ptr_eq(&first, &second));
+        queue.publish(0, point(1));
+        assert!(matches!(*first.status.lock(), UploadStatus::Submitted(_)));
+        assert!(matches!(*second.status.lock(), UploadStatus::Pending));
     }
     #[test]
     fn dirty_regions_coalesce_latest_overlap_and_never_copy_a_gap() {

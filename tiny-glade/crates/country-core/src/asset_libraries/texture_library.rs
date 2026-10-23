@@ -5,7 +5,7 @@
 #![allow(clippy::doc_lazy_continuation)]
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::sync::RwLock;
+use std::sync::{RwLock, atomic::{AtomicU64, Ordering}};
 
 use crate::name_hash::NameHash;
 use crate::render::load_texture::boundary::TextureDevice;
@@ -184,6 +184,7 @@ pub struct AssetTextureLibrary {
     by_name: HashMap<NameHash, NamedTexture, NoHashBuildHasher>,
     presets: Vec<PresetTextureState>,
     bindless: RwLock<DescriptorMap>,
+    descriptor_revision: AtomicU64,
 }
 
 impl bevy_ecs::resource::Resource for AssetTextureLibrary {}
@@ -193,6 +194,7 @@ impl Clone for AssetTextureLibrary {
     fn clone(&self) -> Self {
         AssetTextureLibrary {
             textures: self.textures.clone(),
+            descriptor_revision: AtomicU64::new(self.descriptor_revision()),
             descriptor_set: self.descriptor_set.clone(),
             by_name: self.by_name.clone(),
             presets: self.presets.clone(),
@@ -221,6 +223,7 @@ impl AssetTextureLibrary {
         let descriptor_set = device.create_persistent_descriptor_set("bindless_textures")?;
         Ok(AssetTextureLibrary {
             textures: Vec::new(),
+            descriptor_revision: AtomicU64::new(0),
             descriptor_set,
             by_name: HashMap::default(),
             presets: Vec::new(),
@@ -459,6 +462,13 @@ impl AssetTextureLibrary {
         self.presets.get(preset.0 as usize)
     }
 
+    /// Shared-reference descriptor publication is invisible to ECS ticks.
+    pub fn descriptor_revision(&self) -> u64 { self.descriptor_revision.load(Ordering::Acquire) }
+    fn descriptors_changed(&self) {
+        self.descriptor_revision.fetch_update(Ordering::Release, Ordering::Relaxed,
+            |revision| revision.checked_add(1)).expect("texture descriptor revision exhausted");
+    }
+
     /// 首次查询分配采样槽位；并发请求共享同一结果。
     pub fn handle_to_bindless_index(&self, asset: AssetIndex) -> DescriptorIndex {
         self.try_handle_to_bindless_index(asset)
@@ -499,6 +509,7 @@ impl AssetTextureLibrary {
             index
         };
         assign_auto_resize(&mut descriptors.indices, asset.0, Some(index));
+        self.descriptors_changed();
         Ok(index)
     }
 
@@ -534,6 +545,7 @@ impl AssetTextureLibrary {
             .collect::<Result<Vec<_>, BackendError>>()?;
         device.update_persistent_descriptor_set(&self.descriptor_set, &updates)?;
         descriptors.pending.clear();
+        self.descriptors_changed();
         Ok(&self.descriptor_set)
     }
 
@@ -1024,4 +1036,28 @@ mod tests {
         l.create_preset_textures_with(&dev, desc_of);
         l.get_rg_texture(TexturePreset(1));
     }
+
+    #[test]
+    fn descriptor_publication_advances_revision_only_on_successful_changes() {
+        let device = MockDevice::default();
+        let mut library = AssetTextureLibrary::new(&device);
+        let asset = library.add(None, tex(91));
+        let before = library.descriptor_revision();
+        assert!(library.try_handle_to_bindless_index(AssetIndex(99)).is_err());
+        assert_eq!(library.descriptor_revision(), before);
+        let slot = library.try_handle_to_bindless_index(asset).unwrap();
+        assert!(library.descriptor_revision() > before);
+        let published = library.clone();
+        let before = library.descriptor_revision();
+        assert_eq!(library.try_handle_to_bindless_index(asset).unwrap(), slot);
+        assert_eq!(library.descriptor_revision(), before);
+        library.try_bindless_textures_dset(&device).unwrap();
+        assert!(library.descriptor_revision() > before);
+        assert!(!published.pending_bindless().is_empty());
+        assert!(library.pending_bindless().is_empty());
+        let before = library.descriptor_revision();
+        library.try_bindless_textures_dset(&device).unwrap();
+        assert_eq!(library.descriptor_revision(), before);
+    }
+
 }

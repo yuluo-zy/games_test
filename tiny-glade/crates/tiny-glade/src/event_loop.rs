@@ -337,6 +337,7 @@ impl crate::game_loop::GameLoop {
         event: winit::event::Event<()>,
         target: &dyn LoopTarget,
     ) -> anyhow::Result<()> {
+        self.render.take_control_error()?;
         if !self.lifecycle.is_running() {
             // exit() can leave already queued Redraw/Resumed/AboutToWait events.
             // They must not touch egui, the App, cursor mappings or the renderer.
@@ -393,6 +394,7 @@ impl crate::game_loop::GameLoop {
                 let bypass_egui = matches!(&event, WindowEvent::KeyboardInput { event, .. }
                     if event.physical_key == winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Tab));
                 if !bypass_egui && self.egui_io.on_window_event(&self.window, &event).consumed {
+                    self.driver.late_camera.invalidate();
                     return Ok(());
                 }
                 match event {
@@ -415,7 +417,10 @@ impl crate::game_loop::GameLoop {
                     WindowEvent::Focused(focused) => {
                         self.queue_os_event(OsWindowEvent::Focused(focused))?
                     }
-                    WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+                    WindowEvent::ModifiersChanged(modifiers) => {
+                        self.driver.late_camera.invalidate();
+                        self.modifiers = modifiers.state();
+                    }
                     WindowEvent::KeyboardInput {
                         event,
                         is_synthetic,
@@ -508,7 +513,12 @@ impl crate::game_loop::GameLoop {
                     target.set_control_flow(winit::event_loop::ControlFlow::Wait);
                 }
                 if !self.suspended && !background_pending {
-                    self.window.request_redraw();
+                    // Completion publishes its result before requesting redraw.
+                    // Recheck before waiting to cover completion during this event.
+                    let ready = if self.driver.waiting_for_preparation {
+                        self.render.poll() || self.render.update_allowed()
+                    } else { !self.driver.awaiting_render() || self.render.poll() };
+                    if ready { self.window.request_redraw(); }
                 }
             }
             Event::NewEvents(winit::event::StartCause::ResumeTimeReached { .. }) => {
@@ -518,12 +528,14 @@ impl crate::game_loop::GameLoop {
                 }
             }
             Event::Suspended => {
+                self.driver.late_camera.invalidate();
                 // Platform notification, not a reconstructed B gameplay event.
                 self.suspended = true;
-                self.render.reclaim().renderer.suspend()?;
+                self.render.suspend()?;
             }
             Event::Resumed => {
-                self.render.reclaim().renderer.resume()?;
+                self.driver.late_camera.invalidate();
+                self.render.resume()?;
                 self.suspended = false;
                 self.window.request_redraw();
             }
@@ -538,8 +550,21 @@ impl crate::game_loop::GameLoop {
     /// OS producer: retain the batch independently of either App. The mapped
     /// absolute cursor write remains in this callback before confirmation gates.
     pub(crate) fn queue_os_event(&mut self, event: OsWindowEvent) -> anyhow::Result<()> {
+        self.driver.late_camera.observe(&event);
         if !self.lifecycle.is_running() {
             return Ok(());
+        }
+        // Publish render-only control immediately while preserving the OS batch
+        // for the next simulation/App handoff. Duplicate desired states coalesce.
+        match &event {
+            OsWindowEvent::CloseRequested => {
+                self.close_requested = true;
+                self.render.cancel_preparation()?;
+            }
+            OsWindowEvent::Resized(extent) if extent[0] < 20_000 => self.render.resize(*extent)?,
+            OsWindowEvent::Focused(focused) => self.render.set_focused(*focused)?,
+            OsWindowEvent::SurfaceStale => self.render.invalidate_surface()?,
+            _ => {},
         }
         if let OsWindowEvent::CursorAbsolute(position) = &event {
             self.update_custom_cursor_absolute(*position)?;
@@ -571,26 +596,13 @@ impl crate::game_loop::GameLoop {
                     .world_mut()
                     .resource_mut::<WindowSize>()
                     .set(width, height);
-                self.app_mut()
-                    .world_mut()
-                    .resource_mut::<GameConfig>()
-                    .video
-                    .display
-                    .windowed_resolution = [width, height];
-                // `FrameRenderConfig`'s three packed extents are "copied from WindowSize" at startup
-                // (render_config.rs). The tail's display target reads `extent_8`, so a resized
-                // window would keep presenting the old extent. HOST ADAPTATION (I): the original's
-                // per-resize update point is not located; keep the copy semantics on resize.
-                if let Some(mut frame) = self
-                    .app_mut()
-                    .world_mut()
-                    .get_resource_mut::<country_core::render::render_config::FrameRenderConfig>()
-                {
-                    frame.extent_0 = [width, height];
-                    frame.extent_8 = [width, height];
-                    frame.extent_10 = [width, height];
-                }
-                self.render.reclaim().renderer.resize([width, height])?;
+                // Fullscreen and zero-sized drawable events describe the current
+                // surface, not the user's saved windowed size.
+                let native_fullscreen = self.window.fullscreen().is_some();
+                let mut config = self.app_mut().world_mut().resource_mut::<GameConfig>();
+                remember_windowed_size(&mut config.video.display, [width, height], native_fullscreen);
+                drop(config);
+                crate::frame_resolution::refresh(self.app_mut().world_mut());
             }
             OsWindowEvent::Resized(_) => {}
             OsWindowEvent::MonitorChanged => {
@@ -621,11 +633,10 @@ impl crate::game_loop::GameLoop {
                     .world_mut()
                     .send_event(crate::app_config::WriteSettingsFileCmd);
             }
-            OsWindowEvent::SurfaceStale => {
-                let size = self.window.inner_size();
-                self.render.reclaim().renderer.resize([size.width, size.height])?;
-            }
+            OsWindowEvent::SurfaceStale => {},
             OsWindowEvent::CloseRequested => {
+                self.close_requested = true;
+                self.render.cancel_preparation()?;
                 self.app_mut()
                     .world_mut()
                     .send_event(country_core::resources::events::ShutdownGameCmd);
@@ -646,7 +657,6 @@ impl crate::game_loop::GameLoop {
                     .unwrap() |= 1;
             }
             OsWindowEvent::Focused(focused) => {
-                self.render.reclaim().renderer.set_focused(focused)?;
                 self.app_mut()
                     .world_mut()
                     .send_event(WindowFocusEvent(u8::from(focused)));
@@ -759,6 +769,16 @@ impl crate::game_loop::GameLoop {
         let mut monitors = country_core::resources::window::AvailableMonitors::default();
         Self::extract_monitors_from_target(&mut monitors, target);
         self.app_mut().world_mut().insert_resource(monitors);
+    }
+}
+
+fn remember_windowed_size(
+    display: &mut country_core::render::render_config::DisplayConfig,
+    extent: [u32; 2],
+    native_fullscreen: bool,
+) {
+    if !display.fullscreen && !native_fullscreen && extent[0] != 0 && extent[1] != 0 {
+        display.windowed_resolution = extent;
     }
 }
 
@@ -1131,5 +1151,24 @@ fn logical_key_to_bevy(key: &winit::keyboard::Key) -> bevy_input::keyboard::Key 
             winit::keyboard::NativeKey::Xkb(code) => NativeKey::Xkb(*code),
             winit::keyboard::NativeKey::Web(value) => NativeKey::Web(value.clone().into()),
         }),
+    }
+}
+
+#[cfg(test)]
+mod window_size_tests {
+    use super::*;
+    #[test]
+    fn fullscreen_and_minimize_preserve_the_windowed_restore_size() {
+        let mut display = country_core::game_config::GameConfig::default().video.display;
+        display.fullscreen = false;
+        remember_windowed_size(&mut display, [514, 354], false);
+        display.fullscreen = true;
+        remember_windowed_size(&mut display, [1920, 1080], true);
+        display.fullscreen = false;
+        remember_windowed_size(&mut display, [1920, 1080], true);
+        remember_windowed_size(&mut display, [0, 0], false);
+        assert_eq!(display.windowed_resolution, [514, 354]);
+        remember_windowed_size(&mut display, [640, 480], false);
+        assert_eq!(display.windowed_resolution, [640, 480]);
     }
 }

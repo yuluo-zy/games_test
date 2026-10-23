@@ -18,6 +18,9 @@ pub(crate) struct Memory {
     pub(crate) suballocator: Option<Arc<crate::raw::suballoc::SubAllocator>>,
     /// Whether `VK_EXT_memory_budget` was enabled at creation.
     pub(crate) budget_extension: bool,
+    /// Raw driver telemetry is distinct from allocator policy limits and is
+    /// available even when no optional PhysicalDevice wrapper was attached.
+    driver_budget: parking_lot::RwLock<Option<crate::raw::physical_device::MemoryBudgetSnapshot>>,
     /// When the driver budget was last queried by `refresh_memory_budget_if_due`.
     pub(crate) budget_refreshed_at: parking_lot::Mutex<Option<std::time::Instant>>,
     /// Caches asked to release idle entries under memory pressure.
@@ -65,6 +68,7 @@ impl Memory {
             suballocator,
             budget_extension: core.has_extension("VK_EXT_memory_budget"),
             budget_refreshed_at: parking_lot::Mutex::new(None),
+            driver_budget: parking_lot::RwLock::new(None),
             evictables: Default::default(),
         })
     }
@@ -178,6 +182,7 @@ impl Device {
             heap_usage: budget.heap_usage,
             ..Default::default()
         };
+        *self.memory.driver_budget.write() = Some(crate::raw::physical_device::MemoryBudgetSnapshot::from_vk(&budget));
         if let Some(physical) = self.core.physical_info.get() {
             physical.publish_memory_budget(&budget);
         }
@@ -209,6 +214,11 @@ impl Device {
             *last = Some(now);
         }
         self.refresh_memory_budget()
+    }
+    /// Last actual driver query, without a Vulkan call. None means unavailable
+    /// telemetry, never a zero-byte budget or the allocator's configured cap.
+    pub fn driver_memory_budget_snapshot(&self) -> Option<crate::raw::physical_device::MemoryBudgetSnapshot> {
+        *self.memory.driver_budget.read()
     }
     /// Whether `VK_EXT_memory_budget` was enabled at creation.
     pub fn memory_budget_enabled(&self) -> bool {

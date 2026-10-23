@@ -388,7 +388,7 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<ThumbnailTextures>();
     m.resource::<PreviewGpu>();
     m.resource::<crate::run_game::ApplicationShaderLibrary>();
-    m.resource::<AssetTextureLibrary>();
+    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
     m.resource::<EscMenuState>();
     m.resource::<SavedSessionList>();
     m.resource::<GameConfig>();

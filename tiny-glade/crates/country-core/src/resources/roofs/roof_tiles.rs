@@ -11,7 +11,7 @@
 use bevy_ecs::component::Component;
 
 use crate::render::sparse_instance_buffer::{
-    DrawRange, SparseInstanceBuffer, SparseInstanceBufferAllocation,
+    DrawRange, SparseDrawView, SparseInstanceBuffer, SparseInstanceBufferAllocation,
 };
 use crate::resources::roofs::roof_tile_ssbo::RoofTileSsbo;
 
@@ -29,8 +29,7 @@ pub struct RoofTile {
 /// `allocation`：原版 `RoofTiles` 持有本屋顶在 `SparseInstanceBuffer<RoofTileSsbo>`
 /// 中的分配（fresh `roof_tiles_gravity_compute` 0x140a29b10 对查询行读
 /// `roof_tiles.allocation`，`Some` → `allocation_to_draw_multi_instanced`）。
-/// `SparseInstanceBufferAllocation` 不可 `Clone`（其 `Drop` 归还未用完的 chunk），
-/// 故组件不再派生 `Clone`；无消费者依赖克隆。
+/// 渲染提取克隆的分配只记录 chunk，不具有游戏侧原分配的回收权限。
 #[derive(Clone, Component, Debug, Default)]
 pub struct RoofTiles {
     pub records: Vec<[u8; 64]>,
@@ -46,6 +45,10 @@ impl RoofTiles {
         &self,
         buffer: &SparseInstanceBuffer<RoofTileSsbo>,
     ) -> Option<Vec<DrawRange>> {
+        self.draw_ranges_from_view(buffer.draw_view())
+    }
+
+    pub fn draw_ranges_from_view(&self, buffer: SparseDrawView<'_>) -> Option<Vec<DrawRange>> {
         self.allocation
             .as_ref()
             .map(|allocation| buffer.allocation_to_draw_multi_instanced(allocation))

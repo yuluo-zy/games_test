@@ -48,19 +48,39 @@ pub const DRAW_LIST_COUNT: usize = 21;
 
 /// `DesignatedRenderPass(u32)`：直接指定目标列表下标（O：`mov esi,[rdi]` → 列表；`startup_*` 里 water = 0xf、stars/clouds = 0x10）。
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+#[component(immutable,
+    on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct DesignatedRenderPass(pub u32);
+impl crate::render::extract::JournaledComponent for DesignatedRenderPass {}
 /// 零大小标记：UI 列表（19）。
 #[derive(Component, Clone, Copy, Debug, Default)]
+#[component(immutable,
+    on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct UiPass;
+impl crate::render::extract::JournaledComponent for UiPass {}
 /// 零大小标记：线框列表（20）。
 #[derive(Component, Clone, Copy, Debug, Default)]
+#[component(immutable,
+    on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct WireframePass;
+impl crate::render::extract::JournaledComponent for WireframePass {}
 /// 零大小标记：不进阴影列表（0）。
 #[derive(Component, Clone, Copy, Debug, Default)]
+#[component(immutable,
+    on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct DontCastShadow;
+impl crate::render::extract::JournaledComponent for DontCastShadow {}
 /// 零大小标记：额外进 OC/2 列表。
 #[derive(Component, Clone, Copy, Debug, Default)]
+#[component(immutable,
+    on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct OcclusionCulled;
+impl crate::render::extract::JournaledComponent for OcclusionCulled {}
 
 /// 21 个列表的下标（O：由各 pass 读取的 `Vec` 偏移 `(ptr_off - 8) / 0x18` 得到；名称按使用它的 pass 命名，I）。
 pub mod list {
@@ -1541,15 +1561,15 @@ pub const DISPATCH: &[ShaderDispatch] = &[
 
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
-    m.component::<Handle<Vao>>();
-    m.component::<Handle<RasterShaderProgram>>();
+    m.component_journaled::<Handle<Vao>>();
+    m.component_journaled::<Handle<RasterShaderProgram>>();
     m.component::<Transform>();
-    m.component::<DrawTopology>();
-    m.component::<DesignatedRenderPass>();
-    m.component::<UiPass>();
-    m.component::<WireframePass>();
-    m.component::<DontCastShadow>();
-    m.component::<OcclusionCulled>();
+    m.component_journaled::<DrawTopology>();
+    m.component_journaled::<DesignatedRenderPass>();
+    m.component_journaled::<UiPass>();
+    m.component_journaled::<WireframePass>();
+    m.component_journaled::<DontCastShadow>();
+    m.component_journaled::<OcclusionCulled>();
 }
 
 #[cfg(test)]

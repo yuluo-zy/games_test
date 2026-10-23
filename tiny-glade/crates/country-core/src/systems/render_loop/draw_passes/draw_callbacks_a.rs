@@ -160,12 +160,16 @@ pub use views::*;
 
 /// `Components::get_resource_id` + 资源槽；缺失 → `Option::unwrap` panic。
 pub fn res<T: Resource>(w: &World) -> &T {
-    w.get_resource::<T>().expect(UNWRAP_NONE)
+    w.get_resource::<T>().unwrap_or_else(|| {
+        panic!("{UNWRAP_NONE}: missing render resource {}", core::any::type_name::<T>())
+    })
 }
 
 /// 必需组件：实体无效 → `Result::unwrap` panic；组件缺失 → `Option::unwrap` panic。
 pub fn comp<T: Component>(w: &World, e: Entity) -> &T {
-    w.get_entity(e).unwrap().get::<T>().expect(UNWRAP_NONE)
+    w.get_entity(e).unwrap().get::<T>().unwrap_or_else(|| {
+        panic!("{UNWRAP_NONE}: missing render component {} on {e:?}", core::any::type_name::<T>())
+    })
 }
 
 /// 可选组件（`get_id` 失败 / `get_component` 返回空 → `None`）；实体无效仍 panic。
@@ -1185,7 +1189,7 @@ mod tests;
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<GpuWorld>();
-    m.resource::<AssetSsboLibrary>();
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
     m.resource::<crate::geometry::runtime::WallBrickUploadStatus>();
     m.resource::<WallHighlight>();
     m.resource::<CursorTerrainRaycast>();
@@ -1193,9 +1197,9 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<EraserSizeMultiplier>();
     m.resource::<DebugGuiView>();
     m.resource::<IvyStorage>();
-    m.resource::<MainCamera>();
+    m.resource_projected::<MainCamera>(MainCamera::render_snapshot);
     m.events::<ShowDemoBorderOverlay>();
-    m.resource::<AssetMeshLibrary>();
+    m.resource_incremental::<AssetMeshLibrary>(AssetMeshLibrary::snapshot_revision, AssetMeshLibrary::update_render_snapshot);
     m.resource::<crate::resources::logo_animation::LogoAnimation>();
     m.resource::<LoadingScreenProgressView>();
     m.resource::<ActiveSessionView>();
@@ -1213,7 +1217,7 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.component::<OverwriteRoughness>();
     m.component::<DontReceiveContactShadows>();
     m.component::<PrevTransformView>();
-    m.component::<Handle<Mesh>>();
+    m.component_journaled::<Handle<Mesh>>();
     m.component::<DashedLineLengthView>();
     m.component::<SplashParticleView>();
     m.component::<RoofFlagClothView>();
@@ -1221,4 +1225,7 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.component::<WallFlagClothView>();
     m.component::<ArrowGizmoView>();
     m.component::<WoodenGateView>();
+    // read_env2 projects the two canonical gameplay owners through a helper.
+    m.component::<crate::resources::critters::sheep::Sheep>();
+    m.component::<crate::resources::critters::sheep::SheepWalkRecord>();
 }

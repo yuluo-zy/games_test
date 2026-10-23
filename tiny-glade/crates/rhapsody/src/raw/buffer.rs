@@ -912,6 +912,25 @@ impl Buffer {
     }
     /// Write after overlapping GPU uses complete, waiting at most
     /// `HOST_ACCESS_TIMEOUT_NS` (then `Timeout`).
+    /// Mutate an existing persistent mapping under the same range reservation,
+    /// GPU-completion wait and non-coherent flush used by `write_bytes`.
+    /// The callback borrows the caller's existing mapping; no second mutable
+    /// slice or full-buffer shadow is manufactured here. It must only change
+    /// the specified range, and must not recursively submit/access this buffer.
+    pub fn with_host_write(
+        &self, offset: u64, bytes: u64, edit: impl FnOnce(),
+    ) -> Result<()> {
+        let mut panic = None;
+        let result = self.host_access(offset, bytes, true, Some(HOST_ACCESS_TIMEOUT_NS), |_| {
+            // Finish the flush and publish the host revision even if an edit
+            // panics after changing a prefix. Resume the original panic only
+            // after the host-access transaction released all native locks.
+            panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(edit)).err();
+        });
+        if let Some(payload) = panic { std::panic::resume_unwind(payload); }
+        result
+    }
+
     pub fn write_bytes(&self, offset: u64, bytes: &[u8]) -> Result<()> {
         self.write_impl(offset, bytes, Some(HOST_ACCESS_TIMEOUT_NS))
     }
@@ -1077,6 +1096,19 @@ impl Buffer {
     }
     /// Read after overlapping GPU writes complete, waiting at most
     /// `HOST_ACCESS_TIMEOUT_NS` (then `Timeout`).
+    /// Inspect an existing persistent mapping only when all prior overlapping
+    /// GPU writers have completed. Busy work returns false without running the
+    /// callback. Non-coherent memory is invalidated before inspecting it.
+    pub fn try_with_host_read(
+        &self, offset: u64, bytes: u64, read: impl FnOnce(),
+    ) -> Result<bool> {
+        match self.host_access(offset, bytes, false, None, |_| read()) {
+            Ok(()) => Ok(true),
+            Err(Error::Timeout) => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+
     pub fn read_bytes(&self, offset: u64, bytes: &mut [u8]) -> Result<()> {
         self.read_impl(offset, bytes, Some(HOST_ACCESS_TIMEOUT_NS))
     }

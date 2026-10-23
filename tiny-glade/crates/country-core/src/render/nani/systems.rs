@@ -813,13 +813,23 @@ pub fn nani_update_preplaced_flower_ecs(
     mut rows: Query<(&mut InstanceKey, &Transform), With<InstanceDataMarker<PreplacedFlowerInstanceData>>>,
     gpu: Res<GpuWorld>, ssbos: Res<AssetSsboLibrary>, paths: PathRastersResources,
     water: Res<WaterRaster>,
+    mut completed_mask: Local<Vec<u32>>,
 ) {
     // Original14207396a obtains the owned subset before142073982 reads
     // TerrainRockMask, even when the component query is empty.
     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::PreplacedFlower);
     let rock = ssbos.get::<TerrainRockMaskSsbo>()
         .expect("called `Option::unwrap()` on a `None` value: TerrainRockMaskSsbo");
-    let mask: &[u32] = bytemuck::cast_slice(&rock.mapped[..]);
+    rock.try_cpu_read(|samples| {
+        completed_mask.clear();
+        completed_mask.extend_from_slice(bytemuck::cast_slice(samples));
+    }).expect("flower rock-mask readback failed");
+    // Keep the last completed mask. Release the read guard before publishing
+    // instance uploads; never hold one mapped allocation while writing another.
+    if completed_mask.is_empty() {
+        return;
+    }
+    let mask = completed_mask.as_slice();
     let path_grids = paths.as_float_grid();
     let water_grid = (**water).as_ref();
     for (mut key, transform) in &mut rows {

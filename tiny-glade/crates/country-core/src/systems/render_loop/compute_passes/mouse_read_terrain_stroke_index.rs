@@ -69,14 +69,21 @@ impl SsboType for MouseTerrainRaycastSsbo {
 /// The original optional lookup tolerates an unregistered mouse buffer, but a
 /// registered empty mapped slice is an invariant failure. AssetSsboLibrary owns
 /// type/name checks and the real mapped storage; no separate success flag exists.
-pub fn read_terrain_stroke_index(library: &AssetSsboLibrary) -> Option<i32> {
-    library.get::<MouseTerrainRaycastSsbo>().map(|buffer| {
-        buffer
-            .mapped
-            .first()
-            .expect("original mouse terrain mapped slice is empty")
-            .terrain_stroke_index
-    })
+#[cfg(test)]
+fn read_terrain_stroke_index(library: &AssetSsboLibrary) -> Option<i32> {
+    try_read_terrain_stroke_index(library).flatten()
+}
+
+/// Outer None means GPU work is still in flight; Some(None) means the optional
+/// buffer is absent. Live consumers must preserve their previous result on busy.
+pub fn try_read_terrain_stroke_index(library: &AssetSsboLibrary) -> Option<Option<i32>> {
+    let Some(buffer) = library.get::<MouseTerrainRaycastSsbo>() else {
+        return Some(None);
+    };
+    buffer.try_cpu_read(|samples| Some(samples.first()
+        .expect("original mouse terrain mapped slice is empty")
+        .terrain_stroke_index))
+        .expect("mouse terrain readback failed")
 }
 
 /// push constants：`[x, z]` 的 f32 位模式（O：tag 位 0 为 0 → 两个 0）。

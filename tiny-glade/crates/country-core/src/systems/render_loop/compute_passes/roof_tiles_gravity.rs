@@ -146,7 +146,7 @@ fn roof_tiles_gravity_impl(
     .expect("called `Option::unwrap()` on a `None` value");
     env.pass_resources()
         .ssbo_library()
-        .get::<RoofTileSsbo>()
+        .get_buffer::<RoofTileSsbo>()
         .expect("called `Option::unwrap()` on a `None` value");
     // 2. push constants（先于 pass 创建）。
     let push = collect_push_constants(rows);

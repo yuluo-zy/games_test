@@ -72,8 +72,11 @@ fn scope_skips_refresh_only_while_the_snapshot_is_exact() {
     // Without a scope every call is a full refresh.
     let start = raster.vao_table_revision();
     raster.ensure_draw_vaos(&mut world, &lists).unwrap();
+    let allocated = raster.vao_snapshot_allocations();
     raster.ensure_draw_vaos(&mut world, &lists).unwrap();
     assert_eq!(raster.vao_table_revision(), start + 2);
+    assert_eq!(raster.vao_snapshot_allocations(), allocated,
+        "static refresh shares immutable binding metadata and native views");
 
     {
         let _scope = raster.begin_vao_scope(&mut world, &lists).unwrap();
@@ -109,6 +112,13 @@ fn scope_skips_refresh_only_while_the_snapshot_is_exact() {
         raster.ensure_draw_vaos(&mut world, &other).unwrap();
         assert_eq!(raster.vao_table_revision(), restored + 2, "other lists refresh");
     }
+    // A cached view does not confer resurrection authority after host release.
+    let native = world.resource::<AssetVAOLibrary>().get_by_handle(vao).unwrap().vao.bindings[0].buffer;
+    assert!(bridge.hosts().buffers.release(&native));
+    assert!(raster.refresh_vao_handles(&world, &[vao]).is_err());
+    // Restore a valid publication before verifying the closed scope.
+    world.resource_mut::<AssetVAOLibrary>()
+        .rebuild_vao(bridge.hosts().buffers.as_ref(), &meshes, mesh).unwrap();
     // Closing the scope ends reuse.
     let closed = raster.vao_table_revision();
     raster.ensure_draw_vaos(&mut world, &lists).unwrap();

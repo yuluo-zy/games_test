@@ -430,9 +430,9 @@ impl BindlessParameters {
                     !self.written[(slot.parameter_offset as usize - base) / 4 + element as usize]
                 })
             {
-                return Err(Error::invalid_usage(
-                    "required shader resource element is unbound",
-                ));
+                return Err(Error::invalid_usage(format!(
+                    "required shader resource element is unbound: {:?}", slot.location,
+                )));
             }
         }
         self.leases

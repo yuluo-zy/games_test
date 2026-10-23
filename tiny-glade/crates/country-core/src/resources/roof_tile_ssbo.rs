@@ -281,7 +281,7 @@ mod tests {
         assert_eq!(b.byte_map.len(), 0x2001);
         assert_eq!(b.byte_map[0x2000], SLOTS_PER_CHUNK as u8);
         assert_eq!(b.data.len(), 0x40000);
-        assert_eq!(b.active_bitset.len(), 0x80);
+        assert_eq!(b.active_word_count(), 0x80);
         assert_eq!(b.dirty_bitset.len(), 0x80);
         let free = b.free_chunks.read();
         assert_eq!(free.len(), 0x2000);

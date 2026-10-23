@@ -186,7 +186,12 @@ impl SetupPool {
         pool: &Arc<VulkanCommandPool>,
         stats: &Mutex<SetupStats>,
     ) -> Result<VulkanCommandBuffer> {
-        let completed = device.completed();
+        // Cached completion alone never advances when setup is the only GPU
+        // producer. Poll outstanding work once before allocating another command.
+        let mut completed = device.completed();
+        if self.in_flight.front().is_some_and(|(done, _)| !done.is_reached(&completed)) {
+            completed = device.poll()?;
+        }
         if self
             .in_flight
             .front()

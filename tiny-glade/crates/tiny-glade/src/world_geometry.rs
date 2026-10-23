@@ -120,11 +120,11 @@ pub fn roof_tiles_gravity_compute(
     };
     // Original mandatory storage lookup precedes creation of the query cache.
     world.get_resource::<AssetSsboLibrary>().ok_or_else(|| missing("AssetSsboLibrary"))?
-        .get::<RoofTileSsbo>().ok_or_else(|| missing("RoofTileSsbo"))?;
+        .sparse_draw_view::<RoofTileSsbo>().ok_or_else(|| missing("RoofTileSsbo"))?;
     let mut query = world.query::<(&RoofTiles, &RoofTileSimulation, &Roof, &RoofAnimation)>();
-    let storage = world.resource::<AssetSsboLibrary>().get::<RoofTileSsbo>().unwrap();
+    let storage = world.resource::<AssetSsboLibrary>().sparse_draw_view::<RoofTileSsbo>().unwrap();
     let rows = query.iter(world).map(|(tiles, simulation, roof, animation)| RoofTileRow {
-        draws: tiles.draw_ranges(storage),
+        draws: tiles.draw_ranges_from_view(storage),
         wall_height_delta: f32::from_le_bytes(simulation.observed()[..4].try_into().unwrap()),
         roof_pivot_y: roof.floor_y(),
         animation_t: animation.values()[0],
@@ -195,10 +195,10 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<country_core::systems::mode_manager::AppMode>();
     m.resource::<country_core::systems::mode_manager::AppMode>();
     m.resource::<WindowSize>();
-    m.resource::<MainCamera>();
+    m.resource_projected::<MainCamera>(MainCamera::render_snapshot);
     m.resource::<country_core::startup::init_photomode_state::PhotomodeState>();
     m.resource::<CursorPositionSS>();
-    m.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    m.resource_incremental::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(country_core::asset_libraries::ssbo_library::AssetSsboLibrary::snapshot_revision, country_core::asset_libraries::ssbo_library::AssetSsboLibrary::update_render_snapshot);
     m.resource::<country_core::resources::game_clock::GameClock>();
     m.resource::<GameConfig>();
 }

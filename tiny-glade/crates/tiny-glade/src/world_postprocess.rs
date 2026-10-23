@@ -453,7 +453,10 @@ fn prepare_mei(
     use country_core::{
         asset_libraries::texture_library::AssetTextureLibrary, name_hash::NameHash,
     };
-    if !world.contains_resource::<country_core::render::extract::Present<tg_text::TextRenderer>>() {
+    // Warmup declares directly from the source World; regular frames carry
+    // only the producer-presence marker, without copying the font/atlas owner.
+    if !world.contains_resource::<tg_text::TextRenderer>()
+        && !world.contains_resource::<country_core::render::extract::Present<tg_text::TextRenderer>>() {
         return Err(tail_missing("TextRenderer (Update44 text_flush_system)"));
     }
     let raster = frame.raster_resources();
@@ -1349,9 +1352,9 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<AppMode>();
     m.resource::<ImageFormationConfigs>();
     m.resource::<FrameRenderConfig>();
-    m.resource::<country_core::systems::camera_rig::main_camera::MainCamera>();
+    m.resource_projected::<country_core::systems::camera_rig::main_camera::MainCamera>(country_core::systems::camera_rig::main_camera::MainCamera::render_snapshot);
     m.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>();
-    m.resource::<country_core::asset_libraries::texture_library::AssetTextureLibrary>();
+    m.resource_with_revision::<country_core::asset_libraries::texture_library::AssetTextureLibrary>(<country_core::asset_libraries::texture_library::AssetTextureLibrary>::descriptor_revision);
     m.resource::<WindowSize>();
     m.presence::<tg_text::TextRenderer>();
     m.resource::<crate::loading_graph::LoadingGpuResources>();
@@ -1360,8 +1363,8 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<country_core::resources::gui::DebugGui>();
     m.resource::<country_core::render::frame_constants::FrameConstants>();
     m.resource::<bevy_time::Time>();
-    m.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
-    m.resource::<country_core::asset_libraries::vao_library::AssetVAOLibrary>();
+    m.resource_incremental::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(country_core::asset_libraries::ssbo_library::AssetSsboLibrary::snapshot_revision, country_core::asset_libraries::ssbo_library::AssetSsboLibrary::update_render_snapshot);
+    m.resource_incremental::<country_core::asset_libraries::vao_library::AssetVAOLibrary>(country_core::asset_libraries::vao_library::AssetVAOLibrary::snapshot_revision, country_core::asset_libraries::vao_library::AssetVAOLibrary::update_render_snapshot);
     m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
     m.resource::<vermeer::VermeerDebugControl>();
     m.resource::<vermeer::VermeerState>();

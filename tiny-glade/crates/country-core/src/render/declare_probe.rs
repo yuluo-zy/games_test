@@ -6,6 +6,7 @@
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::Instant;
 
+static CROSS_PASS_TASKS: AtomicU64 = AtomicU64::new(0);
 static LIST_PASSES: AtomicU64 = AtomicU64::new(0);
 static LIST_DRAWS: AtomicU64 = AtomicU64::new(0);
 static LIST_LOOP_NS: AtomicU64 = AtomicU64::new(0);
@@ -21,10 +22,19 @@ static REC_BIND_NS: AtomicU64 = AtomicU64::new(0);
 static REC_DRAW_NS: AtomicU64 = AtomicU64::new(0);
 static SUB_NS: [AtomicU64; 8] = [const { AtomicU64::new(0) }; 8];
 static STAGE_NS: [AtomicU64; 6] = [const { AtomicU64::new(0) }; 6];
+static COLLECT_NS: [AtomicU64; 3] = [const { AtomicU64::new(0) }; 3];
+static COLLECT_PASSES: AtomicU64 = AtomicU64::new(0);
+static COLLECT_TASKS: AtomicU64 = AtomicU64::new(0);
 
 /// Totals accumulated since the previous [`take`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct DeclareProbe {
+    pub cross_pass_tasks: u64,
+    pub collect_passes: u64,
+    /// Number of shared-pool jobs; inline Collect contributes zero.
+    pub collect_tasks: u64,
+    /// Wall time for Prepare, Collect (including task wait), and Commit.
+    pub collect_ns: [u64; 3],
     /// `run_list_pass` invocations and the draws they declared.
     pub list_passes: u64,
     pub list_draws: u64,
@@ -111,12 +121,21 @@ pub fn sub(index: usize, started: Option<Instant>) {
 pub fn stage_count(index: usize) {
     STAGE_NS[index].fetch_add(1, Relaxed);
 }
+pub fn collect_stage(index: usize, started: Option<Instant>) { add(&COLLECT_NS[index], started); }
+pub fn cross_pass_collected(tasks: usize) { CROSS_PASS_TASKS.fetch_add(tasks as u64, Relaxed); }
+pub fn collected(tasks: usize) {
+    COLLECT_PASSES.fetch_add(1, Relaxed);
+    COLLECT_TASKS.fetch_add(tasks as u64, Relaxed);
+}
 pub fn stage(index: usize, started: Option<Instant>) {
     add(&STAGE_NS[index], started);
 }
 
 pub fn take() -> DeclareProbe {
     DeclareProbe {
+        cross_pass_tasks: CROSS_PASS_TASKS.swap(0, Relaxed),        collect_passes: COLLECT_PASSES.swap(0, Relaxed),
+        collect_tasks: COLLECT_TASKS.swap(0, Relaxed),
+        collect_ns: std::array::from_fn(|i| COLLECT_NS[i].swap(0, Relaxed)),
         list_passes: LIST_PASSES.swap(0, Relaxed),
         list_draws: LIST_DRAWS.swap(0, Relaxed),
         list_loop_ns: LIST_LOOP_NS.swap(0, Relaxed),

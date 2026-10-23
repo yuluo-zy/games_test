@@ -27,7 +27,7 @@ use country_core::{
 use crate::{
     egui_backend::{EguiBackend, EguiRenderer},
     render_bridge::CoreGraphFrame,
-    render_host::HostTables,
+    render_host::{BufferHost, HostTables},
 };
 
 pub struct EguiGpu {
@@ -64,14 +64,16 @@ impl EguiGpu {
             ManagedHandle(shader.id().raw()),
             std::marker::PhantomData,
         );
-        let pixels_per_point = backend.context().pixels_per_point();
+        let pixels_per_point = backend.pixels_per_point();
         if !pixels_per_point.is_finite() || pixels_per_point <= 0.0 {
             bail!("invalid egui pixels_per_point");
         }
         let mut result = Ok(());
+        let buffers_host = frame.hosts().buffers;
         frame.with_raster(|host| {
             let mut renderer = EguiFrame {
                 gpu: self,
+                buffers_host,
                 pass: Some(
                     RasterPass::new(
                         "egui",
@@ -105,6 +107,7 @@ impl Drop for EguiGpu {
 
 struct EguiFrame<'a> {
     gpu: &'a mut EguiGpu,
+    buffers_host: Arc<BufferHost>,
     pass: Option<RasterPass>,
     shader:
         country_core::rhapsody_contract::Handle<country_core::render::shader::RasterShaderProgram>,
@@ -117,7 +120,7 @@ impl Drop for EguiFrame<'_> {
         // submit_raster_pass has imported/retained the same actual buffer owners.
         // Their timeline use cells defer physical destruction past GPU completion.
         for buffer in self.buffers.drain(..) {
-            self.gpu.tables.buffers.release(&buffer);
+            self.buffers_host.release(&buffer);
         }
     }
 }
@@ -250,13 +253,13 @@ impl EguiRenderer for EguiFrame<'_> {
                 .iter()
                 .flat_map(|index| index.to_le_bytes())
                 .collect();
-            let ib = self.gpu.tables.buffers.create_buffer(
+            let ib = self.buffers_host.create_buffer(
                 &BufferDesc::new(indices.len(), 0x40, 2),
                 "egui index buffer",
                 Some(&indices),
             )?;
             self.buffers.push(ib);
-            let vb = self.gpu.tables.buffers.create_buffer(
+            let vb = self.buffers_host.create_buffer(
                 &BufferDesc::new(vertices.len(), 0x20, 2),
                 "egui vertex buffer",
                 Some(&vertices),

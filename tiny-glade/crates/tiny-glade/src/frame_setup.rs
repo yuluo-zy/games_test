@@ -164,6 +164,17 @@ impl FrameGlobals {
     pub fn sampled_table(&self) -> &[(u32, Arc<TextureView>)] {
         &self.sampled
     }
+    /// Intended long-lived descriptor owners, sampled only after GPU drain.
+    pub(crate) fn retained_bindless_counts(&self) -> [usize; 4] {
+        let mut counts = [0; 4];
+        for page in self.page_leases.lock().iter() {
+            if let Some(cache) = page.cache.lock().as_ref() {
+                counts[0] += cache.sampled.as_ref().map_or(0, |sampled| sampled.len());
+                counts[2] += usize::from(cache.storage.is_some());
+            }
+        }
+        counts
+    }
     /// 只预备页身份和元数据，不分配任何描述符；实际 writer 在组 guard 内调用。
     pub(crate) fn prepare_page(
         &self,
@@ -471,7 +482,7 @@ pub fn with_frame_resources<T>(
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
     m.resource::<FrameConstants>();
-    m.resource::<AssetTextureLibrary>();
-    m.resource::<AssetSsboLibrary>();
+    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
     m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary,>();
 }

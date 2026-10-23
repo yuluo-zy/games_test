@@ -167,16 +167,16 @@ mod tests {
                     .collect::<Vec<_>>()
                     .into_boxed_slice(),
             );
-            library.register::<BushCpuSsbo>(MappedStorageBuffer {
+            library.register::<BushCpuSsbo>(MappedStorageBuffer::from_mapping(
                 mapped,
-                buffer: Buffer {
+                Buffer {
                     id: 71,
                     generation: 1,
                     _gap10: 0,
                     byte_size: size as u64,
                     _gap20: 0,
                 },
-            });
+            ));
         }
         let mut grid = BushGrid::default();
         let subscriber = grid.publisher.subscribe();

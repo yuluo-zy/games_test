@@ -193,9 +193,17 @@ pub struct FrameProgress {
     pub gameplay_presents_queued: u64,
 }
 
+struct PendingFrameTiming {
+    started: std::time::Instant,
+    update: std::time::Duration,
+    yielded_at: Option<std::time::Instant>,
+    yielded: std::time::Duration,
+}
+
 /// The recovered update/render section of main_loop. This owns real Bevy/egui
 /// state; it is not a native-layout mirror of the 0x1118-byte GameLoop.
 pub struct GameFrameDriver {
+    pending_timing: Option<PendingFrameTiming>,
     app: App,
     egui: EguiBackend,
     /// Whether the frame now on the render thread is a gameplay frame; its
@@ -215,6 +223,13 @@ pub struct GameFrameDriver {
     startup_ui_capture_saw_reveal: bool,
     loading_render_pending_after_update: bool,
     input_consumed_this_call: bool,
+    awaiting_render: bool,
+    waiting_for_collect: bool,
+    pub(crate) waiting_for_preparation: bool,
+    pending_collect_input: Option<egui::RawInput>,
+    in_flight_temporal: Option<crate::temporal_frame::TemporalCommit>,
+    pub(crate) late_camera: crate::temporal_frame::LateCameraMailbox,
+    late_camera_frame: Option<crate::temporal_frame::LateCameraFrame>,
 }
 
 #[derive(bevy_ecs::resource::Resource)]
@@ -273,7 +288,9 @@ impl GameFrameDriver {
                 context.clone(),
             ));
         install_asset_library_systems(&mut app);
+        app.insert_resource(country_core::systems::backend::prepare_frame_constants::DeferredTemporalHistory);
         Self {
+            pending_timing: None,
             app,
             egui: EguiBackend::new(context),
             in_flight_gameplay: false,
@@ -287,6 +304,13 @@ impl GameFrameDriver {
             startup_ui_capture_saw_reveal: false,
             loading_render_pending_after_update: false,
             input_consumed_this_call: false,
+            awaiting_render: false,
+            waiting_for_collect: false,
+            waiting_for_preparation: false,
+            pending_collect_input: None,
+            in_flight_temporal: None,
+            late_camera: Default::default(),
+            late_camera_frame: None,
         }
     }
 
@@ -302,6 +326,8 @@ impl GameFrameDriver {
         self.any_present_successful
     }
 
+    pub(crate) fn awaiting_render(&self) -> bool { self.awaiting_render }
+
     pub fn progress(&self) -> FrameProgress {
         self.progress
     }
@@ -314,10 +340,13 @@ impl GameFrameDriver {
         &mut self,
         render: &mut crate::production_renderer::ProductionRenderThread,
     ) {
+        self.waiting_for_preparation = false;
+        self.waiting_for_collect = false;
+        self.app.insert_resource(country_core::systems::backend::prepare_frame_constants::DeferredTemporalHistory);
         let exchange = crate::render_extract::production_exchange();
         let side = render.reclaim();
         side.world = World::new();
-        side.renderer.set_write_back(exchange.write_back);
+        render.set_write_back(exchange.write_back);
         self.extract = Some(exchange.extract);
     }
 
@@ -325,8 +354,12 @@ impl GameFrameDriver {
         &mut self,
         render: &mut crate::production_renderer::ProductionRenderThread,
     ) -> anyhow::Result<()> {
-        self.any_present_successful |= render.reclaim().renderer.any_present_successful();
+        anyhow::ensure!(!render.failed(), "render worker failed; no frame feedback remains");
         let feedback = render.apply_feedback(self.app.world_mut());
+        self.any_present_successful |= render.any_present_successful();
+        if let Some(candidate) = self.in_flight_temporal.take() {
+            candidate.finish(self.app.world_mut(), feedback.history_submitted, feedback.temporal_candidate);
+        }
         if let Some(error) = feedback.error {
             return Err(error);
         }
@@ -349,10 +382,11 @@ impl GameFrameDriver {
         publish_platform_output: impl FnOnce(egui::PlatformOutput),
     ) -> anyhow::Result<()> {
         self.input_consumed_this_call = false;
-        if self.loading_render_pending_after_update {
+        if self.loading_render_pending_after_update || self.awaiting_render {
             return Ok(());
         }
         let has_gui_input = input.is_some();
+        let consumed_input = self.late_camera.mark();
         if let Some(input) = input {
             self.egui.context().begin_frame(input);
         }
@@ -360,11 +394,37 @@ impl GameFrameDriver {
             puffin::profile_scope!("App update");
             update_application(&mut self.app)?;
         }
+        self.late_camera_frame = crate::temporal_frame::LateCameraFrame::capture(
+            self.app.world(), &self.late_camera, consumed_input);
         self.input_consumed_this_call = true;
         if has_gui_input {
             publish_platform_output(self.egui.end_frame());
         }
         Ok(())
+    }
+
+    fn update_if_admitted(
+        &mut self,
+        input: Option<egui::RawInput>,
+        publish_platform_output: impl FnOnce(egui::PlatformOutput),
+    ) -> anyhow::Result<bool> {
+        if !self.awaiting_render && !self.loading_render_pending_after_update {
+            let input = match (self.pending_collect_input.take(), input) {
+                (Some(mut pending), Some(newer)) => { pending.append(newer); Some(pending) }
+                (pending, newer) => pending.or(newer),
+            };
+            let Some(_update_admission) = crate::render_upload_boundary::ECS_COLLECT_GATE.try_lock() else {
+                self.pending_collect_input = input;
+                self.waiting_for_collect = true;
+                self.input_consumed_this_call = false;
+                return Ok(false);
+            };
+            self.waiting_for_collect = false;
+            self.update_before_render(input, publish_platform_output)?;
+        } else {
+            self.update_before_render(input, publish_platform_output)?;
+        }
+        Ok(true)
     }
 
     /// B begin_frame@0x1404de115 → App::update@0x1404de349 →
@@ -380,10 +440,41 @@ impl GameFrameDriver {
         render: &mut crate::production_renderer::ProductionRenderThread,
         publish_platform_output: impl FnOnce(egui::PlatformOutput),
     ) -> anyhow::Result<()> {
-        let timing_start = frame_timing_enabled().then(std::time::Instant::now);
+        let call_started = frame_timing_enabled().then(std::time::Instant::now);
+        if let Some(now) = call_started {
+            let timing = self.pending_timing.get_or_insert(PendingFrameTiming {
+                started: now, update: std::time::Duration::ZERO, yielded_at: None, yielded: std::time::Duration::ZERO,
+            });
+            if let Some(yielded_at) = timing.yielded_at.take() {
+                timing.yielded += now.duration_since(yielded_at);
+            }
+        }
+        let timing_start = self.pending_timing.as_ref().map(|timing| timing.started);
+        // Completion/error publication is independent of Update admission.
+        // A failed worker must be observed before entering producer systems.
+        if render.in_flight() { let _ = render.poll(); }
+        // start() closes preparation admission before publishing a packet.
+        // Retain input without entering a producer which could block on that
+        // packet's CPU read lease throughout a cold pipeline compile.
+        if !self.awaiting_render && !self.loading_render_pending_after_update && !render.update_allowed() {
+            self.pending_collect_input = match (self.pending_collect_input.take(), input) {
+                (Some(mut pending), Some(newer)) => { pending.append(newer); Some(pending) },
+                (pending, newer) => pending.or(newer),
+            };
+            self.waiting_for_preparation = true;
+            self.input_consumed_this_call = false;
+            if let Some(timing) = &mut self.pending_timing { timing.yielded_at = Some(std::time::Instant::now()); }
+            return Ok(());
+        }
+        self.waiting_for_preparation = false;
         // Runs while the render thread executes and presents the previous frame.
-        self.update_before_render(input, publish_platform_output)?;
-        let update_time = timing_start.map(|start| start.elapsed());
+        if !self.update_if_admitted(input, publish_platform_output)? {
+            if let Some(timing) = &mut self.pending_timing { timing.yielded_at = Some(std::time::Instant::now()); }
+            return Ok(());
+        }
+        if self.input_consumed_this_call && let (Some(started), Some(timing)) = (call_started, &mut self.pending_timing) {
+            timing.update += started.elapsed();
+        }
         let mode = frame_render_mode(self.app.world());
         // Startup has now refreshed the actual saved-session list. Freeze its
         // optional background choice here and let CPU decoding finish off-thread
@@ -392,9 +483,16 @@ impl GameFrameDriver {
             && !crate::loading_graph::poll_background_preparation(self.app.world_mut())?
         {
             self.loading_render_pending_after_update = true;
+            if let Some(timing) = &mut self.pending_timing { timing.yielded_at = Some(std::time::Instant::now()); }
             return Ok(());
         }
         self.loading_render_pending_after_update = false;
+        if !render.poll() {
+            self.awaiting_render = true;
+            if let Some(timing) = &mut self.pending_timing { timing.yielded_at = Some(std::time::Instant::now()); }
+            return Ok(());
+        }
+        self.awaiting_render = false;
         let gameplay_frame = mode == RenderMode::WorldGpuProfiled
             && self.app.world().get_resource::<bevy_state::state::State<
                 country_core::app_loading_state::AppLoadingState,
@@ -437,12 +535,15 @@ impl GameFrameDriver {
         if self.extract.is_none() {
             self.reset_render_exchange(render);
         }
+        self.in_flight_temporal = crate::temporal_frame::TemporalCommit::prepare(self.app.world_mut());
         let side = render.reclaim();
         self.extract
             .as_mut()
             .expect("installed above")
             .run(self.app.world_mut(), &mut side.world);
-        side.renderer.queue_frame(self.app.world(), mode, self.egui.hand_over());
+        crate::temporal_frame::LateCameraFrame::attach(
+            self.late_camera_frame.as_ref(), self.app.world(), &mut side.world);
+        render.queue_frame(self.app.world(), mode, self.egui.hand_over());
         let extract_time = extract_start.map(|start| start.elapsed());
         self.in_flight_gameplay = gameplay_frame;
         render.start();
@@ -450,31 +551,29 @@ impl GameFrameDriver {
         if gameplay_frame {
             self.progress.gameplay_frames = self.progress.gameplay_frames.wrapping_add(1);
         }
-        // Original @1404de63a increments only after render returns. The
-        // independent loading World intentionally has no gameplay temporal.
-        if let Some(mut temporal) = self
-            .app
-            .world_mut()
-            .get_resource_mut::<country_core::render::RenderTemporalState>()
-        {
-            temporal.frame_render_returned();
-        }
+        // Temporal history is committed when this frame's image-writing
+        // receipt returns, including when a later presentation step fails.
         crate::main::log_time_to_first_frame();
         let limiter_start = timing_start.map(|_| std::time::Instant::now());
         let target_fps = frame_target_fps(self.app.world());
         self.limiter.frame(target_fps);
         if let Some(start) = timing_start {
+            let timing = self.pending_timing.take().expect("timing enabled for this frame");
             let limiter_time = limiter_start.expect("timing enabled").elapsed();
             let total = start.elapsed();
             let n = if gameplay_frame { self.progress.gameplay_frames } else { self.progress.completed_frames };
-            if n <= 3 || n % 30 == 0 || total.as_secs_f64() >= 1.0 {
+            if n <= 3 || n % frame_timing_every() == 0 || total.as_secs_f64() >= 1.0 {
                 log::info!(target: "tiny_glade::frame_timing",
-                    "frame n={n} gameplay={gameplay_frame} completed={} update_ms={:.3} handover_wait_ms={:.3} extract_ms={:.3} limiter_ms={:.3} total_ms={:.3} target_fps={target_fps}",
+                    "frame n={n} gameplay={gameplay_frame} completed={} update_ms={:.3} yield_wait_ms={:.3} handover_wait_ms={:.3} extract_ms={:.3} limiter_ms={:.3} total_ms={:.3} target_fps={target_fps}",
                     self.progress.completed_frames,
-                    update_time.expect("timing enabled").as_secs_f64() * 1000.0,
+                    timing.update.as_secs_f64() * 1000.0,
+                    timing.yielded.as_secs_f64() * 1000.0,
                     handover_time.expect("timing enabled").as_secs_f64() * 1000.0,
                     extract_time.expect("timing enabled").as_secs_f64() * 1000.0,
                     limiter_time.as_secs_f64() * 1000.0, total.as_secs_f64() * 1000.0);
+                if let Some(extract) = &self.extract {
+                    log::info!(target: "tiny_glade::frame_timing", "extract n={n} {:?}", extract.stats());
+                }
             }
         }
         Ok(())
@@ -519,8 +618,8 @@ pub struct GameLoop {
     pub(crate) driver: GameFrameDriver,
     pub(crate) window: std::sync::Arc<winit::window::Window>,
     pub(crate) egui_io: crate::event_loop::EguiEventIo,
-    /// The renderer lives on the render thread; game-thread access reclaims it
-    /// (waiting for the frame in flight).
+    /// Resident renderer; frame packets and results cross the thread boundary.
+    /// Native window adaptation remains on this event-loop thread.
     pub(crate) render: crate::production_renderer::ProductionRenderThread,
     pub(crate) options: GameLoopOptions,
     pub(crate) modifiers: winit::keyboard::ModifiersState,
@@ -538,6 +637,7 @@ pub struct GameLoop {
     pub(crate) suspended: bool,
     pub(crate) background_poll_deadline: Option<std::time::Instant>,
     pub(crate) lifecycle: std::rc::Rc<LoopLifecycle>,
+    pub(crate) close_requested: bool,
     pub(crate) pending_os_events: std::collections::VecDeque<crate::event_loop::OsWindowEvent>,
     preparation: Option<crate::run_game::GameplayPreparation>,
     custom_cursor_events: bevy_ecs::event::EventCursor<
@@ -754,6 +854,7 @@ impl GameLoop {
             background_poll_deadline: None,
             lifecycle: Default::default(),
             pending_os_events: Default::default(),
+            close_requested: false,
             preparation,
             custom_cursor_events: Default::default(),
             capture_events: Default::default(),
@@ -777,18 +878,18 @@ impl GameLoop {
     pub fn frame_observation(
         &mut self,
     ) -> Option<&crate::production_renderer::ProductionFrameObservation> {
-        self.render.reclaim().renderer.frame_observation()
+        self.render.frame_observation()
     }
 
     /// Nonblocking query of the exact current present ticket. None is unknown,
     /// including a ticket already reclaimed by normal frame maintenance.
     pub fn frame_present_complete(&mut self) -> rhapsody::Result<Option<bool>> {
-        self.render.reclaim().renderer.frame_present_complete()
+        self.render.frame_present_complete()
     }
 
     /// 原生 present 结果映射前的成功次数；可恢复的过期结果不计入。
     pub fn native_present_success_count(&mut self) -> u64 {
-        self.render.reclaim().renderer.native_present_success_count()
+        self.render.native_present_success_count()
     }
 
     pub fn gameplay_preparation_pending(&self) -> bool {
@@ -889,11 +990,8 @@ impl GameLoop {
             .get_buffer::<CustomCursorSsbo>()
             .ok_or_else(|| anyhow::anyhow!("CustomCursor has no canonical buffer in its World"))?;
         let lease = self
-            .render.reclaim().renderer
-            .bridge()
-            .hosts()
-            .buffers
-            .managed_buffer(core_buffer)
+            .render
+            .managed_buffer(*core_buffer)
             .ok_or_else(|| {
                 anyhow::anyhow!("CustomCursor buffer does not belong to the active BufferHost")
             })?;
@@ -943,6 +1041,7 @@ impl GameLoop {
         &mut self,
         command: country_core::resources::mouse_capture::OsCursorCaptureCmd,
     ) -> anyhow::Result<()> {
+        self.driver.late_camera.invalidate();
         use country_core::resources::mouse_capture::OsCursorCaptureCmd;
         use winit::window::CursorGrabMode;
         match command {
@@ -1039,19 +1138,36 @@ impl GameLoop {
         if !self.lifecycle.is_running() {
             return Ok(false);
         }
+        if self.close_requested { self.render.cancel_preparation()?; }
+        if self.driver.waiting_for_preparation {
+            // Surface terminal failure before the admission gate can hide it
+            // and before another simulation Update observes a failed frame.
+            let _ = self.render.poll();
+            if !self.render.update_allowed() { return Ok(true); }
+            return self.advance_frame(None);
+        }
+        if self.driver.awaiting_render() || self.driver.waiting_for_collect {
+            if !self.render.poll() { return Ok(true); }
+            // Finalize the already simulated frame before dispatching newer
+            // input or swapping Apps. Neither input nor App::update runs twice.
+            return self.advance_frame(None);
+        }
         let background_pending = crate::loading_graph::is_background_preparation_pending(
             self.driver.app.world(),
         );
         if let Some(preparation) = &mut self.preparation {
             preparation.poll_completion()?;
         }
-        if self.preparation.is_some() && !background_pending {
-            // A poll may swap Apps: settle the frame in flight against the
-            // World that declared it first.
+        // Advance loading gates without reclaiming a frame. Only a ready
+        // owner handoff needs to settle the World which declared that frame.
+        let handoff_ready = if let Some(preparation) = &mut self.preparation {
+            !self.close_requested && !background_pending && preparation.ready_to_handoff(self.driver.app_mut())?
+        } else { false };
+        if handoff_ready {
             self.driver.settle_render(&mut self.render)?;
         }
         if let Some(preparation) = &mut self.preparation
-            && !background_pending
+            && handoff_ready
         {
             // No OS callback can run while poll owns this thread. Withdraw the
             // old writer before poll can swap Worlds; a failed/pending poll
@@ -1061,7 +1177,7 @@ impl GameLoop {
                 drop(old_cursor_lease);
                 self.reset_world_event_cursors();
                 self.driver.reset_render_exchange(&mut self.render);
-                self.render.reclaim().renderer
+                self.render
                     .activate_application(self.driver.app().world())?;
                 // The worker may have run more than two updates after PreStartup,
                 // so its one-shot Created event can already have expired. Rejoin
@@ -1131,6 +1247,10 @@ impl GameLoop {
         } else {
             Some(egui::RawInput::default())
         };
+        self.advance_frame(input)
+    }
+
+    fn advance_frame(&mut self, input: Option<egui::RawInput>) -> anyhow::Result<bool> {
         let egui_io = &self.egui_io;
         let window = &self.window;
         let previous_completed = self.driver.progress().completed_frames;
@@ -1179,7 +1299,7 @@ impl GameLoop {
                 .resource::<country_core::game_config::GameConfig>()
                 .video;
             if flags & 2 != 0 {
-                self.render.reclaim().renderer.set_vsync(config.vsync_enable)?;
+                self.render.set_vsync(config.vsync_enable)?;
             }
             if flags & 5 != 0 {
                 crate::event_loop::apply_display_config(&self.window, &config.display)?;
@@ -1229,7 +1349,8 @@ impl GameLoop {
     pub(crate) fn shut_down(&mut self) -> anyhow::Result<()> {
         let Some(clean_cpu) = self.lifecycle.begin_cleanup() else { return Ok(()); };
         self.pending_os_events.clear();
-        let mut failure = None;
+        let preparation_cancel = if self.render.failed() { Ok(()) } else { self.render.cancel_preparation() };
+        let mut failure = preparation_cancel.err();
         if clean_cpu {
             // A worker can still be declaring/executing the gameplay warm-up with
             // these exact GPU owners. Stop and join it before touching renderer
@@ -1263,7 +1384,10 @@ impl GameLoop {
                 self.window.set_cursor_visible(true);
                 Ok(())
             });
-            failure = preparation_result.err();
+            if let Err(error) = preparation_result {
+                if failure.is_some() { log::error!("Additional gameplay preparation cleanup failure: {error:#}"); }
+                else { failure = Some(error); }
+            }
             for (phase, result) in [
                 ("save thread", save_result),
                 ("screenshot hurry", screenshot_result),
@@ -1286,7 +1410,7 @@ impl GameLoop {
                 failure = Some(error);
             }
         }
-        match catch_host_callback("GPU shutdown", || self.render.reclaim().renderer.shutdown()) {
+        match catch_host_callback("GPU shutdown", || self.render.shutdown_renderer()) {
             Ok(()) => self.lifecycle.renderer_stopped(),
             Err(error) => {
                 if failure.is_some() {
@@ -1596,7 +1720,33 @@ mod frame_tests {
     }
 
     #[test]
-    fn pending_loading_render_resumes_without_consuming_another_update_or_egui_input() {
+    fn collect_admission_preserves_input_and_runs_update_once() {
+        #[derive(bevy_ecs::resource::Resource, Default)]
+        struct Updates(u32);
+        let (mut app, _) = vao_test_app();
+        app.init_resource::<Updates>();
+        app.add_systems(bevy_app::Update, |mut updates: bevy_ecs::prelude::ResMut<Updates>| updates.0 += 1);
+        let mut driver = GameFrameDriver::new(app, egui::Context::default());
+        let lease = crate::render_upload_boundary::ECS_COLLECT_GATE.lock();
+        for text in ["first", "second"] {
+            let input = egui::RawInput { events: vec![egui::Event::Text(text.into())], ..Default::default() };
+            assert!(!driver.update_if_admitted(Some(input), |_| panic!("deferred GUI output")).unwrap());
+        }
+        assert_eq!(driver.pending_collect_input.as_ref().unwrap().events.len(), 2);
+        assert_eq!(driver.app.world().resource::<Updates>().0, 0);
+        assert!(driver.waiting_for_collect);
+        assert!(!driver.input_consumed_this_call);
+        drop(lease);
+        let mut outputs = 0;
+        assert!(driver.update_if_admitted(None, |_| outputs += 1).unwrap());
+        assert_eq!(outputs, 1);
+        assert_eq!(driver.app.world().resource::<Updates>().0, 1);
+        assert!(!driver.waiting_for_collect);
+        assert!(driver.pending_collect_input.is_none());
+    }
+
+    #[test]
+    fn pending_loading_or_render_result_resumes_without_consuming_another_update_or_egui_input() {
         #[derive(bevy_ecs::resource::Resource, Default)]
         struct UpdateCount(u32);
         let (mut app, _) = vao_test_app();
@@ -1616,6 +1766,14 @@ mod frame_tests {
         assert_eq!(driver.app.world().resource::<UpdateCount>().0, 1);
         assert_eq!(driver.progress().completed_frames, 0);
         driver.loading_render_pending_after_update = false;
+        driver.awaiting_render = true;
+        for _ in 0..3 {
+            driver.update_before_render(Some(egui::RawInput::default()), |_| outputs += 1).unwrap();
+            assert!(!driver.input_consumed_this_call);
+        }
+        assert_eq!(outputs, 1);
+        assert_eq!(driver.app.world().resource::<UpdateCount>().0, 1);
+        driver.awaiting_render = false;
         driver.update_before_render(None, |_| panic!("no egui input")).unwrap();
         assert!(driver.input_consumed_this_call);
         assert_eq!(driver.app.world().resource::<UpdateCount>().0, 2);

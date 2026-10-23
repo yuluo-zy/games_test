@@ -292,7 +292,9 @@ where
     let staging = library
         .get_mut::<T>()
         .expect("called `Option::unwrap()` on a `None` value");
-    raster.copy_to_staging(selector, bytemuck::cast_slice_mut(staging.mapped));
+    staging.with_cpu_write(|mapped|
+        raster.copy_to_staging(selector, bytemuck::cast_slice_mut(mapped)))
+        .expect("replayed raster staging write failed");
 }
 
 /// Six original domain filters share the same front bucket and the same History.

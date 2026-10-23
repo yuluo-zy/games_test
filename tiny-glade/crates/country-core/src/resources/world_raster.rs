@@ -220,9 +220,11 @@ impl StrokeBlendMode {
 /// `new` 把 +0x98..+0x29c 整段 `memset(0, 0x204)`，所以三个标志与 `reupload` 初值为 0。
 #[derive(Resource)]
 pub struct WorldRaster<const N: usize> {
-    composite: Vec<u8>,
-    scratch: Vec<u8>,
-    tile_hashes: Vec<u32>,
+    // Per-raster immutable versions. Extraction shares these allocations;
+    // game-side writes detach only the buffer they actually edit.
+    composite: Arc<Vec<u8>>,
+    scratch: Arc<Vec<u8>>,
+    tile_hashes: Arc<Vec<u32>>,
     tile_buffer: Vec<u8>,
     publisher: DirtyTilePublisher,
     dirty: DirtyTiles,
@@ -232,15 +234,15 @@ pub struct WorldRaster<const N: usize> {
     reupload: bool,
 }
 
-/// A render-thread snapshot. The copy never publishes dirty tiles (only the
-/// game side copies to staging), so it carries an unsubscribed publisher.
+/// A render-thread snapshot. Both pixel buffers are retained because selector
+/// may name scratch. Publishing remains local to each side's subscriber list.
 impl<const N: usize> Clone for WorldRaster<N> {
     fn clone(&self) -> Self {
         Self {
             composite: self.composite.clone(),
-            scratch: Vec::new(),
+            scratch: self.scratch.clone(),
             tile_hashes: self.tile_hashes.clone(),
-            tile_buffer: Vec::new(),
+            tile_buffer: vec![0; TILE_BYTES],
             publisher: DirtyTilePublisher::unique(),
             dirty: self.dirty.clone(),
             selector: self.selector,
@@ -255,9 +257,9 @@ impl<const N: usize> WorldRaster<N> {
     /// O：0x140a15530。
     pub fn new(publisher: DirtyTilePublisher) -> Self {
         Self {
-            composite: vec![0; N * N],
-            scratch: vec![0; N * N],
-            tile_hashes: vec![EMPTY_TILE_HASH; GRID_SIZE * GRID_SIZE],
+            composite: Arc::new(vec![0; N * N]),
+            scratch: Arc::new(vec![0; N * N]),
+            tile_hashes: Arc::new(vec![EMPTY_TILE_HASH; GRID_SIZE * GRID_SIZE]),
             tile_buffer: vec![0; TILE_BYTES],
             publisher,
             dirty: DirtyTiles::new_clear(),
@@ -268,24 +270,50 @@ impl<const N: usize> WorldRaster<N> {
         }
     }
 
+    /// GPU declaration consumes the already uploaded staging buffer and only
+    /// these flags/dirty tiles. Do not pin either CPU pixel buffer or hash table:
+    /// the next brush edit then retains exclusive ownership without a full COW.
+    pub fn declaration_snapshot(&self) -> Self {
+        Self {
+            composite: Arc::new(Vec::new()), scratch: Arc::new(Vec::new()),
+            tile_hashes: Arc::new(Vec::new()), tile_buffer: Vec::new(),
+            publisher: DirtyTilePublisher::unique(), dirty: self.dirty.clone(),
+            selector: self.selector, staging_dirty: self.staging_dirty,
+            published: self.published, reupload: self.reupload,
+        }
+    }
+
+    pub fn retained_cpu_bytes(&self) -> usize {
+        self.composite.len() + self.scratch.len() + self.tile_hashes.len() * 4 + self.tile_buffer.len()
+    }
+
+    fn require_cpu_pixels(&self) {
+        assert_eq!(self.composite.len(), N * N, "CPU pixels are owned by the game raster, not its declaration snapshot");
+    }
+
     pub fn composite(&self) -> &[u8] {
+        self.require_cpu_pixels();
         &self.composite
     }
 
     pub fn scratch(&self) -> &[u8] {
+        self.require_cpu_pixels();
         &self.scratch
     }
 
     pub fn composite_mut(&mut self) -> &mut [u8] {
-        &mut self.composite
+        self.require_cpu_pixels();
+        Arc::make_mut(&mut self.composite).as_mut_slice()
     }
 
     pub fn scratch_mut(&mut self) -> &mut [u8] {
-        &mut self.scratch
+        self.require_cpu_pixels();
+        Arc::make_mut(&mut self.scratch).as_mut_slice()
     }
 
     /// `copy_to_staging` 与 `clear_buffer` 的缓冲选择：0 = composite，其余 = scratch（O：`+8/+0x10` vs `+0x20/+0x28`）。
     pub fn buffer(&self, selector: u8) -> &[u8] {
+        self.require_cpu_pixels();
         if selector == 0 {
             &self.composite
         } else {
@@ -377,30 +405,31 @@ impl<const N: usize> WorldRaster<N> {
     /// O：0x140a15a10。按选择字节把整个缓冲 `memset(0)`；不动脏位图。
     pub fn clear_buffer(&mut self, selector: u8) {
         if selector == 0 {
-            self.composite.fill(0);
+            Arc::make_mut(&mut self.composite).fill(0);
         } else {
-            self.scratch.fill(0);
+            Arc::make_mut(&mut self.scratch).fill(0);
         }
     }
 
     /// O：0x140a15da0。清空两个缓冲，位图 `memset(0xff)`，`staging_dirty = 1`，
     /// 4096 个瓦片哈希复位为 [`EMPTY_TILE_HASH`]。
     pub fn clear_all(&mut self) {
-        self.composite.fill(0);
-        self.scratch.fill(0);
+        Arc::make_mut(&mut self.composite).fill(0);
+        Arc::make_mut(&mut self.scratch).fill(0);
         self.dirty.set_all();
         self.staging_dirty = true;
-        self.tile_hashes.fill(EMPTY_TILE_HASH);
+        Arc::make_mut(&mut self.tile_hashes).fill(EMPTY_TILE_HASH);
     }
 
-    /// O：0x140a161a0。长度不等时 panic（`copy_from_slice`），不动脏位图。
+    /// Copy the current version without touching dirty bits. The first later
+    /// write detaches scratch, preserving composite and any in-flight frame.
     pub fn copy_composite_to_scratch(&mut self) {
-        self.scratch.copy_from_slice(&self.composite);
+        self.scratch = Arc::clone(&self.composite);
     }
 
     /// O：0x140a16580。
     pub fn commit_scratch_to_composite(&mut self) {
-        self.composite.copy_from_slice(&self.scratch);
+        self.composite = Arc::clone(&self.scratch);
     }
 
     /// `AllWorldRasterWrite::write` 对单个栅格做的事（0x14083ebe0）：`data` 为 `None` 则清空
@@ -409,10 +438,10 @@ impl<const N: usize> WorldRaster<N> {
     /// `Length mismatch; expected {composite_len}, but got {data_len}`。
     pub fn write_composite(&mut self, data: Option<&[u8]>) {
         match data {
-            None => self.composite.fill(0),
+            None => Arc::make_mut(&mut self.composite).fill(0),
             Some(data) => {
                 let result: Result<(), String> = if self.composite.len() == data.len() {
-                    self.composite.copy_from_slice(data);
+                    Arc::make_mut(&mut self.composite).copy_from_slice(data);
                     Ok(())
                 } else {
                     Err(format!(
@@ -482,9 +511,9 @@ impl<const N: usize> WorldRaster<N> {
             .size(N as u32, N as u32)
             .render_into(&mut coverage, None);
         let target = if selector == 0 {
-            &mut self.composite
+            Arc::make_mut(&mut self.composite)
         } else {
-            &mut self.scratch
+            Arc::make_mut(&mut self.scratch)
         };
         for (dst, cover) in target.iter_mut().zip(coverage) {
             *dst = mode.blend(*dst, cover);
@@ -500,6 +529,7 @@ impl<const N: usize> WorldRaster<N> {
     ///    `out` 太短则越界 panic）、更新状态表并保留位。
     /// 4. 发布保留下来的位图，`published = true`。
     pub fn copy_to_staging(&mut self, selector: u8, out: &mut [u8]) {
+        self.require_cpu_pixels();
         if self.staging_dirty {
             out.fill(0);
             self.staging_dirty = false;
@@ -527,7 +557,7 @@ impl<const N: usize> WorldRaster<N> {
                 return false;
             }
             out[index * TILE_BYTES..(index + 1) * TILE_BYTES].copy_from_slice(tile_array);
-            tile_hashes[index] = hash;
+            Arc::make_mut(tile_hashes)[index] = hash;
             true
         });
         self.publisher.publish(self.dirty.clone());
@@ -682,7 +712,7 @@ mod tests {
         let mut r = raster();
         r.composite_mut()[5] = 3;
         r.scratch_mut()[6] = 4;
-        r.tile_hashes[10] = 1;
+        Arc::make_mut(&mut r.tile_hashes)[10] = 1;
         r.clear_all();
         assert!(r.composite().iter().all(|b| *b == 0));
         assert!(r.scratch().iter().all(|b| *b == 0));

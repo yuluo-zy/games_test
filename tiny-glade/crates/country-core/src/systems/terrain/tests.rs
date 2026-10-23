@@ -32,8 +32,8 @@ fn edits_coalesced_changes_and_delayed_readback_use_the_actual_owners() {
     let device = crate::render::test_device::TestDevice(0);
     library.add_new::<TerrainHeightSsbo>(&device);
     library.add_new::<VisualTerrainHeightSsbo>(&device);
-    library.get_mut::<TerrainHeightSsbo>().unwrap().mapped[0].0 = 0x0002_0001;
-    library.get_mut::<VisualTerrainHeightSsbo>().unwrap().mapped[0].0 = 0x0004_0003;
+    library.get_mut::<TerrainHeightSsbo>().unwrap().with_cpu_write(|samples| samples[0].0 = 0x0002_0001).unwrap();
+    library.get_mut::<VisualTerrainHeightSsbo>().unwrap().with_cpu_write(|samples| samples[0].0 = 0x0004_0003).unwrap();
     world.insert_resource(library);
     world
         .resource_mut::<Events<SetTerrainStrokePtsCmd>>()
@@ -275,4 +275,45 @@ fn terrain_focus_mode_no_stroke_path_writes_window_focus_once() {
     schedule.run(&mut world);
     let triggers = world.resource::<Events<ui_terrain_focus_mode::TerrainFocusTrigger>>();
     assert_eq!(triggers.len(), 1);
+}
+
+#[test]
+fn busy_terrain_readback_retries_and_publishes_both_heights_atomically() {
+    use crate::render::{ssbo::{MappedStorageBuffer, StorageElement}, test_device::TestReadbackAccess};
+    use std::sync::Arc;
+    let authority_access = Arc::new(TestReadbackAccess::default());
+    let visual_access = Arc::new(TestReadbackAccess::default());
+    authority_access.set_ready(true);
+    let library = AssetSsboLibrary::new();
+    library.register::<TerrainHeightSsbo>(MappedStorageBuffer::from_mapping_with_access(
+        Box::leak(vec![TerrainHeightSsbo(0x0002_0001); TerrainHeightSsbo::BUFFER_LEN].into_boxed_slice()),
+        Default::default(), Some(authority_access.clone())));
+    library.register::<VisualTerrainHeightSsbo>(MappedStorageBuffer::from_mapping_with_access(
+        Box::leak(vec![VisualTerrainHeightSsbo(0x0004_0003); VisualTerrainHeightSsbo::BUFFER_LEN].into_boxed_slice()),
+        Default::default(), Some(visual_access.clone())));
+    let mut world = World::new();
+    world.insert_resource(library);
+    world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+    world.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
+    world.insert_resource(ScheduledTerrainReadback::default());
+    world.insert_resource(Events::<OnTerrainChange>::default());
+    world.resource_mut::<ScheduledTerrainReadback>().on_gpu_copy_issued(1);
+    let mut schedule = Schedule::default();
+    schedule.add_systems(delayed_terrain_changed_msg::delayed_terrain_changed_msg);
+    for _ in 0..5 { schedule.run(&mut world); }
+    assert!(world.resource::<Events<OnTerrainChange>>().is_empty());
+    assert_eq!(world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()[0], 0);
+    assert_eq!(world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights()[0], 0);
+    assert_eq!(visual_access.reads(), 0);
+    // The ready half changes before the other half finishes. The retry must
+    // resample it, rather than combine values cached in different Updates.
+    world.resource_mut::<AssetSsboLibrary>().get_mut::<TerrainHeightSsbo>().unwrap()
+        .with_cpu_write(|samples| samples[0].0 = 0x0006_0005).unwrap();
+    visual_access.set_ready(true);
+    schedule.run(&mut world);
+    assert_eq!(&world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()[..2], &[5, 6]);
+    assert_eq!(&world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights()[..2], &[3, 4]);
+    assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
+    schedule.run(&mut world);
+    assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
 }

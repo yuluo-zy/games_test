@@ -81,7 +81,7 @@ impl SsboType for BushCpuSsbo {
         // owns this persistent mapping for the same lifetime as its other mapped SSBOs.
         // Keep that established owner rather than allocating a CPU mirror.
         let mapped = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
-        MappedStorageBuffer { mapped, buffer }
+        MappedStorageBuffer::from_mapping_with_access(mapped, buffer, device.mapped_upload_writer(&buffer))
     }
 }
 

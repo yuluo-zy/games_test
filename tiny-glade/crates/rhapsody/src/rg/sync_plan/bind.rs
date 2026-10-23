@@ -574,9 +574,10 @@ impl SynchronizationPlanner {
                 .get(initial.resource as usize)
                 .ok_or_else(|| Error::invalid_usage("native initial resource is absent"))?;
             if !range_state::contains(domain.range, initial.cell.range) {
-                return Err(Error::invalid_usage(
-                    "native initial range exceeds declaration",
-                ));
+                return Err(Error::invalid_usage(format!(
+                    "native initial range exceeds declaration: resource={} initial={:?} declared={:?}",
+                    initial.resource, initial.cell.range, domain.range,
+                )));
             }
         }
         if self.bound.aliases.values.iter().any(|edge| {

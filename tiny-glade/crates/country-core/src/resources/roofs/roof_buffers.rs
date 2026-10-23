@@ -65,6 +65,8 @@ impl StorageElement for WoodenPlankSsbo {
 // shadow, 4097 byte-map entries with terminal32, two 64-word bitsets.
 unsafe impl SparseSsbo for WoodenPlankSsbo {
     const CHUNK_COUNT: usize = 0x1000;
+    // Timber-frame producers reconstruct every record; no GPU writes/BDA.
+    const CPU_AUTHORITATIVE: bool = true;
 }
 impl SsboType for WoodenPlankSsbo {
     type Storage = SparseInstanceBuffer<Self>;

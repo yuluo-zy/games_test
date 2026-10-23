@@ -414,14 +414,14 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<country_core::render::device::GraphicsDeviceResource>();
     m.resource::<LoadingGpuResources>();
     m.resource::<SavedSessionList>();
-    m.resource::<AssetSsboLibrary>();
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
     m.resource::<country_core::asset_libraries::color_library::ColorLibrarySsbo>();
-    m.resource::<AssetTextureLibrary>();
+    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
     m.resource::<country_core::resources::grading_lut::GradingLuts>();
     m.resource::<WindowSize>();
     m.presence::<tg_text::TextRenderer>();
     m.resource::<bevy_time::Time>();
-    m.resource::<AssetVAOLibrary>();
+    m.resource_incremental::<AssetVAOLibrary>(AssetVAOLibrary::snapshot_revision, AssetVAOLibrary::update_render_snapshot);
     m.resource::<AssetPlacementDataLibrary>();
 }
 

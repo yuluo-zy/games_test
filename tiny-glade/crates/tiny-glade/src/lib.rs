@@ -7,10 +7,15 @@ pub use tg_terrain as terrain;
 pub use utils;
 pub mod frame_counters;
 pub mod raster_host;
+mod draw_template_cache;
+mod draw_constant_pool;
 pub mod render_host;
 pub mod compute_frame;
 pub mod render_bridge;
 pub mod render_thread;
+mod render_upload_boundary;
+mod temporal_frame;
+mod frame_resolution;
 #[cfg(feature = "ecs-multithreaded")]
 mod ecs_order;
 pub mod render_extract;
@@ -74,3 +79,5 @@ pub mod world_graph;
 pub mod world_vegetation;
 
 pub mod gameplay_startup;
+
+mod render_control;

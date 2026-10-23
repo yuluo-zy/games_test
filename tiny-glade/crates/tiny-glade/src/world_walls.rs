@@ -1,5 +1,5 @@
 //! Original W21/W27 wall batches and their canonical visibility owners.
-use bevy_ecs::{change_detection::DetectChangesMut, world::World};
+use bevy_ecs::world::World;
 use country_core::{
     asset_libraries::ssbo_library::AssetSsboLibrary,
     geometry::instanced_wall::{BrickTransformSsbo, BrickDrawListSsbo,
@@ -25,10 +25,9 @@ fn missing(name: &str) -> rhapsody::Error {
     rhapsody::Error::invalid_usage(format!("original wall draw lists: missing {name}"))
 }
 
-fn batches(world: &mut World) -> rhapsody::Result<WallDrawBatches> {
-    // Native get_mut<BrickTransformSsbo> changes the same library resource tick.
-    world.get_resource_mut::<AssetSsboLibrary>().ok_or_else(|| missing("AssetSsboLibrary"))?.set_changed();
-    let storage = world.resource::<AssetSsboLibrary>().get::<BrickTransformSsbo>()
+fn batches(world: &World) -> rhapsody::Result<WallDrawBatches> {
+    let storage = world.get_resource::<AssetSsboLibrary>().ok_or_else(|| missing("AssetSsboLibrary"))?
+        .sparse_draw_view::<BrickTransformSsbo>()
         .ok_or_else(|| missing("BrickTransformSsbo"))?;
     let highlight = world.get_resource::<WallHighlight>().ok_or_else(|| missing("WallHighlight"))?;
     let highlighted_wall = (highlight.ty != 0).then_some(highlight.wall_entity).flatten()
@@ -36,9 +35,7 @@ fn batches(world: &mut World) -> rhapsody::Result<WallDrawBatches> {
     if let Some(wall) = highlighted_wall {
         let allocation = wall.allocation().ok_or_else(|| missing("highlighted wall sparse allocation"))?;
         let highlighted = storage.allocation_to_draw_multi_instanced(allocation);
-        storage.hide(allocation);
-        let normal = storage.to_draw_multi_instanced();
-        storage.show(allocation);
+        let normal = storage.to_draw_multi_instanced_excluding(allocation);
         Ok(WallDrawBatches { normal, highlighted })
     } else {
         Ok(WallDrawBatches { normal: storage.to_draw_multi_instanced(), highlighted: Vec::new() })
@@ -55,8 +52,8 @@ fn clear_visibility<T: country_core::asset_libraries::ssbo_library::SsboType>(
     frame.with_compute(|compute| { clear_rg_buffer(compute, resource); Ok(()) })
 }
 
-/// @14098aaf0/1961B. Clear Next, temporarily exclude the highlighted allocation
-/// from normal ranges, restore its active bits, then declare the two real lists.
+/// @14098aaf0/1961B. Clear Next and declare normal/highlighted ranges.
+/// Selection filters the read-only view without mutating shared visibility.
 pub fn generate_wall_draw_lists(
     frame: &mut CoreGraphFrame<'_>, world: &mut World,
 ) -> rhapsody::Result<()> {
@@ -89,7 +86,7 @@ pub fn generate_wall_draw_lists_pass2(
 
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
-    m.resource::<AssetSsboLibrary>();
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
     m.resource::<WallHighlight>();
     m.component::<InstancedWall<BrickTransformSsbo>>();
 }

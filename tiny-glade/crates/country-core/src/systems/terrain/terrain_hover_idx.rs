@@ -77,6 +77,7 @@ pub fn terrain_hover_idx(
 ) {
     // **函数开头无条件复位输出 tag=0**（O：fresh 反编译 `*puVar4 = 0` 在 mode 门之前；
     // miss/门失败帧输出被清）。早期 Rust 不清 → 门失败帧残留上帧命中。
+    let previous = *hovered;
     hovered.tag = 0;
     // AppMode 0x421 掩码门（O：`mode<0xb && (0x421>>(mode&0x1f))&1`，bits {0,5,10} =
     // All/Garden/Terrain 工具；`& 0x1f` 为原生移位掩码）。
@@ -96,8 +97,14 @@ pub fn terrain_hover_idx(
         );
     }
     let id = if let Some(library) = library {
-        let Some(id) = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(&library) else { return; };
-        id
+        match crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::try_read_terrain_stroke_index(&library) {
+            Some(Some(id)) => id,
+            Some(None) => return,
+            None => {
+                *hovered = previous;
+                return;
+            }
+        }
     } else {
         // Existing host/readback adapter remains usable without a graphics owner.
         hover.id

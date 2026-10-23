@@ -219,6 +219,7 @@ fn build_game(
     Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
 )> {
     let mut app = run_game_thread(config, &cli, window)?;
+    app.world_mut().insert_resource(country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen(false)); // TEMP
     if let Some(policy) = launch_display {
         app.insert_resource(policy);
     }
@@ -291,6 +292,7 @@ pub fn run_game_thread(
     };
     init_ecs_task_pool();
     let mut app = App::new();
+    app.add_systems(bevy_app::PreUpdate, crate::frame_resolution::update);
     app.insert_resource(GameplayApplication);
     startup_event_runtime::install(&mut app);
     // Original plugin/extension-trait registrations. They run right after the
@@ -818,7 +820,7 @@ fn init_ecs_task_pool() {
         .ok()
         .and_then(|value| value.trim().parse::<usize>().ok())
         .filter(|threads| *threads > 0)
-        .unwrap_or_else(|| cores.saturating_sub(2).clamp(2, 8));
+        .unwrap_or_else(|| cores.saturating_sub(2).clamp(1, 8));
     ComputeTaskPool::get_or_init(|| {
         TaskPoolBuilder::new()
             .thread_name("tg-compute".into())
@@ -835,20 +837,18 @@ fn init_ecs_task_pool() {
 /// conflicting systems with no declared order (the audit that decides whether the
 /// feature is safe: a real run reports 525 such pairs in `Update`).
 fn apply_ecs_executor_policy(app: &mut App) {
-    if !ecs_policy_active() {
-        #[cfg(feature = "ecs-multithreaded")]
-        crate::ecs_order::pin_and_parallelize(app.world_mut());
-        return;
+    {
+        let mut schedules = app.world_mut().resource_mut::<bevy_ecs::schedule::Schedules>();
+        for (_, schedule) in schedules.iter_mut() {
+            apply_ecs_executor_policy_to(schedule);
+        }
     }
-    let mut schedules = app.world_mut().resource_mut::<bevy_ecs::schedule::Schedules>();
-    for (_, schedule) in schedules.iter_mut() {
-        apply_ecs_executor_policy_to(schedule);
+    #[cfg(feature = "ecs-multithreaded")]
+    if !ecs_single_threaded() {
+        crate::ecs_order::pin_and_parallelize(app.world_mut());
     }
 }
 
-fn ecs_policy_active() -> bool {
-    ecs_single_threaded() || ecs_ambiguity_detection()
-}
 fn ecs_single_threaded() -> bool {
     std::env::var("TG_ECS_EXECUTOR").is_ok_and(|value| value == "single")
 }
@@ -1213,6 +1213,7 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
     };
     let source = gameplay.world();
     let mut app = App::new();
+    app.add_systems(bevy_app::PreUpdate, crate::frame_resolution::update);
     // The loading and gameplay windows share this per-process launch policy;
     // never let a handoff restore fullscreen or persist the temporary extent.
     if let Some(policy) = source.get_resource::<crate::app_config::LaunchDisplayOverride>() {
@@ -1316,6 +1317,9 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
 /// never becomes a synthetic "ready" application.
 #[derive(Debug)]
 pub(crate) struct GameplayPreparationCancelled;
+
+#[derive(bevy_ecs::resource::Resource, Clone)]
+pub(crate) struct GameplayWarmupCancellation(pub Arc<std::sync::atomic::AtomicBool>);
 
 impl std::fmt::Display for GameplayPreparationCancelled {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1461,7 +1465,15 @@ impl GameplayPreparation {
                 }
                 phase = "original gameplay graph warm-up";
                 log::info!(target: "tiny_glade::startup", "gameplay preparation: original GPU graph warm-up begins");
-                warm_up(gameplay.world_mut())?;
+                gameplay.world_mut().insert_resource(GameplayWarmupCancellation(cancelled.clone()));
+                let warmup = warm_up(gameplay.world_mut());
+                gameplay.world_mut().remove_resource::<GameplayWarmupCancellation>();
+                if let Err(error) = warmup {
+                    if error.chain().any(|cause| cause.is::<GameplayPreparationCancelled>()) {
+                        return Err(GameplayPreparationCancelled.into());
+                    }
+                    return Err(error);
+                }
                 log::info!(target: "tiny_glade::startup", "gameplay preparation: original GPU graph warm-up completed");
                 if cancelled.load(Ordering::Acquire) {
                     return Err(GameplayPreparationCancelled.into());
@@ -1582,7 +1594,7 @@ impl GameplayPreparation {
     /// Original main_loop polls only at the logo's waiting stage and switches
     /// only after the final stage. Early errors are surfaced immediately in
     /// this host, because incomplete producers must not become a hung splash.
-    pub fn poll(&mut self, loading: &mut App) -> anyhow::Result<bool> {
+    pub(crate) fn ready_to_handoff(&mut self, loading: &mut App) -> anyhow::Result<bool> {
         use country_core::resources::logo_animation::LogoAnimation;
         self.poll_completion()?;
         if !loading.world().contains_resource::<LogoAnimation>() {
@@ -1610,6 +1622,11 @@ impl GameplayPreparation {
                 return Ok(false);
             }
         }
+        Ok(self.pending.is_some())
+    }
+
+    pub fn poll(&mut self, loading: &mut App) -> anyhow::Result<bool> {
+        if !self.ready_to_handoff(loading)? { return Ok(false); }
         let Some(gameplay) = self.pending.take() else {
             return Ok(false);
         };
@@ -1705,6 +1722,39 @@ pub fn make_temp_window(
     Ok(window)
 }
 
+/// These tests register the production wall/roof GPU-flush systems, so their
+/// fixture must own the production buffers too. No production system is skipped.
+#[cfg(test)]
+fn install_history_gpu_fixture(app: &mut bevy_app::App) {
+    let device = rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())
+        .expect("production history integration requires a headless Vulkan device");
+    let bridge = crate::render_bridge::CoreRenderBridge::new(
+        device, ".", std::sync::Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new()))
+        .expect("history integration render owners");
+    bridge.install_asset_libraries(app.world_mut()).expect("history asset libraries");
+    app.insert_resource(country_core::asset_libraries::shader_library::SharedAssetShaderLibrary(
+        bridge.shader_library().clone()));
+    let world = app.world();
+    country_core::startup::init_populate_ssbo_library::populate_ssbo_library(
+        world.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(),
+        world.resource::<country_core::render::device::GraphicsDeviceResource>().device());
+    startup_construction_runtime::install(app);
+    app.add_systems(bevy_app::Startup, system_color::set_wall_color_id::init_color_ids_buffer);
+    // This fixture mounts history consumers without the interactive color UI.
+    // ColorSystems owns this replay producer in the full gameplay App.
+    app.add_systems(bevy_app::Update,
+        system_color::replay_color::replay_color::<country_core::resources::history::MaybePendingSnapshotId>
+            .in_set(GameSystemSet(40)));
+    app.world_mut().insert_non_send_resource(bridge);
+    app.init_resource::<country_core::resources::gui::DebugGui>();
+    app.init_resource::<country_core::resources::mouse_terrain_raycast::CameraCursorRay>();
+    app.init_resource::<country_core::resources::gui::EscMenuState>();
+    app.init_resource::<country_core::resources::time_of_day::TimeOfDay>();
+    app.add_event::<country_core::resources::glade_border::DisplayOutOfBorder>();
+    app.add_event::<country_core::resources::glade_border::FeedbackInputOutOfBorder>();
+    app.add_event::<country_core::resources::onboarding::NotifyHintSystemShapeEditWasPerformed>();
+}
+
 #[cfg(test)]
 mod intro_history_integration {
     use super::*;
@@ -1723,7 +1773,7 @@ mod intro_history_integration {
     /// Original shipped intro has 13 entries, 26 internal groups (including
     /// empty and concurrent groups), and ends with exactly these three walls.
     /// This runs the production stage registration, including real Rapier
-    /// bucket flushes, with no window/device or save-thread side effects.
+    /// bucket flushes and headless GPU owners, without a window or save thread.
     #[test]
     fn shipped_intro_reaches_the_same_live_wall_authority() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -1739,6 +1789,30 @@ mod intro_history_integration {
                 GameSystemSet(stage).before(GameSystemSet(stage + 1)),
             );
         }
+        startup_event_runtime::install(&mut app);
+        country_core::startup::run_game::initialize_core_resources(app.world_mut());
+        // Match production plugin order: wall publication subscribes to the
+        // canonical terrain readback owner during installation.
+        country_core::systems::terrain::TerrainSystems::insert_terrain_resources(&mut app);
+        country_core::systems::terrain::register_terrain_events(app.world_mut());
+        app.init_resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>();
+        app.init_resource::<country_core::resources::walls::arches::ArchSegments>();
+        crate::app_systems::WallSystems::add_wall_events(&mut app);
+        app.init_resource::<country_core::systems::camera_rig::MainCamera>();
+        app.insert_resource(country_core::resources::window::WindowSize::new(1280, 720));
+        app.init_resource::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>();
+        app.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
+        app.init_resource::<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>();
+        app.add_event::<country_core::resources::window::AudioCursorMoved>();
+        app.init_resource::<country_core::resources::editing_highlight::EditingHighlight>();
+        app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
+        app.insert_resource(country_core::resources::session::ActiveSession::new(
+            country_core::resources::session::SessionId::new(),
+            country_core::resources::session::SessionMeta::default()));
+        app.add_plugins(system_tree::TreePlugin);
+        system_roof::RoofSystems::add_roof_events_and_resources(&mut app);
+        system_roof::RoofSystems::add_roof_systems(&mut app);
+        install_history_gpu_fixture(&mut app);
         install_history_and_wall_runtime(&mut app, false);
         app.init_resource::<AppMode>();
         app.init_resource::<country_core::systems::mode_manager::PreviousAppMode>();
@@ -1873,6 +1947,11 @@ mod startup_handoff_integration {
         assert_eq!(loading.world().resource::<GameConfig>().video.fps_limit,117.5);
         assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
         loading.world_mut().resource_mut::<LogoAnimation>().progress[4]=1.0;
+        let loading_world = loading.world().id();
+        assert!(preparation.ready_to_handoff(&mut loading).unwrap());
+        assert_eq!(loading.world().id(), loading_world, "readiness must not swap the App before render is settled");
+        assert!(preparation.pending.is_some());
+        assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
         assert!(preparation.poll(&mut loading).unwrap());
         let world=loading.world();
         assert_eq!(world.resource::<GameConfig>().lang_override.as_ref().unwrap().as_ptr() as usize,config_ptr);

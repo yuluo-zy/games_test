@@ -113,10 +113,9 @@ mimalloc = ["dep:mimalloc"]
 # FMOD-backed audio. Always on for Windows (original target); other hosts opt in
 # when libfmod/libfmodstudio are available to link.
 native-audio = ["country-core/native-audio"]
-# The original runs bevy's multi-threaded schedule executor. Off by default: a real
-# run reports hundreds of system pairs with conflicting access and no declared
-# order (TG_SCHEDULE_AMBIGUITY=1: 525 in Update, 23 in PreStartup), which only the
-# single-threaded executor orders deterministically. Enable after those are ordered.
+# Enabled by default. ecs_order pins conflicting accesses on schedule rebuild;
+# TG_ECS_EXECUTOR=single remains the reference execution policy. Deferred command
+# visibility still requires explicit business dependencies and sync points.
 ecs-multithreaded = ["bevy_ecs/multi_threaded"]
 
 [dev-dependencies]

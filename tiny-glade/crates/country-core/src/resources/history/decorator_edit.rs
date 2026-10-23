@@ -885,7 +885,15 @@ impl serde::Serialize for DecoratorHistoryEdit {
                 Ok(serde_json::Value::Object(out))
             };
         let mut diffs = Vec::with_capacity(self.diffs.len());
-        for (addr, diff) in &self.diffs {
+        // The wire form is an array, so HashMap iteration would change saved
+        // history on every reload. Sort references without cloning the states.
+        let mut ordered: Vec<_> = self.diffs.iter().collect();
+        ordered.sort_unstable_by_key(|(addr, _)| match addr {
+            DecoratorStorageAddr::Wall(id) => (0, id.0),
+            DecoratorStorageAddr::Terrain => (1, 0),
+            DecoratorStorageAddr::Stair => (2, 0),
+        });
+        for (addr, diff) in ordered {
             diffs.push(serde_json::json!([decorator_storage_addr_json(*addr), {
                 "before": encode(&diff.before)?, "after": encode(&diff.after)?
             }]));

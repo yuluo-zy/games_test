@@ -7,10 +7,10 @@
 //! **稳定排序**（`sort_by`，`insertion_sort_shift_left`/`driftsort` 同 draw_lists）；
 //! `extent_2d(target)` → `RasterPass::new_impl("UI 2D"(5), [tag0 = target], 无深度, 视口 = target)`；
 //! 每个元素一次 `DrawPacket::new` + `DrawBuilder::new(variant 0)`，**无 `bind_common`**：
-//! - 有 `tint`（元素 `+0x10` 非空）→ 着色器 `ui_2d`：uniform `0x120d1fbd3e93b50f` = Vec2(extent[0], extent[1])、
+//! - 有 `tint`（元素 `+0x10` 非空）→ 着色器 `ui_2d_color_button`：uniform `0x120d1fbd3e93b50f` = Vec2(extent[0], extent[1])、
 //!   `-0x590372c7d4be463b` = Vec2(extent[2], extent[3])、`0x69fdab9b991c4787` = Vec2(窗口宽, 窗口高)、
 //!   `-0x154d5a253117dd2a` = f32(tint+0x18)、`0x0d8ea64f9bd82ef1` = bool(tint+0x21)；
-//! - 无 `tint` → 着色器 `ui_2d_color_button`：同三个 Vec2，`0x35594af7455f3925` = bool(`+0x28` 的 Option 非空)、
+//! - 无 `tint` → 着色器 `ui_2d`：同三个 Vec2，`0x35594af7455f3925` = bool(`+0x28` 的 Option 非空)、
 //!   `0x4c5803d8a5526c67` = bool(button+2)；
 //! - 两者都：`NameHash::compute(image.name)` → `TextureViewDesc::default().view_type(1).base_layer(image.layer).layer_count(1,1)`，
 //!   `bind_texture_to_draw_builder(TextureFromDisk(hash), 绑定名 0x740686c2e74bfe87, 访问 0x1d, view)`；
@@ -208,7 +208,9 @@ pub struct Ui2dDrawElement {
     /// `Ui2dExtent`：4 个 f32。
     pub extent: [f32; 4],
     pub image: Ui2dImageRef,
-    /// 元素 `+0x10` = `Option<&CustomizationIcon>`：`Some` → `ui_2d`；`None` → `ui_2d_color_button`。
+    /// Some uses color-button animation_t/is_original_color; None uses the
+    /// plain image's darken_semitransparent/highlight uniforms. Verified against
+    /// the shipped shader reflection and SPIR-V, including their FNV name keys.
     pub icon: Option<CustomizationIconRead>,
     /// 元素 `+0x18` = `Option<&UiInteractionState>`（color button 路径读取 `+2`；`None` 当 false，I）。
     pub interaction: UiInteractionStateRead,
@@ -275,9 +277,9 @@ pub fn ui_2d_pass(
     for e in sorted {
         let state = pass.host.default_raster_state();
         let shader = if e.icon.is_some() {
-            ui.clone()
-        } else {
             button.clone()
+        } else {
+            ui.clone()
         };
         let packet = DrawPacket::new(shader, [1, 0], state);
         let mut b = DrawBuilder::new(&mut pass, packet, 0)

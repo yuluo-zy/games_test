@@ -606,11 +606,10 @@ pub fn env36_body(b: DrawBuilder<'_>, ranges: Vec<[u32; 2]>) {
 }
 pub fn env36(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
     let lib = res::<AssetSsboLibrary>(w);
-    // O：`FrozenMap::get(SsboId(0x2bf3b1a4ac675864))` → 名字断言 → `as_any`（虚表 +0x18）取
-    // `SparseInstanceBuffer<SparkleSsbo>` → `to_draw_multi_instanced`（0x1412e4250，与 `<RoofTileSsbo>` 同形，
-    // ICF 合并为同名符号）每帧现算绘制区间。`Vec<DrawRange>` = 8 B 一对 `(first_instance, instance_count)`。
+    // The canonical type check also applies to compact render snapshots;
+    // declaration needs only draw metadata, never the CPU instance shadow.
     let ranges = lib
-        .get::<SparkleSsbo>()
+        .sparse_draw_view::<SparkleSsbo>()
         .expect(UNWRAP_NONE)
         .to_draw_multi_instanced();
     let ranges: Vec<[u32; 2]> = ranges
@@ -727,18 +726,18 @@ pub fn wren_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<GpuWorld>();
-    m.resource::<AssetSsboLibrary>();
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
     m.resource::<EditingHighlightView>();
     m.resource::<CursorTerrainRaycast>();
     m.resource::<EraserSizeMultiplier>();
     m.resource::<DebugGuiView>();
     m.resource::<WallHighlight>();
     m.resource::<RockyTerrainMeshVertCount>();
-    m.resource::<crate::systems::camera_rig::main_camera::MainCamera>();
+    m.resource_projected::<crate::systems::camera_rig::main_camera::MainCamera>(crate::systems::camera_rig::main_camera::MainCamera::render_snapshot);
     m.resource::<ActiveSessionView>();
     m.resource::<crate::resources::logo_animation::LogoAnimation>();
     m.resource::<Weather>();
-    m.resource::<MainCamera>();
+    m.resource_projected::<MainCamera>(MainCamera::render_snapshot);
     m.resource::<TreeCanopyMaxCullDistance>();
     m.resource::<RoofHighlight>();
     m.resource::<ActiveSession>();

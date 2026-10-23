@@ -33,7 +33,7 @@ pub(crate) mod texture;
 use ash::vk;
 use queue::UploadQueue;
 pub use queue::{
-    UploadCancellation, UploadFailure, UploadKey, UploadOptions, UploadPriority, UploadQueueConfig,
+    OwnedUploadError, UploadMode, UploadCancellation, UploadFailure, UploadKey, UploadOptions, UploadPriority, UploadQueueConfig,
     UploadQueueStats, UploadStatus,
 };
 use record::{QueueTarget, UploadRoute, WrittenPiece};
@@ -374,6 +374,34 @@ impl TransferManager {
             options,
         })
     }
+    /// Accept an owned interval without a CPU payload copy. Ordered deltas
+    /// never supersede one another and have independent completion tickets.
+    /// Replacement mode is only valid when no accepted frame still requires
+    /// an older pending version. Admission failure returns the allocation.
+    pub fn enqueue_upload_owned(
+        &mut self,
+        destination: Arc<Buffer>,
+        offset: u64,
+        bytes: Vec<u8>,
+        options: UploadOptions,
+        mode: UploadMode,
+    ) -> core::result::Result<QueuedUploadTicket, OwnedUploadError> {
+        let validation = if self.device.is_device_lost() {
+            Err(crate::Error::DeviceLost)
+        } else {
+            self.validate_buffer(&destination, offset, bytes.len() as u64,
+                vk::BufferUsageFlags::TRANSFER_DST)
+        };
+        if let Err(error) = validation {
+            return Err(OwnedUploadError { error, payload: bytes });
+        }
+        let len = bytes.len() as u64;
+        let task = self.queued.enqueue_owned(destination.clone(), offset, bytes, options, mode)?;
+        Ok(QueuedUploadTicket {
+            device: self.device.clone(), buffer: destination, task, offset, bytes: len, options,
+        })
+    }
+
     /// Cancelling one coalesced ticket cancels that whole pending native job.
     /// Submitted work cannot be cancelled and retains its completion proof.
     pub fn cancel_upload(&mut self, ticket: &QueuedUploadTicket) -> crate::Result<bool> {
@@ -411,6 +439,22 @@ impl TransferManager {
     /// Under device-budget pressure only High jobs can be submitted. This never
     /// waits for a device/queue or for an unrelated request.
     pub fn flush_uploads(&mut self, max_submits: usize) -> crate::Result<UploadFlush> {
+        self.flush_uploads_inner(max_submits, false)
+    }
+
+    /// Pump accepted writes while retaining their payload and FIFO position on
+    /// allocation failure. The error is returned immediately; this call never
+    /// retries it. After reclaiming memory the owner may explicitly pump again.
+    ///
+    /// This is for producers that transfer dirty bytes to this bounded queue
+    /// and clear their own dirty flags on acceptance. Pending tickets remain
+    /// pending on OOM. Device loss and invalid/native errors remain terminal,
+    /// with the same ticket failure behavior as `flush_uploads`.
+    pub fn flush_uploads_preserving_oom(&mut self, max_submits: usize) -> crate::Result<UploadFlush> {
+        self.flush_uploads_inner(max_submits, true)
+    }
+
+    fn flush_uploads_inner(&mut self, max_submits: usize, preserve_oom: bool) -> crate::Result<UploadFlush> {
         let mut result = UploadFlush::default();
         if self.device.memory.stats.budget_action() != crate::device::BudgetAction::None {
             self.queued.trim_idle();
@@ -419,6 +463,9 @@ impl TransferManager {
             // Poll first: device-level pressure processing can evict idle native
             // allocator blocks before deciding to defer low-priority payloads.
             if let Err(error) = self.device.poll() {
+                if preserve_oom && error.kind() == crate::ErrorKind::OutOfMemory {
+                    return Err(error);
+                }
                 return Err(self.queued.fail_all(error).to_error());
             }
         }
@@ -451,6 +498,12 @@ impl TransferManager {
                     self.queued.defer();
                     result.capacity_deferred = true;
                     break;
+                }
+                Err(error) if preserve_oom && error.kind() == crate::ErrorKind::OutOfMemory => {
+                    // Ownership never returns to the producer on an accepted
+                    // write. Keep both the original bytes and physical target;
+                    // later writes to this target cannot overtake this job.
+                    return Err(error);
                 }
                 Err(error) => {
                     let failure = if error.is_device_lost() {

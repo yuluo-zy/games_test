@@ -48,8 +48,47 @@ fn core_buffer_roundtrip_through_rhapsody() {
         rhapsody::ErrorKind::InvalidUsage
     );
     let again = host.create_buffer(&desc, "ssbo2", None).unwrap();
-    assert_eq!(again.id, buffer.id);
+    assert_eq!(again.id & 0xffff_ffff, buffer.id & 0xffff_ffff);
+    assert_ne!(again.id, buffer.id);
+    assert!(host.get_by_id(buffer.id).is_none());
     assert_ne!(again.generation, buffer.generation);
+}
+
+#[test]
+fn foreign_hosts_and_reused_slots_reject_both_typed_and_id_only_handles() {
+    use country_core::render::load_texture::boundary::{TextureDesc, TextureDevice};
+    use tiny_glade::render_host::TextureHost;
+    let Some(device) = graphics_device() else { return };
+    let a = BufferHost::new(device.clone());
+    let b = BufferHost::new(device.clone());
+    let desc = BufferDesc::new(16, 0x20 | 0x2, 2);
+    let first = a.create_buffer(&desc, "first host", None).unwrap();
+    let foreign = b.create_buffer(&desc, "second host", None).unwrap();
+    assert_eq!(first.id & 0xffff_ffff, foreign.id & 0xffff_ffff);
+    assert!(b.managed_buffer(&first).is_none());
+    assert!(b.get_by_id(first.id).is_none());
+    assert!(!b.release(&first));
+    assert!(b.update_buffer_bytes(&first, &[9], &[0..1], 0).is_err());
+    assert!(a.release(&first));
+    let replacement = a.create_buffer(&desc, "reused slot", None).unwrap();
+    assert!(a.get_by_id(first.id).is_none());
+    assert!(a.get_by_id(replacement.id).is_some());
+    assert_ne!(tiny_glade::render_host::graph_token(first.id),
+        tiny_glade::render_host::graph_token(replacement.id));
+    let textures_a = TextureHost::new(device.clone());
+    let textures_b = TextureHost::new(device);
+    let desc = TextureDesc::new([1, 1, 1], 2, 37).sampled();
+    let first = textures_a.create_texture("first host", &desc, &[1, 2, 3, 4]).unwrap();
+    let second = textures_b.create_texture("second host", &desc, &[5, 6, 7, 8]).unwrap();
+    assert_eq!(first.id & 0xffff_ffff, second.id & 0xffff_ffff);
+    assert!(textures_b.get(&first).is_none());
+    assert!(textures_b.get_by_id(first.id).is_none());
+    assert!(!textures_b.release(&first));
+    assert!(textures_a.release(&first));
+    let replacement = textures_a.create_texture("reused slot", &desc, &[0; 4]).unwrap();
+    assert!(textures_a.get_by_id(first.id).is_none());
+    assert!(textures_a.get(&replacement).is_some());
+    assert!(textures_a.get_by_id(replacement.id & !tiny_glade::render_host::TEXTURE_ID_TAG).is_none());
 }
 
 #[test]
@@ -122,7 +161,8 @@ fn core_compute_pipeline_loads_compiled_bin_and_creates_vulkan_pipeline() {
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(&path, compiled.encode().unwrap()).unwrap();
 
-    let host = ShaderHost::new(device, &root).unwrap();
+    let host = ShaderHost::new(device.clone(), &root).unwrap();
+    let foreign_host = ShaderHost::new(device, &root).unwrap();
     let desc = ComputePipelineDesc {
         path: "test/empty".into(),
         entry: "cs_main".into(),
@@ -130,7 +170,9 @@ fn core_compute_pipeline_loads_compiled_bin_and_creates_vulkan_pipeline() {
     };
     let loaded = host.load_compiled_compute(&desc).unwrap();
     let program =
-        country_core::render::shader::ComputeShaderProgram::try_new("empty", desc, &host).unwrap();
+        country_core::render::shader::ComputeShaderProgram::try_new("empty", desc.clone(), &host).unwrap();
+    let foreign_program = country_core::render::shader::ComputeShaderProgram::try_new(
+        "foreign empty", desc, &foreign_host).unwrap();
     let pipeline = program.pipeline;
     drop(loaded);
     // The requested pipeline is registered once; a warm host scans nothing.
@@ -139,6 +181,11 @@ fn core_compute_pipeline_loads_compiled_bin_and_creates_vulkan_pipeline() {
     assert_eq!(host.pending_ticket_count(), 0, "ready tickets leave the registry");
     host.prewarm(std::time::Duration::from_secs(10)).unwrap();
     assert!(host.compute_pipeline(&pipeline).is_some());
+    foreign_host.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    assert!(foreign_host.compute_pipeline(&foreign_program.pipeline).is_some());
+    assert_eq!(pipeline.id & 0xffff_ffff, foreign_program.pipeline.id & 0xffff_ffff);
+    assert!(foreign_host.compute_entry(&pipeline).is_none());
+    assert!(host.compute_entry(&foreign_program.pipeline).is_none());
     std::fs::remove_dir_all(root).ok();
 }
 
@@ -762,7 +809,7 @@ fn core_raster_pipeline_creates_from_key_handle_and_opts_bitfield() {
                 VertexInput {
                     location: 0,
                     ty: Type::Vector(VectorType {
-                        scalar_ty: ScalarType::Float(32),
+                        scalar_ty: ScalarType::Float(4),
                         nscalar: 4,
                     }),
                 },

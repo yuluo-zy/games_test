@@ -840,7 +840,7 @@ fn record_sparse_cull<
     let resources = env.pass_resources();
     let sparse = resources
         .ssbo_library()
-        .get::<T>()
+        .sparse_draw_view::<T>()
         .expect("Nani external sparse instance buffer is missing");
     let ranges = sparse.to_draw_multi_instanced();
     let pass = create_cull_and_bucket_pass::<_, GameNaniSsbos>(env, &source, res)

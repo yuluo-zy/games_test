@@ -111,16 +111,25 @@ fn canonicalize_original_history_aliases(value: &mut serde_json::Value) {
     }
 }
 
-/// 原TerrainAttachment的pos_xz为Vec2<f32>，yaw_radians为f32。
-/// 只准入auxiliary差分内该确切schema；其它数字、字段和数组不受影响。
-fn is_native_terrain_attachment_f32_path(path: &str) -> bool {
+/// Native terrain attachment coordinates and these three decorator scalar
+/// slots are f32 (snapshot::DecoratorInfoJson). Compare all 32 bits after a
+/// JSON round trip; preserve exact comparisons for other numbers and keys.
+fn is_native_decorator_f32_path(path: &str) -> bool {
     let Some((_, suffix)) = path.split_once("/decorators/diffs/") else {
         return false;
     };
     let parts: Vec<_> = suffix.split('/').collect();
     let (row, phase, id) = match parts.as_slice() {
         [row, "1", phase, id, "dst", "Terrain", "pos_xz", "0" | "1"]
-        | [row, "1", phase, id, "dst", "Terrain", "yaw_radians"] => (*row, *phase, *id),
+        | [row, "1", phase, id, "dst", "Terrain", "yaw_radians"]
+        | [row, "1", phase, id, "dst", "Roof", "mesh_uv", "0" | "1"]
+        | [row, "1", phase, id, "dst", "Roof", "relative_yaw_radians"]
+        | [row, "1", phase, id, "dst", "Stair", "uv", "0" | "1"]
+        | [row, "1", phase, id, "dst", "Stair", "yaw_radians"]
+        | [row, "1", phase, id, "dst", "Wall", "coord", "x" | "y"]
+        | [row, "1", phase, id, "dst", "Wall", "anchor", "anchor_ws", "0" | "1" | "2"]
+        | [row, "1", phase, id, "dst", "Wall", "anchor", "wall_height_relative_y"]
+        | [row, "1", phase, id, "h_offset" | "lantern_brightness" | "stair_width"] => (*row, *phase, *id),
         _ => return false,
     };
     row.parse::<usize>().is_ok()
@@ -148,7 +157,7 @@ fn assert_original_fields_retained(
                 assert_original_fields_retained(original, saved, &format!("{path}/{index}"));
             }
         }
-        (Value::Number(_), Value::Number(_)) if is_native_terrain_attachment_f32_path(path) => {
+        (Value::Number(_), Value::Number(_)) if is_native_decorator_f32_path(path) => {
             // Value先把f32扩为f64，默认JSON解析还可能再偏移一个f64 ULP。
             // 这里比较原字段的全部32位，绝不使用epsilon或把整数一并降精度。
             let original: f32 = serde_json::from_value(original.clone())
@@ -237,10 +246,10 @@ fn terrain_numeric_scope_keeps_ids_unknown_fields_and_other_domains_strict() {
         "fixture/decorators/diffs/0/1/after/0/seed",
         "fixture/decorators/diffs/0/1/after/0/dst/Terrain/unknown",
         "fixture/decorators/diffs/0/1/after/0/dst/Terrain/pos_xz/2",
-        "fixture/decorators/diffs/0/1/after/0/dst/Roof/mesh_uv/0",
+        "fixture/decorators/diffs/0/1/after/0/dst/Roof/mesh_uv/2",
         "fixture/other/dst/Terrain/pos_xz/0",
     ] {
-        assert!(!is_native_terrain_attachment_f32_path(path));
+        assert!(!is_native_decorator_f32_path(path));
         let failure = std::panic::catch_unwind(|| assert_original_fields_retained(&a, &b, path));
         assert!(failure.is_err(), "未知字段仍必须精确相等：{path}");
     }
@@ -256,9 +265,19 @@ fn terrain_numeric_scope_keeps_ids_unknown_fields_and_other_domains_strict() {
         "before/0/dst/Terrain/pos_xz/0",
         "after/42/dst/Terrain/pos_xz/1",
         "after/0/dst/Terrain/yaw_radians",
+        "after/0/dst/Roof/mesh_uv/0",
+        "after/0/dst/Roof/relative_yaw_radians",
+        "after/0/dst/Stair/uv/1",
+        "after/0/dst/Stair/yaw_radians",
+        "after/0/dst/Wall/coord/x",
+        "after/0/dst/Wall/anchor/anchor_ws/2",
+        "after/0/dst/Wall/anchor/wall_height_relative_y",
+        "after/0/h_offset",
+        "after/0/lantern_brightness",
+        "after/0/stair_width",
     ] {
         let path = format!("fixture/decorators/diffs/0/1/{suffix}");
-        assert!(is_native_terrain_attachment_f32_path(&path));
+        assert!(is_native_decorator_f32_path(&path));
         assert_original_fields_retained(&a, &b, &path);
     }
 }
@@ -753,6 +772,14 @@ fn luma(rgba: &[u8]) -> Vec<f32> {
 /// move must converge: TAA history is valid from the second frame and frames stay stable.
 #[test]
 fn shipped_session_steady_state_multi_frame() -> Result<()> {
+    // Construct all thread-local graph owners here, as the production worker
+    // does. An opt-in parallel run must exercise actual shared-pool Collect.
+    std::thread::Builder::new().name("tg-render".into())
+        .spawn(run_shipped_session_steady_state_multi_frame)?
+        .join().unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+}
+
+fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
     const FRAMES: usize = 30;
     const CAPTURES: [usize; 7] = [1, 2, 3, 4, 9, 19, 29]; // 2nd, 10th and 30th frame plus the convergence ramp // 2nd, 10th and 30th frame plus the convergence ramp
     let BootedSession { mut driver, context, mut bridge, shaders: _shaders, device, _boot } =
@@ -770,6 +797,7 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
         let completed = world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>();
         bridge.accept_gameplay_warmup(completed)?;
     }
+    let _ = country_core::render::declare_probe::take();
     let captured: std::sync::Arc<parking_lot::Mutex<Vec<(usize, u32, u32, Vec<u8>)>>> =
         Default::default();
     let out_dir = std::env::var_os("TG_MULTIFRAME_OUT").map(PathBuf::from);
@@ -911,6 +939,24 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
     }
     tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
     bridge.wait_submits_done(10_000_000_000)?;
+    // Recording page distribution and GPU overlap legitimately change the
+    // instantaneous high-water mark. Drain real completion, then account for
+    // every surviving descriptor through its intended frame-global/sampler
+    // owner. A strong residency index or leaked past frame fails exactly here.
+    let collection = country_core::render::declare_probe::take();
+    if std::env::var("TG_DRAW_COLLECT").as_deref() == Ok("parallel") {
+        assert!(collection.collect_tasks > 0, "parallel acceptance ran only inline fallback");
+        eprintln!("MULTIFRAME actual shared-pool Collect jobs: {}, cross-pass jobs: {}", collection.collect_tasks, collection.cross_pass_tasks);
+        if std::env::var_os("TG_REQUIRE_CROSS_PASS").is_some() {
+            assert!(collection.cross_pass_tasks > 0, "cross-pass acceptance ran only single-pass Collect");
+        }
+    }
+    let drained = bridge.shader_backend().bindless_stats();
+    let expected = bridge.shader_backend().retained_bindless_counts();
+    let actual = drained.tables.map(|table| table.live);
+    eprintln!("MULTIFRAME drained descriptor owners: actual={actual:?}, expected={expected:?}, peak={}", drained.peak_live);
+    assert_eq!(actual, expected, "descriptors outlive their intended owners after actual GPU completion");
+    assert_eq!(drained.live, expected.iter().sum::<usize>());
     // Grass blades survive the steady state. The ground carries a fine blade texture only while
     // the blade draws land (see `plain_indirect_needs_count_form`); a bare ground, blades dropped
     // after the first frame, loses most of its horizontal luma gradient in the lower picture.
@@ -1008,16 +1054,23 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
         assert_eq!(diagnostics.misses(CacheReason::Cold), 1, "only the very first plan is a cold miss");
         let structural = diagnostics.misses(CacheReason::GraphStructure) + diagnostics.misses(CacheReason::AccessSemantics);
         assert!(structural <= 4, "more than parity x capture structural plan variants: {structural}");
-        let stable = rows.iter().skip(6).filter(|r| !r.stats.plan_cache_hit).map(|r| r.index).collect::<Vec<_>>();
+        // Capture stops after frame 4. Both temporal parities of the graph
+        // without capture first appear at frames 5 and 6.
+        let stable = rows.iter().skip(7).filter(|r| !r.stats.plan_cache_hit).map(|r| r.index).collect::<Vec<_>>();
         assert!(stable.is_empty(), "plan cache must hit on every frame once all variants are cached; misses at {stable:?}");
     }
     // Descriptor/ring recycling: live counts and ring pages stay flat in the steady state.
-    let steady = &rows[2..];
+    // Serial cold recording switches to up to eight recording pages after
+    // cache warmup; the last capture branch is exercised at frame 9.
+    let steady = &rows[10..];
     let live_min = steady.iter().map(|r| r.shader_heap.live).min().unwrap();
     let live_max = steady.iter().map(|r| r.shader_heap.live).max().unwrap();
-    assert!(live_max - live_min <= 16, "shader bindless live drifts: {live_min}..{live_max}");
-    assert!(steady.iter().all(|r| r.shader_heap.peak_live == steady[0].shader_heap.peak_live || r.shader_heap.peak_live <= steady[0].shader_heap.peak_live + 16),
-        "shader bindless peak keeps growing");
+    // Overlap/page distribution can change peaks without retaining old frames.
+    // Physical page capacity must still stabilize; the drained exact ownership
+    // assertion above checks retention independently of completion timing.
+    eprintln!("MULTIFRAME in-flight shader descriptors: {live_min}..{live_max}");
+    assert!(steady.iter().all(|r| r.shader_heap.capacity == steady[0].shader_heap.capacity),
+        "shader descriptor pages keep growing after warmup");
     assert!(steady.iter().all(|r| r.texture_heap.live == steady[0].texture_heap.live), "texture heap live drifts");
     assert!(steady.iter().all(|r| r.constants.pages <= 4), "dynamic-constants pages keep growing");
     assert!(steady.last().unwrap().constants.page_reuses > steady[0].constants.page_reuses, "constants pages are never reused");

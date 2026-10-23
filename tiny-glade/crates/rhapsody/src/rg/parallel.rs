@@ -100,7 +100,7 @@ impl TaskRunner {
     /// 对每个块调用 `f(块序号, 块)`，结果按块顺序返回。
     pub fn map_chunks<T, R>(
         self,
-        mut items: &mut [T],
+        items: &mut [T],
         f: impl Fn(usize, &mut T) -> R + Send + Sync,
     ) -> Vec<R>
     where
@@ -114,10 +114,21 @@ impl TaskRunner {
                 .map(|(i, item)| f(i, item))
                 .collect(),
             Self::ComputePool => {
-                use bevy_tasks::{ComputeTaskPool, ParallelSliceMut, TaskPool};
+                use bevy_tasks::{ComputeTaskPool, TaskPool};
                 let pool = ComputeTaskPool::get_or_init(TaskPool::default);
-                // 每个块一个任务；bevy 的 scope 按 spawn 顺序返回结果。
-                items.par_chunk_map_mut(pool, 1, |index, chunk| f(index, &mut chunk[0]))
+                // Only run this recording scope's tasks on the caller. Ticking
+                // the global executor here can execute an unrelated ECS writer
+                // under the render owner's thread identity and bypass its frame
+                // read boundary. Callers sharing a pool with blocking producers
+                // must also provide admission or choose Inline.
+                let mut indexed = pool.scope_with_executor(false, None, |scope| {
+                    for (index, item) in items.iter_mut().enumerate() {
+                        let f = &f;
+                        scope.spawn(async move { (index, f(index, item)) });
+                    }
+                });
+                indexed.sort_unstable_by_key(|(index, _)| *index);
+                indexed.into_iter().map(|(_, value)| value).collect()
             }
         }
     }

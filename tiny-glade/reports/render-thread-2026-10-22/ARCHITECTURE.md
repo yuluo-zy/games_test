@@ -1,5 +1,7 @@
 # 渲染线程架构(主线:World 只属于游戏线程,GPU 状态只属于渲染线程)
 
+> 后续所有权、增量上传、并行声明与晚相机改造以 [PARALLEL_REFACTOR.md](PARALLEL_REFACTOR.md) 的修订方案为准。本文保留已有实现及历史迁移记录；计划中的能力不代表已实现。
+
 ## 线程与所有权
 | 线程 | 独占 | 每帧工作 |
 |---|---|---|
@@ -69,7 +71,7 @@ rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridg
 
 目标:游戏线程每帧只做"更新 → 交接(回收 + 写回 + 提取)→ 启动";声明、编译、执行、呈现全部在渲染线程。
 
-### 当前每帧流程(已实现,未测试)
+### 第二阶段初始每帧流程（历史记录；后续验证见修订计划）
 1. 游戏线程 `App::update`(与上一帧渲染并行)。
 2. `GameFrameDriver::settle_render`:回收渲染侧,执行 `FrameFeedback.apply`(写回),计数与错误。
 3. `ExtractSet::run(game, render)`:按 tick 拷贝资源、镜像实体组件、事件/状态/存在性、渲染侧所有资源、截图请求移交;写入 `ExtractedAt` 并推进渲染 World tick。
@@ -77,7 +79,7 @@ rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridg
 5. 渲染线程 `render_back_frame`:`render_front`(绘制列表+声明+编译,读渲染 World)→ `WriteBackSet::run`(生成写回)→ `render_back`(执行/取图/呈现/present/节奏)。
 6. App 切换时 `reset_render_exchange`:新渲染 World + 新交接集(实体 id 只属于一个 World)。
 
-### 步骤与状态
+### 初始步骤落地记录（后续修正以修订计划为准）
 | 步骤 | 内容 | 状态 |
 |---|---|---|
 | 1 | 渲染 World 与实体提取:`RenderExtract` trait,各声明模块的 `render_extract` 清单,`ExtractSet` 显式 tick、实体镜像(同 id、换代替换)、事件、状态、存在性 `Present<R>`、渲染侧所有 | ✅ 已提交 d7792767d |
@@ -87,12 +89,12 @@ rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridg
 | 5 | 整体切换:前半帧移入渲染线程,游戏线程删除前半帧调用 | ✅ 代码完成,待提交 |
 | 6 | ECS 多线程执行器:各调度先单线程构建一次,读取冲突对,按执行顺序经 `ScheduleBuildPass` 加边后切 MultiThreaded(`ecs_order.rs`),`ecs-multithreaded` 进入默认特性 | ✅ 已提交 301141bbd |
 | 7 | 渲染线程内并行 | 🔶 部分完成,见下 |
-| 8 | 测试与修复:全量单测、GPU 集成测试、冒烟、截图、真机测量;修复清单遗漏(运行时 "missing X")、写回遗漏 | ⏳ 全部实现后统一进行 |
+| 8 | 测试与修复:全量单测、GPU 集成测试、冒烟、截图、真机测量;修复清单遗漏(运行时 "missing X")、写回遗漏 | 🔶 已分阶段执行；完整回归和真机性能验收未完成，见修订计划 |
 
 ### 已知风险与待验证点(测试阶段逐项确认)
 - 清单由静态扫描生成:经辅助函数间接读取的资源可能遗漏,表现为渲染线程报 "missing X";补到对应模块的 `render_extract`。
-- 快照语义:游戏在更新 N+1 写的 GPU 映射内存与渲染线程录制 N 并行,和原先"GPU 执行 N 与更新 N+1 并行"同类;CPU 侧快照保证声明看到一致的帧 N 数据。
-- 每帧快照开销:SSBO 库中 ShadowedBuffer/稀疏缓冲的 CPU 影子整块复制,需实测;必要时改为 Arc 写时复制或去掉渲染侧不读的影子。
+- 快照语义:CPU 状态隔离不能保证 GPU 内容隔离。游戏 N+1 的 flush/mapped 写入与渲染 N 并行时，仍须按帧读边界、物理版本与 GPU 完成点管理；旧实现的并发方式不能作为正确性证明。
+- 快照开销:本轮已移除稀疏缓冲 CPU 影子快照、将 Raster 改为 Arc 写时复制；普通 ShadowedBuffer、其他库和元数据表仍需继续审计与测量，详见修订计划。
 - 渲染侧写入且游戏也读的状态若漏登记写回,游戏侧会停在旧值(如画廊预览、缩略图之外的 UI 状态)。
 - 截图:请求在交接时移交,游戏侧 `has_requests/active_capture_purpose` 只看到尚未移交的请求。
 - 加载 App 与游戏 App 共用同一套交接集,切换时重建。
@@ -100,7 +102,7 @@ rhapsody 全部测试通过;tiny-glade:compile_before_submit、core_render_bridg
 
 ### 步骤 7 明细(2026-10-23)
 - ✅ draw 回调改为只读渲染 World(`DrawListFn` 第三参 `&World`):声明期不能经回调改 World,是逐 draw 并行的前提。
-- ✅ 统一任务池:`tg-compute` 同时服务游戏线程的 ECS 执行器与渲染线程的并行录制;默认线程数改为核数-2(游戏线程、渲染线程各占一核)。
-- ✅ 晚锁相机:相机等每帧数据在交接点(启动渲染前的最后时刻)提取,已是游戏线程上能取到的最新值。
+- ✅ 统一任务池:`tg-compute` 同时服务游戏线程的 ECS 执行器与渲染线程的并行录制;默认线程数为 `clamp(核数-2, 1, 8)`，可配置覆盖。
+- ⏳ 晚锁相机:目前仅在交接点提取游戏更新后的相机。没有等待期间的新输入预览、最终相机统一更新和精确交互门控，不能视为真正的晚锁相机完成。
 - ⛔ 声明分组并行:未做。声明期 `RasterPass`/`DrawBuilder` 经 `Rc<RefCell<RenderGraph>>` 与会话 `Rc<RefCell<VulkanGraphSession>>` 写入,单线程类型。要并行需先把每个 pass 的声明改成"先在线程本地生成 draw 包(只读渲染 World + 只读库快照),再按 pass 顺序串行提交到图",即 `run_list_pass` 拆为 并行 collect + 串行 commit;`DrawBuilder` 需要能脱离 `pass.host` 构造。属 rhapsody/桥接层改动,单独立项。
 - ⛔ 保留图扩展:现有计划缓存几乎全命中;再进一步需要跨帧保留声明结果(按 pass 输入哈希跳过声明),依赖上一条的 collect/commit 拆分。

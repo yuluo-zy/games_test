@@ -501,15 +501,15 @@ impl<'f, 's, 'w> SceneComputeHost<'f, 's, 'w> {
 
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
-    m.resource::<AssetTextureLibrary>();
-    m.resource::<AssetSsboLibrary>();
-    m.resource::<AssetVAOLibrary>();
+    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
+    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    m.resource_incremental::<AssetVAOLibrary>(AssetVAOLibrary::snapshot_revision, AssetVAOLibrary::update_render_snapshot);
     m.resource::<AssetPlacementDataLibrary>();
-    m.resource::<world_raster_defs::WaterRaster>();
-    m.resource::<world_raster_defs::GardenRaster>();
+    m.resource_projected::<world_raster_defs::WaterRaster>(world_raster_defs::WaterRaster::declaration_snapshot);
+    m.resource_projected::<world_raster_defs::GardenRaster>(world_raster_defs::GardenRaster::declaration_snapshot);
     m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
     m.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>();
-    m.resource::<country_core::systems::camera_rig::main_camera::MainCamera>();
+    m.resource_projected::<country_core::systems::camera_rig::main_camera::MainCamera>(country_core::systems::camera_rig::main_camera::MainCamera::render_snapshot);
 }
 
 #[cfg(test)]
@@ -552,7 +552,8 @@ mod nani_cull_owner_tests {
             &BufferDesc::new(96, 0x20022, 1).alignment(4),
             "replacement Nani cull owner", Some(&[0x32; 96]),
         ).unwrap();
-        assert_eq!(replacement.id, handle.id, "exercise actual slot reuse");
+        assert_eq!(replacement.id & 0xffff_ffff, handle.id & 0xffff_ffff, "exercise actual slot reuse");
+        assert_ne!(replacement.id, handle.id);
         assert_ne!(replacement.generation, handle.generation);
         assert!(buffers.managed_buffer(&handle).is_none());
         let error = retain_nani_cull_read(&buffers, &handle, 32).err().unwrap();

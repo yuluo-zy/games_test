@@ -1,7 +1,7 @@
 //! Tests the scoped canonical-owner consumer, not a full game unload verdict.
 use std::{
     ops::Range,
-    sync::{Arc, atomic::Ordering},
+    sync::Arc,
 };
 
 use bevy_ecs::{prelude::*, system::SystemState};
@@ -397,12 +397,12 @@ fn dormer_allocation_drop_retires_to_its_same_buffer_then_reuses_capacity_across
             buffer.byte_map[0], 1,
             "drop queues, it does not drain waste"
         );
-        assert_ne!(buffer.active_bitset[0].load(Ordering::Relaxed) & 1, 0);
+        assert_ne!(buffer.active_word(0) & 1, 0);
         state.apply(&mut world);
         buffer.take_out_waste();
         assert!(buffer.waste.lock().is_empty());
         assert_eq!(buffer.byte_map[0], 0);
-        assert_eq!(buffer.active_bitset[0].load(Ordering::Relaxed) & 1, 0);
+        assert_eq!(buffer.active_word(0) & 1, 0);
         assert_eq!(buffer.free_chunks.read().len(), capacity);
         buffer.take_out_waste();
         assert_eq!(

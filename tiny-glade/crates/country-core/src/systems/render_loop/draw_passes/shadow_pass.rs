@@ -9,7 +9,7 @@
 //! 然后回调 `item+0x70`，`RasterPass::render`。
 
 use crate::systems::render_loop::draw_passes::d_main_support::{
-    DepthSpec, DrawPassCtx, ItemMode, ListPass, run_list_pass,
+    DepthSpec, DrawPassCtx, ItemMode, ListPass, run_independent_list_passes,
 };
 use crate::systems::render_loop::draw_passes::draw_lists::DrawLists;
 
@@ -24,9 +24,8 @@ pub const SHADOW_LIST: usize = 0;
 
 /// `shadow_pass(ctx, world, lists)`。
 pub fn shadow_pass(ctx: &mut DrawPassCtx<'_>, lists: &DrawLists) {
-    for cascade in 0..SHADOW_CASCADES {
-        let atlas = ctx.host().rg_texture(SHADOW_ATLAS_PRESET);
-        let spec = ListPass {
+    let atlas = ctx.host().rg_texture(SHADOW_ATLAS_PRESET);
+    let specs: Vec<_> = (0..SHADOW_CASCADES).map(|cascade| ListPass {
             name: SHADOW_PASS_NAME,
             colors: &[],
             depth: DepthSpec::Write {
@@ -41,7 +40,6 @@ pub fn shadow_pass(ctx: &mut DrawPassCtx<'_>, lists: &DrawLists) {
             },
             variant: 1,
             extra: None,
-        };
-        run_list_pass(ctx, &spec, lists.list(SHADOW_LIST));
-    }
+        }).collect();
+    run_independent_list_passes(ctx, &specs, lists.list(SHADOW_LIST));
 }

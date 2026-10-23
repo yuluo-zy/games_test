@@ -977,6 +977,13 @@ pub fn shutdown(world: &mut World) -> rhapsody::Result<()> {
         request.hurry = true;
     }
     let result = finish_owned(&mut owner);
+    // No later graph can satisfy an unsubmitted request after shutdown. Settle
+    // its callback exactly once instead of silently dropping it with the World.
+    let message = result.as_ref().err().map(|error| format!("Screenshot shutdown failed: {error}"))
+        .unwrap_or_else(|| "Screenshot cancelled before submission during shutdown".to_owned());
+    for mut request in owner.active.drain(..) {
+        if let Some(callback) = request.completion.take() { callback(Err(message.clone())); }
+    }
     // Always join all previously started writer threads even if readback failed.
     for writer in owner.writers.drain(..) {
         let _ = writer.join();
@@ -1012,6 +1019,30 @@ mod tests {
         resources::steam::{AnalogActionData, DigitalActionData, SteamSdk},
     };
     use std::sync::Mutex;
+
+    #[test]
+    fn shutdown_settles_unsubmitted_requests_after_render_ownership_transfer_once() {
+        let mut game = World::new();
+        game.init_resource::<Requests>();
+        let (send, receive) = std::sync::mpsc::channel();
+        enqueue(&mut game, ScreenshotRequest {
+            purpose: ScreenshotPurpose::FinalFrame,
+            dimensions: None,
+            sink: ScreenshotSink::Rgba(Arc::new(|_, _, _| panic!("cancelled request delivered pixels"))),
+            completion: Some(Arc::new(move |result| { send.send(result).unwrap(); })),
+        }).unwrap();
+        let mut exchange = crate::render_thread::RenderExchange::default();
+        render_exchange(&mut exchange);
+        let mut render = World::new();
+        exchange.extract.run(&mut game, &mut render);
+        shutdown(&mut game).unwrap();
+        assert!(receive.try_recv().is_err(), "the request moved to the render owner");
+        shutdown(&mut render).unwrap();
+        assert!(receive.recv().unwrap().unwrap_err().contains("cancelled before submission"));
+        shutdown(&mut render).unwrap();
+        assert!(receive.try_recv().is_err());
+        assert!(!has_requests(&render));
+    }
 
     /// Slot ids are the byte offsets 0xe8/0xf0/0xf8 of the original resource / 8.
     #[test]

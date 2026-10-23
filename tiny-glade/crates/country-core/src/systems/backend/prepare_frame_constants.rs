@@ -9,7 +9,7 @@ use crate::{
         frame_constants::FrameConstants,
         render_config::FrameRenderConfig,
         render_temporal_state::{FrameCameraMatrices, RenderTemporalState},
-        view_constants::ViewportConstantBuilder,
+        view_constants::{ViewConstants, ViewportConstantBuilder},
     },
     resources::{
         editing_highlight::EditingHighlight,
@@ -87,6 +87,49 @@ fn shadow_projection(scale_bits: u32) -> Mat4 {
     )
 }
 
+/// Async hosts prepare a preview during simulation and commit the candidate
+/// only after a real image-writing submission. Direct synchronous hosts retain
+/// their explicit prepare/render-return lifecycle.
+#[derive(Resource)]
+pub struct DeferredTemporalHistory;
+
+/// The shared camera-only producer. Re-running this after feedback does not
+/// consume outline events or advance camera rig smoothing a second time.
+pub fn prepare_camera_views(
+    camera: &MainCamera,
+    temporal: &mut RenderTemporalState,
+    extent: [u32; 2],
+    taa: &TaaJitterSet,
+    refactoring: &ShaderRefactoringState,
+    use_taa_jitter: bool,
+) -> [ViewConstants; 2] {
+    if refactoring.disc >= 2 {
+        temporal.frame_index = refactoring.payload & 3;
+    }
+    let jitter = if use_taa_jitter {
+        let samples = &taa.0;
+        // Native remainder-by-zero panic is retained for an empty set.
+        samples[temporal.frame_index as usize % samples.len()]
+    } else {
+        Vec2::ZERO
+    };
+    let current = camera_matrices(camera);
+    let previous = if temporal.frame_index == 0 {
+        current
+    } else {
+        temporal.camera
+    };
+    let extent = UVec2::from_array(extent);
+    let main_unjittered = viewport(current, previous, extent).build();
+    let previous_jitter = temporal.previous_jitter;
+    temporal.camera = current;
+    temporal.previous_jitter = jitter;
+    let mut main_jittered = main_unjittered;
+    main_jittered.set_pixel_offset(jitter, previous_jitter, extent);
+
+    [main_jittered, main_unjittered]
+}
+
 /// `outline_events`: original EventReader yields in order. `Some(edge)` is a
 /// decoded original payload tag3; `None` is any other tag. The adapter must
 /// preserve the reader position when the first allocated edge terminates it.
@@ -105,29 +148,9 @@ pub fn prepare_frame_constants_from_inputs(
     } else {
         0.0
     };
-    if input.refactoring.disc >= 2 {
-        temporal.frame_index = input.refactoring.payload & 3;
-    }
-    let jitter = if use_taa_jitter {
-        let samples = &input.taa.0;
-        // Native remainder-by-zero panic is retained for an empty set.
-        samples[temporal.frame_index as usize % samples.len()]
-    } else {
-        Vec2::ZERO
-    };
-    let current = camera_matrices(input.camera);
-    let previous = if temporal.frame_index == 0 {
-        current
-    } else {
-        temporal.camera
-    };
-    let extent = UVec2::from_array(input.render_config.extent_10);
-    let main_unjittered = viewport(current, previous, extent).build();
-    let previous_jitter = temporal.previous_jitter;
-    temporal.camera = current;
-    temporal.previous_jitter = jitter;
-    let mut main_jittered = main_unjittered;
-    main_jittered.set_pixel_offset(jitter, previous_jitter, extent);
+    let [main_jittered, main_unjittered] = prepare_camera_views(
+        input.camera, temporal, input.render_config.extent_10, input.taa,
+        input.refactoring, use_taa_jitter);
 
     let mut editing_color = input.highlight.color;
     let mut stair_id = 0;
@@ -258,6 +281,7 @@ pub fn prepare_frame_constants(
     mut temporal: ResMut<RenderTemporalState>,
     mut constants: ResMut<FrameConstants>,
     mut outlines: EventReader<OutlineStairsCmd>,
+    deferred_history: Option<Res<DeferredTemporalHistory>>,
 ) {
     let input = FrameConstantInputs {
         light: &resources.0,
@@ -284,9 +308,11 @@ pub fn prepare_frame_constants(
             None
         }
     });
+    let mut preview = *temporal;
+    let temporal = if deferred_history.is_some() { &mut preview } else { &mut *temporal };
     *constants = prepare_frame_constants_from_inputs(
         &input,
-        &mut temporal,
+        temporal,
         &mut events,
         USE_TAA_JITTER.load(Ordering::Relaxed),
     );
@@ -483,6 +509,17 @@ mod tests {
         let exhausted = world.resource::<FrameConstants>();
         assert_eq!(exhausted.highlighted_transient_stair_edge_id, 0);
         assert_eq!(exhausted.editing_highlight_color, highlight.to_array());
+
+        world.insert_resource(DeferredTemporalHistory);
+        let before = *world.resource::<RenderTemporalState>();
+        let tick = world.get_resource_change_ticks::<RenderTemporalState>().unwrap().changed;
+        for _ in 0..2 { schedule.run(&mut world); }
+        let after = world.resource::<RenderTemporalState>();
+        assert_eq!(after.camera, before.camera);
+        assert_eq!(after.previous_jitter, before.previous_jitter);
+        assert_eq!(after.frame_index, before.frame_index);
+        assert_eq!(world.get_resource_change_ticks::<RenderTemporalState>().unwrap().changed, tick,
+            "asynchronous simulation must neither commit history nor mark it changed");
     }
 
     #[test]

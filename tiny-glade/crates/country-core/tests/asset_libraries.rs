@@ -427,8 +427,14 @@ impl StorageElement for Word {
 #[test]
 fn cpu_shadow_uses_a_checked_cast_and_preserves_buffer_identity() {
     let device = RecordingDevice::default();
-    let shadow = ShadowedBuffer::new(&device, vec![Word(7), Word(11)]);
+    let mut shadow = ShadowedBuffer::new(&device, vec![Word(7), Word(11)]);
     assert_eq!(shadow.cpu_shadow_words(), Some([7, 11].as_slice()));
+    let snapshot = shadow.snapshot();
+    assert!(snapshot.cpu_shadow_words().is_none(), "render snapshot must not own a CPU shadow");
+    assert!(snapshot.as_any().downcast_ref::<ShadowedBuffer<Word>>().is_none());
+    shadow.write(0, &[Word(99)]);
+    assert_eq!(shadow.cpu_shadow_words(), Some([99, 11].as_slice()));
+    assert_eq!(snapshot.handle(), shadow.handle());
     let handle = shadow.handle();
     assert_eq!(handle.0, shadow.buffer.buffer.id);
     assert_eq!(handle.1, shadow.buffer.buffer.generation);

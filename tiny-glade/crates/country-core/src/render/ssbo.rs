@@ -89,6 +89,25 @@ pub mod rhapsody_boundary {
     /// Preserve the renderer's concrete failure category across the host boundary.
     pub use rhapsody::Error as BackendError;
 
+    /// Owns the native allocation and its host-write synchronization authority.
+    /// A production CPU upload must go through this lease, not a retained raw
+    /// mapping that can bypass a queued render frame or a prior GPU read.
+    pub trait MappedUploadWriter: Send + Sync {
+        fn write(&self, offset: usize, data: &[u8]) -> Result<(), BackendError>;
+        /// Execute an edit of the owner's existing mapping only after prior
+        /// overlapping GPU uses complete; retain exclusion through its flush.
+        fn with_write(
+            &self, _offset: usize, _bytes: usize, _edit: &mut dyn FnMut(),
+        ) -> Result<(), BackendError> {
+            Err(BackendError::unsupported("mapped edit synchronization is not connected"))
+        }
+        fn try_read(
+            &self, _offset: usize, _bytes: usize, _read: &mut dyn FnMut(),
+        ) -> Result<bool, BackendError> {
+            Err(BackendError::unsupported("mapped read synchronization is not connected"))
+        }
+    }
+
     /// 占位：`rhapsody::device::Device`（只含本层用到的两个调用）。
     pub trait GraphicsDevice {
         fn create_buffer(
@@ -110,6 +129,23 @@ pub mod rhapsody_boundary {
             offset: usize,
         ) -> Result<(), BackendError>;
 
+        /// Opt in a CPU-owned, reconstructible buffer to physical versioning.
+        ///
+        /// # Safety
+        /// The entire allocation has one authoritative CPU source. GPU passes
+        /// only read it; no persistent mapping, native handle or device address
+        /// escapes. Updates must use update_cpu_buffer_bytes with that source.
+        unsafe fn register_cpu_authoritative_buffer(&self, _buffer: &Buffer) {}
+
+        /// `data` is the complete allocation; ranges select this frame's dirty
+        /// bytes. A versioning host may upload the full source to a new owner
+        /// when a queued frame still pins the previous physical contents.
+        fn update_cpu_buffer_bytes(
+            &self, buffer: &Buffer, data: &[u8], ranges: &[Range<usize>],
+        ) -> Result<(), BackendError> {
+            self.update_buffer_bytes(buffer, data, ranges, 0)
+        }
+
         /// `rhapsody::resource::Buffer::mapped_slice_mut(&self, device)`（O 0x140bd4cd0）：持久映射的主机可见缓冲的字节切片；
         /// 设备不映射该缓冲 → `None`（`MappedStorageBuffer::new_storage_buffer` 随后 `Option::unwrap` panic）。
         /// B 阶段（i_api）并入本 trait：原先独立的 `MappedBuffers` 导致 `&dyn GraphicsDevice`（库侧 `SsboType::new_storage_buffer`
@@ -117,6 +153,8 @@ pub mod rhapsody_boundary {
         fn mapped_slice_mut(&self, _buffer: &Buffer) -> Option<&mut [u8]> {
             None
         }
+        fn mapped_upload_writer(&self, _buffer: &Buffer)
+            -> Option<std::sync::Arc<dyn MappedUploadWriter>> { None }
 
         /// `rhapsody::resource::Buffer::device_address(&self, device)`（O 0x140bd4c00；`nani::trimesh` 的
         /// `Trimesh::build` 把块地址加上它）。原先在 `nani::trimesh` 单列的 `BufferDeviceAddress` trait 已并入此处。
@@ -177,6 +215,22 @@ pub fn convert_buffer_desc(desc: &rhapsody_boundary::BufferDesc) -> rhapsody::re
 /// 返回未接错误，不补造、不假成功。`convert_buffer_desc` 是真实 desc 换算（WIRING §2.3 映射表）。
 #[cfg(not(test))]
 impl GraphicsDevice for crate::rhapsody_contract::GraphicsDevice {
+    unsafe fn register_cpu_authoritative_buffer(&self, buffer: &Buffer) {
+        if let Some(host) = self.buffer_host() {
+            // SAFETY: the caller supplies the same authority contract.
+            unsafe { host.register_cpu_authoritative_buffer(buffer); }
+        }
+    }
+
+    fn update_cpu_buffer_bytes(
+        &self, buffer: &Buffer, data: &[u8], ranges: &[Range<usize>],
+    ) -> Result<(), rhapsody_boundary::BackendError> {
+        if let Some(host) = self.buffer_host() {
+            return host.update_cpu_buffer_bytes(buffer, data, ranges);
+        }
+        <Self as GraphicsDevice>::update_buffer_bytes(self, buffer, data, ranges, 0)
+    }
+
     fn release_buffer(&self, buffer: &Buffer) {
         if let Some(host) = self.buffer_host() {
             host.release_buffer(buffer);
@@ -231,6 +285,10 @@ impl GraphicsDevice for crate::rhapsody_contract::GraphicsDevice {
             "mapped_slice_mut: registered gap (WIRING §4.8), needs ManagedBuffer"
         );
         None
+    }
+    fn mapped_upload_writer(&self, buffer: &Buffer)
+        -> Option<std::sync::Arc<dyn rhapsody_boundary::MappedUploadWriter>> {
+        self.buffer_host().and_then(|host| host.mapped_upload_writer(buffer))
     }
 
     /// 登记缺口 §4.8：真实 `buffer_device_address(&ManagedBuffer)`（device_api.rs:144）。
@@ -541,7 +599,10 @@ impl<T: StorageElement> TypedStorageBuffer<T> {
         }
         device
             .update_buffer_bytes(&self.buffer, bytes, &[0..bytes.len()], offset)
-            .map_err(|_| BufferWriteError::Device)
+            .map_err(|error| {
+                log::error!("SSBO {} upload at {offset} ({} bytes): {error}", T::NAME, bytes.len());
+                BufferWriteError::Device
+            })
     }
 }
 
@@ -621,9 +682,24 @@ pub struct MappedStorageBuffer<'a, T> {
     pub mapped: &'a mut [T],
     /// `+0x10`。
     pub buffer: Buffer,
+    upload_writer: Option<std::sync::Arc<dyn rhapsody_boundary::MappedUploadWriter>>,
 }
 
 impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
+    /// Adapt an existing mapping whose synchronization remains with its owner
+    /// (CPU test mappings and GPU readback owners use this constructor).
+    pub fn from_mapping(mapped: &'a mut [T], buffer: Buffer) -> Self {
+        Self { mapped, buffer, upload_writer: None }
+    }
+
+    /// Adapt a manually constructed native mapping while retaining the host's
+    /// range synchronization and the actual allocation owner.
+    pub fn from_mapping_with_access(
+        mapped: &'a mut [T], buffer: Buffer,
+        access: Option<std::sync::Arc<dyn rhapsody_boundary::MappedUploadWriter>>,
+    ) -> Self {
+        Self { mapped, buffer, upload_writer: access }
+    }
     /// 缓冲字节大小：`BUFFER_LEN * size_of::<T>()`（编译期常量）。
     pub const fn byte_len() -> usize {
         T::BUFFER_LEN * core::mem::size_of::<T>()
@@ -688,7 +764,7 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
         // SAFETY: 对齐与整除已断言；`T: Copy` 且映射区由设备持有至缓冲销毁（与原版保存的裸指针等价）；字节内容按元素重解释
         // （`T` 非 `Pod` 派生，故不能用 `bytemuck::cast_slice_mut`——离线缓存缺 `bytemuck_derive`）。
         let mapped: &'a mut [T] = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
-        Self { mapped, buffer }
+        Self { mapped, buffer, upload_writer: device.mapped_upload_writer(&buffer) }
     }
 
     /// `cpu_write`（O：`impl$6::cpu_write<ButterflySsbo/FireflySsbo>` 0x14230edb0 / 0x14230f1e0，各 1057 B，puffin scope 之外就是一次
@@ -696,13 +772,60 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
     /// 数据比映射区长时 `n != data.len()`，触发 `copy_from_slice` 的长度不匹配 panic（`len_mismatch_fail`）。
     pub fn cpu_write(&mut self, data: &[T]) {
         let n = data.len().min(self.mapped.len());
-        self.mapped[..n].copy_from_slice(data);
+        if data.len() != n {
+            // Preserve the existing short-mapping failure before any write.
+            self.mapped[..n].copy_from_slice(data);
+            unreachable!();
+        }
+        if data.is_empty() { return; }
+        self.with_cpu_write_range(0..n, |mapped| mapped.copy_from_slice(data))
+            .expect("mapped upload write failed");
+    }
+
+    /// Edit the existing mapping in place under its owner's GPU range guard.
+    /// Local CPU fixtures/readback adapters constructed with from_mapping keep
+    /// their caller-owned synchronization; production upload owners have a writer.
+    pub fn with_cpu_write(&mut self, edit: impl FnOnce(&mut [T]))
+        -> Result<(), rhapsody_boundary::BackendError> {
+        self.with_cpu_write_range(0..self.mapped.len(), edit)
+    }
+
+    pub fn with_cpu_write_range(&mut self, range: Range<usize>, edit: impl FnOnce(&mut [T]))
+        -> Result<(), rhapsody_boundary::BackendError> {
+        let offset = range.start.checked_mul(core::mem::size_of::<T>())
+            .ok_or_else(|| rhapsody_boundary::BackendError::invalid_usage("mapped edit offset overflow"))?;
+        let mapped = self.mapped.get_mut(range)
+            .ok_or_else(|| rhapsody_boundary::BackendError::invalid_usage("mapped edit exceeds its owner"))?;
+        let bytes = core::mem::size_of_val(mapped);
+        let mut edit = Some(edit);
+        if let Some(writer) = &self.upload_writer {
+            writer.with_write(offset, bytes, &mut ||
+                edit.take().expect("one protected mapped edit")(mapped))
+        } else {
+            edit.take().expect("one local mapped edit")(mapped);
+            Ok(())
+        }
+    }
+
+    /// Observe the latest complete GPU contents without stalling simulation.
+    /// None means busy; callers retain their previous CPU value in that case.
+    pub fn try_cpu_read<R>(&self, read: impl FnOnce(&[T]) -> R)
+        -> Result<Option<R>, rhapsody_boundary::BackendError> {
+        if let Some(access) = &self.upload_writer {
+            let mut read = Some(read);
+            let mut value = None;
+            let ready = access.try_read(0, core::mem::size_of_val(self.mapped), &mut || {
+                value = Some(read.take().expect("one protected mapped read")(self.mapped));
+            })?;
+            if ready { Ok(value) } else { Ok(None) }
+        } else {
+            Ok(Some(read(self.mapped)))
+        }
     }
 }
 
-// SAFETY: 映射区是设备持有的主机内存；原版的 `MappedStorageBuffer` 同样跨线程放在 `Box<dyn Ssbo + Send + Sync>` 里。
-unsafe impl<T: Send> Send for MappedStorageBuffer<'_, T> {}
-unsafe impl<T: Sync> Sync for MappedStorageBuffer<'_, T> {}
+// Send/Sync derive from the typed borrow and the writer lease; no unsafe
+// marker implementation is needed to move this storage between owners.
 
 #[cfg(test)]
 pub(crate) mod tests {

@@ -101,7 +101,7 @@ pub fn firstperson_steps<S: Studio + Send + Sync + 'static>(
             let water = water.0.as_ref();
             let garden = garden.0.as_ref();
             let eye = camera.eye_position();
-            select_ground_material(
+            mask.try_cpu_read(|samples| select_ground_material(
                 |index| {
                     let raster = match index {
                         0 => water,
@@ -111,12 +111,14 @@ pub fn firstperson_steps<S: Studio + Send + Sync + 'static>(
                     };
                     raster.bilinear_sample_at_world_xz(eye.x, eye.z, 130.0, 130.0)
                 },
-                || TerrainRockMaskSsbo::sample_mapped_at_world_xz(mask.mapped, eye.x, eye.z),
-            )
+                || TerrainRockMaskSsbo::sample_mapped_at_world_xz(samples, eye.x, eye.z),
+            )).expect("footstep rock-mask readback failed")
         } else {
-            GROUND_TYPE_DEFAULT
+            Some(GROUND_TYPE_DEFAULT)
         };
-        let _ = core.set_parameter(GROUND_TYPE_PARAM, material);
+        if let Some(material) = material {
+            let _ = core.set_parameter(GROUND_TYPE_PARAM, material);
+        }
         if bytes[0x344] == 0 {
             let _ = state.walking_loop.start_if_not_playing();
             return;

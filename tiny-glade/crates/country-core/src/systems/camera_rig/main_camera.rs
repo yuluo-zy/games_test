@@ -164,6 +164,63 @@ pub struct MainCamera {
     pub startup_rigs: Option<std::sync::Arc<std::sync::Mutex<StartupCameraRigs>>>,
 }
 
+/// Immutable inputs for a render-only rotation preview. No rig, queue or game
+/// state can be advanced through this value.
+#[derive(Clone, Copy, Debug)]
+pub struct CameraRotationPreview {
+    position: Vec3,
+    yaw: f32,
+    pitch: f32,
+    kind: RotationPreviewKind,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum RotationPreviewKind {
+    Orbit { arm: Vec3, pending_pitch: f32, min: f32, max: f32 },
+    Dolly { target_pitch: f32 },
+}
+
+impl CameraRotationPreview {
+    /// Apply only the new input delta to the already evaluated pose. Pending
+    /// motion, zoom, translation and smoothing remain in their simulation owner.
+    pub fn apply(self, camera: &mut MainCamera, yaw_delta: f32, pitch_delta: f32) -> bool {
+        if !yaw_delta.is_finite() || !pitch_delta.is_finite() {
+            return false;
+        }
+        let (position, rotation) = match self.kind {
+            RotationPreviewKind::Orbit { arm, pending_pitch, min, max } => {
+                let base = self.pitch + pending_pitch;
+                let wanted = -(pitch_delta + base);
+                let bounded = wanted.min(max).max(min);
+                let pitch = self.pitch + (-bounded - base);
+                let rotation = |yaw: f32, pitch: f32| {
+                    Quat::from_rotation_y(yaw * ORBIT_ANGLE_SCALE)
+                        * Quat::from_rotation_x(pitch * ORBIT_ANGLE_SCALE)
+                };
+                let previous = rotation(self.yaw, self.pitch);
+                let current = rotation(self.yaw + yaw_delta, pitch);
+                (self.position + current * arm - previous * arm, current)
+            }
+            RotationPreviewKind::Dolly { target_pitch } => {
+                // The canonical Free/Walk controller scales input by 0.5
+                // before Dolly's [-90, 90] degree clamp.
+                let pitch_delta = (target_pitch + pitch_delta * 0.5).clamp(-90.0, 90.0) - target_pitch;
+                let rotation = Quat::from_euler(glam::EulerRot::YXZ,
+                    (self.yaw + yaw_delta * 0.5).to_radians(),
+                    (self.pitch + pitch_delta).to_radians(), 0.0);
+                (self.position, rotation)
+            }
+        };
+        if !position.is_finite() || !rotation.is_finite() {
+            return false;
+        }
+        let matrices = utils::camera::CameraBodyMatrices::from_position_rotation(position, rotation);
+        camera.write_matrix(0x80, &matrices.view);
+        camera.write_matrix(0xc0, &matrices.inverse_view);
+        true
+    }
+}
+
 /// Dolly is the original locked dependency. Only the game's driver composition
 /// is recovered here; its smoothing and rig evaluation are reused unchanged.
 #[derive(Debug)]
@@ -185,6 +242,64 @@ impl Default for MainCamera {
 }
 
 impl MainCamera {
+    /// Capture on the simulation owner after its normal update. The orbit
+    /// anchor and pending pitch come from that same selected body; Free/Walk
+    /// copy the real driver's target clamp without sharing its mutable owner.
+    pub fn rotation_preview(&self) -> Option<CameraRotationPreview> {
+        let position = self.eye_position();
+        let (yaw, pitch, kind) = match self.mode_byte() {
+            mode @ (0 | 1 | 4) => {
+                let base = match mode { 0 => 0x100, 1 => 0x1b8, _ => 0x390 };
+                if u32::from_le_bytes(self.raw[base + 0x18..base + 0x1c].try_into().unwrap()) == 0 {
+                    return None;
+                }
+                let backlog: f32 = match mode {
+                    0 => self.rotations.iter().map(|r| r.pitch_delta).sum(),
+                    1 => self.orbit_backlogs[0].iter().map(|r| r.pitch_delta).sum(),
+                    _ => self.orbit_backlogs[1].iter().map(|r| r.pitch_delta).sum(),
+                };
+                let direction = self.read_vec3(base + 0x2c);
+                (self.read_f32(base + 0x54), self.read_f32(base + 0x50), RotationPreviewKind::Orbit {
+                    arm: -direction * self.read_f32(base + 0x1c),
+                    pending_pitch: backlog + self.read_f32(base + 0x24),
+                    min: self.read_f32(base + 0x58), max: self.read_f32(base + 0x5c),
+                })
+            }
+            mode @ (2 | 3) => {
+                let rigs = self.startup_rigs.as_ref()?.lock().ok()?;
+                let rig = if mode == 2 { &rigs.free } else { &rigs.walk };
+                let target_pitch = rig.driver::<dolly::drivers::YawPitch>().pitch_degrees;
+                let (_, rotation, _) = self.read_matrix(0xc0).to_scale_rotation_translation();
+                let (yaw, pitch, _) = rotation.to_euler(glam::EulerRot::YXZ);
+                (yaw.to_degrees(), pitch.to_degrees(), RotationPreviewKind::Dolly { target_pitch })
+            }
+            _ => return None,
+        };
+        if !position.is_finite() || !yaw.is_finite() || !pitch.is_finite() { return None; }
+        match kind {
+            RotationPreviewKind::Orbit { arm, pending_pitch, min, max }
+                if !arm.is_finite() || !pending_pitch.is_finite()
+                    || !min.is_finite() || !max.is_finite() || min > max => return None,
+            RotationPreviewKind::Dolly { target_pitch } if !target_pitch.is_finite() => return None,
+            _ => {},
+        }
+        Some(CameraRotationPreview { position, yaw, pitch, kind })
+    }
+
+    /// Read-only declaration view. Camera interpolation and Dolly drivers stay
+    /// exclusively with the game-thread producer; rendering needs only the
+    /// maintained matrices, lens values and mode stored in the scalar mirror.
+    /// In particular, ordinary `Clone` also clones the shared mutable Dolly
+    /// owner and the rotation queues, which is unsuitable for frame extraction.
+    pub fn render_snapshot(&self) -> Self {
+        Self {
+            raw: self.raw.clone(),
+            rotations: Vec::new(),
+            orbit_backlogs: std::array::from_fn(|_| Vec::new()),
+            startup_rigs: None,
+        }
+    }
+
     /// B `MainCamera::new` @0x14090ec70. `aspect` is the original XMM1
     /// argument: run_game_thread calls WindowSize::aspect_ratio immediately
     /// before the constructor (@0x14059dba3..0x14059dbe3).
@@ -825,6 +940,66 @@ impl MainCamera {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn render_snapshot_keeps_camera_values_without_simulation_owners() {
+        let mut camera = MainCamera::new(16.0 / 9.0);
+        camera.rotations.push(ActiveRotation::new(0.25, 0.5));
+        let matrices = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+        camera.write_matrix(INVERSE_VIEW_OFFSET, &matrices);
+        let rigs = camera.startup_rigs.as_ref().unwrap();
+        let owners = std::sync::Arc::strong_count(rigs);
+        let snapshot = camera.render_snapshot();
+        assert_eq!(std::sync::Arc::strong_count(rigs), owners);
+        assert!(snapshot.startup_rigs.is_none());
+        assert!(snapshot.rotations.is_empty());
+        assert!(snapshot.orbit_backlogs.iter().all(Vec::is_empty));
+        assert_eq!(snapshot.raw, camera.raw);
+        assert_eq!(snapshot.eye_position(), Vec3::new(1.0, 2.0, 3.0));
+        camera.write_matrix(INVERSE_VIEW_OFFSET, &Mat4::IDENTITY);
+        assert_eq!(snapshot.eye_position(), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn orbit_preview_preserves_anchor_and_never_advances_simulation() {
+        let mut camera = MainCamera::new(16.0 / 9.0);
+        camera.update_camera_matrices(0.0, false);
+        let eye = camera.eye_position();
+        let anchor = eye + camera.eye_forward() * 10.0;
+        camera.begin_selected_rotation(anchor, Vec3::NEG_Z, eye);
+        let raw = camera.raw.clone();
+        let preview = camera.rotation_preview().unwrap();
+        let mut render = camera.render_snapshot();
+        assert!(preview.apply(&mut render, 12.0, 0.0));
+        assert_ne!(render.read_matrix(0xc0), camera.read_matrix(0xc0));
+        let actual_anchor = render.eye_position() + render.eye_forward() * 10.0;
+        assert!((actual_anchor - anchor).length() < 1e-4);
+        assert_eq!(render.read_matrix(0), camera.read_matrix(0));
+        assert_eq!(camera.raw, raw);
+        assert!(camera.startup_rigs.is_some());
+        assert!(render.startup_rigs.is_none());
+    }
+
+    #[test]
+    fn free_walk_preview_keeps_position_and_driver_targets() {
+        for mode in [CameraMode::FREE, CameraMode::WALK] {
+            let mut camera = MainCamera::new(1.0);
+            camera.set_mode_byte(mode);
+            camera.update_camera_matrices(0.0, false);
+            let preview = camera.rotation_preview().unwrap();
+            let raw = camera.raw.clone();
+            let mut render = camera.render_snapshot();
+            assert!(preview.apply(&mut render, 20.0, 10.0));
+            assert_eq!(render.eye_position(), camera.eye_position());
+            assert_ne!(render.eye_forward(), camera.eye_forward());
+            assert_eq!(camera.raw, raw);
+            let rigs = camera.startup_rigs.as_ref().unwrap().lock().unwrap();
+            let rig = if mode == CameraMode::FREE { &rigs.free } else { &rigs.walk };
+            let target = rig.driver::<dolly::drivers::YawPitch>();
+            assert_eq!(target.yaw_degrees, 0.0);
+            assert_eq!(target.pitch_degrees, 0.0);
+        }
+    }
 
     #[test]
     fn original_intro_finishes_normal_camera_and_writes_four_real_matrices() {

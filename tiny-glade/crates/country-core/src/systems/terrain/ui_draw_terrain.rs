@@ -154,6 +154,26 @@ pub fn ui_draw_terrain(
     } else {
         0
     };
+    // Resolve both readbacks before creating a stroke or advancing its state.
+    // A busy GPU retries this transition next Update without a partial edit.
+    let start_sample = if state == 1 {
+        let library = assets.as_deref()
+            .expect("terrain drawing requires the SSBO library");
+        let Some(mouse_index) = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::try_read_terrain_stroke_index(library) else {
+            return;
+        };
+        let mask = library.get::<TerrainRockMaskSsbo>()
+            .expect("terrain drawing requires TerrainRockMaskSsbo");
+        let Some(on_rock) = mask.try_cpu_read(|samples| {
+            mouse_index.is_some_and(|index| index != -1)
+                && sample_at_world_xz(bytemuck::cast_slice(samples), cursor.x, cursor.y) != 0
+        }).expect("terrain drawing rock-mask readback failed") else {
+            return;
+        };
+        Some((mouse_index, on_rock))
+    } else {
+        None
+    };
     draw_state.state = state;
     // subtype == 3 → drag 距离槽（disasm 0x140aa00a2..0x140aa00c3）。
     if subtype == 3 {
@@ -167,20 +187,7 @@ pub fn ui_draw_terrain(
                 // B aa010f..aa011d: preserve the raw drag distance before any
                 // SSBO lookup or clamp/addition for the actual stroke height.
                 editing.cursor_height_override = Some(draw_state.drag_distance);
-                let library = assets
-                    .as_deref()
-                    .expect("terrain drawing requires the SSBO library");
-                let mouse_index = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(library);
-                let mask = library
-                    .get::<TerrainRockMaskSsbo>()
-                    .expect("terrain drawing requires TerrainRockMaskSsbo");
-                let existing = mouse_index.is_some_and(|index| index != -1);
-                let on_rock = existing
-                    && sample_at_world_xz(
-                        bytemuck::cast_slice(&mask.mapped[..]),
-                        cursor.x,
-                        cursor.y,
-                    ) != 0;
+                let (mouse_index, on_rock) = start_sample.expect("new stroke readbacks are ready");
                 let height = initial_stroke_height(mouse_index, on_rock, draw_state.drag_distance);
                 editing.strokes.get_mut(&id).unwrap().height_ws = height;
                 draw_state.active = true;

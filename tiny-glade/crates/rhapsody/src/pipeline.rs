@@ -29,6 +29,9 @@ pub struct CompilerConfig {
     pub workers: usize,
     /// Includes queued and actively compiling jobs.
     pub max_pending: usize,
+    /// Total queued + active requests accepted by the deferred frame API.
+    /// Worker concurrency is still `workers`; bytes share max_request_bytes.
+    pub max_deferred_pending: usize,
     pub max_request_bytes: usize,
     pub max_cached_requests: usize,
 }
@@ -37,6 +40,7 @@ impl Default for CompilerConfig {
         Self {
             workers: 1,
             max_pending: 64,
+            max_deferred_pending: 1024,
             max_request_bytes: 16 << 20,
             max_cached_requests: 256,
         }
@@ -47,6 +51,7 @@ impl CompilerConfig {
         if self.workers == 0
             || self.workers > 16
             || self.max_pending == 0
+            || self.max_deferred_pending == 0
             || self.max_request_bytes == 0
             || self.max_cached_requests == 0
         {
@@ -406,7 +411,24 @@ impl AsyncPipelineCompiler {
             options,
         )
     }
+    /// Own the request and return a stable ticket without caller-side retry or
+    /// sleep. Count/byte refusal is explicit allocation pressure, never an
+    /// invitation to redeclare a frame. Ready pipelines keep the bounded LRU.
+    pub fn defer_compute(&self, desc: ComputePipelineDesc) -> Result<PipelineTicket> {
+        self.request_inner(Job::Compute(desc), RequestOptions::default(), true)
+    }
+    pub fn defer_raster(&self, desc: RasterPipelineDesc) -> Result<PipelineTicket> {
+        self.request_inner(Job::Raster(Box::new(desc)), RequestOptions::default(), true)
+    }
+    pub fn defer_compute_spirv(&self, bytes: Vec<u8>, entry: CString,
+        layout: Arc<PipelineLayout>) -> Result<PipelineTicket> {
+        self.request_inner(Job::ComputeSpirv { bytes: Arc::new(bytes), entry, layout }, RequestOptions::default(), true)
+    }
     fn request(&self, job: Job, options: RequestOptions) -> Result<PipelineTicket> {
+        self.request_inner(job, options, false)
+    }
+    fn request_inner(&self, job: Job, options: RequestOptions, deferred: bool) -> Result<PipelineTicket> {
+        let refused = || if deferred { Error::OutOfHostMemory } else { Error::Timeout };
         if self.shared.cache.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
@@ -417,7 +439,7 @@ impl AsyncPipelineCompiler {
         }
         let bytes = job.retained_bytes();
         if bytes > self.shared.config.max_request_bytes {
-            return Err(Error::Timeout);
+            return Err(refused());
         }
         let mut state = self.shared.state.lock();
         if state.stopping {
@@ -441,17 +463,21 @@ impl AsyncPipelineCompiler {
             && self.shared.cache.device.memory.stats.budget_action()
                 != crate::device::BudgetAction::None
         {
-            return Err(Error::Timeout);
+            return Err(refused());
         }
-        if state.pending >= self.shared.config.max_pending
+        let pending_limit = if deferred { self.shared.config.max_deferred_pending } else { self.shared.config.max_pending };
+        if state.pending >= pending_limit
             || state
                 .request_bytes
                 .checked_add(bytes)
                 .is_none_or(|total| total > self.shared.config.max_request_bytes)
         {
-            return Err(Error::Timeout);
+            return Err(refused());
         }
-        while state.cached.len() >= self.shared.config.max_cached_requests
+        let key_limit = if deferred {
+            self.shared.config.max_cached_requests.saturating_add(self.shared.config.max_deferred_pending)
+        } else { self.shared.config.max_cached_requests };
+        while state.cached.len() >= key_limit
             || state
                 .cache_bytes
                 .checked_add(bytes)
@@ -463,7 +489,7 @@ impl AsyncPipelineCompiler {
                 })
             });
             let Some(position) = position else {
-                return Err(Error::Timeout);
+                return Err(refused());
             };
             let victim = state.lru.remove(position).expect("bounded LRU position");
             if let Some(entry) = state.cached.remove(&victim) {
@@ -644,6 +670,15 @@ fn worker(shared: Arc<Shared>) {
             Err(error) => Status::Failed(Arc::new(error)),
         };
         completion.changed.notify_all();
+        // Pending keys are retained for deduplication. Once work completes,
+        // trim back to the configured completed-request cache bound even when
+        // a deferred burst temporarily held more pending keys.
+        while state.cached.len() > shared.config.max_cached_requests {
+            let Some(index) = state.lru.iter().position(|key| state.cached.get(key)
+                .is_some_and(|entry| !matches!(*entry.completion.status.lock(), Status::Pending))) else { break; };
+            let key = state.lru.remove(index).expect("completed LRU entry");
+            if let Some(entry) = state.cached.remove(&key) { state.cache_bytes -= entry.bytes; }
+        }
     }
 }
 /// Under memory pressure, completed requests that no ticket references are
@@ -1056,6 +1091,55 @@ mod tests {
         }
     }
     #[test]
+    fn deferred_queue_owns_bounded_pending_requests_and_merges_before_refusing() {
+        let device = match crate::device::Device::new_headless(&crate::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(std::env::var_os("RHAPSODY_REQUIRE_VULKAN").is_none(), "{error}");
+                return;
+            }
+        };
+        let layout = PipelineLayout::new(device.clone(), vec![], vec![]).unwrap();
+        let mut compiler = AsyncPipelineCompiler::new(
+            Arc::new(PipelineCache::new(device, &[]).unwrap()),
+            CompilerConfig { max_pending: 1, max_deferred_pending: 3, max_cached_requests: 1, ..Default::default() },
+        ).unwrap();
+        // Stop idle workers before enqueueing to deterministically exercise a
+        // saturated queue, independent of native driver compilation speed.
+        compiler.shared.state.lock().stopping = true;
+        compiler.shared.available.notify_all();
+        for worker in compiler.workers.drain(..) { worker.join().unwrap(); }
+        compiler.shared.state.lock().stopping = false;
+        let mut tickets = Vec::new();
+        for value in 0..3 {
+            tickets.push(compiler.defer_compute_spirv(vec![value; 4], c"main".to_owned(), layout.clone()).unwrap());
+        }
+        assert_eq!(compiler.stats().pending, 3);
+        let merged = compiler.defer_compute_spirv(vec![0; 4], c"main".to_owned(), layout.clone()).unwrap();
+        assert!(merged.same_request(&tickets[0]));
+        let before = compiler.stats();
+        assert!(matches!(compiler.defer_compute_spirv(vec![3; 4], c"main".to_owned(), layout.clone()), Err(Error::OutOfHostMemory)));
+        assert!(matches!(compiler.request_compute_spirv(vec![3; 4], c"main".to_owned(), layout), Err(Error::Timeout)));
+        let after = compiler.stats();
+        assert_eq!((before.pending, before.request_bytes, before.cached_key_bytes),
+            (after.pending, after.request_bytes, after.cached_key_bytes));
+        assert!(tickets.iter().all(|ticket| matches!(ticket.poll(), PipelinePoll::Pending)));
+        let shared = compiler.shared.clone();
+        compiler.workers.push(std::thread::spawn(move || worker(shared)));
+        for ticket in &tickets {
+            assert!(ticket.wait(Duration::from_secs(10)).is_err(), "invalid SPIR-V must retain its terminal error");
+        }
+        // Failed jobs leave the request table; no permanently full queue remains.
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while compiler.stats().pending != 0 {
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        assert_eq!(compiler.stats().request_bytes, 0);
+        assert!(compiler.stats().cached_requests <= 1);
+    }
+
+    #[test]
     fn worker_and_memory_limits_must_be_bounded() {
         assert!(CompilerConfig::default().validate().is_ok());
         for config in [
@@ -1069,6 +1153,10 @@ mod tests {
             },
             CompilerConfig {
                 max_pending: 0,
+                ..Default::default()
+            },
+            CompilerConfig {
+                max_deferred_pending: 0,
                 ..Default::default()
             },
             CompilerConfig {

@@ -42,7 +42,7 @@ impl SsboType for NormalDebugSsbo {
         let mapped = unsafe {
             core::slice::from_raw_parts_mut(mapped.as_mut_ptr().cast::<Self>(), mapped.len() / 32)
         };
-        MappedStorageBuffer { mapped, buffer }
+        MappedStorageBuffer::from_mapping_with_access(mapped, buffer, device.mapped_upload_writer(&buffer))
     }
 }
 impl crate::render::pass_builder::pass_resource_access::SsboType for NormalDebugSsbo {
